@@ -358,7 +358,10 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn(
+        "flex h-14 shrink-0 items-center justify-start p-3 group-data-[collapsible=icon]:justify-center",
+        className
+      )}
       {...props}
     />
   )
@@ -492,7 +495,7 @@ const SidebarMenu = React.forwardRef<
   <ul
     ref={ref}
     data-sidebar="menu"
-    className={cn("flex w-full min-w-0 flex-col gap-1", className)}
+    className={cn("flex w-full min-w-0 flex-col gap-1 p-2", className)}
     {...props}
   />
 ))
@@ -512,7 +515,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-3 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-bold data-[active=true]:text-sidebar-primary group-data-[collapsible=icon]:!size-12 group-data-[collapsible=icon]:!p-3.5 [&>span:last-child]:truncate [&_svg]:size-6 [&_svg]:shrink-0",
+  "peer/menu-button flex w-full items-center justify-start gap-2 overflow-hidden rounded-md p-3 text-sm outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-muted-foreground data-[active=true]:font-bold data-[active=true]:text-sidebar-foreground group-data-[collapsible=icon]:!size-12 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-3.5 [&>span:last-child]:truncate [&_svg]:size-6 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -722,8 +725,7 @@ const SidebarMenuSubButton = React.forwardRef<
       data-size={size}
       data-active={isActive}
       className={cn(
-        "flex h-10 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-4 text-sidebar-foreground outline-none ring-sidebar-ring focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&_svg]:size-5 [&_svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
-        "data-[active=true]:font-bold data-[active=true]:text-sidebar-primary",
+        "flex h-10 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-4 text-muted-foreground outline-none ring-sidebar-ring focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 data-[active=true]:font-bold data-[active=true]:text-sidebar-foreground [&>span:last-child]:truncate [&_svg]:size-5 [&_svg]:shrink-0",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
         "group-data-[collapsible=icon]:hidden",
