@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 export function Header() {
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4 sm:px-6">
-      <SidebarTrigger className="md:hidden" />
+      <SidebarTrigger />
       <div className="flex-1" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

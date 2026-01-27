@@ -55,9 +55,9 @@ export function AppSidebar() {
                       >
                         <div className="flex items-center gap-2">
                           <link.icon />
-                          <span>{link.label}</span>
+                          <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
                         </div>
-                        <ChevronRight className="size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        <ChevronRight className="size-6 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90 group-data-[collapsible=icon]:hidden" />
                       </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
@@ -89,7 +89,7 @@ export function AppSidebar() {
                   >
                     <Link href={link.href}>
                       <link.icon />
-                      <span>{link.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
