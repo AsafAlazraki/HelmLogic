@@ -9,9 +9,19 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { navLinks } from "@/lib/nav-links";
 import { Logo } from "@/components/logo";
+import { ChevronRight } from "lucide-react";
+import React from "react";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -23,20 +33,59 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {navLinks.map((link) => (
-            <SidebarMenuItem key={link.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith(link.href)}
-                tooltip={{ children: link.label }}
-              >
-                <Link href={link.href}>
-                  <link.icon />
-                  <span>{link.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {navLinks.map((link) =>
+            link.subLinks ? (
+              <SidebarMenuItem key={link.label}>
+                <Collapsible defaultOpen={link.subLinks.some((sub) => pathname.startsWith(sub.href))}>
+                  <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        className="w-full justify-between group"
+                        isActive={link.subLinks.some((sub) => pathname.startsWith(sub.href))}
+                        tooltip={{ children: link.label }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <link.icon />
+                          <span>{link.label}</span>
+                        </div>
+                        <ChevronRight className="size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                      </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {link.subLinks.map((subLink) => (
+                        <SidebarMenuSubItem key={subLink.href}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={pathname.startsWith(subLink.href)}
+                          >
+                            <Link href={subLink.href}>
+                              <subLink.icon />
+                              <span>{subLink.label}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </Collapsible>
+              </SidebarMenuItem>
+            ) : (
+              link.href && (
+                <SidebarMenuItem key={link.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(link.href)}
+                    tooltip={{ children: link.label }}
+                  >
+                    <Link href={link.href}>
+                      <link.icon />
+                      <span>{link.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            )
+          )}
         </SidebarMenu>
       </SidebarContent>
     </Sidebar>
