@@ -13,13 +13,13 @@ export default function AdminPage() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {adminLinks?.map((link) => (
           <Link href={link.href} key={link.href} className="group">
-            <Card className="hover:bg-accent/50 transition-colors h-full">
+            <Card className="hover:bg-accent transition-colors h-full">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-medium">{link.label}</CardTitle>
-                <link.icon className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-lg font-medium text-card-foreground group-hover:text-accent-foreground">{link.label}</CardTitle>
+                <link.icon className="h-5 w-5 text-muted-foreground group-hover:text-accent-foreground/75" />
               </CardHeader>
               <CardContent>
-                <div className="flex items-center text-sm text-muted-foreground">
+                <div className="flex items-center text-sm text-muted-foreground group-hover:text-accent-foreground/75">
                   <span>Go to {link.label}</span>
                   <ArrowRight className="ml-2 h-4 w-4 transform transition-transform group-hover:translate-x-1" />
                 </div>
