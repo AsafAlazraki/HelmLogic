@@ -12,6 +12,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
@@ -26,10 +27,18 @@ import React, { useState, useEffect } from "react";
 export function AppSidebar() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const { isMobile, setOpenMobile } = useSidebar();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [pathname, isMobile, setOpenMobile]);
+
 
   const checkActive = (href: string) => mounted && pathname.startsWith(href);
   const checkSubLinksActive = (subLinks: typeof link.subLinks) =>
