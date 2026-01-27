@@ -21,10 +21,20 @@ import {
 import { navLinks } from "@/lib/nav-links";
 import { Logo } from "@/components/logo";
 import { ChevronRight } from "lucide-react";
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const checkActive = (href: string) => mounted && pathname.startsWith(href);
+  const checkSubLinksActive = (subLinks: typeof link.subLinks) =>
+    mounted && subLinks && subLinks.some((sub) => pathname.startsWith(sub.href));
+
 
   return (
     <Sidebar collapsible="icon">
@@ -36,11 +46,11 @@ export function AppSidebar() {
           {navLinks.map((link) =>
             link.subLinks ? (
               <SidebarMenuItem key={link.label}>
-                <Collapsible defaultOpen={link.subLinks.some((sub) => pathname.startsWith(sub.href))}>
+                <Collapsible defaultOpen={checkSubLinksActive(link.subLinks)}>
                   <CollapsibleTrigger asChild>
                       <SidebarMenuButton
                         className="w-full justify-between group"
-                        isActive={link.subLinks.some((sub) => pathname.startsWith(sub.href))}
+                        isActive={checkSubLinksActive(link.subLinks)}
                         tooltip={{ children: link.label }}
                       >
                         <div className="flex items-center gap-2">
@@ -56,7 +66,7 @@ export function AppSidebar() {
                         <SidebarMenuSubItem key={subLink.href}>
                           <SidebarMenuSubButton
                             asChild
-                            isActive={pathname.startsWith(subLink.href)}
+                            isActive={checkActive(subLink.href)}
                           >
                             <Link href={subLink.href}>
                               <subLink.icon />
@@ -74,7 +84,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={link.href}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname.startsWith(link.href)}
+                    isActive={checkActive(link.href)}
                     tooltip={{ children: link.label }}
                   >
                     <Link href={link.href}>
