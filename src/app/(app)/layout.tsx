@@ -12,10 +12,10 @@ export default function AppLayout({
     <FirebaseClientProvider>
       <SidebarProvider>
         <AppSidebar />
-        <div className="flex flex-col w-full">
+        <SidebarInset>
           <Header />
           <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
-        </div>
+        </SidebarInset>
       </SidebarProvider>
     </FirebaseClientProvider>
   );
