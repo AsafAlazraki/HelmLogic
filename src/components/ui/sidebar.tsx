@@ -359,7 +359,7 @@ const SidebarHeader = React.forwardRef<
       ref={ref}
       data-sidebar="header"
       className={cn(
-        "flex h-14 shrink-0 items-center justify-start p-3 group-data-[collapsible=icon]:justify-center",
+        "flex h-14 shrink-0 items-center justify-start p-3 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center",
         className
       )}
       {...props}
@@ -495,7 +495,10 @@ const SidebarMenu = React.forwardRef<
   <ul
     ref={ref}
     data-sidebar="menu"
-    className={cn("flex w-full min-w-0 flex-col gap-1 p-2", className)}
+    className={cn(
+      "flex w-full min-w-0 flex-col gap-1 p-2 group-data-[collapsible=icon]:px-0",
+      className
+    )}
     {...props}
   />
 ))
@@ -515,11 +518,11 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center justify-start gap-2 overflow-hidden rounded-md p-3 text-sm outline-none ring-sidebar-border transition-[width,height,padding] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-muted-foreground data-[active=true]:font-bold data-[active=true]:text-sidebar-foreground group-data-[collapsible=icon]:!size-12 group-data-[collapsible=icon]:justify-center [&>span:last-child]:truncate [&_svg]:size-6 [&_svg]:shrink-0",
+  "peer/menu-button flex w-full items-center justify-start gap-2 overflow-hidden rounded-md p-3 text-sm outline-none ring-sidebar-border transition-[width,height,padding] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-sidebar-accent-foreground data-[active=true]:font-bold data-[active=true]:text-sidebar-foreground group-data-[collapsible=icon]:!size-12 group-data-[collapsible=icon]:justify-center [&>span:last-child]:truncate [&_svg]:size-6 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "",
+        default: "hover:bg-sidebar-accent",
         outline:
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))]",
       },
