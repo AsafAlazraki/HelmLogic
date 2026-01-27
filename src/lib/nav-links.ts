@@ -17,6 +17,7 @@ export type NavLink = {
 export const navLinks: NavLink[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   {
+    href: '/admin',
     label: 'Admin',
     icon: Shield,
     subLinks: [

@@ -56,7 +56,27 @@ export function AppSidebar() {
             link.subLinks ? (
               <SidebarMenuItem key={link.label}>
                 <Collapsible defaultOpen={checkSubLinksActive(link.subLinks)}>
-                  <CollapsibleTrigger asChild>
+                  {link.href ? (
+                    <div className="relative">
+                      <SidebarMenuButton
+                        asChild
+                        isActive={checkActive(link.href) || checkSubLinksActive(link.subLinks)}
+                        tooltip={{ children: link.label }}
+                        className="pr-12"
+                      >
+                        <Link href={link.href}>
+                          <link.icon />
+                          <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                      <CollapsibleTrigger asChild>
+                        <button className="absolute right-0 top-0 flex h-full items-center justify-center p-3 group-data-[collapsible=icon]:hidden">
+                            <ChevronRight className="size-6 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </button>
+                      </CollapsibleTrigger>
+                    </div>
+                  ) : (
+                    <CollapsibleTrigger asChild>
                       <SidebarMenuButton
                         className="w-full justify-between group"
                         isActive={checkSubLinksActive(link.subLinks)}
@@ -68,15 +88,13 @@ export function AppSidebar() {
                         </div>
                         <ChevronRight className="size-6 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90 group-data-[collapsible=icon]:hidden" />
                       </SidebarMenuButton>
-                  </CollapsibleTrigger>
+                    </CollapsibleTrigger>
+                  )}
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       {link.subLinks.map((subLink) => (
                         <SidebarMenuSubItem key={subLink.href}>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={checkActive(subLink.href)}
-                          >
+                          <SidebarMenuSubButton asChild isActive={checkActive(subLink.href)}>
                             <Link href={subLink.href}>
                               <subLink.icon />
                               <span>{subLink.label}</span>
@@ -91,11 +109,7 @@ export function AppSidebar() {
             ) : (
               link.href && (
                 <SidebarMenuItem key={link.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={checkActive(link.href)}
-                    tooltip={{ children: link.label }}
-                  >
+                  <SidebarMenuButton asChild isActive={checkActive(link.href)} tooltip={{ children: link.label }}>
                     <Link href={link.href}>
                       <link.icon />
                       <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
