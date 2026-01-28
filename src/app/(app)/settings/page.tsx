@@ -26,7 +26,7 @@ export default function SettingsPage() {
         const userRef = doc(firestore, "users", user.uid);
         
         const userData = {
-            role: 'admin'
+            appRole: 'admin'
         };
 
         setDoc(userRef, userData, { merge: true })
