@@ -104,7 +104,7 @@ export function AppSidebar() {
             ) : (
               link.href && (
                 <SidebarMenuItem key={link.href}>
-                  <SidebarMenuButton asChild isActive={checkActive(link.href)} tooltip={{ children: link.label }}>
+                  <SidebarMenuButton asChild isActive={checkActive(link.href)} tooltip={{ children: link.label }} className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground hover:bg-sidebar-accent/50">
                     <Link href={link.href}>
                       <link.icon className="size-6" />
                       <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>

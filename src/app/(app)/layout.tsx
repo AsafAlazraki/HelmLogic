@@ -1,7 +1,18 @@
+'use client';
+
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Header } from "@/components/header";
-import { AppSidebar } from "@/components/app-sidebar";
 import FirebaseClientProvider from "@/firebase/client-provider";
+import dynamic from "next/dynamic";
+import { SidebarSkeleton } from "@/components/sidebar-skeleton";
+
+const AppSidebar = dynamic(
+  () => import("@/components/app-sidebar").then((mod) => mod.AppSidebar),
+  {
+    ssr: false,
+    loading: () => <SidebarSkeleton />,
+  }
+);
 
 export default function AppLayout({
   children,
