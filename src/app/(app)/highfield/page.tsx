@@ -1,13 +1,17 @@
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 
 export default function HighfieldPage() {
   const highfieldImage = PlaceHolderImages.find(img => img.id === 'highfield-ship');
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Highfield</h1>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold">Highfield</h1>
+        <BreadcrumbNav />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>About Highfield</CardTitle>

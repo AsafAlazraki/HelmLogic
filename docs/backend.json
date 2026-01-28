@@ -20,10 +20,30 @@
         }
       },
       "required": ["email"]
+    },
+    "Organisation": {
+      "title": "Organisation",
+      "description": "Represents an organisation within the application.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the organisation."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the organisation."
+        }
+      },
+      "required": [
+        "name"
+      ]
     }
   },
   "auth": {
-    "providers": ["email"]
+    "providers": [
+      "email"
+    ]
   },
   "firestore": {
     "/users/{userId}": {
@@ -31,6 +51,12 @@
         "$ref": "#/backend/entities/UserProfile"
       },
       "description": "User profile documents, keyed by user ID."
+    },
+    "/organisations/{organisationId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Organisation"
+      },
+      "description": "Organisation documents, keyed by a unique ID."
     }
   }
 }

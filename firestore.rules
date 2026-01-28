@@ -2,6 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isHelmLogicAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
+    }
+
     match /users/{userId} {
       // A user can create their own user document.
       allow create: if request.auth.uid == userId;
@@ -14,6 +18,10 @@ service cloud.firestore {
 
       // Deletes are not allowed.
       allow delete: if false;
+    }
+
+    match /organisations/{organisationId} {
+      allow read, write: if isHelmLogicAdmin();
     }
 
     match /{document=**} {

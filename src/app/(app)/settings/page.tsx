@@ -7,6 +7,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 
 export default function SettingsPage() {
     const { user, loading } = useUser();
@@ -47,8 +48,11 @@ export default function SettingsPage() {
     };
 
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Settings</h1>
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Settings</h1>
+          <BreadcrumbNav />
+        </div>
         <p>This is the settings page.</p>
         <Button onClick={handleBecomeAdmin} disabled={loading || !user}>Become HelmLogic Admin</Button>
       </div>

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 
 const reports = [
   { id: "REP-001", date: "2024-05-15", vessel: "Neptune Voyager", route: "SHA-RTM", status: "Completed" },
@@ -33,8 +34,11 @@ export default function ReportingPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Reporting</h1>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold">Reporting</h1>
+        <BreadcrumbNav />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Recent Activity Reports</CardTitle>

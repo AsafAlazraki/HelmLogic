@@ -3,14 +3,18 @@ import { navLinks } from "@/lib/nav-links";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import AdminGuard from "@/components/admin-guard";
+import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 
 export default function AdminPage() {
   const adminLinks = navLinks.find(link => link.label === 'Admin')?.subLinks;
 
   return (
     <AdminGuard>
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
+          <BreadcrumbNav />
+        </div>
         <p className="text-muted-foreground">Manage your application settings and data from here.</p>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {adminLinks?.map((link) => (
