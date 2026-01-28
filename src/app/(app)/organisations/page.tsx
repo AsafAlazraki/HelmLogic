@@ -5,13 +5,16 @@ import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { Loader2, PlusCircle } from "lucide-react";
+import { Loader2, PlusCircle, Building2 } from "lucide-react";
 import Link from "next/link";
 
 interface Organisation {
     id: string;
     name: string;
     address?: string;
+    primaryLogoUrl?: string; // Future use
+    primaryColor?: string;
+    phoneNumber?: string;
 }
 
 export default function OrganisationsPage() {
@@ -38,31 +41,48 @@ export default function OrganisationsPage() {
                     <Loader2 className="h-16 w-16 animate-spin text-primary" />
                 </div>
             ) : (
-                <>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {organisations && organisations.length > 0 ? (
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {organisations.map((org) => (
-                                <Card key={org.id} className="h-full">
+                        organisations.map((org) => (
+                            <Link href={`/organisations/${org.id}`} key={org.id} className="group">
+                                <Card 
+                                    className="h-full transition-all duration-300 ease-in-out group-hover:-translate-y-1 group-hover:shadow-xl overflow-hidden flex flex-col"
+                                    style={{ borderTop: `4px solid ${org.primaryColor || 'hsl(var(--primary))'}` }}
+                                >
                                     <CardHeader>
-                                        <CardTitle>{org.name}</CardTitle>
+                                        <div className="flex items-start justify-between">
+                                            <CardTitle className="text-lg pr-4">{org.name}</CardTitle>
+                                            <div 
+                                                className="p-2 rounded-lg flex-shrink-0"
+                                                style={{ backgroundColor: `${org.primaryColor}1A`}} // primary color with low opacity
+                                            >
+                                                <Building2 className="h-6 w-6" style={{ color: org.primaryColor || 'hsl(var(--primary))' }} />
+                                            </div>
+                                        </div>
                                     </CardHeader>
-                                    {org.address && (
-                                        <CardContent>
-                                            <p className="text-sm text-muted-foreground line-clamp-2">{org.address}</p>
-                                        </CardContent>
-                                    )}
+                                    <CardContent className="flex-grow">
+                                        <p className="text-sm text-muted-foreground line-clamp-2">{org.address || 'No address provided'}</p>
+                                        {org.phoneNumber && <p className="text-sm text-muted-foreground mt-2">{org.phoneNumber}</p>}
+                                    </CardContent>
                                 </Card>
-                            ))}
-                        </div>
+                            </Link>
+                        ))
                     ) : (
-                         <Card className="flex items-center justify-center h-64 border-dashed">
-                             <div className="text-center text-muted-foreground">
-                                <h3 className="text-lg font-semibold text-foreground">No Organisations Found</h3>
-                                <p className="mt-2">Get started by creating a new organisation.</p>
-                             </div>
-                        </Card>
+                         <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                            <Card className="flex flex-col items-center justify-center h-80 border-2 border-dashed">
+                                <Building2 className="h-16 w-16 text-muted-foreground" />
+                                <h3 className="mt-4 text-lg font-semibold">No Organisations Found</h3>
+                                <p className="mt-2 text-sm text-muted-foreground">You haven't created any organisations yet.</p>
+                                <Button asChild className="mt-6">
+                                    <Link href="/organisations/add">
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Create First Organisation
+                                    </Link>
+                                </Button>
+                            </Card>
+                        </div>
                     )}
-                </>
+                </div>
             )}
         </div>
       </AdminGuard>
