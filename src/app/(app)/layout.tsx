@@ -5,6 +5,10 @@ import { Header } from "@/components/header";
 import FirebaseClientProvider from "@/firebase/client-provider";
 import dynamic from "next/dynamic";
 import { SidebarSkeleton } from "@/components/sidebar-skeleton";
+import { useUser } from "@/firebase/auth/use-user";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 const AppSidebar = dynamic(
   () => import("@/components/app-sidebar").then((mod) => mod.AppSidebar),
@@ -14,13 +18,25 @@ const AppSidebar = dynamic(
   }
 );
 
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
   return (
-    <FirebaseClientProvider>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -28,6 +44,17 @@ export default function AppLayout({
           <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>
+  )
+}
+
+export default function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <FirebaseClientProvider>
+      <ProtectedLayout>{children}</ProtectedLayout>
     </FirebaseClientProvider>
   );
 }

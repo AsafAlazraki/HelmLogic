@@ -10,26 +10,46 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/firebase/provider";
+import { signOut } from "firebase/auth";
+import { useUser } from "@/firebase/auth/use-user";
+import { useRouter } from "next/navigation";
 
 export function UserMenu() {
+  const auth = useAuth();
+  const { user } = useUser();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
+  
+  const getFallback = () => {
+    if (!user) return "U";
+    if (user.displayName) return user.displayName.charAt(0).toUpperCase();
+    if (user.email) return user.email.charAt(0).toUpperCase();
+    return "U";
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage data-ai-hint="person" src="https://picsum.photos/seed/user/32/32" alt="@user" />
-            <AvatarFallback>U</AvatarFallback>
+            <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || "User avatar"} />
+            <AvatarFallback>{getFallback()}</AvatarFallback>
           </Avatar>
           <span className="sr-only">Toggle user menu</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+        <DropdownMenuLabel>{user?.email || 'My Account'}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>Settings</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
         <DropdownMenuItem>Support</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>Logout</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

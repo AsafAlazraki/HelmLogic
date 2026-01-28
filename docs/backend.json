@@ -18,11 +18,12 @@
           "type": "string",
           "description": "The user's role within the application."
         }
-      }
+      },
+      "required": ["email"]
     }
   },
   "auth": {
-    "providers": ["anonymous"]
+    "providers": ["email"]
   },
   "firestore": {
     "/users/{userId}": {
