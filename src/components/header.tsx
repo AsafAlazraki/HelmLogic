@@ -15,17 +15,17 @@ import { useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function Header() {
-  const [isClient, setIsClient] = useState(false)
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsClient(true)
-  }, [])
+    setIsMounted(true);
+  }, []);
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4 sm:px-6">
       <SidebarTrigger />
       <div className="flex-1" />
-      {isClient ? (
+      {isMounted ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
