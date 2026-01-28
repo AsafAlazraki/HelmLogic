@@ -120,21 +120,23 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
   };
 
   return (
-    <div style={{ height: '500px', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        nodeTypes={nodeTypes}
-        fitView
-        className="bg-secondary"
-      >
-        <Controls />
-        <Background />
-      </ReactFlow>
-      <div className="p-2 border-t bg-background">
+    <>
+      <div style={{ height: '500px', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)' }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          nodeTypes={nodeTypes}
+          fitView
+          className="bg-secondary"
+        >
+          <Controls />
+          <Background />
+        </ReactFlow>
+      </div>
+      <div className="mt-4">
         <Button
           type="button"
           variant="outline"
@@ -145,7 +147,7 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
           Add Role
         </Button>
       </div>
-    </div>
+    </>
   );
 }
 
