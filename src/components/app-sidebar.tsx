@@ -22,16 +22,11 @@ import {
 import { navLinks } from "@/lib/nav-links";
 import { Logo } from "@/components/logo";
 import { ChevronRight } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
   const { isMobile, setOpenMobile } = useSidebar();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (isMobile) {
@@ -40,9 +35,9 @@ export function AppSidebar() {
   }, [pathname, isMobile, setOpenMobile]);
 
 
-  const checkActive = (href: string) => mounted && pathname.startsWith(href);
-  const checkSubLinksActive = (subLinks: typeof link.subLinks) =>
-    mounted && subLinks && subLinks.some((sub) => pathname.startsWith(sub.href));
+  const checkActive = (href: string) => pathname.startsWith(href);
+  const checkSubLinksActive = (subLinks: typeof navLinks[0]['subLinks']) =>
+    subLinks && subLinks.some((sub) => pathname.startsWith(sub.href));
 
 
   return (
@@ -65,7 +60,7 @@ export function AppSidebar() {
                         className="pr-12"
                       >
                         <Link href={link.href}>
-                          <link.icon />
+                          <link.icon className="size-6" />
                           <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -83,7 +78,7 @@ export function AppSidebar() {
                         tooltip={{ children: link.label }}
                       >
                         <div className="flex items-center gap-2">
-                          <link.icon />
+                          <link.icon className="size-6" />
                           <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
                         </div>
                         <ChevronRight className="size-6 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90 group-data-[collapsible=icon]:hidden" />
@@ -111,7 +106,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={link.href}>
                   <SidebarMenuButton asChild isActive={checkActive(link.href)} tooltip={{ children: link.label }}>
                     <Link href={link.href}>
-                      <link.icon />
+                      <link.icon className="size-6" />
                       <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
                     </Link>
                   </SidebarMenuButton>
