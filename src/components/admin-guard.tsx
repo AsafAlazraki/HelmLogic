@@ -13,32 +13,32 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
     );
     const router = useRouter();
 
+    const isDataSettled = !userLoading && !profileLoading;
+
     useEffect(() => {
-        // Wait until all loading is fully complete before making a decision.
-        if (userLoading || profileLoading) {
-            return;
+        if (!isDataSettled) {
+            return; // Don't do anything until all data is loaded
         }
 
+        // Once loading is complete, check for authorization
         if (!user) {
             router.replace('/login');
-            return;
-        }
-
-        if (userProfile?.appRole !== 'HelmLogic Admin') {
+        } else if (userProfile?.appRole !== 'HelmLogic Admin') {
             router.replace('/dashboard');
         }
+    }, [isDataSettled, user, userProfile, router]);
 
-    }, [user, userProfile, userLoading, profileLoading, router]);
 
-    // While loading user or profile, or if user is not yet an admin, show a spinner.
-    if (userLoading || profileLoading || userProfile?.appRole !== 'HelmLogic Admin') {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        );
+    // If data is fully loaded and user is authorized, show the content
+    if (isDataSettled && user && userProfile?.appRole === 'HelmLogic Admin') {
+        return <>{children}</>;
     }
-    
-    // If all checks pass, render the children.
-    return <>{children}</>;
+
+    // Otherwise, show a loading spinner while the useEffect handles the redirect.
+    // This prevents any flash of content.
+    return (
+        <div className="flex h-full w-full items-center justify-center">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+    );
 }
