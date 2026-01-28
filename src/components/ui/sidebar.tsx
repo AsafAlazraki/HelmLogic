@@ -522,7 +522,7 @@ const sidebarMenuButtonVariants = cva(
   {
     variants: {
       variant: {
-        default: "",
+        default: "", // Removed bg-background
         outline:
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))]",
       },

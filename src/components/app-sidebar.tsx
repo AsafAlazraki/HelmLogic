@@ -57,12 +57,12 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="h-16 flex items-center justify-center pt-4">
         <Logo />
       </SidebarHeader>
       <SidebarContent>
         {isLoading ? (
-          <SidebarMenu>
+          <SidebarMenu className="mt-2">
             <SidebarMenuItem>
               <SidebarMenuSkeleton showIcon />
             </SidebarMenuItem>
@@ -74,7 +74,7 @@ export function AppSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
         ) : (
-          <SidebarMenu>
+          <SidebarMenu className="gap-2 mt-2">
             {filteredNavLinks.map((link) =>
               link.subLinks ? (
                 <SidebarMenuItem key={link.label}>

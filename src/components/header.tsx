@@ -17,8 +17,8 @@ export function Header() {
   const { data: userProfile, loading } = useDoc<{ appRole: string }>(user ? `/users/${user.uid}` : null);
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4 sm:px-6">
-      <SidebarTrigger />
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-card px-4 sm:px-6">
+      <SidebarTrigger className="-ml-[0.375rem]" />
       <div className="flex-1 text-sm text-muted-foreground">
         {user && loading && <span>Checking role...</span>}
         {user && !loading && <span>Role: {userProfile?.appRole || 'General User'}</span>}
