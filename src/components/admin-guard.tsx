@@ -9,25 +9,34 @@ import { useEffect } from "react";
 export default function AdminGuard({ children }: { children: React.ReactNode }) {
     const { user, loading: userLoading } = useUser();
     const { data: userProfile, loading: profileLoading } = useDoc<{ appRole: string }>(
-        user && !userLoading ? `/users/${user.uid}` : null
+        user ? `/users/${user.uid}` : null
     );
     const router = useRouter();
 
-    const loading = userLoading || (!!user && profileLoading);
+    const isLoading = userLoading || (user && profileLoading);
 
     useEffect(() => {
-        if (loading) {
-            return; // Don't do anything while loading
+        // Wait until loading is complete before making any decisions.
+        if (isLoading) {
+            return;
         }
+
+        // If loading is done and there is no user, redirect to login.
         if (!user) {
             router.replace('/login');
-        } else if (userProfile?.appRole !== 'admin') {
+            return;
+        }
+
+        // If the user exists but is not an admin, redirect to the dashboard.
+        if (userProfile?.appRole !== 'admin') {
             router.replace('/dashboard');
         }
-    }, [user, userProfile, loading, router]);
+
+    }, [isLoading, user, userProfile, router]);
 
 
-    if (loading) {
+    // If we are still loading user data, show a spinner.
+    if (isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -35,13 +44,13 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
         );
     }
     
-    // If we are not loading and the user is an admin, show the content.
+    // If loading is complete AND the user is an admin, render the content.
     if (user && userProfile?.appRole === 'admin') {
         return <>{children}</>;
     }
 
-    // Otherwise, show a loading spinner while the redirect is happening.
-    // This covers cases where user is null or not an admin after loading is complete.
+    // In all other cases (e.g., about to redirect), show a loading spinner
+    // to prevent content from flashing briefly.
     return (
         <div className="flex h-full w-full items-center justify-center">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
