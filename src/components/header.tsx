@@ -3,6 +3,8 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import dynamic from "next/dynamic";
+import { useUser } from "@/firebase/auth/use-user";
+import { useDoc } from "@/firebase/firestore/use-doc";
 
 const UserMenu = dynamic(() => import('@/components/user-menu').then(mod => mod.UserMenu), {
   ssr: false,
@@ -11,10 +13,17 @@ const UserMenu = dynamic(() => import('@/components/user-menu').then(mod => mod.
 
 
 export function Header() {
+  const { user } = useUser();
+  const { data: userProfile, loading } = useDoc<{ appRole: string }>(user ? `/users/${user.uid}` : null);
+
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4 sm:px-6">
       <SidebarTrigger />
-      <div className="flex-1" />
+      <div className="flex-1 text-sm text-muted-foreground">
+        {user && loading && <span>Checking role...</span>}
+        {user && !loading && userProfile && <span>Role: {userProfile.appRole === 'admin' ? 'HelmLogic Admin' : 'General User'}</span>}
+        {user && !loading && !userProfile && <span>Role: General User</span>}
+      </div>
       <UserMenu />
     </header>
   )
