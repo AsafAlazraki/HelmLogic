@@ -21,6 +21,10 @@ type BreadcrumbPart = {
 // A simple helper to convert a slug to a title.
 // e.g. "route-optimization" -> "Route Optimization"
 const segmentToTitle = (segment: string) => {
+    // A simple guard against displaying long IDs.
+    if (segment.length > 20) {
+        return "Details";
+    }
     return segment.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
@@ -79,12 +83,12 @@ const findPathParts = (pathname: string): BreadcrumbPart[] => {
     });
 };
 
-export function BreadcrumbNav() {
+export function BreadcrumbNav({ pageTitle }: { pageTitle?: string }) {
   const pathname = usePathname();
 
   if (pathname === '/dashboard') {
     return (
-        <Breadcrumb className="hidden md:flex mt-2">
+        <Breadcrumb className="hidden md:flex mt-2 mb-6">
             <BreadcrumbList>
                 <BreadcrumbItem>
                     <BreadcrumbPage>Dashboard</BreadcrumbPage>
@@ -98,9 +102,12 @@ export function BreadcrumbNav() {
 
   // Always start with Dashboard
   const breadcrumbs = [{ href: '/dashboard', label: 'Dashboard' }, ...pathParts];
+  if (pageTitle && breadcrumbs.length > 1) {
+    breadcrumbs[breadcrumbs.length - 1].label = pageTitle;
+  }
 
   return (
-    <Breadcrumb className="hidden md:flex mt-2">
+    <Breadcrumb className="hidden md:flex mt-2 mb-6">
       <BreadcrumbList>
         {breadcrumbs.map((part, index) => {
             const isLast = index === breadcrumbs.length - 1;

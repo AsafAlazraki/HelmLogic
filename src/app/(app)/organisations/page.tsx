@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { Loader2, PlusCircle, Building2 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 interface Organisation {
     id: string;
     name: string;
     address?: string;
-    primaryLogoUrl?: string; // Future use
+    primaryLogoUrl?: string;
     primaryColor?: string;
     phoneNumber?: string;
 }
@@ -50,13 +51,22 @@ export default function OrganisationsPage() {
                                     style={{ borderTop: `4px solid ${org.primaryColor || 'hsl(var(--primary))'}` }}
                                 >
                                     <CardHeader>
-                                        <div className="flex items-start justify-between">
-                                            <CardTitle className="text-lg pr-4">{org.name}</CardTitle>
+                                        <div className="flex items-start justify-between gap-4">
+                                            <CardTitle className="text-lg">{org.name}</CardTitle>
                                             <div 
-                                                className="p-2 rounded-lg flex-shrink-0"
+                                                className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center relative overflow-hidden"
                                                 style={{ backgroundColor: `${org.primaryColor}1A`}} // primary color with low opacity
                                             >
-                                                <Building2 className="h-6 w-6" style={{ color: org.primaryColor || 'hsl(var(--primary))' }} />
+                                                {org.primaryLogoUrl ? (
+                                                    <Image
+                                                        src={org.primaryLogoUrl}
+                                                        alt={`${org.name} logo`}
+                                                        fill
+                                                        className="object-contain p-1"
+                                                    />
+                                                ) : (
+                                                    <Building2 className="h-6 w-6" style={{ color: org.primaryColor || 'hsl(var(--primary))' }} />
+                                                )}
                                             </div>
                                         </div>
                                     </CardHeader>

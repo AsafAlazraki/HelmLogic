@@ -26,7 +26,7 @@ export default function OrganisationDetailsPage() {
             <div className="space-y-4">
                 <div>
                     <h1 className="text-2xl font-semibold">{loading ? 'Loading...' : organisation?.name || 'Organisation Details'}</h1>
-                    <BreadcrumbNav />
+                    <BreadcrumbNav pageTitle={organisation?.name} />
                 </div>
                 
                 {loading ? (
