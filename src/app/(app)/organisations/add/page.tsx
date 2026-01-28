@@ -264,7 +264,7 @@ export default function AddOrganisationPage() {
                                                                 </SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent>
-                                                                <SelectItem value="">- No Parent -</SelectItem>
+                                                                <SelectItem value=" ">- No Parent -</SelectItem>
                                                                 {watchedRoles?.filter(r => r.id !== watchedRoles[index].id).map(role => (
                                                                     <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
                                                                 ))}
