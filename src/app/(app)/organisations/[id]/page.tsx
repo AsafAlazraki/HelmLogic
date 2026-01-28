@@ -1,13 +1,17 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useMemo } from 'react';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
-import { useDoc } from '@/firebase/firestore/use-doc';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore } from '@/firebase/provider';
+import { collection, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 
 interface Organisation {
+    id: string;
     name: string;
     address?: string;
     phoneNumber?: string;
@@ -17,9 +21,20 @@ interface Organisation {
 
 export default function OrganisationDetailsPage() {
     const params = useParams();
-    const { id } = params;
+    const slug = params.id as string;
+    const firestore = useFirestore();
 
-    const { data: organisation, loading } = useDoc<Organisation>(id ? `organisations/${id}` : null);
+    const orgQuery = useMemo(() => {
+        if (!slug) return null;
+        // Query for the organisation document using the slug
+        return query(collection(firestore, 'organisations'), where('slug', '==', slug));
+    }, [firestore, slug]);
+
+    // useCollection to get the result of the query
+    const { data: organisations, loading } = useCollection<Organisation>(orgQuery);
+    
+    // The query returns an array, so we take the first element
+    const organisation = organisations?.[0];
 
     return (
         <AdminGuard>

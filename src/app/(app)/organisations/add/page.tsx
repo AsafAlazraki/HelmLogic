@@ -55,6 +55,12 @@ const formSchema = z.object({
   secondaryLogo: z.any().optional(),
 });
 
+const createSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '');
+
 
 export default function AddOrganisationPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -86,7 +92,13 @@ export default function AddOrganisationPage() {
     // This is where you would upload files to Firebase Storage
     // and get their public URLs. For now, we'll separate them 
     // from the data to be saved in Firestore.
-    const { primaryLogo, secondaryLogo, ...orgDataForFirestore } = values;
+    const { primaryLogo, secondaryLogo, ...orgData } = values;
+
+    const slug = createSlug(orgData.name);
+    const orgDataForFirestore = {
+        ...orgData,
+        slug,
+    };
 
     if (primaryLogo) {
         console.log("Primary logo to upload:", primaryLogo);

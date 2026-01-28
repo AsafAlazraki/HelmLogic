@@ -12,6 +12,7 @@ import Link from "next/link";
 interface Organisation {
     id: string;
     name: string;
+    slug?: string;
     address?: string;
     primaryLogoUrl?: string;
     primaryColor?: string;
@@ -45,7 +46,7 @@ export default function OrganisationsPage() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {organisations && organisations.length > 0 ? (
                         organisations.map((org) => (
-                            <Link href={`/organisations/${org.id}`} key={org.id} className="group">
+                            <Link href={`/organisations/${org.slug || org.id}`} key={org.id} className="group">
                                 <Card 
                                     className="h-full transition-all duration-300 ease-in-out group-hover:-translate-y-1 group-hover:shadow-xl overflow-hidden flex flex-col"
                                     style={{ borderTop: `4px solid ${org.primaryColor || 'hsl(var(--primary))'}` }}
