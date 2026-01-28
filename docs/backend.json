@@ -33,6 +33,38 @@
         "description": {
           "type": "string",
           "description": "A description of the organisation."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the organisation."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The contact phone number for the organisation."
+        },
+        "abn": {
+          "type": "string",
+          "description": "The Australian Business Number for the organisation."
+        },
+        "primaryColor": {
+          "type": "string",
+          "description": "The primary branding color in hex format."
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "The accent branding color in hex format."
+        },
+        "secondaryColor": {
+            "type": "string",
+            "description": "The secondary branding color in hex format."
+        },
+        "primaryLogoUrl": {
+          "type": "string",
+          "description": "URL for the primary company logo."
+        },
+        "secondaryLogoUrl": {
+          "type": "string",
+          "description": "URL for the secondary company logo or icon."
         }
       },
       "required": [

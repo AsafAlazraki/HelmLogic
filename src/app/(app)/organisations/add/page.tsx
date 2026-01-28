@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,13 +26,26 @@ import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import AdminGuard from '@/components/admin-guard';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Separator } from '@/components/ui/separator';
+
+const hexColorValidation = z.string().refine(val => /^#[0-9A-F]{6}$/i.test(val), {
+    message: "Must be a valid hex color code (e.g., #RRGGBB)",
+}).optional().or(z.literal(''));
+
 
 const formSchema = z.object({
   name: z.string().min(1, {
     message: 'Organisation name is required.',
   }),
-  description: z.string().optional(),
+  address: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  abn: z.string().optional(),
+  primaryColor: hexColorValidation,
+  accentColor: hexColorValidation,
+  secondaryColor: hexColorValidation,
+  // Note: File uploads for logos will be handled separately
 });
+
 
 export default function AddOrganisationPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -43,12 +57,19 @@ export default function AddOrganisationPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      description: '',
+      address: '',
+      phoneNumber: '',
+      abn: '',
+      primaryColor: '#2563EB',
+      accentColor: '#1E40AF',
+      secondaryColor: '#F1F5F9',
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+    // Here you would handle file uploads and get back URLs to save in Firestore.
+    // For now, we are saving the text and color data.
     try {
       const orgsCollection = collection(firestore, 'organisations');
       await addDoc(orgsCollection, values)
@@ -68,15 +89,49 @@ export default function AddOrganisationPage() {
       });
       router.push('/organisations');
     } catch (error: any) {
+      console.error(error);
       toast({
         variant: 'destructive',
         title: 'Failed to create organisation',
-        description: error.message,
+        description: 'An unexpected error occurred. Please check the console for more details.',
       });
     } finally {
       setIsLoading(false);
     }
   }
+
+  const ColorFormField = ({ name, label, description }: { name: "primaryColor" | "accentColor" | "secondaryColor", label: string, description: string }) => (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <div className="flex items-center gap-2">
+            <FormControl>
+              <Input type="color" className="h-10 w-14 p-1" {...field} />
+            </FormControl>
+            <FormControl>
+              <Input placeholder="#RRGGBB" {...field} />
+            </FormControl>
+          </div>
+          <FormDescription>{description}</FormDescription>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+  
+  const FileUploadField = ({ name, label }: { name: string, label: string }) => (
+    <FormItem>
+      <FormLabel>{label}</FormLabel>
+      <FormControl>
+        <Input type="file" />
+      </FormControl>
+      <FormDescription>Logo upload functionality coming soon.</FormDescription>
+      <FormMessage />
+    </FormItem>
+  );
 
   return (
     <AdminGuard>
@@ -85,40 +140,93 @@ export default function AddOrganisationPage() {
               <h1 className="text-2xl font-semibold">Add New Organisation</h1>
               <BreadcrumbNav />
             </div>
-            <Card className="max-w-2xl">
-                <CardHeader>
-                    <CardTitle>Organisation Details</CardTitle>
-                    <CardDescription>Enter the details for the new organisation.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Organisation Name</FormLabel>
-                            <FormControl>
-                            <Input placeholder="e.g., Global Shipping Inc." {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Description (Optional)</FormLabel>
-                            <FormControl>
-                            <Textarea placeholder="A brief description of the organisation." {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                    <div className="grid gap-8 lg:grid-cols-3">
+                        <div className="lg:col-span-2 space-y-8">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Organisation Details</CardTitle>
+                                    <CardDescription>Enter the primary details for the new organisation.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                     <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Organisation Name</FormLabel>
+                                            <FormControl>
+                                            <Input placeholder="e.g., Global Shipping Inc." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="address"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Address</FormLabel>
+                                            <FormControl>
+                                            <Textarea placeholder="123 Ocean Ave, Suite 101&#10;Metropolis, NY 10001&#10;USA" {...field} rows={4}/>
+                                            </FormControl>
+                                            <FormDescription>An address search feature will be added later.</FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                      <FormField
+                                          control={form.control}
+                                          name="phoneNumber"
+                                          render={({ field }) => (
+                                          <FormItem>
+                                              <FormLabel>Phone Number</FormLabel>
+                                              <FormControl>
+                                              <Input placeholder="(+1) 555-123-4567" {...field} />
+                                              </FormControl>
+                                              <FormMessage />
+                                          </FormItem>
+                                          )}
+                                      />
+                                       <FormField
+                                          control={form.control}
+                                          name="abn"
+                                          render={({ field }) => (
+                                          <FormItem>
+                                              <FormLabel>ABN (Australian Business Number)</FormLabel>
+                                              <FormControl>
+                                              <Input placeholder="e.g., 53 004 085 616" {...field} />
+                                              </FormControl>
+                                              <FormMessage />
+                                          </FormItem>
+                                          )}
+                                      />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="lg:col-span-1 space-y-8">
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle>Organisation Branding</CardTitle>
+                                    <CardDescription>Customize the look and feel for this organisation.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <ColorFormField name="primaryColor" label="Primary Color" description="The main brand color."/>
+                                    <ColorFormField name="accentColor" label="Accent Color" description="Color for highlights and links."/>
+                                    <ColorFormField name="secondaryColor" label="Secondary Color" description="Used for backgrounds and panels."/>
+                                    
+                                    <Separator />
+                                    
+                                    <FileUploadField name="primaryLogo" label="Primary Logo" />
+                                    <FileUploadField name="secondaryLogo" label="Secondary Logo (e.g. icon)" />
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
                     <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                         <Button type="submit" disabled={isLoading}>
@@ -126,10 +234,8 @@ export default function AddOrganisationPage() {
                             Create Organisation
                         </Button>
                     </div>
-                    </form>
-                </Form>
-                </CardContent>
-            </Card>
+                </form>
+            </Form>
         </div>
     </AdminGuard>
   );
