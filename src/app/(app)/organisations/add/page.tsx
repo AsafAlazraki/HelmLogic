@@ -135,108 +135,109 @@ export default function AddOrganisationPage() {
 
   return (
     <AdminGuard>
-        <div className="space-y-4">
-            <div>
-              <h1 className="text-2xl font-semibold">Add New Organisation</h1>
-              <BreadcrumbNav />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="flex items-start justify-between">
+                <div>
+                  <h1 className="text-2xl font-semibold">Add New Organisation</h1>
+                  <BreadcrumbNav />
+                </div>
+                <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>Cancel</Button>
+                    <Button type="submit" disabled={isLoading}>
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create Organisation
+                    </Button>
+                </div>
             </div>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <div className="grid gap-8 lg:grid-cols-3">
-                        <div className="lg:col-span-2 space-y-8">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Organisation Details</CardTitle>
-                                    <CardDescription>Enter the primary details for the new organisation.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                     <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Organisation Name</FormLabel>
-                                            <FormControl>
-                                            <Input placeholder="e.g., Global Shipping Inc." {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="address"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Address</FormLabel>
-                                            <FormControl>
-                                            <Textarea placeholder="123 Ocean Ave, Suite 101&#10;Metropolis, NY 10001&#10;USA" {...field} rows={4}/>
-                                            </FormControl>
-                                            <FormDescription>An address search feature will be added later.</FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                      <FormField
-                                          control={form.control}
-                                          name="phoneNumber"
-                                          render={({ field }) => (
-                                          <FormItem>
-                                              <FormLabel>Phone Number</FormLabel>
-                                              <FormControl>
-                                              <Input placeholder="(+1) 555-123-4567" {...field} />
-                                              </FormControl>
-                                              <FormMessage />
-                                          </FormItem>
-                                          )}
-                                      />
-                                       <FormField
-                                          control={form.control}
-                                          name="abn"
-                                          render={({ field }) => (
-                                          <FormItem>
-                                              <FormLabel>ABN (Australian Business Number)</FormLabel>
-                                              <FormControl>
-                                              <Input placeholder="e.g., 53 004 085 616" {...field} />
-                                              </FormControl>
-                                              <FormMessage />
-                                          </FormItem>
-                                          )}
-                                      />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                        <div className="lg:col-span-1 space-y-8">
-                             <Card>
-                                <CardHeader>
-                                    <CardTitle>Organisation Branding</CardTitle>
-                                    <CardDescription>Customize the look and feel for this organisation.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <ColorFormField name="primaryColor" label="Primary Color" description="The main brand color."/>
-                                    <ColorFormField name="accentColor" label="Accent Color" description="Color for highlights and links."/>
-                                    <ColorFormField name="secondaryColor" label="Secondary Color" description="Used for backgrounds and panels."/>
-                                    
-                                    <Separator />
-                                    
-                                    <FileUploadField name="primaryLogo" label="Primary Logo" />
-                                    <FileUploadField name="secondaryLogo" label="Secondary Logo (e.g. icon)" />
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Organisation
-                        </Button>
-                    </div>
-                </form>
-            </Form>
-        </div>
+            
+            <div className="grid gap-8 lg:grid-cols-3 pt-4">
+                <div className="lg:col-span-2 space-y-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Organisation Details</CardTitle>
+                            <CardDescription>Enter the primary details for the new organisation.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                             <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Organisation Name</FormLabel>
+                                    <FormControl>
+                                    <Input placeholder="e.g., Global Shipping Inc." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="address"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Address</FormLabel>
+                                    <FormControl>
+                                    <Textarea placeholder="123 Ocean Ave, Suite 101&#10;Metropolis, NY 10001&#10;USA" {...field} rows={4}/>
+                                    </FormControl>
+                                    <FormDescription>An address search feature will be added later.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <FormField
+                                  control={form.control}
+                                  name="phoneNumber"
+                                  render={({ field }) => (
+                                  <FormItem>
+                                      <FormLabel>Phone Number</FormLabel>
+                                      <FormControl>
+                                      <Input placeholder="(+1) 555-123-4567" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                  </FormItem>
+                                  )}
+                              />
+                               <FormField
+                                  control={form.control}
+                                  name="abn"
+                                  render={({ field }) => (
+                                  <FormItem>
+                                      <FormLabel>ABN (Australian Business Number)</FormLabel>
+                                      <FormControl>
+                                      <Input placeholder="e.g., 53 004 085 616" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                  </FormItem>
+                                  )}
+                              />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="lg:col-span-1 space-y-8">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Organisation Branding</CardTitle>
+                            <CardDescription>Customize the look and feel for this organisation.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <ColorFormField name="primaryColor" label="Primary Color" description="The main brand color."/>
+                            <ColorFormField name="accentColor" label="Accent Color" description="Color for highlights and links."/>
+                            <ColorFormField name="secondaryColor" label="Secondary Color" description="Used for backgrounds and panels."/>
+                            
+                            <Separator />
+                            
+                            <FileUploadField name="primaryLogo" label="Primary Logo" />
+                            <FileUploadField name="secondaryLogo" label="Secondary Logo (e.g. icon)" />
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </form>
+      </Form>
     </AdminGuard>
   );
 }
