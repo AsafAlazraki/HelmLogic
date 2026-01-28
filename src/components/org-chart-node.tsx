@@ -73,6 +73,7 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
   return (
     <div className="relative group">
         <Button
+            type="button"
             size="icon"
             variant="ghost"
             onClick={handleAddParent}
@@ -97,6 +98,7 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
         <Handle type="source" position={Position.Bottom} className="!bg-primary" />
       </div>
        <Button
+            type="button"
             size="icon"
             variant="ghost"
             onClick={handleAddChild}
