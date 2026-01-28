@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useRouter } from "next/navigation";
@@ -12,25 +13,16 @@ export default function DataManagementPage() {
 
     const loading = userLoading || profileLoading;
 
-    if (loading) {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        );
-    }
-
-    if (!user) {
+    useEffect(() => {
+      if (loading) return;
+      if (!user) {
         router.replace('/login');
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        );
-    }
-
-    if (userProfile?.appRole !== 'admin') {
+      } else if (userProfile?.appRole !== 'admin') {
         router.replace('/dashboard');
+      }
+    }, [user, userProfile, loading, router]);
+
+    if (loading || !user || userProfile?.appRole !== 'admin') {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />

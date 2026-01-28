@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { navLinks } from "@/lib/nav-links";
 import Link from "next/link";
@@ -15,26 +16,18 @@ export default function AdminPage() {
   const router = useRouter();
 
   const loading = userLoading || profileLoading;
-
-  if (loading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    router.replace('/login');
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
-  }
   
-  if (userProfile?.appRole !== 'admin') {
-    router.replace('/dashboard');
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace('/login');
+    } else if (userProfile?.appRole !== 'admin') {
+      router.replace('/dashboard');
+    }
+  }, [user, userProfile, loading, router]);
+
+
+  if (loading || !user || userProfile?.appRole !== 'admin') {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
