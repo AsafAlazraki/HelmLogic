@@ -55,8 +55,12 @@ export function AppSidebar() {
         <SidebarMenu>
           {!isClient && (
             <>
-              <SidebarMenuSkeleton showIcon={sidebarState === 'collapsed'} />
-              <SidebarMenuSkeleton showIcon={sidebarState === 'collapsed'} />
+              <SidebarMenuItem>
+                <SidebarMenuSkeleton showIcon={sidebarState === 'collapsed'} />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuSkeleton showIcon={sidebarState === 'collapsed'} />
+              </SidebarMenuItem>
             </>
           )}
           {isClient && navLinks.map((link) =>
