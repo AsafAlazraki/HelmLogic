@@ -4,7 +4,7 @@ import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function AdminGuard({ children }: { children: React.ReactNode }) {
     const { user, loading: userLoading } = useUser();
@@ -12,13 +12,10 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
         user ? `/users/${user.uid}` : null
     );
     const router = useRouter();
-    const [isAllowed, setIsAllowed] = useState(false);
-
-    const isLoading = userLoading || (user && profileLoading);
 
     useEffect(() => {
         // Wait until all loading is fully complete before making a decision.
-        if (isLoading) {
+        if (userLoading || profileLoading) {
             return;
         }
 
@@ -27,25 +24,21 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
             return;
         }
 
-        if (userProfile?.appRole === 'admin') {
-            // Explicitly grant access and trigger a re-render
-            setIsAllowed(true);
-        } else {
+        if (userProfile?.appRole !== 'admin') {
             router.replace('/dashboard');
         }
 
-    }, [user, userProfile, isLoading, router]);
+    }, [user, userProfile, userLoading, profileLoading, router]);
 
-    // If access has been granted, render the content.
-    if (isAllowed) {
-        return <>{children}</>;
+    // While loading user or profile, or if user is not yet an admin, show a spinner.
+    if (userLoading || profileLoading || userProfile?.appRole !== 'admin') {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            </div>
+        );
     }
-
-    // Otherwise, show a spinner. This will display during initial load,
-    // profile fetching, and during the moments a redirect is happening.
-    return (
-        <div className="flex h-full w-full items-center justify-center">
-            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        </div>
-    );
+    
+    // If all checks pass, render the children.
+    return <>{children}</>;
 }
