@@ -7,7 +7,6 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 export default function AdminPage() {
   const adminLinks = navLinks.find(link => link.label === 'Admin')?.subLinks;
@@ -17,17 +16,25 @@ export default function AdminPage() {
 
   const loading = userLoading || profileLoading;
 
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.replace('/login');
-      } else if (userProfile?.appRole !== 'admin') {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, userProfile, loading, router]);
+  if (loading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  if (loading || !user || userProfile?.appRole !== 'admin') {
+  if (!user) {
+    router.replace('/login');
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (userProfile?.appRole !== 'admin') {
+    router.replace('/dashboard');
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
