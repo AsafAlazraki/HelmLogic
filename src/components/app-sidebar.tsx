@@ -85,7 +85,7 @@ export function AppSidebar() {
                           asChild
                           isActive={checkActive(link.href) || checkSubLinksActive(link.subLinks)}
                           tooltip={{ children: link.label }}
-                          className="pr-12"
+                          className="pr-12 data-[active=true]:text-primary"
                         >
                           <Link href={link.href}>
                             <link.icon className="size-6" />
@@ -101,7 +101,7 @@ export function AppSidebar() {
                     ) : (
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton
-                          className="w-full justify-between group"
+                          className="w-full justify-between group data-[active=true]:text-primary"
                           isActive={checkSubLinksActive(link.subLinks)}
                           tooltip={{ children: link.label }}
                         >
@@ -117,7 +117,7 @@ export function AppSidebar() {
                       <SidebarMenuSub>
                         {link.subLinks.map((subLink) => (
                           <SidebarMenuSubItem key={subLink.href}>
-                            <SidebarMenuSubButton asChild isActive={checkActive(subLink.href)}>
+                            <SidebarMenuSubButton asChild isActive={checkActive(subLink.href)} className="data-[active=true]:text-primary">
                               <Link href={subLink.href}>
                                 <subLink.icon />
                                 <span>{subLink.label}</span>
@@ -132,7 +132,7 @@ export function AppSidebar() {
               ) : (
                 link.href && (
                   <SidebarMenuItem key={link.href}>
-                    <SidebarMenuButton asChild isActive={checkActive(link.href)} tooltip={{ children: link.label }} className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground hover:bg-sidebar-accent/50">
+                    <SidebarMenuButton asChild isActive={checkActive(link.href)} tooltip={{ children: link.label }} className="data-[active=true]:text-primary">
                       <Link href={link.href}>
                         <link.icon className="size-6" />
                         <span className="group-data-[collapsible=icon]:hidden">{link.label}</span>
