@@ -63,7 +63,7 @@ function SignUpPageContent() {
       const userData: { email: string | null; appRole?: string } = { email: user.email };
 
       if (values.assignAdminRole) {
-        userData.appRole = 'admin';
+        userData.appRole = 'HelmLogic Admin';
       }
 
       await setDoc(userRef, userData)

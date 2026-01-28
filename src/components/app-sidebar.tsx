@@ -48,7 +48,7 @@ export function AppSidebar() {
     subLinks && subLinks.some((sub) => pathname.startsWith(sub.href));
 
   const filteredNavLinks = useMemo(() => {
-    if (userProfile?.appRole === 'admin') {
+    if (userProfile?.appRole === 'HelmLogic Admin') {
       return navLinks;
     }
     return navLinks.filter((link) => link.label !== 'Admin');

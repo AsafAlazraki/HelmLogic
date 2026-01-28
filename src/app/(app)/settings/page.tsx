@@ -26,7 +26,7 @@ export default function SettingsPage() {
         const userRef = doc(firestore, "users", user.uid);
         
         const userData = {
-            appRole: 'admin'
+            appRole: 'HelmLogic Admin'
         };
 
         setDoc(userRef, userData, { merge: true })

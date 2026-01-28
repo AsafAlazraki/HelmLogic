@@ -24,14 +24,14 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
             return;
         }
 
-        if (userProfile?.appRole !== 'admin') {
+        if (userProfile?.appRole !== 'HelmLogic Admin') {
             router.replace('/dashboard');
         }
 
     }, [user, userProfile, userLoading, profileLoading, router]);
 
     // While loading user or profile, or if user is not yet an admin, show a spinner.
-    if (userLoading || profileLoading || userProfile?.appRole !== 'admin') {
+    if (userLoading || profileLoading || userProfile?.appRole !== 'HelmLogic Admin') {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
