@@ -3,9 +3,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
-      // Allow users to read and write their own data.
-      // This is permissive to allow the "Become Admin" button to work.
-      allow read, write: if request.auth.uid == userId;
+      // A user can create their own user document.
+      allow create: if request.auth.uid == userId;
+
+      // A user can read their own user document.
+      allow read: if request.auth.uid == userId;
+
+      // A user can update their own user document.
+      allow update: if request.auth.uid == userId;
+
+      // Deletes are not allowed.
+      allow delete: if false;
     }
 
     match /{document=**} {
