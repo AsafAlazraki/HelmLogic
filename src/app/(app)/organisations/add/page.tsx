@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -20,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { addDoc, collection } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Loader2, PlusCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import AdminGuard from '@/components/admin-guard';
@@ -50,11 +51,15 @@ const formSchema = z.object({
   accentColor: hexColorValidation,
   secondaryColor: hexColorValidation,
   roles: z.array(roleSchema).optional(),
+  primaryLogo: z.any().optional(),
+  secondaryLogo: z.any().optional(),
 });
 
 
 export default function AddOrganisationPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
+  const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
   const router = useRouter();
@@ -70,19 +75,40 @@ export default function AddOrganisationPage() {
       accentColor: '#1E40AF',
       secondaryColor: '#F1F5F9',
       roles: [{ id: 'initial-admin-role', name: 'Admin', parent: '' }],
+      primaryLogo: null,
+      secondaryLogo: null,
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+    
+    // This is where you would upload files to Firebase Storage
+    // and get their public URLs. For now, we'll separate them 
+    // from the data to be saved in Firestore.
+    const { primaryLogo, secondaryLogo, ...orgDataForFirestore } = values;
+
+    if (primaryLogo) {
+        console.log("Primary logo to upload:", primaryLogo);
+        // Example for future implementation:
+        // const primaryLogoUrl = await uploadFileToStorage(primaryLogo);
+        // (orgDataForFirestore as any).primaryLogoUrl = primaryLogoUrl;
+    }
+    if (secondaryLogo) {
+        console.log("Secondary logo to upload:", secondaryLogo);
+        // Example for future implementation:
+        // const secondaryLogoUrl = await uploadFileToStorage(secondaryLogo);
+        // (orgDataForFirestore as any).secondaryLogoUrl = secondaryLogoUrl;
+    }
+
     try {
       const orgsCollection = collection(firestore, 'organisations');
-      await addDoc(orgsCollection, values)
+      await addDoc(orgsCollection, orgDataForFirestore)
         .catch((serverError) => {
             const permissionError = new FirestorePermissionError({
                 path: orgsCollection.path,
                 operation: 'create',
-                requestResourceData: values,
+                requestResourceData: orgDataForFirestore,
             });
             errorEmitter.emit('permission-error', permissionError);
             throw serverError;
@@ -127,17 +153,6 @@ export default function AddOrganisationPage() {
     />
   );
   
-  const FileUploadField = ({ name, label }: { name: string, label: string }) => (
-    <FormItem>
-      <FormLabel>{label}</FormLabel>
-      <FormControl>
-        <Input type="file" />
-      </FormControl>
-      <FormDescription>Logo upload functionality coming soon.</FormDescription>
-      <FormMessage />
-    </FormItem>
-  );
-
   return (
     <AdminGuard>
       <Form {...form}>
@@ -250,8 +265,83 @@ export default function AddOrganisationPage() {
                             
                             <Separator />
                             
-                            <FileUploadField name="primaryLogo" label="Primary Logo" />
-                            <FileUploadField name="secondaryLogo" label="Secondary Logo (e.g. icon)" />
+                            <FormField
+                              control={form.control}
+                              name="primaryLogo"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Primary Logo</FormLabel>
+                                  {primaryLogoPreview && (
+                                    <div className="mt-2 w-32 h-32 relative">
+                                      <Image 
+                                        src={primaryLogoPreview} 
+                                        alt="Primary Logo Preview" 
+                                        fill
+                                        className="rounded-md object-contain border p-1"
+                                      />
+                                    </div>
+                                  )}
+                                  <FormControl>
+                                    <Input 
+                                      type="file" 
+                                      accept="image/*"
+                                      onChange={(event) => {
+                                        const file = event.target.files?.[0];
+                                        field.onChange(file);
+                                        if (file) {
+                                          setPrimaryLogoPreview(URL.createObjectURL(file));
+                                        } else {
+                                          setPrimaryLogoPreview(null);
+                                        }
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    The main company logo. Upload will be connected later.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="secondaryLogo"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Secondary Logo (e.g. icon)</FormLabel>
+                                  {secondaryLogoPreview && (
+                                    <div className="mt-2 w-32 h-32 relative">
+                                      <Image 
+                                        src={secondaryLogoPreview} 
+                                        alt="Secondary Logo Preview" 
+                                        fill
+                                        className="rounded-md object-contain border p-1"
+                                      />
+                                    </div>
+                                  )}
+                                  <FormControl>
+                                    <Input 
+                                      type="file" 
+                                      accept="image/*"
+                                      onChange={(event) => {
+                                        const file = event.target.files?.[0];
+                                        field.onChange(file);
+                                        if (file) {
+                                          setSecondaryLogoPreview(URL.createObjectURL(file));
+                                        } else {
+                                          setSecondaryLogoPreview(null);
+                                        }
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    An icon or alternative brand mark.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                         </CardContent>
                     </Card>
                 </div>
