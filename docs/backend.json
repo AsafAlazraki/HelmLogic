@@ -34,10 +34,6 @@
           "type": "string",
           "description": "A URL-friendly version of the organisation name."
         },
-        "description": {
-          "type": "string",
-          "description": "A description of the organisation."
-        },
         "address": {
           "type": "string",
           "description": "The physical address of the organisation."
