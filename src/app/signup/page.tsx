@@ -66,7 +66,7 @@ function SignUpPageContent() {
         userData.appRole = 'admin';
       }
 
-      setDoc(userRef, userData)
+      await setDoc(userRef, userData)
         .catch((serverError) => {
             const permissionError = new FirestorePermissionError({
                 path: userRef.path,
@@ -74,6 +74,7 @@ function SignUpPageContent() {
                 requestResourceData: userData,
             });
             errorEmitter.emit('permission-error', permissionError);
+            throw serverError;
         });
 
       router.push('/dashboard');
