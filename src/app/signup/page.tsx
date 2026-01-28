@@ -25,6 +25,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import FirebaseClientProvider from '@/firebase/client-provider';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const formSchema = z.object({
   email: z.string().email({
@@ -33,6 +34,7 @@ const formSchema = z.object({
   password: z.string().min(6, {
     message: 'Password must be at least 6 characters.',
   }),
+  assignAdminRole: z.boolean().default(false).optional(),
 });
 
 function SignUpPageContent() {
@@ -47,6 +49,7 @@ function SignUpPageContent() {
     defaultValues: {
       email: '',
       password: '',
+      assignAdminRole: false,
     },
   });
 
@@ -57,7 +60,11 @@ function SignUpPageContent() {
       const user = userCredential.user;
       
       const userRef = doc(firestore, 'users', user.uid);
-      const userData = { email: user.email };
+      const userData: { email: string | null; appRole?: string } = { email: user.email };
+
+      if (values.assignAdminRole) {
+        userData.appRole = 'admin';
+      }
 
       setDoc(userRef, userData)
         .catch((serverError) => {
@@ -118,6 +125,25 @@ function SignUpPageContent() {
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="assignAdminRole"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Assign HelmLogic Admin role
+                        </FormLabel>
+                    </div>
                   </FormItem>
                 )}
               />
