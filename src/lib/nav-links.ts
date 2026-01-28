@@ -24,7 +24,7 @@ export const navLinks: NavLink[] = [
       { href: '/data-connect', label: 'Data Connect', icon: DatabaseZap },
       { href: '/data-management', label: 'Data Management', icon: Database },
       { href: '/organisations', label: 'Organisations', icon: Building2 },
-      { href: '/settings', label: 'Settings', icon: Settings },
     ],
   },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
