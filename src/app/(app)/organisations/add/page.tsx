@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -20,18 +20,24 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { addDoc, collection } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import AdminGuard from '@/components/admin-guard';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const hexColorValidation = z.string().refine(val => /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
 }).optional().or(z.literal(''));
 
+const roleSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, { message: "Role name is required." }),
+  parent: z.string().optional(),
+});
 
 const formSchema = z.object({
   name: z.string().min(1, {
@@ -43,7 +49,7 @@ const formSchema = z.object({
   primaryColor: hexColorValidation,
   accentColor: hexColorValidation,
   secondaryColor: hexColorValidation,
-  // Note: File uploads for logos will be handled separately
+  roles: z.array(roleSchema).optional(),
 });
 
 
@@ -63,13 +69,19 @@ export default function AddOrganisationPage() {
       primaryColor: '#2563EB',
       accentColor: '#1E40AF',
       secondaryColor: '#F1F5F9',
+      roles: [{ id: 'initial-admin-role', name: 'Admin', parent: '' }],
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "roles",
+  });
+
+  const watchedRoles = form.watch('roles');
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Here you would handle file uploads and get back URLs to save in Firestore.
-    // For now, we are saving the text and color data.
     try {
       const orgsCollection = collection(firestore, 'organisations');
       await addDoc(orgsCollection, values)
@@ -214,6 +226,70 @@ export default function AddOrganisationPage() {
                                   )}
                               />
                             </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Role Hierarchy</CardTitle>
+                            <CardDescription>Define the roles and their reporting structure within the organisation.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-4">
+                                {fields.map((item, index) => (
+                                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                        <FormField
+                                            control={form.control}
+                                            name={`roles.${index}.name`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Role Name</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="e.g., Captain" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <div className="flex items-end gap-2">
+                                            <FormField
+                                                control={form.control}
+                                                name={`roles.${index}.parent`}
+                                                render={({ field }) => (
+                                                    <FormItem className='flex-1'>
+                                                        <FormLabel>Reports To</FormLabel>
+                                                        <Select onValueChange={field.onChange} defaultValue={field.value || ''}>
+                                                            <FormControl>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Select a parent..." />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="">- No Parent -</SelectItem>
+                                                                {watchedRoles?.filter(r => r.id !== watchedRoles[index].id).map(role => (
+                                                                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                             <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => append({ id: crypto.randomUUID(), name: '', parent: '' })}
+                            >
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Role
+                            </Button>
                         </CardContent>
                     </Card>
                 </div>

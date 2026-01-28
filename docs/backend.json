@@ -65,6 +65,28 @@
         "secondaryLogoUrl": {
           "type": "string",
           "description": "URL for the secondary company logo or icon."
+        },
+        "roles": {
+          "type": "array",
+          "description": "A list of roles within the organisation, forming a hierarchy.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A unique identifier for the role."
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the role."
+              },
+              "parent": {
+                "type": "string",
+                "description": "The ID of the parent role. Empty for top-level roles."
+              }
+            },
+            "required": ["id", "name"]
+          }
         }
       },
       "required": [
