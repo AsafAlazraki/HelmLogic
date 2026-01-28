@@ -13,7 +13,6 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   useSidebar,
-  SidebarMenuSkeleton,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
@@ -23,16 +22,11 @@ import {
 import { navLinks } from "@/lib/nav-links";
 import { Logo } from "@/components/logo";
 import { ChevronRight } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { isMobile, setOpenMobile, state: sidebarState } = useSidebar();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const { isMobile, setOpenMobile } = useSidebar();
 
   useEffect(() => {
     if (isMobile) {
@@ -53,17 +47,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {!isClient && (
-            <>
-              <SidebarMenuItem>
-                <SidebarMenuSkeleton showIcon={sidebarState === 'collapsed'} />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuSkeleton showIcon={sidebarState === 'collapsed'} />
-              </SidebarMenuItem>
-            </>
-          )}
-          {isClient && navLinks.map((link) =>
+          {navLinks.map((link) =>
             link.subLinks ? (
               <SidebarMenuItem key={link.label}>
                 <Collapsible defaultOpen={checkSubLinksActive(link.subLinks)}>
