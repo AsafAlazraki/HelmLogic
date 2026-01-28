@@ -27,7 +27,7 @@ export function BreadcrumbNav() {
   const isDashboard = segments.length === 1 && segments[0] === 'dashboard';
 
   return (
-    <Breadcrumb className="hidden md:flex mt-1">
+    <Breadcrumb className="hidden md:flex mt-2">
       <BreadcrumbList>
         <BreadcrumbItem>
           {isDashboard ? (
