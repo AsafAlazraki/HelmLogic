@@ -18,8 +18,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase/provider';
-import { addDoc, collection } from 'firebase/firestore';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
+import { uploadFile } from '@/firebase/storage-utils';
 
 const hexColorValidation = z.string().refine(val => /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -68,6 +69,7 @@ export default function AddOrganisationPage() {
   const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
+  const storage = useStorage();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -89,36 +91,32 @@ export default function AddOrganisationPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     
-    // This is where you would upload files to Firebase Storage
-    // and get their public URLs. For now, we'll separate them 
-    // from the data to be saved in Firestore.
     const { primaryLogo, secondaryLogo, ...orgData } = values;
 
     const slug = createSlug(orgData.name);
-    const orgDataForFirestore = {
+    const orgsCollection = collection(firestore, 'organisations');
+    const newOrgRef = doc(orgsCollection);
+    const orgId = newOrgRef.id;
+    
+    const orgDataForFirestore: any = {
         ...orgData,
         slug,
     };
 
-    if (primaryLogo) {
-        console.log("Primary logo to upload:", primaryLogo);
-        // Example for future implementation:
-        // const primaryLogoUrl = await uploadFileToStorage(primaryLogo);
-        // (orgDataForFirestore as any).primaryLogoUrl = primaryLogoUrl;
-    }
-    if (secondaryLogo) {
-        console.log("Secondary logo to upload:", secondaryLogo);
-        // Example for future implementation:
-        // const secondaryLogoUrl = await uploadFileToStorage(secondaryLogo);
-        // (orgDataForFirestore as any).secondaryLogoUrl = secondaryLogoUrl;
-    }
-
     try {
-      const orgsCollection = collection(firestore, 'organisations');
-      await addDoc(orgsCollection, orgDataForFirestore)
+      if (primaryLogo instanceof File) {
+          const path = `organisations/${orgId}/logos/primary_${primaryLogo.name}`;
+          orgDataForFirestore.primaryLogoUrl = await uploadFile(storage, primaryLogo, path);
+      }
+      if (secondaryLogo instanceof File) {
+          const path = `organisations/${orgId}/logos/secondary_${secondaryLogo.name}`;
+          orgDataForFirestore.secondaryLogoUrl = await uploadFile(storage, secondaryLogo, path);
+      }
+
+      await setDoc(newOrgRef, orgDataForFirestore)
         .catch((serverError) => {
             const permissionError = new FirestorePermissionError({
-                path: orgsCollection.path,
+                path: newOrgRef.path,
                 operation: 'create',
                 requestResourceData: orgDataForFirestore,
             });
@@ -309,7 +307,7 @@ export default function AddOrganisationPage() {
                                     />
                                   </FormControl>
                                   <FormDescription>
-                                    The main company logo. Upload will be connected later.
+                                    The main company logo. 
                                   </FormDescription>
                                   <FormMessage />
                                 </FormItem>

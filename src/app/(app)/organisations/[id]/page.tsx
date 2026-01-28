@@ -9,7 +9,7 @@ import Image from 'next/image';
 
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Trash2, Save } from 'lucide-react';
@@ -33,6 +33,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { uploadFile } from '@/firebase/storage-utils';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -79,6 +80,7 @@ export default function OrganisationDetailsPage() {
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
     const slug = params.id as string;
     const firestore = useFirestore();
+    const storage = useStorage();
 
     const orgQuery = useMemo(() => {
         if (!slug) return null;
@@ -117,12 +119,18 @@ export default function OrganisationDetailsPage() {
         
         const { primaryLogo, secondaryLogo, ...orgData } = values;
         const newSlug = createSlug(orgData.name);
-        const orgDataForFirestore = { ...orgData, slug: newSlug };
-
-        if (primaryLogo) console.log("Primary logo to upload:", primaryLogo);
-        if (secondaryLogo) console.log("Secondary logo to upload:", secondaryLogo);
+        const orgDataForFirestore: any = { ...orgData, slug: newSlug };
         
         try {
+            if (primaryLogo instanceof File) {
+                const path = `organisations/${organisation.id}/logos/primary_${primaryLogo.name}`;
+                orgDataForFirestore.primaryLogoUrl = await uploadFile(storage, primaryLogo, path);
+            }
+            if (secondaryLogo instanceof File) {
+                const path = `organisations/${organisation.id}/logos/secondary_${secondaryLogo.name}`;
+                orgDataForFirestore.secondaryLogoUrl = await uploadFile(storage, secondaryLogo, path);
+            }
+
             const orgDocRef = doc(firestore, 'organisations', organisation.id);
             await updateDoc(orgDocRef, orgDataForFirestore).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
@@ -239,7 +247,7 @@ export default function OrganisationDetailsPage() {
                                                     field.onChange(file);
                                                     setPrimaryLogoPreview(file ? URL.createObjectURL(file) : organisation.primaryLogoUrl || null);
                                                 }} /></FormControl>
-                                                <FormDescription>Upload will be connected later.</FormDescription><FormMessage />
+                                                <FormDescription>Upload a new logo to replace the existing one.</FormDescription><FormMessage />
                                             </FormItem>
                                         )} />
                                         <FormField control={form.control} name="secondaryLogo" render={({ field }) => (
