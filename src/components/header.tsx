@@ -21,8 +21,7 @@ export function Header() {
       <SidebarTrigger />
       <div className="flex-1 text-sm text-muted-foreground">
         {user && loading && <span>Checking role...</span>}
-        {user && !loading && userProfile && <span>Role: {userProfile.appRole === 'admin' ? 'HelmLogic Admin' : 'General User'}</span>}
-        {user && !loading && !userProfile && <span>Role: General User</span>}
+        {user && !loading && <span>Role: {userProfile?.appRole || 'General User'}</span>}
       </div>
       <UserMenu />
     </header>

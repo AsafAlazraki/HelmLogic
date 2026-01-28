@@ -13,30 +13,21 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
     );
     const router = useRouter();
 
-    const isLoading = userLoading || (user && profileLoading);
-
     useEffect(() => {
-        // Wait until loading is complete before making any decisions.
-        if (isLoading) {
-            return;
+        // Only perform checks once all data is loaded.
+        if (!userLoading && !profileLoading) {
+            if (!user) {
+                // If there's no user, redirect to login.
+                router.replace('/login');
+            } else if (userProfile?.appRole !== 'admin') {
+                // If the user is not an admin, redirect to the dashboard.
+                router.replace('/dashboard');
+            }
         }
+    }, [user, userProfile, userLoading, profileLoading, router]);
 
-        // If loading is done and there is no user, redirect to login.
-        if (!user) {
-            router.replace('/login');
-            return;
-        }
-
-        // If the user exists but is not an admin, redirect to the dashboard.
-        if (userProfile?.appRole !== 'admin') {
-            router.replace('/dashboard');
-        }
-
-    }, [isLoading, user, userProfile, router]);
-
-
-    // If we are still loading user data, show a spinner.
-    if (isLoading) {
+    // While data is loading, show a spinner.
+    if (userLoading || profileLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -44,13 +35,13 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
         );
     }
     
-    // If loading is complete AND the user is an admin, render the content.
+    // If data is loaded and the user is an admin, render the page.
     if (user && userProfile?.appRole === 'admin') {
         return <>{children}</>;
     }
 
-    // In all other cases (e.g., about to redirect), show a loading spinner
-    // to prevent content from flashing briefly.
+    // In all other cases (e.g., redirection is about to happen), show a spinner
+    // to prevent any content from flashing.
     return (
         <div className="flex h-full w-full items-center justify-center">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
