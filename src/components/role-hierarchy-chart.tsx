@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -48,8 +48,8 @@ const flowToRoles = (nodes: Node[], edges: Edge[]): Role[] => {
     });
 };
 
-// A more robust comparison function to prevent infinite loops
-const areRolesEqual = (rolesA: Role[], rolesB: Role[]): boolean => {
+const areRolesEqual = (rolesA?: Role[], rolesB?: Role[]): boolean => {
+    if (!rolesA || !rolesB) return rolesA === rolesB;
     if (rolesA.length !== rolesB.length) return false;
 
     const sortedA = [...rolesA].sort((a, b) => a.id.localeCompare(b.id));
@@ -103,10 +103,16 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const { fitView } = useReactFlow();
+  const isInternalChange = useRef(false);
 
   const nodeTypes = useMemo(() => ({ orgChartNode: OrgChartNode }), []);
 
   useEffect(() => {
+    if (isInternalChange.current) {
+        isInternalChange.current = false;
+        return;
+    }
+
     const initialNodes: Node[] = (value || []).map((role) => ({
       id: role.id,
       data: { label: role.name },
@@ -138,7 +144,8 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
 
   useEffect(() => {
     const newRoles = flowToRoles(nodes, edges);
-    if (!areRolesEqual(newRoles, value || [])) {
+    if (!areRolesEqual(newRoles, value)) {
+        isInternalChange.current = true;
         onChange(newRoles);
     }
   }, [nodes, edges, onChange, value]);
