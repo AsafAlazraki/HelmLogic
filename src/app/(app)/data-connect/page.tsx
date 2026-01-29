@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from "react";
 import AdminGuard from "@/components/admin-guard";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,28 @@ import {
     Plug,
     Boxes,
     MoreHorizontal,
+    LayoutGrid,
+    List
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+
 
 interface Vendor {
     id: string;
@@ -31,6 +50,16 @@ interface Vendor {
     phone?: string;
     vendorType?: string;
 }
+
+const vendorTypes = [
+    'Boat Brand',
+    'Motor Brand',
+    'Trailer Brand',
+    'Electronics Brand',
+    'Electronics Supplier',
+    'Parts Wholesaler',
+    'Other'
+];
 
 const getVendorTypeIcon = (vendorType?: string) => {
     const iconProps = { className: "h-3 w-3" };
@@ -56,6 +85,10 @@ const getVendorTypeIcon = (vendorType?: string) => {
 
 export default function DataConnectPage() {
     const { data: vendors, loading } = useCollection<Vendor>('vendors');
+    const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+    const [filterType, setFilterType] = useState<string>('all');
+
+    const filteredVendors = vendors?.filter(vendor => filterType === 'all' || vendor.vendorType === filterType);
 
     return (
       <AdminGuard>
@@ -72,6 +105,32 @@ export default function DataConnectPage() {
                     </Link>
                 </Button>
             </div>
+            
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Select value={filterType} onValueChange={setFilterType}>
+                        <SelectTrigger className="w-[240px]">
+                            <SelectValue placeholder="Filter by vendor type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Vendor Types</SelectItem>
+                            {vendorTypes.map(type => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
+                        <LayoutGrid className="h-4 w-4" />
+                        <span className="sr-only">Card View</span>
+                    </Button>
+                    <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                        <List className="h-4 w-4" />
+                        <span className="sr-only">List View</span>
+                    </Button>
+                </div>
+            </div>
 
             {loading ? (
                 <div className="flex justify-center items-center py-24">
@@ -79,50 +138,7 @@ export default function DataConnectPage() {
                 </div>
             ) : (
                 <>
-                    {vendors && vendors.length > 0 ? (
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {vendors.map((vendor) => (
-                                <Card key={vendor.id} className="group relative transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl overflow-hidden flex flex-col">
-                                    <CardHeader className="flex items-center justify-center p-4 relative">
-                                        {vendor.logoUrl ? (
-                                            <div className="relative h-20 w-full">
-                                                <Image
-                                                    src={vendor.logoUrl}
-                                                    alt={`${vendor.name} logo`}
-                                                    fill
-                                                    className="object-contain"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <CardTitle className="text-xl text-center truncate">{vendor.name}</CardTitle>
-                                        )}
-                                    </CardHeader>
-                                    <CardContent className="pt-4 border-t">
-                                        <div className="flex justify-between items-center">
-                                            {vendor.vendorType && (
-                                                <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5">
-                                                    {getVendorTypeIcon(vendor.vendorType)}
-                                                    <span className="text-xs">{vendor.vendorType}</span>
-                                                </Badge>
-                                            )}
-                                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                                                {vendor.email && (
-                                                    <a href={`mailto:${vendor.email}`} className="truncate hover:underline" title={vendor.email}>
-                                                        <Mail className="h-4 w-4 flex-shrink-0" />
-                                                    </a>
-                                                )}
-                                                {vendor.phone && (
-                                                     <a href={`tel:${vendor.phone}`} className="hover:underline" title={vendor.phone}>
-                                                        <Phone className="h-4 w-4 flex-shrink-0" />
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : (
+                    {!vendors || vendors.length === 0 ? (
                         <Card className="flex flex-col items-center justify-center h-80 border-2 border-dashed">
                             <Building className="h-16 w-16 text-muted-foreground" />
                             <h3 className="mt-4 text-lg font-semibold">No Vendor Connections</h3>
@@ -132,6 +148,116 @@ export default function DataConnectPage() {
                                     <PlusCircle className="mr-2 h-4 w-4" />
                                     Connect to First Vendor
                                 </Link>
+                            </Button>
+                        </Card>
+                    ) : filteredVendors && filteredVendors.length > 0 ? (
+                        <>
+                            {viewMode === 'card' ? (
+                                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    {filteredVendors.map((vendor) => (
+                                        <Card key={vendor.id} className="group relative transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl overflow-hidden flex flex-col">
+                                            <CardHeader className="flex items-center justify-center p-4 relative h-24">
+                                                {vendor.logoUrl ? (
+                                                    <div className="relative h-full w-full">
+                                                        <Image
+                                                            src={vendor.logoUrl}
+                                                            alt={`${vendor.name} logo`}
+                                                            fill
+                                                            className="object-contain"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <CardTitle className="text-xl text-center truncate">{vendor.name}</CardTitle>
+                                                )}
+                                            </CardHeader>
+                                            <CardContent className="pt-4 border-t flex-grow">
+                                                <div className="flex justify-between items-center">
+                                                    {vendor.vendorType && (
+                                                        <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5">
+                                                            {getVendorTypeIcon(vendor.vendorType)}
+                                                            <span className="text-xs">{vendor.vendorType}</span>
+                                                        </Badge>
+                                                    )}
+                                                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                                        {vendor.email && (
+                                                            <a href={`mailto:${vendor.email}`} className="truncate hover:underline" title={vendor.email}>
+                                                                <Mail className="h-4 w-4 flex-shrink-0" />
+                                                            </a>
+                                                        )}
+                                                        {vendor.phone && (
+                                                             <a href={`tel:${vendor.phone}`} className="hover:underline" title={vendor.phone}>
+                                                                <Phone className="h-4 w-4 flex-shrink-0" />
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            ) : (
+                                <Card>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-2/5">Vendor</TableHead>
+                                                <TableHead>Type</TableHead>
+                                                <TableHead className="text-right">Contact</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredVendors.map((vendor) => (
+                                                <TableRow key={vendor.id}>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="h-10 w-10 relative flex-shrink-0">
+                                                                {vendor.logoUrl ? (
+                                                                    <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="rounded-md object-contain" />
+                                                                ) : (
+                                                                    <div className="h-full w-full flex items-center justify-center rounded-md bg-secondary">
+                                                                        <Building className="h-5 w-5 text-muted-foreground"/>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <span className="font-medium truncate">{vendor.name}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                         {vendor.vendorType && (
+                                                            <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5">
+                                                                {getVendorTypeIcon(vendor.vendorType)}
+                                                                <span className="text-xs">{vendor.vendorType}</span>
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center justify-end gap-3 text-sm text-muted-foreground">
+                                                            {vendor.email && (
+                                                                <a href={`mailto:${vendor.email}`} className="truncate hover:underline" title={vendor.email}>
+                                                                    <Mail className="h-4 w-4 flex-shrink-0" />
+                                                                </a>
+                                                            )}
+                                                            {vendor.phone && (
+                                                                <a href={`tel:${vendor.phone}`} className="hover:underline" title={vendor.phone}>
+                                                                    <Phone className="h-4 w-4 flex-shrink-0" />
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </Card>
+                            )}
+                        </>
+                    ) : (
+                       <Card className="flex flex-col items-center justify-center h-80 border-2 border-dashed">
+                            <Building className="h-16 w-16 text-muted-foreground" />
+                            <h3 className="mt-4 text-lg font-semibold">No Matching Vendors</h3>
+                            <p className="mt-2 text-sm text-muted-foreground">No vendors found for the selected filter.</p>
+                            <Button variant="outline" className="mt-6" onClick={() => setFilterType('all')}>
+                                Clear Filter
                             </Button>
                         </Card>
                     )}
