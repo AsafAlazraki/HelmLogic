@@ -10,8 +10,6 @@ import {
     Loader2, 
     PlusCircle, 
     Building, 
-    Mail, 
-    Phone,
     Sailboat,
     Cog,
     Truck,
@@ -21,7 +19,9 @@ import {
     MoreHorizontal,
     LayoutGrid,
     List,
-    Trash2
+    Trash2,
+    Globe,
+    User
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -65,9 +65,10 @@ interface Vendor {
     id: string;
     name: string;
     logoUrl?: string;
-    email?: string;
-    phone?: string;
     vendorType?: string;
+    primaryContact?: string;
+    website?: string;
+    notes?: string;
 }
 
 const vendorTypes = [
@@ -241,15 +242,15 @@ export default function DataConnectPage() {
                                                 </div>
                                                 
                                                 <div className="flex items-center shrink-0 gap-3 text-sm text-muted-foreground">
-                                                    {vendor.email && (
-                                                        <a href={`mailto:${vendor.email}`} className="hover:text-primary" title={vendor.email}>
-                                                            <Mail className="h-4 w-4" />
+                                                     {vendor.website && (
+                                                        <a href={!vendor.website.startsWith('http') ? `https://${vendor.website}` : vendor.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary" title={vendor.website}>
+                                                            <Globe className="h-4 w-4" />
                                                         </a>
                                                     )}
-                                                    {vendor.phone && (
-                                                         <a href={`tel:${vendor.phone}`} className="hover:text-primary" title={vendor.phone}>
-                                                            <Phone className="h-4 w-4" />
-                                                        </a>
+                                                    {vendor.primaryContact && (
+                                                        <div className="hover:text-primary cursor-default" title={vendor.primaryContact}>
+                                                            <User className="h-4 w-4" />
+                                                        </div>
                                                     )}
                                                 </div>
                                             </CardContent>
@@ -293,17 +294,17 @@ export default function DataConnectPage() {
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                                                            {vendor.email && (
-                                                                <a href={`mailto:${vendor.email}`} className="flex items-center gap-2 hover:underline" title={vendor.email}>
-                                                                    <Mail className="h-4 w-4 flex-shrink-0" />
-                                                                    <span className="truncate">{vendor.email}</span>
-                                                                </a>
+                                                        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                                                            {vendor.primaryContact && (
+                                                                <div className="flex items-center gap-2" title={vendor.primaryContact}>
+                                                                    <User className="h-4 w-4 flex-shrink-0" />
+                                                                    <span className="truncate">{vendor.primaryContact}</span>
+                                                                </div>
                                                             )}
-                                                            {vendor.phone && (
-                                                                <a href={`tel:${vendor.phone}`} className="flex items-center gap-2 hover:underline" title={vendor.phone}>
-                                                                    <Phone className="h-4 w-4 flex-shrink-0" />
-                                                                     <span className="truncate">{vendor.phone}</span>
+                                                            {vendor.website && (
+                                                                <a href={!vendor.website.startsWith('http') ? `https://${vendor.website}` : vendor.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline" title={vendor.website}>
+                                                                    <Globe className="h-4 w-4 flex-shrink-0" />
+                                                                    <span className="truncate">{vendor.website}</span>
                                                                 </a>
                                                             )}
                                                         </div>

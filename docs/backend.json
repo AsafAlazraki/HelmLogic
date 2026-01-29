@@ -116,14 +116,13 @@
             "Other"
           ]
         },
-        "phone": {
+        "primaryContact": {
           "type": "string",
-          "description": "The contact phone number for the vendor."
+          "description": "Primary contact for the vendor (e.g., name, email, phone)."
         },
-        "email": {
+        "website": {
           "type": "string",
-          "format": "email",
-          "description": "The contact email for the vendor."
+          "description": "The vendor's website URL."
         },
         "address": {
           "type": "string",
@@ -136,6 +135,10 @@
         "logoUrl": {
           "type": "string",
           "description": "URL for the vendor logo."
+        },
+        "notes": {
+          "type": "string",
+          "description": "General notes about the vendor."
         }
       },
       "required": [

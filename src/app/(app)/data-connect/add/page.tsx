@@ -28,15 +28,17 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { fileToDataUri } from '@/firebase/storage-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Vendor name is required.' }),
   vendorType: z.string().min(1, { message: 'Vendor type is required.' }),
-  phone: z.string().optional(),
-  email: z.string().email({ message: 'Invalid email address.' }).optional().or(z.literal('')),
   address: z.string().optional(),
   abn: z.string().optional(),
   logo: z.any().optional(),
+  primaryContact: z.string().optional(),
+  website: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export default function AddDataConnectionPage() {
@@ -51,10 +53,11 @@ export default function AddDataConnectionPage() {
         defaultValues: {
           name: '',
           vendorType: '',
-          phone: '',
-          email: '',
           address: '',
           abn: '',
+          primaryContact: '',
+          website: '',
+          notes: '',
           logo: null,
         },
     });
@@ -68,10 +71,11 @@ export default function AddDataConnectionPage() {
             const dataToCreate: { [key: string]: any } = {
                 name: values.name,
                 vendorType: values.vendorType,
-                phone: values.phone || '',
-                email: values.email || '',
                 address: values.address || '',
                 abn: values.abn || '',
+                primaryContact: values.primaryContact || '',
+                website: values.website || '',
+                notes: values.notes || '',
                 logoUrl: null,
             };
 
@@ -176,14 +180,14 @@ export default function AddDataConnectionPage() {
                                     />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
+                                     <FormField
                                         control={form.control}
-                                        name="phone"
+                                        name="primaryContact"
                                         render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Phone Number</FormLabel>
+                                            <FormLabel>Primary Contact</FormLabel>
                                             <FormControl>
-                                            <Input placeholder="(+1) 555-987-6543" {...field} />
+                                            <Input placeholder="e.g., Jane Doe - jane@example.com" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -191,12 +195,12 @@ export default function AddDataConnectionPage() {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="email"
+                                        name="website"
                                         render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Email Address</FormLabel>
+                                            <FormLabel>Website</FormLabel>
                                             <FormControl>
-                                            <Input placeholder="contact@marinedata.com" {...field} />
+                                            <Input placeholder="www.example.com" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -231,6 +235,22 @@ export default function AddDataConnectionPage() {
                                         )}
                                     />
                                 </div>
+                                 <FormField
+                                    control={form.control}
+                                    name="notes"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Notes</FormLabel>
+                                        <FormControl>
+                                            <Textarea
+                                            placeholder="e.g., Standard lead time is 2 weeks."
+                                            {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="logo"
