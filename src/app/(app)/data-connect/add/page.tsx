@@ -36,6 +36,7 @@ const formSchema = z.object({
   address: z.string().optional(),
   abn: z.string().optional(),
   logo: z.any().optional(),
+  attachment: z.any().optional(),
   primaryContact: z.string().optional(),
   website: z.string().optional(),
   notes: z.string().optional(),
@@ -45,6 +46,7 @@ export default function AddDataConnectionPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
     const { toast } = useToast();
     const firestore = useFirestore();
 
@@ -59,6 +61,7 @@ export default function AddDataConnectionPage() {
           website: '',
           notes: '',
           logo: null,
+          attachment: null,
         },
     });
 
@@ -77,10 +80,17 @@ export default function AddDataConnectionPage() {
                 website: values.website || '',
                 notes: values.notes || '',
                 logoUrl: null,
+                attachmentUrl: null,
+                attachmentName: null,
             };
 
             if (values.logo instanceof File) {
                 dataToCreate.logoUrl = await fileToDataUri(values.logo);
+            }
+
+            if (values.attachment instanceof File) {
+                dataToCreate.attachmentUrl = await fileToDataUri(values.attachment);
+                dataToCreate.attachmentName = values.attachment.name;
             }
 
             await setDoc(newVendorRef, dataToCreate).catch((serverError) => {
@@ -130,167 +140,213 @@ export default function AddDataConnectionPage() {
                             </div>
                         </div>
 
-                        <Card className="mt-4">
-                            <CardHeader>
-                                <CardTitle>Vendor Details</CardTitle>
-                                <CardDescription>
-                                    Enter the details for the new vendor connection.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Vendor Name</FormLabel>
-                                            <FormControl>
-                                            <Input placeholder="e.g., Marine Data Solutions" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="vendorType"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Vendor Type</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                <SelectValue placeholder="Select a vendor type" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="Boat Brand">Boat Brand</SelectItem>
-                                                <SelectItem value="Motor Brand">Motor Brand</SelectItem>
-                                                <SelectItem value="Trailer Brand">Trailer Brand</SelectItem>
-                                                <SelectItem value="Electronics Brand">Electronics Brand</SelectItem>
-                                                <SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem>
-                                                <SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem>
-                                                <SelectItem value="Other">Other</SelectItem>
-                                            </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <FormField
-                                        control={form.control}
-                                        name="primaryContact"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Primary Contact</FormLabel>
-                                            <FormControl>
-                                            <Input placeholder="e.g., Jane Doe - jane@example.com" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="website"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Website</FormLabel>
-                                            <FormControl>
-                                            <Input placeholder="www.example.com" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="address"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Address</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="456 Data Drive, Suite 200, Tech City" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="abn"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>ABN (Australian Business Number)</FormLabel>
-                                            <FormControl>
-                                            <Input placeholder="e.g., 12 345 678 901" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                 <FormField
-                                    control={form.control}
-                                    name="notes"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Notes</FormLabel>
-                                        <FormControl>
-                                            <Textarea
-                                            placeholder="e.g., Standard lead time is 2 weeks."
-                                            {...field}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4">
+                            <div className="lg:col-span-2">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Vendor Details</CardTitle>
+                                        <CardDescription>Enter the primary information for the new vendor.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <FormField
+                                                control={form.control}
+                                                name="name"
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Vendor Name</FormLabel>
+                                                    <FormControl>
+                                                    <Input placeholder="e.g., Marine Data Solutions" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
                                             />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="logo"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Vendor Logo</FormLabel>
-                                        {logoPreview && (
-                                            <div className="mt-2 w-32 h-32 relative">
-                                            <Image 
-                                                src={logoPreview} 
-                                                alt="Logo Preview" 
-                                                fill
-                                                className="rounded-md object-contain border p-1"
+                                            <FormField
+                                                control={form.control}
+                                                name="vendorType"
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Vendor Type</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                        <SelectValue placeholder="Select a vendor type" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="Boat Brand">Boat Brand</SelectItem>
+                                                        <SelectItem value="Motor Brand">Motor Brand</SelectItem>
+                                                        <SelectItem value="Trailer Brand">Trailer Brand</SelectItem>
+                                                        <SelectItem value="Electronics Brand">Electronics Brand</SelectItem>
+                                                        <SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem>
+                                                        <SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem>
+                                                        <SelectItem value="Other">Other</SelectItem>
+                                                    </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
                                             />
-                                            </div>
-                                        )}
-                                        <FormControl>
-                                            <Input 
-                                            type="file" 
-                                            accept="image/*"
-                                            onChange={(event) => {
-                                                const file = event.target.files?.[0];
-                                                field.onChange(file);
-                                                if (file) {
-                                                setLogoPreview(URL.createObjectURL(file));
-                                                } else {
-                                                setLogoPreview(null);
-                                                }
-                                            }}
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <FormField
+                                                control={form.control}
+                                                name="primaryContact"
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Primary Contact</FormLabel>
+                                                    <FormControl>
+                                                    <Input placeholder="e.g., Jane Doe - jane@example.com" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
                                             />
-                                        </FormControl>
-                                        <FormDescription>
-                                            Upload the vendor's logo.
-                                        </FormDescription>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </CardContent>
-                        </Card>
+                                            <FormField
+                                                control={form.control}
+                                                name="website"
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Website</FormLabel>
+                                                    <FormControl>
+                                                    <Input placeholder="www.example.com" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <FormField
+                                                control={form.control}
+                                                name="address"
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Address</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="456 Data Drive, Suite 200, Tech City" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="abn"
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>ABN (Australian Business Number)</FormLabel>
+                                                    <FormControl>
+                                                    <Input placeholder="e.g., 12 345 678 901" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                        <FormField
+                                            control={form.control}
+                                            name="notes"
+                                            render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Notes</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                    placeholder="e.g., Standard lead time is 2 weeks."
+                                                    {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                            )}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                             <div className="lg:col-span-1">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Branding & Attachments</CardTitle>
+                                        <CardDescription>Upload logos and other relevant files.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <FormField
+                                            control={form.control}
+                                            name="logo"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Vendor Logo</FormLabel>
+                                                {logoPreview && (
+                                                    <div className="mt-2 w-32 h-32 relative">
+                                                    <Image 
+                                                        src={logoPreview} 
+                                                        alt="Logo Preview" 
+                                                        fill
+                                                        className="rounded-md object-contain border p-1"
+                                                    />
+                                                    </div>
+                                                )}
+                                                <FormControl>
+                                                    <Input 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    onChange={(event) => {
+                                                        const file = event.target.files?.[0];
+                                                        field.onChange(file);
+                                                        if (file) {
+                                                        setLogoPreview(URL.createObjectURL(file));
+                                                        } else {
+                                                        setLogoPreview(null);
+                                                        }
+                                                    }}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Upload the vendor's logo.
+                                                </FormDescription>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="attachment"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>File Attachment</FormLabel>
+                                                {attachmentPreview && (
+                                                    <div className="mt-2 text-sm text-muted-foreground p-2 bg-muted rounded-md">
+                                                        Selected file: <strong>{attachmentPreview}</strong>
+                                                    </div>
+                                                )}
+                                                <FormControl>
+                                                    <Input 
+                                                        type="file" 
+                                                        onChange={(event) => {
+                                                            const file = event.target.files?.[0];
+                                                            field.onChange(file);
+                                                            if (file) {
+                                                                setAttachmentPreview(file.name);
+                                                            } else {
+                                                                setAttachmentPreview(null);
+                                                            }
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Upload any relevant file (e.g., contract, price list).
+                                                </FormDescription>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
                     </form>
                 </Form>
             </div>

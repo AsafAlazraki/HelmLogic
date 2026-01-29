@@ -21,7 +21,8 @@ import {
     List,
     Trash2,
     Globe,
-    User
+    User,
+    Paperclip
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -69,6 +70,8 @@ interface Vendor {
     primaryContact?: string;
     website?: string;
     notes?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
 }
 
 const vendorTypes = [
@@ -252,6 +255,11 @@ export default function DataConnectPage() {
                                                             <User className="h-4 w-4" />
                                                         </div>
                                                     )}
+                                                     {vendor.attachmentUrl && (
+                                                        <a href={vendor.attachmentUrl} download={vendor.attachmentName} className="hover:text-primary" title={vendor.attachmentName}>
+                                                            <Paperclip className="h-4 w-4" />
+                                                        </a>
+                                                    )}
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -264,7 +272,7 @@ export default function DataConnectPage() {
                                             <TableRow>
                                                 <TableHead className="w-2/5">Vendor</TableHead>
                                                 <TableHead>Type</TableHead>
-                                                <TableHead>Contact</TableHead>
+                                                <TableHead>Contact & Links</TableHead>
                                                 <TableHead className="text-right w-[100px]">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -305,6 +313,12 @@ export default function DataConnectPage() {
                                                                 <a href={!vendor.website.startsWith('http') ? `https://${vendor.website}` : vendor.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline" title={vendor.website}>
                                                                     <Globe className="h-4 w-4 flex-shrink-0" />
                                                                     <span className="truncate">{vendor.website}</span>
+                                                                </a>
+                                                            )}
+                                                            {vendor.attachmentUrl && (
+                                                                <a href={vendor.attachmentUrl} download={vendor.attachmentName} className="flex items-center gap-2 hover:underline" title={vendor.attachmentName}>
+                                                                    <Paperclip className="h-4 w-4 flex-shrink-0" />
+                                                                    <span className="truncate">{vendor.attachmentName || 'Attachment'}</span>
                                                                 </a>
                                                             )}
                                                         </div>
