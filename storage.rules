@@ -13,7 +13,7 @@ service firebase.storage {
 
     // Only allow admins to upload organisation logos.
     match /organisations/{organisationId}/logos/{imageName} {
-      allow write: if isHelmLogic_Admin();
+      allow write: if isHelmLogicAdmin();
     }
   }
 }
