@@ -17,6 +17,7 @@ interface Organisation {
     primaryLogoUrl?: string;
     primaryColor?: string;
     phoneNumber?: string;
+    abn?: string;
 }
 
 export default function OrganisationsPage() {
@@ -53,7 +54,7 @@ export default function OrganisationsPage() {
                                         style={{ borderTop: `4px solid ${org.primaryColor || 'hsl(var(--primary))'}` }}
                                     >
                                         <CardHeader>
-                                            <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-start justify-between gap-4">
                                                 <div className="flex-grow overflow-hidden">
                                                     {org.primaryLogoUrl ? (
                                                         <div className="relative h-12">
@@ -68,6 +69,10 @@ export default function OrganisationsPage() {
                                                         <CardTitle className="text-lg truncate">{org.name}</CardTitle>
                                                     )}
                                                 </div>
+                                                <div className="text-right shrink-0">
+                                                    {org.phoneNumber && <p className="text-xs font-medium" style={{ color: org.primaryColor || 'hsl(var(--primary))' }}>{org.phoneNumber}</p>}
+                                                    {org.abn && <p className="text-xs font-medium" style={{ color: org.primaryColor || 'hsl(var(--primary))' }}>ABN: {org.abn}</p>}
+                                                </div>
                                             </div>
                                         </CardHeader>
                                         <CardContent className="flex-grow pt-0">
@@ -75,7 +80,6 @@ export default function OrganisationsPage() {
                                                 <h3 className="font-semibold text-lg truncate">{org.name}</h3>
                                             )}
                                             <p className="text-sm text-muted-foreground line-clamp-2 mt-2">{org.address || 'No address provided'}</p>
-                                            {org.phoneNumber && <p className="text-sm text-muted-foreground mt-2">{org.phoneNumber}</p>}
                                         </CardContent>
                                     </Card>
                                 </Link>
