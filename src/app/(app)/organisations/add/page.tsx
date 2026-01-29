@@ -91,33 +91,40 @@ export default function AddOrganisationPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     
-    const { primaryLogo, secondaryLogo, ...orgData } = values;
-    const slug = createSlug(orgData.name);
-    const orgsCollection = collection(firestore, 'organisations');
-    const newOrgRef = doc(orgsCollection);
-    const orgId = newOrgRef.id;
-    
-    const orgDataForFirestore: any = {
-        ...orgData,
-        slug,
-    };
-
     try {
-      if (primaryLogo instanceof File) {
-          const path = `organisations/${orgId}/logos/primary_${primaryLogo.name}`;
-          orgDataForFirestore.primaryLogoUrl = await uploadFile(storage, primaryLogo, path);
-      }
-      if (secondaryLogo instanceof File) {
-          const path = `organisations/${orgId}/logos/secondary_${secondaryLogo.name}`;
-          orgDataForFirestore.secondaryLogoUrl = await uploadFile(storage, secondaryLogo, path);
+      const orgsCollection = collection(firestore, 'organisations');
+      const newOrgRef = doc(orgsCollection);
+      const orgId = newOrgRef.id;
+
+      // Create a clean data object for Firestore
+      const dataToCreate: { [key: string]: any } = {
+          name: values.name,
+          slug: createSlug(values.name),
+          address: values.address,
+          phoneNumber: values.phoneNumber,
+          abn: values.abn,
+          primaryColor: values.primaryColor,
+          accentColor: values.accentColor,
+          secondaryColor: values.secondaryColor,
+          roles: values.roles,
+      };
+
+      if (values.primaryLogo instanceof File) {
+          const path = `organisations/${orgId}/logos/primary_${values.primaryLogo.name}`;
+          dataToCreate.primaryLogoUrl = await uploadFile(storage, values.primaryLogo, path);
       }
 
-      await setDoc(newOrgRef, orgDataForFirestore)
+      if (values.secondaryLogo instanceof File) {
+          const path = `organisations/${orgId}/logos/secondary_${values.secondaryLogo.name}`;
+          dataToCreate.secondaryLogoUrl = await uploadFile(storage, values.secondaryLogo, path);
+      }
+
+      await setDoc(newOrgRef, dataToCreate)
         .catch((serverError) => {
             const permissionError = new FirestorePermissionError({
                 path: newOrgRef.path,
                 operation: 'create',
-                requestResourceData: orgDataForFirestore,
+                requestResourceData: dataToCreate,
             });
             errorEmitter.emit('permission-error', permissionError);
             throw serverError; // Re-throw to be caught by the outer catch

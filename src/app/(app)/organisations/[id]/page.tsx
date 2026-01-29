@@ -117,33 +117,49 @@ export default function OrganisationDetailsPage() {
         if (!organisation) return;
         setIsSubmitting(true);
         
-        const { primaryLogo, secondaryLogo, ...orgData } = values;
-        const newSlug = createSlug(orgData.name);
-        const orgDataForFirestore: any = { ...orgData, slug: newSlug };
-        const orgDocRef = doc(firestore, 'organisations', organisation.id);
-        
         try {
-            if (primaryLogo instanceof File) {
-                const path = `organisations/${organisation.id}/logos/primary_${primaryLogo.name}`;
-                orgDataForFirestore.primaryLogoUrl = await uploadFile(storage, primaryLogo, path);
+            const orgDocRef = doc(firestore, 'organisations', organisation.id);
+
+            // Create a clean data object for Firestore
+            const dataToUpdate: { [key: string]: any } = {
+                name: values.name,
+                slug: createSlug(values.name),
+                address: values.address,
+                phoneNumber: values.phoneNumber,
+                abn: values.abn,
+                primaryColor: values.primaryColor,
+                accentColor: values.accentColor,
+                secondaryColor: values.secondaryColor,
+                roles: values.roles,
+                // Keep existing URLs by default
+                primaryLogoUrl: values.primaryLogoUrl,
+                secondaryLogoUrl: values.secondaryLogoUrl,
+            };
+
+            // If a new primary logo file is present, upload it and set the URL
+            if (values.primaryLogo instanceof File) {
+                const path = `organisations/${organisation.id}/logos/primary_${values.primaryLogo.name}`;
+                dataToUpdate.primaryLogoUrl = await uploadFile(storage, values.primaryLogo, path);
             }
-            if (secondaryLogo instanceof File) {
-                const path = `organisations/${organisation.id}/logos/secondary_${secondaryLogo.name}`;
-                orgDataForFirestore.secondaryLogoUrl = await uploadFile(storage, secondaryLogo, path);
+            
+            // If a new secondary logo file is present, upload it and set the URL
+            if (values.secondaryLogo instanceof File) {
+                const path = `organisations/${organisation.id}/logos/secondary_${values.secondaryLogo.name}`;
+                dataToUpdate.secondaryLogoUrl = await uploadFile(storage, values.secondaryLogo, path);
             }
 
-            await updateDoc(orgDocRef, orgDataForFirestore)
+            await updateDoc(orgDocRef, dataToUpdate)
                 .catch((serverError) => {
                     const permissionError = new FirestorePermissionError({
-                        path: orgDocRef.path, operation: 'update', requestResourceData: orgDataForFirestore,
+                        path: orgDocRef.path, operation: 'update', requestResourceData: dataToUpdate,
                     });
                     errorEmitter.emit('permission-error', permissionError);
                     throw serverError; // Re-throw
                 });
 
             toast({ title: 'Organisation updated', description: `${values.name} has been updated successfully.` });
-            if (newSlug !== slug) {
-                router.replace(`/organisations/${newSlug}`);
+            if (dataToUpdate.slug !== slug) {
+                router.replace(`/organisations/${dataToUpdate.slug}`);
             }
 
         } catch (error: any) {
