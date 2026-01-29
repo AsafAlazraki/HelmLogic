@@ -1,0 +1,19 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isHelmLogicAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
+    }
+
+    // Allow public read access on all files so anyone can see org logos.
+    match /{allPaths=**} {
+      allow read;
+    }
+
+    // Only allow admins to upload organisation logos.
+    match /organisations/{organisationId}/logos/{imageName} {
+      allow write: if isHelmLogic_Admin();
+    }
+  }
+}
