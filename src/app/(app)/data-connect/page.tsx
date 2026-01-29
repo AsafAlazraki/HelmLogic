@@ -8,6 +8,7 @@ import { useCollection } from "@/firebase/firestore/use-collection";
 import { Loader2, PlusCircle, Building } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 interface Vendor {
     id: string;
@@ -15,6 +16,7 @@ interface Vendor {
     logoUrl?: string;
     email?: string;
     phone?: string;
+    vendorType?: string;
 }
 
 export default function DataConnectPage() {
@@ -64,10 +66,14 @@ export default function DataConnectPage() {
                                             </div>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="flex-grow pt-0">
+                                    <CardContent className="flex-grow pt-0 flex flex-col">
                                         {vendor.logoUrl && (
                                             <h3 className="font-semibold text-lg truncate">{vendor.name}</h3>
                                         )}
+                                        {vendor.vendorType && (
+                                            <Badge variant="secondary" className="mt-2 w-fit">{vendor.vendorType}</Badge>
+                                        )}
+                                        <div className="flex-grow" />
                                         <p className="text-sm text-muted-foreground mt-2">{vendor.email || 'No email provided'}</p>
                                         <p className="text-sm text-muted-foreground">{vendor.phone || 'No phone provided'}</p>
                                     </CardContent>

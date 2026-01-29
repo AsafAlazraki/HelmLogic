@@ -103,6 +103,18 @@
           "type": "string",
           "description": "The name of the vendor."
         },
+        "vendorType": {
+          "type": "string",
+          "description": "The type of the vendor.",
+          "enum": [
+            "Boat Brand",
+            "Motor Brand",
+            "Trailer Brand",
+            "Electronics Brand",
+            "Electronics Supplier",
+            "Other"
+          ]
+        },
         "phone": {
           "type": "string",
           "description": "The contact phone number for the vendor."

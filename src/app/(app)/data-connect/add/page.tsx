@@ -28,9 +28,11 @@ import AdminGuard from '@/components/admin-guard';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { fileToDataUri } from '@/firebase/storage-utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Vendor name is required.' }),
+  vendorType: z.string().min(1, { message: 'Vendor type is required.' }),
   phone: z.string().optional(),
   email: z.string().email({ message: 'Invalid email address.' }).optional().or(z.literal('')),
   address: z.string().optional(),
@@ -49,6 +51,7 @@ export default function AddDataConnectionPage() {
         resolver: zodResolver(formSchema),
         defaultValues: {
           name: '',
+          vendorType: '',
           phone: '',
           email: '',
           address: '',
@@ -65,6 +68,7 @@ export default function AddDataConnectionPage() {
 
             const dataToCreate: { [key: string]: any } = {
                 name: values.name,
+                vendorType: values.vendorType,
                 phone: values.phone || '',
                 email: values.email || '',
                 address: values.address || '',
@@ -140,6 +144,31 @@ export default function AddDataConnectionPage() {
                                         <FormControl>
                                         <Input placeholder="e.g., Marine Data Solutions" {...field} />
                                         </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="vendorType"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Vendor Type</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                            <SelectValue placeholder="Select a vendor type" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Boat Brand">Boat Brand</SelectItem>
+                                            <SelectItem value="Motor Brand">Motor Brand</SelectItem>
+                                            <SelectItem value="Trailer Brand">Trailer Brand</SelectItem>
+                                            <SelectItem value="Electronics Brand">Electronics Brand</SelectItem>
+                                            <SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem>
+                                            <SelectItem value="Other">Other</SelectItem>
+                                        </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                     )}
