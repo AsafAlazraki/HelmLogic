@@ -204,32 +204,34 @@ export default function AddDataConnectionPage() {
                                         )}
                                     />
                                 </div>
-                                <FormField
-                                    control={form.control}
-                                    name="address"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Address</FormLabel>
-                                        <FormControl>
-                                        <Textarea placeholder="456 Data Drive, Suite 200&#10;Tech City, CA 90210&#10;USA" {...field} rows={3}/>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="abn"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>ABN (Australian Business Number)</FormLabel>
-                                        <FormControl>
-                                        <Input placeholder="e.g., 12 345 678 901" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="address"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Address</FormLabel>
+                                            <FormControl>
+                                            <Textarea placeholder="456 Data Drive, Suite 200&#10;Tech City, CA 90210&#10;USA" {...field} rows={3}/>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="abn"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>ABN (Australian Business Number)</FormLabel>
+                                            <FormControl>
+                                            <Input placeholder="e.g., 12 345 678 901" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                </div>
                                 <FormField
                                     control={form.control}
                                     name="logo"
