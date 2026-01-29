@@ -113,7 +113,14 @@ export default function AddOrganisationPage() {
           orgDataForFirestore.secondaryLogoUrl = await uploadFile(storage, secondaryLogo, path);
       }
 
-      await setDoc(newOrgRef, orgDataForFirestore)
+      setDoc(newOrgRef, orgDataForFirestore)
+        .then(() => {
+          toast({
+            title: 'Organisation created',
+            description: `${values.name} has been added successfully.`,
+          });
+          router.push('/organisations');
+        })
         .catch((serverError) => {
             const permissionError = new FirestorePermissionError({
                 path: newOrgRef.path,
@@ -121,23 +128,25 @@ export default function AddOrganisationPage() {
                 requestResourceData: orgDataForFirestore,
             });
             errorEmitter.emit('permission-error', permissionError);
-            throw serverError;
+            console.error(serverError);
+            toast({
+              variant: 'destructive',
+              title: 'Failed to create organisation',
+              description: serverError.message || 'An unexpected error occurred.',
+            });
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
 
-      toast({
-        title: 'Organisation created',
-        description: `${values.name} has been added successfully.`,
-      });
-      router.push('/organisations');
     } catch (error: any) {
-      console.error(error);
+      console.error("Failed to upload logos:", error);
       toast({
         variant: 'destructive',
-        title: 'Failed to create organisation',
-        description: 'An unexpected error occurred. Please check the console for more details.',
+        title: 'Failed to upload logos',
+        description: 'Could not save images. Please try again.',
       });
-    } finally {
-      setIsLoading(false);
+       setIsLoading(false);
     }
   }
 

@@ -132,19 +132,27 @@ export default function OrganisationDetailsPage() {
             }
 
             const orgDocRef = doc(firestore, 'organisations', organisation.id);
-            await updateDoc(orgDocRef, orgDataForFirestore).catch((serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: orgDocRef.path, operation: 'update', requestResourceData: orgDataForFirestore,
+            updateDoc(orgDocRef, orgDataForFirestore)
+                .then(() => {
+                    toast({ title: 'Organisation updated', description: `${values.name} has been updated successfully.` });
+                    if (newSlug !== slug) {
+                        router.replace(`/organisations/${newSlug}`);
+                    }
+                })
+                .catch((serverError) => {
+                    const permissionError = new FirestorePermissionError({
+                        path: orgDocRef.path, operation: 'update', requestResourceData: orgDataForFirestore,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                    console.error("Failed to update organisation:", serverError);
+                    toast({ variant: 'destructive', title: 'Failed to update organisation', description: serverError.message || 'An unexpected error occurred.' });
+                })
+                .finally(() => {
+                    setIsSubmitting(false);
                 });
-                errorEmitter.emit('permission-error', permissionError);
-                throw serverError;
-            });
-            toast({ title: 'Organisation updated', description: `${values.name} has been updated successfully.` });
-            if (newSlug !== slug) router.push(`/organisations/${newSlug}`);
         } catch (error: any) {
-            console.error("Failed to update organisation:", error);
-            toast({ variant: 'destructive', title: 'Failed to update organisation', description: 'An unexpected error occurred.' });
-        } finally {
+            console.error("Failed to upload logos:", error);
+            toast({ variant: 'destructive', title: 'Failed to upload logos', description: 'Could not save images. Please try again.' });
             setIsSubmitting(false);
         }
     }
