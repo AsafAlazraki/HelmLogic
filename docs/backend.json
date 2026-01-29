@@ -116,6 +116,16 @@
             "Other"
           ]
         },
+        "dataSource": {
+          "type": "string",
+          "description": "The source of the data connection.",
+          "enum": [
+            "Business Central",
+            "Direct API",
+            "Document Upload",
+            "Other"
+          ]
+        },
         "primaryContact": {
           "type": "string",
           "description": "Primary contact for the vendor (e.g., name, email, phone)."

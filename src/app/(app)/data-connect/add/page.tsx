@@ -33,6 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Vendor name is required.' }),
   vendorType: z.string().min(1, { message: 'Vendor type is required.' }),
+  dataSource: z.string().min(1, { message: 'Data source is required.' }),
   address: z.string().optional(),
   abn: z.string().optional(),
   logo: z.any().optional(),
@@ -55,6 +56,7 @@ export default function AddDataConnectionPage() {
         defaultValues: {
           name: '',
           vendorType: '',
+          dataSource: '',
           address: '',
           abn: '',
           primaryContact: '',
@@ -74,6 +76,7 @@ export default function AddDataConnectionPage() {
             const dataToCreate: { [key: string]: any } = {
                 name: values.name,
                 vendorType: values.vendorType,
+                dataSource: values.dataSource,
                 address: values.address || '',
                 abn: values.abn || '',
                 primaryContact: values.primaryContact || '',
@@ -141,7 +144,7 @@ export default function AddDataConnectionPage() {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4">
-                            <div className="lg:col-span-2">
+                            <div className="lg:col-span-2 space-y-8">
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Vendor Details</CardTitle>
@@ -259,6 +262,37 @@ export default function AddDataConnectionPage() {
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
+                                            )}
+                                        />
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Data Source</CardTitle>
+                                        <CardDescription>Select how data will be connected for this vendor.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <FormField
+                                            control={form.control}
+                                            name="dataSource"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Data Source</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select a data source" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="Business Central">Business Central</SelectItem>
+                                                            <SelectItem value="Direct API">Direct API</SelectItem>
+                                                            <SelectItem value="Document Upload">Document Upload</SelectItem>
+                                                            <SelectItem value="Other">Other</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
                                             )}
                                         />
                                     </CardContent>

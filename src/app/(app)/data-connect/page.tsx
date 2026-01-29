@@ -22,7 +22,10 @@ import {
     Trash2,
     Globe,
     User,
-    Paperclip
+    Paperclip,
+    Briefcase,
+    Cable,
+    UploadCloud
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -67,6 +70,7 @@ interface Vendor {
     name: string;
     logoUrl?: string;
     vendorType?: string;
+    dataSource?: string;
     primaryContact?: string;
     website?: string;
     notes?: string;
@@ -99,6 +103,22 @@ const getVendorTypeIcon = (vendorType?: string) => {
             return <Plug {...iconProps} />;
         case 'Parts Wholesaler':
             return <Boxes {...iconProps} />;
+        case 'Other':
+            return <MoreHorizontal {...iconProps} />;
+        default:
+            return null;
+    }
+};
+
+const getDataSourceIcon = (dataSource?: string) => {
+    const iconProps = { className: "h-3 w-3" };
+    switch (dataSource) {
+        case 'Business Central':
+            return <Briefcase {...iconProps} />;
+        case 'Direct API':
+            return <Cable {...iconProps} />;
+        case 'Document Upload':
+            return <UploadCloud {...iconProps} />;
         case 'Other':
             return <MoreHorizontal {...iconProps} />;
         default:
@@ -236,12 +256,20 @@ export default function DataConnectPage() {
 
                                                 <div className="flex-grow overflow-hidden">
                                                     <p className="font-semibold truncate">{vendor.name}</p>
-                                                    {vendor.vendorType && (
-                                                        <Badge variant="secondary" className="flex items-center gap-1.5 text-xs mt-1 py-0.5 px-2 w-fit">
-                                                            {getVendorTypeIcon(vendor.vendorType)}
-                                                            <span>{vendor.vendorType}</span>
-                                                        </Badge>
-                                                    )}
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {vendor.vendorType && (
+                                                            <Badge variant="secondary" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
+                                                                {getVendorTypeIcon(vendor.vendorType)}
+                                                                <span>{vendor.vendorType}</span>
+                                                            </Badge>
+                                                        )}
+                                                        {vendor.dataSource && (
+                                                            <Badge variant="outline" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
+                                                                {getDataSourceIcon(vendor.dataSource)}
+                                                                <span>{vendor.dataSource}</span>
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 
                                                 <div className="flex items-center shrink-0 gap-3 text-sm text-muted-foreground">
@@ -294,12 +322,20 @@ export default function DataConnectPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                         {vendor.vendorType && (
-                                                            <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5">
-                                                                {getVendorTypeIcon(vendor.vendorType)}
-                                                                <span className="text-xs">{vendor.vendorType}</span>
-                                                            </Badge>
-                                                        )}
+                                                        <div className="flex flex-col gap-2">
+                                                            {vendor.vendorType && (
+                                                                <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5 w-fit">
+                                                                    {getVendorTypeIcon(vendor.vendorType)}
+                                                                    <span className="text-xs">{vendor.vendorType}</span>
+                                                                </Badge>
+                                                            )}
+                                                            {vendor.dataSource && (
+                                                                <Badge variant="outline" className="flex items-center gap-1.5 py-1 px-2.5 w-fit">
+                                                                    {getDataSourceIcon(vendor.dataSource)}
+                                                                    <span className="text-xs">{vendor.dataSource}</span>
+                                                                </Badge>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
