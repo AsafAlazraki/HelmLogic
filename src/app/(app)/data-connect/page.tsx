@@ -121,6 +121,7 @@ export default function DataConnectPage() {
                 title: 'Vendor Deleted',
                 description: `${vendorToDelete.name} has been successfully deleted.`,
             });
+            window.location.reload();
         } catch (error: any) {
             toast({
                 variant: 'destructive',
@@ -128,7 +129,6 @@ export default function DataConnectPage() {
                 description: `Could not delete ${vendorToDelete.name}.`,
             });
             console.error("Failed to delete vendor:", error);
-        } finally {
             setVendorToDelete(null);
         }
     };

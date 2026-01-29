@@ -174,11 +174,10 @@ export default function OrganisationDetailsPage() {
                 throw serverError;
             });
             toast({ title: 'Organisation deleted', description: `${organisation.name} has been permanently removed.` });
-            router.push('/organisations');
+            window.location.href = '/organisations';
         } catch (error) {
             console.error("Failed to delete organisation:", error);
             toast({ variant: 'destructive', title: 'Deletion failed', description: 'Could not delete the organisation.' });
-        } finally {
             setIsDeleteDialogOpen(false);
         }
     };
