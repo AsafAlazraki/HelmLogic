@@ -5,7 +5,20 @@ import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { Loader2, PlusCircle, Building, Mail, Phone } from "lucide-react";
+import { 
+    Loader2, 
+    PlusCircle, 
+    Building, 
+    Mail, 
+    Phone,
+    Sailboat,
+    Cog,
+    Truck,
+    CircuitBoard,
+    Plug,
+    Boxes,
+    MoreHorizontal,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +31,28 @@ interface Vendor {
     phone?: string;
     vendorType?: string;
 }
+
+const getVendorTypeIcon = (vendorType?: string) => {
+    const iconProps = { className: "h-3 w-3" };
+    switch (vendorType) {
+        case 'Boat Brand':
+            return <Sailboat {...iconProps} />;
+        case 'Motor Brand':
+            return <Cog {...iconProps} />;
+        case 'Trailer Brand':
+            return <Truck {...iconProps} />;
+        case 'Electronics Brand':
+            return <CircuitBoard {...iconProps} />;
+        case 'Electronics Supplier':
+            return <Plug {...iconProps} />;
+        case 'Parts Wholesaler':
+            return <Boxes {...iconProps} />;
+        case 'Other':
+            return <MoreHorizontal {...iconProps} />;
+        default:
+            return null;
+    }
+};
 
 export default function DataConnectPage() {
     const { data: vendors, loading } = useCollection<Vendor>('vendors');
@@ -48,7 +83,7 @@ export default function DataConnectPage() {
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {vendors.map((vendor) => (
                                 <Card key={vendor.id} className="group relative transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl overflow-hidden flex flex-col">
-                                    <CardHeader className="flex-grow flex items-center justify-center p-4 relative">
+                                    <CardHeader className="flex-grow flex items-center justify-center p-4 relative min-h-[10rem]">
                                         {vendor.logoUrl ? (
                                             <div className="relative h-20 w-full">
                                                 <Image
@@ -61,24 +96,27 @@ export default function DataConnectPage() {
                                         ) : (
                                             <CardTitle className="text-xl text-center truncate">{vendor.name}</CardTitle>
                                         )}
-                                         {vendor.vendorType && (
-                                            <Badge variant="secondary" className="absolute bottom-2 left-2 z-10">{vendor.vendorType}</Badge>
-                                        )}
                                     </CardHeader>
                                     <CardContent className="pt-4 border-t">
-                                        <div className="space-y-2 text-sm text-muted-foreground">
-                                            {vendor.email && (
-                                                <div className="flex items-center gap-2">
-                                                    <Mail className="h-4 w-4 flex-shrink-0" />
-                                                    <a href={`mailto:${vendor.email}`} className="truncate hover:underline">{vendor.email}</a>
-                                                </div>
+                                        <div className="flex justify-between items-center">
+                                            {vendor.vendorType && (
+                                                <Badge variant="secondary" className="flex items-center gap-1.5 py-1 px-2.5">
+                                                    {getVendorTypeIcon(vendor.vendorType)}
+                                                    <span className="text-xs">{vendor.vendorType}</span>
+                                                </Badge>
                                             )}
-                                            {vendor.phone && (
-                                                <div className="flex items-center gap-2">
-                                                    <Phone className="h-4 w-4 flex-shrink-0" />
-                                                    <a href={`tel:${vendor.phone}`} className="hover:underline">{vendor.phone}</a>
-                                                </div>
-                                            )}
+                                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                                {vendor.email && (
+                                                    <a href={`mailto:${vendor.email}`} className="truncate hover:underline" title={vendor.email}>
+                                                        <Mail className="h-4 w-4 flex-shrink-0" />
+                                                    </a>
+                                                )}
+                                                {vendor.phone && (
+                                                     <a href={`tel:${vendor.phone}`} className="hover:underline" title={vendor.phone}>
+                                                        <Phone className="h-4 w-4 flex-shrink-0" />
+                                                    </a>
+                                                )}
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
