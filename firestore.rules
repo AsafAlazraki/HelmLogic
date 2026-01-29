@@ -24,6 +24,10 @@ service cloud.firestore {
       allow read, write: if isHelmLogicAdmin();
     }
 
+    match /vendors/{vendorId} {
+      allow read, write: if isHelmLogicAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

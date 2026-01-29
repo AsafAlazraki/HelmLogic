@@ -93,6 +93,41 @@
         "name",
         "slug"
       ]
+    },
+    "Vendor": {
+      "title": "Vendor",
+      "description": "Represents a vendor for data connection.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the vendor."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The contact phone number for the vendor."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The contact email for the vendor."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the vendor."
+        },
+        "abn": {
+          "type": "string",
+          "description": "The Australian Business Number for the vendor."
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL for the vendor logo."
+        }
+      },
+      "required": [
+        "name"
+      ]
     }
   },
   "auth": {
@@ -112,6 +147,12 @@
         "$ref": "#/backend/entities/Organisation"
       },
       "description": "Organisation documents, keyed by a unique ID."
+    },
+    "/vendors/{vendorId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Vendor"
+      },
+      "description": "Vendor documents, keyed by a unique ID."
     }
   }
 }

@@ -1,38 +1,245 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import AdminGuard from "@/components/admin-guard";
-import { BreadcrumbNav } from "@/components/breadcrumb-nav";
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { useFirestore } from '@/firebase/provider';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BreadcrumbNav } from '@/components/breadcrumb-nav';
+import AdminGuard from '@/components/admin-guard';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { fileToDataUri } from '@/firebase/storage-utils';
+
+const formSchema = z.object({
+  name: z.string().min(1, { message: 'Vendor name is required.' }),
+  phone: z.string().optional(),
+  email: z.string().email({ message: 'Invalid email address.' }).optional().or(z.literal('')),
+  address: z.string().optional(),
+  abn: z.string().optional(),
+  logo: z.any().optional(),
+});
 
 export default function AddDataConnectionPage() {
     const router = useRouter();
+    const [isLoading, setIsLoading] = useState(false);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const { toast } = useToast();
+    const firestore = useFirestore();
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+          name: '',
+          phone: '',
+          email: '',
+          address: '',
+          abn: '',
+          logo: null,
+        },
+    });
+
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        setIsLoading(true);
+        try {
+            const vendorsCollection = collection(firestore, 'vendors');
+            const newVendorRef = doc(vendorsCollection);
+
+            const dataToCreate: { [key: string]: any } = {
+                name: values.name,
+                phone: values.phone || '',
+                email: values.email || '',
+                address: values.address || '',
+                abn: values.abn || '',
+                logoUrl: null,
+            };
+
+            if (values.logo instanceof File) {
+                dataToCreate.logoUrl = await fileToDataUri(values.logo);
+            }
+
+            await setDoc(newVendorRef, dataToCreate).catch((serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: newVendorRef.path,
+                    operation: 'create',
+                    requestResourceData: dataToCreate,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                throw serverError;
+            });
+            
+            toast({
+                title: 'Vendor connection created',
+                description: `${values.name} has been added successfully.`,
+            });
+            router.push('/data-connect');
+
+        } catch (error: any) {
+            console.error("Failed to create vendor connection:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Failed to create vendor connection',
+                description: error.message || 'An unexpected error occurred.',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     return (
         <AdminGuard>
             <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-2xl font-semibold">Connect to a New Vendor</h1>
-                        <BreadcrumbNav />
-                    </div>
-                    <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    </div>
-                </div>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h1 className="text-2xl font-semibold">Connect to a New Vendor</h1>
+                                <BreadcrumbNav />
+                            </div>
+                            <div className="flex gap-2">
+                                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>Cancel</Button>
+                                <Button type="submit" disabled={isLoading}>
+                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Create Connection
+                                </Button>
+                            </div>
+                        </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Vendor Connection</CardTitle>
-                        <CardDescription>
-                            Select a vendor to connect to and provide the necessary credentials.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p>Vendor connection form will go here.</p>
-                    </CardContent>
-                </Card>
+                        <Card className="mt-4">
+                            <CardHeader>
+                                <CardTitle>Vendor Details</CardTitle>
+                                <CardDescription>
+                                    Enter the details for the new vendor connection.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Vendor Name</FormLabel>
+                                        <FormControl>
+                                        <Input placeholder="e.g., Marine Data Solutions" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="phone"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Phone Number</FormLabel>
+                                            <FormControl>
+                                            <Input placeholder="(+1) 555-987-6543" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="email"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Email Address</FormLabel>
+                                            <FormControl>
+                                            <Input placeholder="contact@marinedata.com" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="address"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Address</FormLabel>
+                                        <FormControl>
+                                        <Textarea placeholder="456 Data Drive, Suite 200&#10;Tech City, CA 90210&#10;USA" {...field} rows={3}/>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="abn"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>ABN (Australian Business Number)</FormLabel>
+                                        <FormControl>
+                                        <Input placeholder="e.g., 12 345 678 901" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="logo"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Vendor Logo</FormLabel>
+                                        {logoPreview && (
+                                            <div className="mt-2 w-32 h-32 relative">
+                                            <Image 
+                                                src={logoPreview} 
+                                                alt="Logo Preview" 
+                                                fill
+                                                className="rounded-md object-contain border p-1"
+                                            />
+                                            </div>
+                                        )}
+                                        <FormControl>
+                                            <Input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={(event) => {
+                                                const file = event.target.files?.[0];
+                                                field.onChange(file);
+                                                if (file) {
+                                                setLogoPreview(URL.createObjectURL(file));
+                                                } else {
+                                                setLogoPreview(null);
+                                                }
+                                            }}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Upload the vendor's logo.
+                                        </FormDescription>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+                    </form>
+                </Form>
             </div>
         </AdminGuard>
     );
