@@ -48,6 +48,24 @@ const flowToRoles = (nodes: Node[], edges: Edge[]): Role[] => {
     });
 };
 
+// A more robust comparison function to prevent infinite loops
+const areRolesEqual = (rolesA: Role[], rolesB: Role[]): boolean => {
+    if (rolesA.length !== rolesB.length) return false;
+
+    const sortedA = [...rolesA].sort((a, b) => a.id.localeCompare(b.id));
+    const sortedB = [...rolesB].sort((a, b) => a.id.localeCompare(b.id));
+
+    for (let i = 0; i < sortedA.length; i++) {
+        const roleA = sortedA[i];
+        const roleB = sortedB[i];
+        if (roleA.id !== roleB.id || roleA.name !== roleB.name || roleA.parent !== roleB.parent) {
+            return false;
+        }
+    }
+    return true;
+};
+
+
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
@@ -120,12 +138,7 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
 
   useEffect(() => {
     const newRoles = flowToRoles(nodes, edges);
-    // Deep comparison to avoid infinite loops.
-    // We sort by ID to ensure the order of elements doesn't affect the string comparison.
-    const sortedNew = [...newRoles].sort((a, b) => a.id.localeCompare(b.id));
-    const sortedValue = [...(value || [])].sort((a, b) => a.id.localeCompare(b.id));
-
-    if (JSON.stringify(sortedNew) !== JSON.stringify(sortedValue)) {
+    if (!areRolesEqual(newRoles, value || [])) {
         onChange(newRoles);
     }
   }, [nodes, edges, onChange, value]);
