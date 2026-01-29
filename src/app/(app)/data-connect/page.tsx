@@ -5,7 +5,7 @@ import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { Loader2, PlusCircle, Building } from "lucide-react";
+import { Loader2, PlusCircle, Building, Mail, Phone } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -66,16 +66,29 @@ export default function DataConnectPage() {
                                             </div>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="flex-grow pt-0 flex flex-col">
-                                        {vendor.logoUrl && (
-                                            <h3 className="font-semibold text-lg truncate">{vendor.name}</h3>
-                                        )}
-                                        {vendor.vendorType && (
-                                            <Badge variant="secondary" className="mt-2 w-fit">{vendor.vendorType}</Badge>
-                                        )}
-                                        <div className="flex-grow" />
-                                        <p className="text-sm text-muted-foreground mt-2">{vendor.email || 'No email provided'}</p>
-                                        <p className="text-sm text-muted-foreground">{vendor.phone || 'No phone provided'}</p>
+                                    <CardContent className="flex-grow pt-0 flex flex-col justify-between">
+                                        <div>
+                                            {vendor.logoUrl && (
+                                                <h3 className="font-semibold text-lg truncate mb-2">{vendor.name}</h3>
+                                            )}
+                                            {vendor.vendorType && (
+                                                <Badge variant="secondary" className="w-fit">{vendor.vendorType}</Badge>
+                                            )}
+                                        </div>
+                                        <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                                            {vendor.email && (
+                                                <div className="flex items-center gap-2">
+                                                    <Mail className="h-4 w-4 flex-shrink-0" />
+                                                    <span className="truncate">{vendor.email}</span>
+                                                </div>
+                                            )}
+                                            {vendor.phone && (
+                                                <div className="flex items-center gap-2">
+                                                    <Phone className="h-4 w-4 flex-shrink-0" />
+                                                    <span>{vendor.phone}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </CardContent>
                                 </Card>
                             ))}

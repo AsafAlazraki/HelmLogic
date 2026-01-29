@@ -166,6 +166,7 @@ export default function AddDataConnectionPage() {
                                             <SelectItem value="Trailer Brand">Trailer Brand</SelectItem>
                                             <SelectItem value="Electronics Brand">Electronics Brand</SelectItem>
                                             <SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem>
+                                            <SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem>
                                             <SelectItem value="Other">Other</SelectItem>
                                         </SelectContent>
                                         </Select>
