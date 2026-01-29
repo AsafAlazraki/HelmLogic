@@ -3,33 +3,11 @@
 import AdminGuard from "@/components/admin-guard";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { Loader2, PlusCircle, Building2, MoreVertical, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, Building2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useFirestore } from "@/firebase/provider";
-import { doc, deleteDoc } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
 
 interface Organisation {
     id: string;
@@ -43,39 +21,6 @@ interface Organisation {
 
 export default function OrganisationsPage() {
     const { data: organisations, loading } = useCollection<Organisation>('organisations');
-    const [orgToDelete, setOrgToDelete] = useState<Organisation | null>(null);
-    const firestore = useFirestore();
-    const { toast } = useToast();
-
-    const handleDelete = async () => {
-        if (!orgToDelete) return;
-
-        try {
-            const orgDocRef = doc(firestore, 'organisations', orgToDelete.id);
-            await deleteDoc(orgDocRef).catch((serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: orgDocRef.path,
-                    operation: 'delete',
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                throw serverError;
-            });
-            
-            toast({
-                title: 'Organisation deleted',
-                description: `${orgToDelete.name} has been removed.`,
-            });
-        } catch (error) {
-            console.error("Failed to delete organisation:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Deletion failed',
-                description: 'Could not delete the organisation. Please try again.',
-            });
-        } finally {
-            setOrgToDelete(null);
-        }
-    };
 
     return (
       <AdminGuard>
@@ -123,25 +68,6 @@ export default function OrganisationsPage() {
                                                         <CardTitle className="text-lg truncate">{org.name}</CardTitle>
                                                     )}
                                                 </div>
-                                                <div className="-mr-3 -mt-2 flex-shrink-0">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
-                                                                <span className="sr-only">Open menu</span>
-                                                                <MoreVertical className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem 
-                                                                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                                                                onSelect={() => setOrgToDelete(org)}
-                                                            >
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                Delete
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
                                             </div>
                                         </CardHeader>
                                         <CardContent className="flex-grow pt-0">
@@ -170,25 +96,6 @@ export default function OrganisationsPage() {
                             </div>
                         )}
                     </div>
-
-                    {orgToDelete && (
-                        <AlertDialog open={!!orgToDelete} onOpenChange={(open) => !open && setOrgToDelete(null)}>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the <strong>{orgToDelete.name}</strong> organisation.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-                                    Yes, delete it
-                                </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
                 </>
             )}
         </div>
