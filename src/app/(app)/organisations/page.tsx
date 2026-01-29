@@ -3,7 +3,7 @@
 import AdminGuard from "@/components/admin-guard";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { Loader2, PlusCircle, Building2, MoreVertical, Trash2 } from "lucide-react";
 import Image from "next/image";
@@ -108,48 +108,47 @@ export default function OrganisationsPage() {
                                         style={{ borderTop: `4px solid ${org.primaryColor || 'hsl(var(--primary))'}` }}
                                     >
                                         <CardHeader>
-                                            <div className="flex items-start justify-between gap-4">
-                                                <CardTitle className="text-lg">{org.name}</CardTitle>
-                                                <div className="flex items-center">
-                                                    <div 
-                                                        className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center relative overflow-hidden"
-                                                        style={{ backgroundColor: `${org.primaryColor}1A`}}
-                                                    >
-                                                        {org.primaryLogoUrl ? (
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-grow overflow-hidden">
+                                                    {org.primaryLogoUrl ? (
+                                                        <div className="relative h-12">
                                                             <Image
                                                                 src={org.primaryLogoUrl}
                                                                 alt={`${org.name} logo`}
                                                                 fill
-                                                                className="object-contain p-1"
+                                                                className="object-contain object-left"
                                                             />
-                                                        ) : (
-                                                            <Building2 className="h-6 w-6" style={{ color: org.primaryColor || 'hsl(var(--primary))' }} />
-                                                        )}
-                                                    </div>
-                                                     <div className="-mr-3">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
-                                                                    <span className="sr-only">Open menu</span>
-                                                                    <MoreVertical className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem 
-                                                                    className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                                                                    onSelect={() => setOrgToDelete(org)}
-                                                                >
-                                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                                    Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
+                                                        </div>
+                                                    ) : (
+                                                        <CardTitle className="text-lg truncate">{org.name}</CardTitle>
+                                                    )}
+                                                </div>
+                                                <div className="-mr-3 -mt-2 flex-shrink-0">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
+                                                                <span className="sr-only">Open menu</span>
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem 
+                                                                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                                onSelect={() => setOrgToDelete(org)}
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
                                             </div>
                                         </CardHeader>
-                                        <CardContent className="flex-grow">
-                                            <p className="text-sm text-muted-foreground line-clamp-2">{org.address || 'No address provided'}</p>
+                                        <CardContent className="flex-grow pt-0">
+                                            {org.primaryLogoUrl && (
+                                                <h3 className="font-semibold text-lg truncate">{org.name}</h3>
+                                            )}
+                                            <p className="text-sm text-muted-foreground line-clamp-2 mt-2">{org.address || 'No address provided'}</p>
                                             {org.phoneNumber && <p className="text-sm text-muted-foreground mt-2">{org.phoneNumber}</p>}
                                         </CardContent>
                                     </Card>
