@@ -4,12 +4,12 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { Handle, Position, NodeProps, useReactFlow, useStoreApi } from 'reactflow';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
-  const { setNodes, addNodes, addEdges, setEdges } = useReactFlow();
+  const { setNodes, addNodes, addEdges, setEdges, deleteElements } = useReactFlow();
   const store = useStoreApi();
 
   useEffect(() => {
@@ -68,6 +68,10 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
     setEdges((edges) => edges.filter((edge) => edge.target !== id).concat(newEdge));
     addNodes(newNode);
   }, [addNodes, setEdges, id, xPos, yPos]);
+  
+  const handleDelete = useCallback(() => {
+    deleteElements({ nodes: [{ id }] });
+  }, [id, deleteElements]);
 
 
   return (
@@ -81,8 +85,17 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
         >
             <Plus className="h-4 w-4" />
         </Button>
-      <div onDoubleClick={handleDoubleClick} className="p-1 border rounded-md bg-card shadow-sm w-40 text-center">
-        <Handle type="target" position={Position.Top} className="!bg-primary" />
+      <div onDoubleClick={handleDoubleClick} className="p-1 border rounded-md bg-card shadow-sm w-40 text-center relative">
+        <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={handleDelete}
+            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-card border border-destructive text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-20"
+        >
+            <Trash2 className="h-4 w-4" />
+        </Button>
+        <Handle type="target" position={Position.Top} className="!bg-primary z-10" />
         {isEditing ? (
           <Input
             value={label}
@@ -95,7 +108,7 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
         ) : (
           <div className="p-2 text-card-foreground">{label}</div>
         )}
-        <Handle type="source" position={Position.Bottom} className="!bg-primary" />
+        <Handle type="source" position={Position.Bottom} className="!bg-primary z-10" />
       </div>
        <Button
             type="button"
