@@ -48,10 +48,7 @@ export default function DataConnectPage() {
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {vendors.map((vendor) => (
                                 <Card key={vendor.id} className="group relative transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl overflow-hidden flex flex-col">
-                                    {vendor.vendorType && (
-                                        <Badge variant="secondary" className="absolute top-2 right-2 z-10">{vendor.vendorType}</Badge>
-                                    )}
-                                    <CardHeader className="flex-grow flex items-center justify-center p-4">
+                                    <CardHeader className="flex-grow flex items-center justify-center p-4 relative">
                                         {vendor.logoUrl ? (
                                             <div className="relative h-20 w-full">
                                                 <Image
@@ -63,6 +60,9 @@ export default function DataConnectPage() {
                                             </div>
                                         ) : (
                                             <CardTitle className="text-xl text-center truncate">{vendor.name}</CardTitle>
+                                        )}
+                                         {vendor.vendorType && (
+                                            <Badge variant="secondary" className="absolute bottom-2 left-2 z-10">{vendor.vendorType}</Badge>
                                         )}
                                     </CardHeader>
                                     <CardContent className="pt-4 border-t">
