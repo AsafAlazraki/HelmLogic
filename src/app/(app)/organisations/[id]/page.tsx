@@ -120,6 +120,7 @@ export default function OrganisationDetailsPage() {
         const { primaryLogo, secondaryLogo, ...orgData } = values;
         const newSlug = createSlug(orgData.name);
         const orgDataForFirestore: any = { ...orgData, slug: newSlug };
+        const orgDocRef = doc(firestore, 'organisations', organisation.id);
         
         try {
             if (primaryLogo instanceof File) {
@@ -131,28 +132,24 @@ export default function OrganisationDetailsPage() {
                 orgDataForFirestore.secondaryLogoUrl = await uploadFile(storage, secondaryLogo, path);
             }
 
-            const orgDocRef = doc(firestore, 'organisations', organisation.id);
-            updateDoc(orgDocRef, orgDataForFirestore)
-                .then(() => {
-                    toast({ title: 'Organisation updated', description: `${values.name} has been updated successfully.` });
-                    if (newSlug !== slug) {
-                        router.replace(`/organisations/${newSlug}`);
-                    }
-                })
+            await updateDoc(orgDocRef, orgDataForFirestore)
                 .catch((serverError) => {
                     const permissionError = new FirestorePermissionError({
                         path: orgDocRef.path, operation: 'update', requestResourceData: orgDataForFirestore,
                     });
                     errorEmitter.emit('permission-error', permissionError);
-                    console.error("Failed to update organisation:", serverError);
-                    toast({ variant: 'destructive', title: 'Failed to update organisation', description: serverError.message || 'An unexpected error occurred.' });
-                })
-                .finally(() => {
-                    setIsSubmitting(false);
+                    throw serverError; // Re-throw
                 });
+
+            toast({ title: 'Organisation updated', description: `${values.name} has been updated successfully.` });
+            if (newSlug !== slug) {
+                router.replace(`/organisations/${newSlug}`);
+            }
+
         } catch (error: any) {
-            console.error("Failed to upload logos:", error);
-            toast({ variant: 'destructive', title: 'Failed to upload logos', description: 'Could not save images. Please try again.' });
+            console.error("Failed to update organisation:", error);
+            toast({ variant: 'destructive', title: 'Failed to update organisation', description: error.message || 'An unexpected error occurred.' });
+        } finally {
             setIsSubmitting(false);
         }
     }

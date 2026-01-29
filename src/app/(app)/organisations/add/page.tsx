@@ -92,7 +92,6 @@ export default function AddOrganisationPage() {
     setIsLoading(true);
     
     const { primaryLogo, secondaryLogo, ...orgData } = values;
-
     const slug = createSlug(orgData.name);
     const orgsCollection = collection(firestore, 'organisations');
     const newOrgRef = doc(orgsCollection);
@@ -113,14 +112,7 @@ export default function AddOrganisationPage() {
           orgDataForFirestore.secondaryLogoUrl = await uploadFile(storage, secondaryLogo, path);
       }
 
-      setDoc(newOrgRef, orgDataForFirestore)
-        .then(() => {
-          toast({
-            title: 'Organisation created',
-            description: `${values.name} has been added successfully.`,
-          });
-          router.push('/organisations');
-        })
+      await setDoc(newOrgRef, orgDataForFirestore)
         .catch((serverError) => {
             const permissionError = new FirestorePermissionError({
                 path: newOrgRef.path,
@@ -128,25 +120,24 @@ export default function AddOrganisationPage() {
                 requestResourceData: orgDataForFirestore,
             });
             errorEmitter.emit('permission-error', permissionError);
-            console.error(serverError);
-            toast({
-              variant: 'destructive',
-              title: 'Failed to create organisation',
-              description: serverError.message || 'An unexpected error occurred.',
-            });
-        })
-        .finally(() => {
-          setIsLoading(false);
+            throw serverError; // Re-throw to be caught by the outer catch
         });
 
+      toast({
+        title: 'Organisation created',
+        description: `${values.name} has been added successfully.`,
+      });
+      router.push('/organisations');
+
     } catch (error: any) {
-      console.error("Failed to upload logos:", error);
+      console.error("Failed to create organisation:", error);
       toast({
         variant: 'destructive',
-        title: 'Failed to upload logos',
-        description: 'Could not save images. Please try again.',
+        title: 'Failed to create organisation',
+        description: error.message || 'An unexpected error occurred.',
       });
-       setIsLoading(false);
+    } finally {
+      setIsLoading(false);
     }
   }
 
