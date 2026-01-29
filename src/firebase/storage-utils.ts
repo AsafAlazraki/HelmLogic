@@ -1,9 +1,10 @@
 'use client';
-import { ref, uploadBytes, getDownloadURL, type Storage } from 'firebase/storage';
 
-export async function uploadFile(storage: Storage, file: File, path: string): Promise<string> {
-    const storageRef = ref(storage, path);
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-}
+export const fileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};

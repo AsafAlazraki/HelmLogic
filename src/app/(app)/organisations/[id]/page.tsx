@@ -9,7 +9,7 @@ import Image from 'next/image';
 
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useStorage } from '@/firebase/provider';
+import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Trash2, Save } from 'lucide-react';
@@ -33,7 +33,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { uploadFile } from '@/firebase/storage-utils';
+import { fileToDataUri } from '@/firebase/storage-utils';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -80,7 +80,6 @@ export default function OrganisationDetailsPage() {
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
     const slug = params.id as string;
     const firestore = useFirestore();
-    const storage = useStorage();
 
     const orgQuery = useMemo(() => {
         if (!slug) return null;
@@ -136,16 +135,14 @@ export default function OrganisationDetailsPage() {
                 secondaryLogoUrl: values.secondaryLogoUrl,
             };
 
-            // If a new primary logo file is present, upload it and set the URL
+            // If a new primary logo file is present, convert it and set the URL
             if (values.primaryLogo instanceof File) {
-                const path = `organisations/${organisation.id}/logos/primary_${values.primaryLogo.name}`;
-                dataToUpdate.primaryLogoUrl = await uploadFile(storage, values.primaryLogo, path);
+                dataToUpdate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
             }
             
-            // If a new secondary logo file is present, upload it and set the URL
+            // If a new secondary logo file is present, convert it and set the URL
             if (values.secondaryLogo instanceof File) {
-                const path = `organisations/${organisation.id}/logos/secondary_${values.secondaryLogo.name}`;
-                dataToUpdate.secondaryLogoUrl = await uploadFile(storage, values.secondaryLogo, path);
+                dataToUpdate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
             }
 
             await updateDoc(orgDocRef, dataToUpdate)

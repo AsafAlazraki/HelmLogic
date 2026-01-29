@@ -18,8 +18,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useStorage } from '@/firebase/provider';
-import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +29,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
-import { uploadFile } from '@/firebase/storage-utils';
+import { fileToDataUri } from '@/firebase/storage-utils';
 
 const hexColorValidation = z.string().refine(val => /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -69,7 +69,6 @@ export default function AddOrganisationPage() {
   const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
-  const storage = useStorage();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -94,7 +93,6 @@ export default function AddOrganisationPage() {
     try {
       const orgsCollection = collection(firestore, 'organisations');
       const newOrgRef = doc(orgsCollection);
-      const orgId = newOrgRef.id;
 
       // Create a clean data object for Firestore
       const dataToCreate: { [key: string]: any } = {
@@ -110,13 +108,11 @@ export default function AddOrganisationPage() {
       };
 
       if (values.primaryLogo instanceof File) {
-          const path = `organisations/${orgId}/logos/primary_${values.primaryLogo.name}`;
-          dataToCreate.primaryLogoUrl = await uploadFile(storage, values.primaryLogo, path);
+          dataToCreate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
       }
 
       if (values.secondaryLogo instanceof File) {
-          const path = `organisations/${orgId}/logos/secondary_${values.secondaryLogo.name}`;
-          dataToCreate.secondaryLogoUrl = await uploadFile(storage, values.secondaryLogo, path);
+          dataToCreate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
       }
 
       await setDoc(newOrgRef, dataToCreate)

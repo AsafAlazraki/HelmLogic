@@ -7,10 +7,9 @@ service firebase.storage {
       allow read;
     }
 
-    // THIS IS A TEMPORARY AND INSECURE RULE FOR DIAGNOSTICS.
-    // It allows any user, even unauthenticated ones, to write to the logos folder.
+    // Allow authenticated users to write to the logos folder.
     match /organisations/{organisationId}/logos/{imageName} {
-      allow write: if true;
+      allow write: if request.auth != null;
     }
   }
 }
