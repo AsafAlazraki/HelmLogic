@@ -47,45 +47,36 @@ export default function DataConnectPage() {
                     {vendors && vendors.length > 0 ? (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {vendors.map((vendor) => (
-                                <Card key={vendor.id} className="group transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl overflow-hidden flex flex-col">
-                                    <CardHeader>
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div className="flex-grow overflow-hidden">
-                                                {vendor.logoUrl ? (
-                                                    <div className="relative h-12">
-                                                        <Image
-                                                            src={vendor.logoUrl}
-                                                            alt={`${vendor.name} logo`}
-                                                            fill
-                                                            className="object-contain object-left"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <CardTitle className="text-lg truncate">{vendor.name}</CardTitle>
-                                                )}
+                                <Card key={vendor.id} className="group relative transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl overflow-hidden flex flex-col">
+                                    {vendor.vendorType && (
+                                        <Badge variant="secondary" className="absolute top-2 right-2 z-10">{vendor.vendorType}</Badge>
+                                    )}
+                                    <CardHeader className="flex-grow flex items-center justify-center p-4">
+                                        {vendor.logoUrl ? (
+                                            <div className="relative h-20 w-full">
+                                                <Image
+                                                    src={vendor.logoUrl}
+                                                    alt={`${vendor.name} logo`}
+                                                    fill
+                                                    className="object-contain"
+                                                />
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <CardTitle className="text-xl text-center truncate">{vendor.name}</CardTitle>
+                                        )}
                                     </CardHeader>
-                                    <CardContent className="flex-grow pt-0 flex flex-col justify-between">
-                                        <div>
-                                            {vendor.logoUrl && (
-                                                <h3 className="font-semibold text-lg truncate mb-2">{vendor.name}</h3>
-                                            )}
-                                            {vendor.vendorType && (
-                                                <Badge variant="secondary" className="w-fit">{vendor.vendorType}</Badge>
-                                            )}
-                                        </div>
-                                        <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                                    <CardContent className="pt-4 border-t">
+                                        <div className="space-y-2 text-sm text-muted-foreground">
                                             {vendor.email && (
                                                 <div className="flex items-center gap-2">
                                                     <Mail className="h-4 w-4 flex-shrink-0" />
-                                                    <span className="truncate">{vendor.email}</span>
+                                                    <a href={`mailto:${vendor.email}`} className="truncate hover:underline">{vendor.email}</a>
                                                 </div>
                                             )}
                                             {vendor.phone && (
                                                 <div className="flex items-center gap-2">
                                                     <Phone className="h-4 w-4 flex-shrink-0" />
-                                                    <span>{vendor.phone}</span>
+                                                    <a href={`tel:${vendor.phone}`} className="hover:underline">{vendor.phone}</a>
                                                 </div>
                                             )}
                                         </div>
