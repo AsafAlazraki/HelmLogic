@@ -135,45 +135,47 @@ export default function AddDataConnectionPage() {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Vendor Name</FormLabel>
-                                        <FormControl>
-                                        <Input placeholder="e.g., Marine Data Solutions" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="vendorType"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Vendor Type</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                            <SelectValue placeholder="Select a vendor type" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="Boat Brand">Boat Brand</SelectItem>
-                                            <SelectItem value="Motor Brand">Motor Brand</SelectItem>
-                                            <SelectItem value="Trailer Brand">Trailer Brand</SelectItem>
-                                            <SelectItem value="Electronics Brand">Electronics Brand</SelectItem>
-                                            <SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem>
-                                            <SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem>
-                                            <SelectItem value="Other">Other</SelectItem>
-                                        </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Vendor Name</FormLabel>
+                                            <FormControl>
+                                            <Input placeholder="e.g., Marine Data Solutions" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="vendorType"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Vendor Type</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                <SelectValue placeholder="Select a vendor type" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="Boat Brand">Boat Brand</SelectItem>
+                                                <SelectItem value="Motor Brand">Motor Brand</SelectItem>
+                                                <SelectItem value="Trailer Brand">Trailer Brand</SelectItem>
+                                                <SelectItem value="Electronics Brand">Electronics Brand</SelectItem>
+                                                <SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem>
+                                                <SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem>
+                                                <SelectItem value="Other">Other</SelectItem>
+                                            </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
                                         control={form.control}
