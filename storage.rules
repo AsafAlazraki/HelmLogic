@@ -2,19 +2,15 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    function isHelmLogicAdmin() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
-    }
-
     // Allow public read access on all files so anyone can see org logos.
     match /{allPaths=**} {
       allow read;
     }
 
-    // Temporarily simplified rule for debugging upload timeouts.
-    // This will allow any authenticated user to upload logos.
+    // THIS IS A TEMPORARY AND INSECURE RULE FOR DIAGNOSTICS.
+    // It allows any user, even unauthenticated ones, to write to the logos folder.
     match /organisations/{organisationId}/logos/{imageName} {
-      allow write: if request.auth != null;
+      allow write: if true;
     }
   }
 }
