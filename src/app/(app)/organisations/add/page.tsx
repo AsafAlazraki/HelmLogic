@@ -31,7 +31,7 @@ import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { fileToDataUri } from '@/firebase/storage-utils';
 
-const hexColorValidation = z.string().refine(val => /^#[0-9A-F]{6}$/i.test(val), {
+const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
 }).optional().or(z.literal(''));
 
@@ -94,17 +94,19 @@ export default function AddOrganisationPage() {
       const orgsCollection = collection(firestore, 'organisations');
       const newOrgRef = doc(orgsCollection);
 
-      // Create a clean data object for Firestore
+      // Create a clean data object for Firestore, ensuring no undefined values
       const dataToCreate: { [key: string]: any } = {
           name: values.name,
           slug: createSlug(values.name),
-          address: values.address,
-          phoneNumber: values.phoneNumber,
-          abn: values.abn,
-          primaryColor: values.primaryColor,
-          accentColor: values.accentColor,
-          secondaryColor: values.secondaryColor,
-          roles: values.roles,
+          address: values.address || '',
+          phoneNumber: values.phoneNumber || '',
+          abn: values.abn || '',
+          primaryColor: values.primaryColor || '',
+          accentColor: values.accentColor || '',
+          secondaryColor: values.secondaryColor || '',
+          roles: values.roles || [],
+          primaryLogoUrl: null,
+          secondaryLogoUrl: null,
       };
 
       if (values.primaryLogo instanceof File) {

@@ -119,30 +119,33 @@ export default function OrganisationDetailsPage() {
         try {
             const orgDocRef = doc(firestore, 'organisations', organisation.id);
 
-            // Create a clean data object for Firestore
+            // Create a clean data object for Firestore, ensuring no undefined values
             const dataToUpdate: { [key: string]: any } = {
                 name: values.name,
                 slug: createSlug(values.name),
-                address: values.address,
-                phoneNumber: values.phoneNumber,
-                abn: values.abn,
-                primaryColor: values.primaryColor,
-                accentColor: values.accentColor,
-                secondaryColor: values.secondaryColor,
-                roles: values.roles,
-                // Keep existing URLs by default
-                primaryLogoUrl: values.primaryLogoUrl,
-                secondaryLogoUrl: values.secondaryLogoUrl,
+                address: values.address || '',
+                phoneNumber: values.phoneNumber || '',
+                abn: values.abn || '',
+                primaryColor: values.primaryColor || '',
+                accentColor: values.accentColor || '',
+                secondaryColor: values.secondaryColor || '',
+                roles: values.roles || [],
             };
 
-            // If a new primary logo file is present, convert it and set the URL
+            // Handle primary logo URL
             if (values.primaryLogo instanceof File) {
                 dataToUpdate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
+            } else {
+                // Keep existing value if no new file, or set to null if it doesn't exist
+                dataToUpdate.primaryLogoUrl = values.primaryLogoUrl || null;
             }
             
-            // If a new secondary logo file is present, convert it and set the URL
+            // Handle secondary logo URL
             if (values.secondaryLogo instanceof File) {
                 dataToUpdate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
+            } else {
+                // Keep existing value if no new file, or set to null if it doesn't exist
+                dataToUpdate.secondaryLogoUrl = values.secondaryLogoUrl || null;
             }
 
             await updateDoc(orgDocRef, dataToUpdate)
