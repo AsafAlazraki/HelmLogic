@@ -130,22 +130,16 @@ export default function OrganisationDetailsPage() {
                 accentColor: values.accentColor || '',
                 secondaryColor: values.secondaryColor || '',
                 roles: values.roles || [],
+                primaryLogoUrl: values.primaryLogoUrl || null,
+                secondaryLogoUrl: values.secondaryLogoUrl || null,
             };
-
-            // Handle primary logo URL
+            
             if (values.primaryLogo instanceof File) {
                 dataToUpdate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
-            } else {
-                // Keep existing value if no new file, or set to null if it doesn't exist
-                dataToUpdate.primaryLogoUrl = values.primaryLogoUrl || null;
             }
             
-            // Handle secondary logo URL
             if (values.secondaryLogo instanceof File) {
                 dataToUpdate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
-            } else {
-                // Keep existing value if no new file, or set to null if it doesn't exist
-                dataToUpdate.secondaryLogoUrl = values.secondaryLogoUrl || null;
             }
 
             await updateDoc(orgDocRef, dataToUpdate)
