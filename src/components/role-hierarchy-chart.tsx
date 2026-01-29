@@ -89,14 +89,14 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
   const nodeTypes = useMemo(() => ({ orgChartNode: OrgChartNode }), []);
 
   useEffect(() => {
-    const initialNodes: Node[] = value.map((role) => ({
+    const initialNodes: Node[] = (value || []).map((role) => ({
       id: role.id,
       data: { label: role.name },
       position: { x: 0, y: 0 },
       type: 'orgChartNode',
     }));
   
-    const initialEdges: Edge[] = value
+    const initialEdges: Edge[] = (value || [])
       .filter(role => role.parent)
       .map(role => ({
         id: `e-${role.parent}-${role.id}`,
@@ -120,7 +120,12 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
 
   useEffect(() => {
     const newRoles = flowToRoles(nodes, edges);
-    if (JSON.stringify(newRoles) !== JSON.stringify(value)) {
+    // Deep comparison to avoid infinite loops.
+    // We sort by ID to ensure the order of elements doesn't affect the string comparison.
+    const sortedNew = [...newRoles].sort((a, b) => a.id.localeCompare(b.id));
+    const sortedValue = [...(value || [])].sort((a, b) => a.id.localeCompare(b.id));
+
+    if (JSON.stringify(sortedNew) !== JSON.stringify(sortedValue)) {
         onChange(newRoles);
     }
   }, [nodes, edges, onChange, value]);
@@ -129,14 +134,14 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
     (changes: NodeChange[]) => {
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
-    []
+    [setNodes]
   );
 
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       setEdges((eds) => applyEdgeChanges(changes, eds));
     },
-    []
+    [setEdges]
   );
 
   const onConnect: OnConnect = useCallback(
