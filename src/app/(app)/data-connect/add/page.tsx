@@ -16,7 +16,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { collection, doc, setDoc } from 'firebase/firestore';
@@ -212,7 +211,7 @@ export default function AddDataConnectionPage() {
                                         <FormItem>
                                             <FormLabel>Address</FormLabel>
                                             <FormControl>
-                                            <Textarea placeholder="456 Data Drive, Suite 200&#10;Tech City, CA 90210&#10;USA" {...field} rows={3}/>
+                                                <Input placeholder="456 Data Drive, Suite 200, Tech City" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
