@@ -43,6 +43,12 @@ const formSchema = z.object({
   notes: z.string().optional(),
 });
 
+const createSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '');
+
 export default function AddVendorPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +81,7 @@ export default function AddVendorPage() {
 
             const dataToCreate: { [key: string]: any } = {
                 name: values.name,
+                slug: createSlug(values.name),
                 vendorType: values.vendorType,
                 dataSource: values.dataSource,
                 address: values.address || '',

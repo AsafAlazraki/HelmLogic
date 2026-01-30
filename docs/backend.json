@@ -103,6 +103,10 @@
           "type": "string",
           "description": "The name of the vendor."
         },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the vendor name."
+        },
         "vendorType": {
           "type": "string",
           "description": "The type of the vendor.",
@@ -160,7 +164,8 @@
         }
       },
       "required": [
-        "name"
+        "name",
+        "slug"
       ]
     }
   },

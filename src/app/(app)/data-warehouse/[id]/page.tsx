@@ -8,9 +8,9 @@ import { z } from 'zod';
 import Image from 'next/image';
 
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
-import { useDoc } from '@/firebase/firestore/use-doc';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Trash2, Save } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
@@ -39,6 +39,7 @@ import {
 const formSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: 'Vendor name is required.' }),
+  slug: z.string().optional(),
   vendorType: z.string().min(1, { message: 'Vendor type is required.' }),
   dataSource: z.string().min(1, { message: 'Data source is required.' }),
   address: z.string().optional(),
@@ -55,14 +56,29 @@ const formSchema = z.object({
 
 type VendorFormData = z.infer<typeof formSchema>;
 
+const createSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '');
+
+
 export default function VendorDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
-    const id = params.id as string;
+    const slug = params.id as string;
     const firestore = useFirestore();
 
-    const { data: vendor, loading: vendorLoading } = useDoc<VendorFormData>(id ? `/vendors/${id}` : null);
+    const vendorQuery = useMemo(() => {
+        if (!slug) return null;
+        // This query attempts to find a vendor by slug.
+        // It's part of the logic to allow access via slug or ID.
+        return query(collection(firestore, 'vendors'), where('slug', '==', slug));
+    }, [firestore, slug]);
+    
+    const { data: vendors, loading: vendorLoading } = useCollection<VendorFormData>(vendorQuery);
+    const vendor = vendors?.[0];
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -91,6 +107,7 @@ export default function VendorDetailsPage() {
 
             const dataToUpdate: { [key: string]: any } = {
                 name: values.name,
+                slug: createSlug(values.name),
                 vendorType: values.vendorType,
                 dataSource: values.dataSource,
                 address: values.address || '',
@@ -122,6 +139,11 @@ export default function VendorDetailsPage() {
                 });
 
             toast({ title: 'Vendor updated', description: `${values.name} has been updated successfully.` });
+            
+            if (dataToUpdate.slug !== slug) {
+                router.replace(`/data-warehouse/${dataToUpdate.slug}`);
+            }
+
         } catch (error: any) {
             console.error("Failed to update vendor:", error);
             toast({ variant: 'destructive', title: 'Failed to update vendor', description: error.message || 'An unexpected error occurred.' });
@@ -252,7 +274,7 @@ export default function VendorDetailsPage() {
                     </TabsContent>
                 </Tabs>
             ) : (
-                <Card><CardHeader><CardTitle>Vendor not found</CardTitle></CardHeader><CardContent><p>The requested vendor could not be found.</p></CardContent></Card>
+                <Card><CardHeader><CardTitle>Vendor not found</CardTitle></CardHeader><CardContent><p>The requested vendor could not be found. It may have been deleted, or the link is incorrect.</p></CardContent></Card>
             )}
 
             {vendor && (

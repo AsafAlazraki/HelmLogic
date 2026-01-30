@@ -70,6 +70,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Vendor {
     id: string;
     name: string;
+    slug?: string;
     logoUrl?: string;
     vendorType?: string;
     dataSource?: string;
@@ -228,7 +229,7 @@ export default function DataWarehousePage() {
                                     {filteredVendors.map((vendor) => {
                                         const hasTwoBadges = !!(vendor.vendorType && vendor.dataSource);
                                         return (
-                                        <Link href={`/data-warehouse/${vendor.id}`} key={vendor.id} className="group">
+                                        <Link href={`/data-warehouse/${vendor.slug || vendor.id}`} key={vendor.id} className="group">
                                             <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:-translate-y-1 group-hover:shadow-xl overflow-hidden flex flex-col">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
@@ -262,7 +263,7 @@ export default function DataWarehousePage() {
 
                                                 <CardContent className="p-4 flex-grow flex flex-col">
                                                     {!vendor.logoUrl && <h3 className="font-semibold truncate text-lg">{vendor.name}</h3>}
-                                                    <div className={`grid ${hasTwoBadges ? 'grid-cols-2' : 'grid-cols-1 justify-items-center'} gap-2 ${!vendor.logoUrl ? 'mt-2' : ''}`}>
+                                                    <div className={`grid ${hasTwoBadges ? 'grid-cols-2' : 'grid-cols-1 justify-items-center'} gap-2 ${vendor.logoUrl ? 'mt-0' : 'mt-2'}`}>
                                                         {vendor.vendorType && (
                                                             <Badge variant="secondary" className="flex justify-center items-center gap-1.5 text-xs py-1 px-2">
                                                                 {getVendorTypeIcon(vendor.vendorType)}
@@ -342,7 +343,7 @@ export default function DataWarehousePage() {
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => router.push(`/data-warehouse/${vendor.id}`)}>
+                                                                <DropdownMenuItem onClick={() => router.push(`/data-warehouse/${vendor.slug || vendor.id}`)}>
                                                                     <Pencil className="mr-2 h-4 w-4" />
                                                                     Edit
                                                                 </DropdownMenuItem>
