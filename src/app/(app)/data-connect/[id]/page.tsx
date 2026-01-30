@@ -62,7 +62,7 @@ export default function VendorDetailsPage() {
     const id = params.id as string;
     const firestore = useFirestore();
 
-    const { data: vendor, loading: vendorLoading } = useDoc<VendorFormData>(id ? `/vendors/${id}` : null);
+    const { data: vendor, loading: vendorLoading } = useDoc<VendorFormData>(id ? `/data-warehouse/${id}` : null);
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -87,7 +87,7 @@ export default function VendorDetailsPage() {
         setIsSubmitting(true);
         
         try {
-            const vendorDocRef = doc(firestore, 'vendors', vendor.id);
+            const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
 
             const dataToUpdate: { [key: string]: any } = {
                 name: values.name,
@@ -133,7 +133,7 @@ export default function VendorDetailsPage() {
     const handleDelete = async () => {
         if (!vendor) return;
         try {
-            const vendorDocRef = doc(firestore, 'vendors', vendor.id);
+            const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
             await deleteDoc(vendorDocRef).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({ path: vendorDocRef.path, operation: 'delete' });
                 errorEmitter.emit('permission-error', permissionError);

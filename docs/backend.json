@@ -187,11 +187,11 @@
       },
       "description": "Organisation documents, keyed by a unique ID."
     },
-    "/vendors/{vendorId}": {
+    "/data-warehouse/{vendorId}": {
       "schema": {
         "$ref": "#/backend/entities/Vendor"
       },
-      "description": "Vendor documents, keyed by a unique ID."
+      "description": "Vendor documents for the data warehouse, keyed by a unique ID."
     }
   }
 }

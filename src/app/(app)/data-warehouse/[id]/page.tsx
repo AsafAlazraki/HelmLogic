@@ -73,11 +73,11 @@ export default function VendorDetailsPage() {
 
     const vendorQueryBySlug = useMemo(() => {
         if (!slugOrId) return null;
-        return query(collection(firestore, 'vendors'), where('slug', '==', slugOrId));
+        return query(collection(firestore, 'data-warehouse'), where('slug', '==', slugOrId));
     }, [firestore, slugOrId]);
     
     const { data: vendorsBySlug, loading: slugLoading } = useCollection<VendorFormData>(vendorQueryBySlug);
-    const { data: vendorById, loading: idLoading } = useDoc<VendorFormData>(slugOrId ? `/vendors/${slugOrId}`: null);
+    const { data: vendorById, loading: idLoading } = useDoc<VendorFormData>(slugOrId ? `/data-warehouse/${slugOrId}`: null);
     
     const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
     const vendorLoading = slugLoading || idLoading;
@@ -105,7 +105,7 @@ export default function VendorDetailsPage() {
         setIsSubmitting(true);
 
         try {
-            const vendorDocRef = doc(firestore, 'vendors', vendor.id);
+            const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
 
             const dataToUpdate: { [key: string]: any } = {
                 name: values.name,
@@ -164,7 +164,7 @@ export default function VendorDetailsPage() {
     const handleDelete = async () => {
         if (!vendor) return;
         try {
-            const vendorDocRef = doc(firestore, 'vendors', vendor.id);
+            const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
             await deleteDoc(vendorDocRef).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({ path: vendorDocRef.path, operation: 'delete' });
                 errorEmitter.emit('permission-error', permissionError);
@@ -187,7 +187,7 @@ export default function VendorDetailsPage() {
                 <Tabs defaultValue="data" className="space-y-4">
                     <div className="flex items-start justify-between">
                         <div>
-                            <h1 className="text-2xl font-semibold">Edit {vendor.name}</h1>
+                            <h1 className="text-2xl font-semibold">Data Warehouse - {vendor.name}</h1>
                             <BreadcrumbNav pageTitle={vendor.name} />
                         </div>
                     </div>
@@ -354,5 +354,3 @@ export default function VendorDetailsPage() {
         </AdminGuard>
     );
 }
-
-    

@@ -126,7 +126,7 @@ const getDataSourceIcon = (dataSource?: string) => {
 };
 
 export default function DataConnectPage() {
-    const { data: vendors, loading } = useCollection<Vendor>('vendors');
+    const { data: vendors, loading } = useCollection<Vendor>('data-warehouse');
     const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
     const [filterType, setFilterType] = useState<string>('all');
     const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
@@ -139,7 +139,7 @@ export default function DataConnectPage() {
     const handleDeleteVendor = async () => {
         if (!vendorToDelete) return;
         try {
-            const vendorRef = doc(firestore, 'vendors', vendorToDelete.id);
+            const vendorRef = doc(firestore, 'data-warehouse', vendorToDelete.id);
             await deleteDoc(vendorRef);
             toast({
                 title: 'Vendor Deleted',

@@ -70,7 +70,7 @@ export default function AddDataConnectionPage() {
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsLoading(true);
         try {
-            const vendorsCollection = collection(firestore, 'vendors');
+            const vendorsCollection = collection(firestore, 'data-warehouse');
             const newVendorRef = doc(vendorsCollection);
 
             const dataToCreate: { [key: string]: any } = {
