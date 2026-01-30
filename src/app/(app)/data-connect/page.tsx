@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import AdminGuard from "@/components/admin-guard";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,7 @@ import {
     LayoutGrid,
     List,
     Trash2,
-    Globe,
-    User,
-    Paperclip,
+    Pencil,
     Briefcase,
     Cable,
     UploadCloud
@@ -133,6 +132,7 @@ export default function DataConnectPage() {
     const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
     const firestore = useFirestore();
     const { toast } = useToast();
+    const router = useRouter();
 
     const filteredVendors = vendors?.filter(vendor => filterType === 'all' || vendor.vendorType === filterType);
 
@@ -153,6 +153,7 @@ export default function DataConnectPage() {
                 description: `Could not delete ${vendorToDelete.name}.`,
             });
             console.error("Failed to delete vendor:", error);
+        } finally {
             setVendorToDelete(null);
         }
     };
@@ -222,73 +223,57 @@ export default function DataConnectPage() {
                             {viewMode === 'card' ? (
                                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                     {filteredVendors.map((vendor) => (
-                                        <Card key={vendor.id} className="group relative overflow-hidden transition-all duration-300 ease-in-out hover:border-primary hover:-translate-y-1 hover:shadow-xl">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-background">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem 
-                                                        className="text-destructive"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            setVendorToDelete(vendor);
-                                                        }}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                            
-                                            <div className="h-24 bg-secondary flex items-center justify-center p-4">
-                                                {vendor.logoUrl ? (
-                                                    <div className="relative h-full w-full">
-                                                        <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
-                                                    </div>
-                                                ) : (
-                                                    <Building className="h-10 w-10 text-muted-foreground"/>
-                                                )}
-                                            </div>
-
-                                            <CardContent className="p-4">
-                                                {!vendor.logoUrl && <h3 className="font-semibold truncate text-lg">{vendor.name}</h3>}
-                                                <div className={`flex flex-wrap gap-2 ${!vendor.logoUrl ? 'mt-2' : ''}`}>
-                                                    {vendor.vendorType && (
-                                                        <Badge variant="secondary" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
-                                                            {getVendorTypeIcon(vendor.vendorType)}
-                                                            <span>{vendor.vendorType}</span>
-                                                        </Badge>
-                                                    )}
-                                                    {vendor.dataSource && (
-                                                        <Badge variant="outline" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
-                                                            {getDataSourceIcon(vendor.dataSource)}
-                                                            <span>{vendor.dataSource}</span>
-                                                        </Badge>
+                                        <Link href={`/data-connect/${vendor.id}`} key={vendor.id} className="group">
+                                            <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:-translate-y-1 group-hover:shadow-xl overflow-hidden">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-background" onClick={(e) => e.preventDefault()}>
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem 
+                                                            className="text-destructive"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setVendorToDelete(vendor);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                
+                                                <div className="h-24 bg-secondary flex items-center justify-center p-4">
+                                                    {vendor.logoUrl ? (
+                                                        <div className="relative h-full w-full">
+                                                            <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
+                                                        </div>
+                                                    ) : (
+                                                        <Building className="h-10 w-10 text-muted-foreground"/>
                                                     )}
                                                 </div>
-                                            </CardContent>
 
-                                            <div className="border-t p-3 flex items-center justify-end gap-4 text-sm text-muted-foreground">
-                                                 {vendor.website && (
-                                                    <a href={!vendor.website.startsWith('http') ? `https://${vendor.website}` : vendor.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary" title={vendor.website}>
-                                                        <Globe className="h-4 w-4" />
-                                                    </a>
-                                                )}
-                                                {vendor.primaryContact && (
-                                                    <div className="hover:text-primary cursor-default" title={vendor.primaryContact}>
-                                                        <User className="h-4 w-4" />
+                                                <CardContent className="p-4">
+                                                    {!vendor.logoUrl && <h3 className="font-semibold truncate text-lg">{vendor.name}</h3>}
+                                                    <div className={`flex flex-wrap gap-2 ${!vendor.logoUrl ? 'mt-2' : ''}`}>
+                                                        {vendor.vendorType && (
+                                                            <Badge variant="secondary" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
+                                                                {getVendorTypeIcon(vendor.vendorType)}
+                                                                <span>{vendor.vendorType}</span>
+                                                            </Badge>
+                                                        )}
+                                                        {vendor.dataSource && (
+                                                            <Badge variant="outline" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
+                                                                {getDataSourceIcon(vendor.dataSource)}
+                                                                <span>{vendor.dataSource}</span>
+                                                            </Badge>
+                                                        )}
                                                     </div>
-                                                )}
-                                                 {vendor.attachmentUrl && (
-                                                    <a href={vendor.attachmentUrl} download={vendor.attachmentName} className="hover:text-primary" title={vendor.attachmentName}>
-                                                        <Paperclip className="h-4 w-4" />
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </Card>
+                                                </CardContent>
+                                            </Card>
+                                        </Link>
                                     ))}
                                 </div>
                             ) : (
@@ -336,26 +321,7 @@ export default function DataConnectPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                                                            {vendor.primaryContact && (
-                                                                <div className="flex items-center gap-2" title={vendor.primaryContact}>
-                                                                    <User className="h-4 w-4 flex-shrink-0" />
-                                                                    <span className="truncate">{vendor.primaryContact}</span>
-                                                                </div>
-                                                            )}
-                                                            {vendor.website && (
-                                                                <a href={!vendor.website.startsWith('http') ? `https://${vendor.website}` : vendor.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline" title={vendor.website}>
-                                                                    <Globe className="h-4 w-4 flex-shrink-0" />
-                                                                    <span className="truncate">{vendor.website}</span>
-                                                                </a>
-                                                            )}
-                                                            {vendor.attachmentUrl && (
-                                                                <a href={vendor.attachmentUrl} download={vendor.attachmentName} className="flex items-center gap-2 hover:underline" title={vendor.attachmentName}>
-                                                                    <Paperclip className="h-4 w-4 flex-shrink-0" />
-                                                                    <span className="truncate">{vendor.attachmentName || 'Attachment'}</span>
-                                                                </a>
-                                                            )}
-                                                        </div>
+                                                        ...
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <DropdownMenu>
@@ -366,6 +332,10 @@ export default function DataConnectPage() {
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => router.push(`/data-connect/${vendor.id}`)}>
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    Edit
+                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem
                                                                     className="text-destructive"
                                                                     onClick={() => setVendorToDelete(vendor)}
