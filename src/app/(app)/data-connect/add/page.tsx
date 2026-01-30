@@ -266,43 +266,12 @@ export default function AddDataConnectionPage() {
                                         />
                                     </CardContent>
                                 </Card>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Data Source</CardTitle>
-                                        <CardDescription>Select how data will be connected for this vendor.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <FormField
-                                            control={form.control}
-                                            name="dataSource"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Data Source</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select a data source" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="Business Central">Business Central</SelectItem>
-                                                            <SelectItem value="Direct API">Direct API</SelectItem>
-                                                            <SelectItem value="Document Upload">Document Upload</SelectItem>
-                                                            <SelectItem value="Other">Other</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </CardContent>
-                                </Card>
                             </div>
 
-                             <div className="lg:col-span-1">
+                             <div className="lg:col-span-1 space-y-8">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Branding & Attachments</CardTitle>
+                                        <CardTitle>Branding &amp; Attachments</CardTitle>
                                         <CardDescription>Upload logos and other relevant files.</CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-6">
@@ -379,6 +348,37 @@ export default function AddDataConnectionPage() {
                                         />
                                     </CardContent>
                                 </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Data Source</CardTitle>
+                                        <CardDescription>Select how data will be connected for this vendor.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <FormField
+                                            control={form.control}
+                                            name="dataSource"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Data Source</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select a data source" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="Business Central">Business Central</SelectItem>
+                                                            <SelectItem value="Direct API">Direct API</SelectItem>
+                                                            <SelectItem value="Document Upload">Document Upload</SelectItem>
+                                                            <SelectItem value="Other">Other</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </CardContent>
+                                </Card>
                             </div>
                         </div>
                     </form>
@@ -386,4 +386,3 @@ export default function AddDataConnectionPage() {
             </div>
         </AdminGuard>
     );
-}
