@@ -225,7 +225,9 @@ export default function DataWarehousePage() {
                         <>
                             {viewMode === 'card' ? (
                                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                    {filteredVendors.map((vendor) => (
+                                    {filteredVendors.map((vendor) => {
+                                        const hasTwoBadges = !!(vendor.vendorType && vendor.dataSource);
+                                        return (
                                         <Link href={`/data-warehouse/${vendor.id}`} key={vendor.id} className="group">
                                             <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:-translate-y-1 group-hover:shadow-xl overflow-hidden flex flex-col">
                                                 <DropdownMenu>
@@ -260,15 +262,15 @@ export default function DataWarehousePage() {
 
                                                 <CardContent className="p-4 flex-grow flex flex-col">
                                                     {!vendor.logoUrl && <h3 className="font-semibold truncate text-lg">{vendor.name}</h3>}
-                                                    <div className={`flex items-center justify-center gap-2 ${!vendor.logoUrl ? 'mt-2' : ''}`}>
+                                                    <div className={`grid ${hasTwoBadges ? 'grid-cols-2' : 'grid-cols-1 justify-items-center'} gap-2 ${!vendor.logoUrl ? 'mt-2' : ''}`}>
                                                         {vendor.vendorType && (
-                                                            <Badge variant="secondary" className="flex-1 flex justify-center items-center gap-1.5 text-xs py-1 px-2 text-center">
+                                                            <Badge variant="secondary" className="flex justify-center items-center gap-1.5 text-xs py-1 px-2">
                                                                 {getVendorTypeIcon(vendor.vendorType)}
                                                                 <span>{vendor.vendorType}</span>
                                                             </Badge>
                                                         )}
                                                         {vendor.dataSource && (
-                                                            <Badge variant="outline" className="flex-1 flex justify-center items-center gap-1.5 text-xs py-1 px-2 text-center">
+                                                            <Badge variant="outline" className="flex justify-center items-center gap-1.5 text-xs py-1 px-2">
                                                                 {getDataSourceIcon(vendor.dataSource)}
                                                                 <span>{vendor.dataSource}</span>
                                                             </Badge>
@@ -282,7 +284,7 @@ export default function DataWarehousePage() {
                                                 </CardFooter>
                                             </Card>
                                         </Link>
-                                    ))}
+                                    )})}
                                 </div>
                             ) : (
                                 <Card>
