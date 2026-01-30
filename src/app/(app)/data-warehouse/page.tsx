@@ -260,15 +260,15 @@ export default function DataWarehousePage() {
 
                                                 <CardContent className="p-4 flex-grow flex flex-col">
                                                     {!vendor.logoUrl && <h3 className="font-semibold truncate text-lg">{vendor.name}</h3>}
-                                                    <div className={`flex flex-wrap gap-2 ${!vendor.logoUrl ? 'mt-2' : ''}`}>
+                                                    <div className={`flex items-center justify-center gap-2 ${!vendor.logoUrl ? 'mt-2' : ''}`}>
                                                         {vendor.vendorType && (
-                                                            <Badge variant="secondary" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
+                                                            <Badge variant="secondary" className="flex-1 flex justify-center items-center gap-1.5 text-xs py-1 px-2 text-center">
                                                                 {getVendorTypeIcon(vendor.vendorType)}
                                                                 <span>{vendor.vendorType}</span>
                                                             </Badge>
                                                         )}
                                                         {vendor.dataSource && (
-                                                            <Badge variant="outline" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
+                                                            <Badge variant="outline" className="flex-1 flex justify-center items-center gap-1.5 text-xs py-1 px-2 text-center">
                                                                 {getDataSourceIcon(vendor.dataSource)}
                                                                 <span>{vendor.dataSource}</span>
                                                             </Badge>
