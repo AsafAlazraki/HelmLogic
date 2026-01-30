@@ -99,35 +99,29 @@ export default function VendorDetailsPage() {
     async function onSubmit(values: VendorFormData) {
         if (!vendor) return;
         setIsSubmitting(true);
-        
+
         try {
             const vendorDocRef = doc(firestore, 'vendors', vendor.id);
 
-            const dataToUpdate: { [key: string]: any } = {
-                name: values.name,
-                slug: createSlug(values.name),
-                vendorType: values.vendorType,
-                dataSource: values.dataSource,
-                address: values.address || '',
-                abn: values.abn || '',
-                primaryContact: values.primaryContact || '',
-                website: values.website || '',
-                notes: values.notes || '',
-            };
-            
-            if (values.logo instanceof File) {
-                dataToUpdate.logoUrl = await fileToDataUri(values.logo);
+            const dataToUpdate = { ...values };
+            dataToUpdate.slug = createSlug(dataToUpdate.name);
+
+            if (dataToUpdate.logo instanceof File) {
+                dataToUpdate.logoUrl = await fileToDataUri(dataToUpdate.logo);
             } else {
                 dataToUpdate.logoUrl = vendor.logoUrl || null;
             }
-            
-            if (values.attachment instanceof File) {
-                dataToUpdate.attachmentUrl = await fileToDataUri(values.attachment);
-                dataToUpdate.attachmentName = values.attachment.name;
+
+            if (dataToUpdate.attachment instanceof File) {
+                dataToUpdate.attachmentUrl = await fileToDataUri(dataToUpdate.attachment);
+                dataToUpdate.attachmentName = dataToUpdate.attachment.name;
             } else {
                 dataToUpdate.attachmentUrl = vendor.attachmentUrl || null;
                 dataToUpdate.attachmentName = vendor.attachmentName || null;
             }
+            
+            delete (dataToUpdate as Partial<VendorFormData>).logo;
+            delete (dataToUpdate as Partial<VendorFormData>).attachment;
 
             await updateDoc(vendorDocRef, dataToUpdate)
                 .catch((serverError) => {
