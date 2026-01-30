@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Settings, Shield, DatabaseZap, Database, Building2 } from 'lucide-react';
+import { LayoutDashboard, Settings, Shield, Warehouse, Building2 } from 'lucide-react';
 
 export type SubNavLink = {
   href: string;
@@ -21,8 +21,7 @@ export const navLinks: NavLink[] = [
     label: 'Admin',
     icon: Shield,
     subLinks: [
-      { href: '/data-connect', label: 'Data Connect', icon: DatabaseZap },
-      { href: '/data-management', label: 'Data Management', icon: Database },
+      { href: '/data-warehouse', label: 'Data Warehouse', icon: Warehouse },
       { href: '/organisations', label: 'Organisations', icon: Building2 },
       { href: '/settings', label: 'Settings', icon: Settings },
     ],
