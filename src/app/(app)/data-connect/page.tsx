@@ -254,8 +254,8 @@ export default function DataConnectPage() {
                                             </div>
 
                                             <CardContent className="p-4">
-                                                <h3 className="font-semibold truncate text-lg">{vendor.name}</h3>
-                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                {!vendor.logoUrl && <h3 className="font-semibold truncate text-lg">{vendor.name}</h3>}
+                                                <div className={`flex flex-wrap gap-2 ${!vendor.logoUrl ? 'mt-2' : ''}`}>
                                                     {vendor.vendorType && (
                                                         <Badge variant="secondary" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
                                                             {getVendorTypeIcon(vendor.vendorType)}
