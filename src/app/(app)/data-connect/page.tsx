@@ -222,7 +222,7 @@ export default function DataConnectPage() {
                             {viewMode === 'card' ? (
                                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                     {filteredVendors.map((vendor) => (
-                                        <Card key={vendor.id} className="group relative transition-shadow duration-300 hover:shadow-lg overflow-hidden">
+                                        <Card key={vendor.id} className="group relative overflow-hidden transition-all duration-300 ease-in-out hover:border-primary hover:-translate-y-1 hover:shadow-xl">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-background">
