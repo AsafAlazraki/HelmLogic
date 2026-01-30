@@ -9,6 +9,7 @@ import Image from 'next/image';
 
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -78,16 +79,19 @@ export default function OrganisationDetailsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
-    const slug = params.id as string;
+    const slugOrId = params.id as string;
     const firestore = useFirestore();
 
-    const orgQuery = useMemo(() => {
-        if (!slug) return null;
-        return query(collection(firestore, 'organisations'), where('slug', '==', slug));
-    }, [firestore, slug]);
+    const orgQueryBySlug = useMemo(() => {
+        if (!slugOrId) return null;
+        return query(collection(firestore, 'organisations'), where('slug', '==', slugOrId));
+    }, [firestore, slugOrId]);
 
-    const { data: organisations, loading: orgLoading } = useCollection<OrganisationFormData>(orgQuery);
-    const organisation = organisations?.[0];
+    const { data: organisationsBySlug, loading: slugLoading } = useCollection<OrganisationFormData>(orgQueryBySlug);
+    const { data: organisationById, loading: idLoading } = useDoc<OrganisationFormData>(slugOrId ? `/organisations/${slugOrId}` : null);
+
+    const organisation = useMemo(() => organisationsBySlug?.[0] || organisationById, [organisationsBySlug, organisationById]);
+    const orgLoading = slugLoading || idLoading;
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
@@ -152,7 +156,7 @@ export default function OrganisationDetailsPage() {
                 });
 
             toast({ title: 'Organisation updated', description: `${values.name} has been updated successfully.` });
-            if (dataToUpdate.slug !== slug) {
+            if (dataToUpdate.slug !== slugOrId) {
                 router.replace(`/organisations/${dataToUpdate.slug}`);
             }
 
@@ -321,3 +325,5 @@ export default function OrganisationDetailsPage() {
         </AdminGuard>
     );
 }
+
+    

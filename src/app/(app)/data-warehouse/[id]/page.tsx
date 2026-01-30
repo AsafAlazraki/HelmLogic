@@ -9,6 +9,7 @@ import Image from 'next/image';
 
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -67,16 +68,19 @@ export default function VendorDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
-    const slug = params.id as string;
+    const slugOrId = params.id as string;
     const firestore = useFirestore();
 
-    const vendorQuery = useMemo(() => {
-        if (!slug) return null;
-        return query(collection(firestore, 'vendors'), where('slug', '==', slug));
-    }, [firestore, slug]);
+    const vendorQueryBySlug = useMemo(() => {
+        if (!slugOrId) return null;
+        return query(collection(firestore, 'vendors'), where('slug', '==', slugOrId));
+    }, [firestore, slugOrId]);
     
-    const { data: vendors, loading: vendorLoading } = useCollection<VendorFormData>(vendorQuery);
-    const vendor = vendors?.[0];
+    const { data: vendorsBySlug, loading: slugLoading } = useCollection<VendorFormData>(vendorQueryBySlug);
+    const { data: vendorById, loading: idLoading } = useDoc<VendorFormData>(slugOrId ? `/vendors/${slugOrId}`: null);
+    
+    const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
+    const vendorLoading = slugLoading || idLoading;
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -145,7 +149,7 @@ export default function VendorDetailsPage() {
 
             toast({ title: 'Vendor updated', description: `${values.name} has been updated successfully.` });
             
-            if (dataToUpdate.slug !== slug) {
+            if (dataToUpdate.slug !== slugOrId) {
                 router.replace(`/data-warehouse/${dataToUpdate.slug}`);
             }
 
@@ -350,3 +354,5 @@ export default function VendorDetailsPage() {
         </AdminGuard>
     );
 }
+
+    
