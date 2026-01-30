@@ -72,8 +72,6 @@ export default function VendorDetailsPage() {
 
     const vendorQuery = useMemo(() => {
         if (!slug) return null;
-        // This query attempts to find a vendor by slug.
-        // It's part of the logic to allow access via slug or ID.
         return query(collection(firestore, 'vendors'), where('slug', '==', slug));
     }, [firestore, slug]);
     
@@ -115,18 +113,20 @@ export default function VendorDetailsPage() {
                 primaryContact: values.primaryContact || '',
                 website: values.website || '',
                 notes: values.notes || '',
-                logoUrl: values.logoUrl || null,
-                attachmentUrl: values.attachmentUrl || null,
-                attachmentName: values.attachmentName || null,
             };
             
             if (values.logo instanceof File) {
                 dataToUpdate.logoUrl = await fileToDataUri(values.logo);
+            } else {
+                dataToUpdate.logoUrl = vendor.logoUrl || null;
             }
             
             if (values.attachment instanceof File) {
                 dataToUpdate.attachmentUrl = await fileToDataUri(values.attachment);
                 dataToUpdate.attachmentName = values.attachment.name;
+            } else {
+                dataToUpdate.attachmentUrl = vendor.attachmentUrl || null;
+                dataToUpdate.attachmentName = vendor.attachmentName || null;
             }
 
             await updateDoc(vendorDocRef, dataToUpdate)
