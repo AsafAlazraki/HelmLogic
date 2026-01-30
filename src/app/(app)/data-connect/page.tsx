@@ -222,10 +222,10 @@ export default function DataConnectPage() {
                             {viewMode === 'card' ? (
                                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                     {filteredVendors.map((vendor) => (
-                                        <Card key={vendor.id} className="group relative transition-shadow duration-300 hover:shadow-lg">
+                                        <Card key={vendor.id} className="group relative transition-shadow duration-300 hover:shadow-lg overflow-hidden">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-background">
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
@@ -242,54 +242,52 @@ export default function DataConnectPage() {
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
-
-                                            <CardContent className="p-4 flex items-center gap-4">
-                                                <div className="h-12 w-12 relative flex-shrink-0">
-                                                    {vendor.logoUrl ? (
-                                                        <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="rounded-md object-contain" />
-                                                    ) : (
-                                                        <div className="h-full w-full flex items-center justify-center rounded-md bg-secondary">
-                                                            <Building className="h-6 w-6 text-muted-foreground"/>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex-grow overflow-hidden">
-                                                    <p className="font-semibold truncate">{vendor.name}</p>
-                                                    <div className="flex flex-wrap gap-1 mt-1">
-                                                        {vendor.vendorType && (
-                                                            <Badge variant="secondary" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
-                                                                {getVendorTypeIcon(vendor.vendorType)}
-                                                                <span>{vendor.vendorType}</span>
-                                                            </Badge>
-                                                        )}
-                                                        {vendor.dataSource && (
-                                                            <Badge variant="outline" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
-                                                                {getDataSourceIcon(vendor.dataSource)}
-                                                                <span>{vendor.dataSource}</span>
-                                                            </Badge>
-                                                        )}
+                                            
+                                            <div className="h-24 bg-secondary flex items-center justify-center p-4">
+                                                {vendor.logoUrl ? (
+                                                    <div className="relative h-full w-full">
+                                                        <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
                                                     </div>
-                                                </div>
-                                                
-                                                <div className="flex items-center shrink-0 gap-3 text-sm text-muted-foreground">
-                                                     {vendor.website && (
-                                                        <a href={!vendor.website.startsWith('http') ? `https://${vendor.website}` : vendor.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary" title={vendor.website}>
-                                                            <Globe className="h-4 w-4" />
-                                                        </a>
+                                                ) : (
+                                                    <Building className="h-10 w-10 text-muted-foreground"/>
+                                                )}
+                                            </div>
+
+                                            <CardContent className="p-4">
+                                                <h3 className="font-semibold truncate text-lg">{vendor.name}</h3>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {vendor.vendorType && (
+                                                        <Badge variant="secondary" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
+                                                            {getVendorTypeIcon(vendor.vendorType)}
+                                                            <span>{vendor.vendorType}</span>
+                                                        </Badge>
                                                     )}
-                                                    {vendor.primaryContact && (
-                                                        <div className="hover:text-primary cursor-default" title={vendor.primaryContact}>
-                                                            <User className="h-4 w-4" />
-                                                        </div>
-                                                    )}
-                                                     {vendor.attachmentUrl && (
-                                                        <a href={vendor.attachmentUrl} download={vendor.attachmentName} className="hover:text-primary" title={vendor.attachmentName}>
-                                                            <Paperclip className="h-4 w-4" />
-                                                        </a>
+                                                    {vendor.dataSource && (
+                                                        <Badge variant="outline" className="flex items-center gap-1.5 text-xs py-0.5 px-2">
+                                                            {getDataSourceIcon(vendor.dataSource)}
+                                                            <span>{vendor.dataSource}</span>
+                                                        </Badge>
                                                     )}
                                                 </div>
                                             </CardContent>
+
+                                            <div className="border-t p-3 flex items-center justify-end gap-4 text-sm text-muted-foreground">
+                                                 {vendor.website && (
+                                                    <a href={!vendor.website.startsWith('http') ? `https://${vendor.website}` : vendor.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary" title={vendor.website}>
+                                                        <Globe className="h-4 w-4" />
+                                                    </a>
+                                                )}
+                                                {vendor.primaryContact && (
+                                                    <div className="hover:text-primary cursor-default" title={vendor.primaryContact}>
+                                                        <User className="h-4 w-4" />
+                                                    </div>
+                                                )}
+                                                 {vendor.attachmentUrl && (
+                                                    <a href={vendor.attachmentUrl} download={vendor.attachmentName} className="hover:text-primary" title={vendor.attachmentName}>
+                                                        <Paperclip className="h-4 w-4" />
+                                                    </a>
+                                                )}
+                                            </div>
                                         </Card>
                                     ))}
                                 </div>
