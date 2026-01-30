@@ -12,7 +12,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save } from 'lucide-react';
+import { Loader2, Trash2, Save, X } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -103,25 +103,36 @@ export default function VendorDetailsPage() {
         try {
             const vendorDocRef = doc(firestore, 'vendors', vendor.id);
 
-            const dataToUpdate = { ...values };
-            dataToUpdate.slug = createSlug(dataToUpdate.name);
+            const dataToUpdate: { [key: string]: any } = {
+                name: values.name,
+                slug: createSlug(values.name),
+                vendorType: values.vendorType,
+                dataSource: values.dataSource,
+                address: values.address || '',
+                abn: values.abn || '',
+                primaryContact: values.primaryContact || '',
+                website: values.website || '',
+                notes: values.notes || '',
+            };
 
-            if (dataToUpdate.logo instanceof File) {
-                dataToUpdate.logoUrl = await fileToDataUri(dataToUpdate.logo);
+            if (values.logo instanceof File) {
+                dataToUpdate.logoUrl = await fileToDataUri(values.logo);
+            } else if (values.logoUrl === '') {
+                dataToUpdate.logoUrl = null;
             } else {
                 dataToUpdate.logoUrl = vendor.logoUrl || null;
             }
 
-            if (dataToUpdate.attachment instanceof File) {
-                dataToUpdate.attachmentUrl = await fileToDataUri(dataToUpdate.attachment);
-                dataToUpdate.attachmentName = dataToUpdate.attachment.name;
+            if (values.attachment instanceof File) {
+                dataToUpdate.attachmentUrl = await fileToDataUri(values.attachment);
+                dataToUpdate.attachmentName = values.attachment.name;
+            } else if (values.attachmentUrl === '') {
+                dataToUpdate.attachmentUrl = null;
+                dataToUpdate.attachmentName = null;
             } else {
                 dataToUpdate.attachmentUrl = vendor.attachmentUrl || null;
                 dataToUpdate.attachmentName = vendor.attachmentName || null;
             }
-            
-            delete (dataToUpdate as Partial<VendorFormData>).logo;
-            delete (dataToUpdate as Partial<VendorFormData>).attachment;
 
             await updateDoc(vendorDocRef, dataToUpdate)
                 .catch((serverError) => {
@@ -232,17 +243,68 @@ export default function VendorDetailsPage() {
                                             <CardHeader><CardTitle>Branding & Attachments</CardTitle></CardHeader>
                                             <CardContent className="space-y-6">
                                                 <FormField control={form.control} name="logo" render={({ field }) => (
-                                                    <FormItem><FormLabel>Vendor Logo</FormLabel>
-                                                        {logoPreview && <div className="mt-2 w-32 h-32 relative"><Image src={logoPreview} alt="Logo Preview" fill className="rounded-md object-contain border p-1" /></div>}
-                                                        <FormControl><Input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; field.onChange(file); setLogoPreview(file ? URL.createObjectURL(file) : vendor.logoUrl || null); }} /></FormControl>
-                                                        <FormDescription>Upload a new logo.</FormDescription><FormMessage />
+                                                    <FormItem>
+                                                        <FormLabel>Vendor Logo</FormLabel>
+                                                        {logoPreview && (
+                                                            <div className="mt-2 w-32 h-32 relative group">
+                                                                <Image src={logoPreview} alt="Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                                    onClick={() => {
+                                                                        setLogoPreview(null);
+                                                                        form.setValue('logoUrl', ''); // Signal deletion
+                                                                        field.onChange(null);
+                                                                    }}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                        <FormControl>
+                                                            <Input type="file" accept="image/*" onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                field.onChange(file);
+                                                                setLogoPreview(file ? URL.createObjectURL(file) : null);
+                                                            }} />
+                                                        </FormControl>
+                                                        <FormDescription>Upload a new logo.</FormDescription>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="attachment" render={({ field }) => (
-                                                    <FormItem><FormLabel>File Attachment</FormLabel>
-                                                        {attachmentPreview && <div className="mt-2 text-sm text-muted-foreground p-2 bg-muted rounded-md">Selected: <strong>{attachmentPreview}</strong></div>}
-                                                        <FormControl><Input type="file" onChange={(e) => { const file = e.target.files?.[0]; field.onChange(file); setAttachmentPreview(file ? file.name : vendor.attachmentName || null); }} /></FormControl>
-                                                        <FormDescription>Upload a new file.</FormDescription><FormMessage />
+                                                    <FormItem>
+                                                        <FormLabel>File Attachment</FormLabel>
+                                                        {attachmentPreview && (
+                                                            <div className="mt-2 relative group p-2 bg-muted rounded-md">
+                                                                <p className="text-sm text-muted-foreground pr-6">Selected: <strong>{attachmentPreview}</strong></p>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    onClick={() => {
+                                                                        setAttachmentPreview(null);
+                                                                        form.setValue('attachmentUrl', ''); // Signal deletion
+                                                                        form.setValue('attachmentName', ''); // Signal deletion
+                                                                        field.onChange(null);
+                                                                    }}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                        <FormControl>
+                                                            <Input type="file" onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                field.onChange(file);
+                                                                setAttachmentPreview(file ? file.name : null);
+                                                            }} />
+                                                        </FormControl>
+                                                        <FormDescription>Upload a new file.</FormDescription>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
                                             </CardContent>
