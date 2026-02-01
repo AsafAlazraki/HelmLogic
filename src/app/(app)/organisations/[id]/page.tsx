@@ -48,7 +48,7 @@ const roleSchema = z.object({
 const formSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
-  slug: z.string(),
+  slug: z.string().optional(),
   address: z.string().optional(),
   phoneNumber: z.string().optional(),
   abn: z.string().optional(),
