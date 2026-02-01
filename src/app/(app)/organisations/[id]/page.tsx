@@ -18,7 +18,6 @@ import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { 
@@ -230,7 +229,7 @@ export default function OrganisationDetailsPage() {
                                             <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={form.control} name="address" render={({ field }) => (
-                                            <FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Ocean Ave..." {...field} rows={4}/></FormControl><FormDescription>An address search feature will be added later.</FormDescription><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Ocean Ave, Metropolis, NY 10001" {...field} /></FormControl><FormDescription>An address search feature will be added later.</FormDescription><FormMessage /></FormItem>
                                         )} />
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <FormField control={form.control} name="phoneNumber" render={({ field }) => (
@@ -325,5 +324,3 @@ export default function OrganisationDetailsPage() {
         </AdminGuard>
     );
 }
-
-    

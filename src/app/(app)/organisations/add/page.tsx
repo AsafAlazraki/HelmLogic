@@ -16,7 +16,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { collection, doc, setDoc } from 'firebase/firestore';
@@ -214,7 +213,7 @@ export default function AddOrganisationPage() {
                                 <FormItem>
                                     <FormLabel>Address</FormLabel>
                                     <FormControl>
-                                    <Textarea placeholder="123 Ocean Ave, Suite 101&#10;Metropolis, NY 10001&#10;USA" {...field} rows={4}/>
+                                    <Input placeholder="123 Ocean Ave, Metropolis, NY 10001" {...field} />
                                     </FormControl>
                                     <FormDescription>An address search feature will be added later.</FormDescription>
                                     <FormMessage />
