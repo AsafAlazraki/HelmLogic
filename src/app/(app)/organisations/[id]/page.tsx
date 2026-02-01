@@ -35,9 +35,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { fileToDataUri } from '@/firebase/storage-utils';
 
-const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
-    message: "Must be a valid hex color code (e.g., #RRGGBB)",
-}).optional().or(z.literal(''));
+const hexColorValidation = z.string().optional();
 
 const roleSchema = z.object({
   id: z.string(),
@@ -48,7 +46,6 @@ const roleSchema = z.object({
 const formSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
-  slug: z.string().optional(),
   address: z.string().optional(),
   phoneNumber: z.string().optional(),
   abn: z.string().optional(),
@@ -96,7 +93,6 @@ export default function OrganisationDetailsPage() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: '',
-            slug: '',
             address: '',
             phoneNumber: '',
             abn: '',
@@ -195,8 +191,8 @@ export default function OrganisationDetailsPage() {
             <FormItem>
               <FormLabel>{label}</FormLabel>
               <div className="flex items-center gap-2">
-                <FormControl><Input type="color" className="h-10 w-14 p-1" {...field} /></FormControl>
-                <FormControl><Input placeholder="#RRGGBB" {...field} /></FormControl>
+                <FormControl><Input type="color" className="h-10 w-14 p-1" {...field} value={field.value ?? ''} /></FormControl>
+                <FormControl><Input placeholder="#RRGGBB" {...field} value={field.value ?? ''} /></FormControl>
               </div>
               <FormDescription>{description}</FormDescription>
               <FormMessage />
