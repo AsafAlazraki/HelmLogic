@@ -215,7 +215,6 @@ export default function AddOrganisationPage() {
                                     <FormControl>
                                     <Input placeholder="123 Ocean Ave, Metropolis, NY 10001" {...field} />
                                     </FormControl>
-                                    <FormDescription>An address search feature will be added later.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                                 )}
