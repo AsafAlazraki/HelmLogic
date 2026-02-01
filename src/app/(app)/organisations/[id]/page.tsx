@@ -13,7 +13,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save } from 'lucide-react';
+import { Loader2, Trash2, Save, X } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -122,7 +122,6 @@ export default function OrganisationDetailsPage() {
         try {
             const orgDocRef = doc(firestore, 'organisations', organisation.id);
 
-            // Create a clean data object for Firestore, ensuring no undefined values
             const dataToUpdate: { [key: string]: any } = {
                 name: values.name,
                 slug: createSlug(values.name),
@@ -133,16 +132,22 @@ export default function OrganisationDetailsPage() {
                 accentColor: values.accentColor || '',
                 secondaryColor: values.secondaryColor || '',
                 roles: values.roles || [],
-                primaryLogoUrl: values.primaryLogoUrl || null,
-                secondaryLogoUrl: values.secondaryLogoUrl || null,
             };
             
             if (values.primaryLogo instanceof File) {
                 dataToUpdate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
+            } else if (values.primaryLogoUrl === '') {
+                dataToUpdate.primaryLogoUrl = null;
+            } else {
+                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl || null;
             }
             
             if (values.secondaryLogo instanceof File) {
                 dataToUpdate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
+            } else if (values.secondaryLogoUrl === '') {
+                dataToUpdate.secondaryLogoUrl = null;
+            } else {
+                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl || null;
             }
 
             await updateDoc(orgDocRef, dataToUpdate)
@@ -258,22 +263,56 @@ export default function OrganisationDetailsPage() {
                                         <Separator />
                                         <FormField control={form.control} name="primaryLogo" render={({ field }) => (
                                             <FormItem><FormLabel>Primary Logo</FormLabel>
-                                                {primaryLogoPreview && <div className="mt-2 w-32 h-32 relative"><Image src={primaryLogoPreview} alt="Primary Logo Preview" fill className="rounded-md object-contain border p-1" /></div>}
+                                                {primaryLogoPreview && (
+                                                    <div className="mt-2 w-32 h-32 relative group">
+                                                        <Image src={primaryLogoPreview} alt="Primary Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                            onClick={() => {
+                                                                setPrimaryLogoPreview(null);
+                                                                form.setValue('primaryLogoUrl', '');
+                                                                field.onChange(null);
+                                                            }}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )}
                                                 <FormControl><Input type="file" accept="image/*" onChange={(e) => {
                                                     const file = e.target.files?.[0];
                                                     field.onChange(file);
-                                                    setPrimaryLogoPreview(file ? URL.createObjectURL(file) : organisation.primaryLogoUrl || null);
+                                                    setPrimaryLogoPreview(file ? URL.createObjectURL(file) : null);
                                                 }} /></FormControl>
                                                 <FormDescription>Upload a new logo to replace the existing one.</FormDescription><FormMessage />
                                             </FormItem>
                                         )} />
                                         <FormField control={form.control} name="secondaryLogo" render={({ field }) => (
                                             <FormItem><FormLabel>Secondary Logo</FormLabel>
-                                                {secondaryLogoPreview && <div className="mt-2 w-32 h-32 relative"><Image src={secondaryLogoPreview} alt="Secondary Logo Preview" fill className="rounded-md object-contain border p-1" /></div>}
+                                                {secondaryLogoPreview && (
+                                                    <div className="mt-2 w-32 h-32 relative group">
+                                                        <Image src={secondaryLogoPreview} alt="Secondary Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                            onClick={() => {
+                                                                setSecondaryLogoPreview(null);
+                                                                form.setValue('secondaryLogoUrl', '');
+                                                                field.onChange(null);
+                                                            }}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )}
                                                 <FormControl><Input type="file" accept="image/*" onChange={(e) => {
                                                     const file = e.target.files?.[0];
                                                     field.onChange(file);
-                                                    setSecondaryLogoPreview(file ? URL.createObjectURL(file) : organisation.secondaryLogoUrl || null);
+                                                    setSecondaryLogoPreview(file ? URL.createObjectURL(file) : null);
                                                 }} /></FormControl>
                                                 <FormDescription>An icon or alternative brand mark.</FormDescription><FormMessage />
                                             </FormItem>
