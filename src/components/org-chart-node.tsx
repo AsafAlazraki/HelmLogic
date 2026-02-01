@@ -5,11 +5,12 @@ import { Handle, Position, NodeProps, useReactFlow, useStoreApi } from 'reactflo
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Plus, Trash2 } from 'lucide-react';
+import { getLayoutedElements } from '@/lib/layout-utils';
 
 function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
-  const { setNodes, addNodes, addEdges, setEdges, deleteElements } = useReactFlow();
+  const { setNodes, setEdges, deleteElements } = useReactFlow();
   const store = useStoreApi();
 
   useEffect(() => {
@@ -43,31 +44,46 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
   };
 
   const handleAddChild = useCallback(() => {
+    const { getNodes, getEdges } = store.getState();
     const newId = crypto.randomUUID();
     const newNode = {
       id: newId,
       data: { label: 'New Role' },
-      position: { x: xPos, y: yPos + 120 },
+      position: { x: 0, y: 0 },
       type: 'orgChartNode',
     };
     const newEdge = { id: `e-${id}-${newId}`, source: id, target: newId };
-    addNodes(newNode);
-    addEdges(newEdge);
-  }, [addNodes, addEdges, id, xPos, yPos]);
+    
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      [...getNodes(), newNode],
+      [...getEdges(), newEdge]
+    );
+    
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+  }, [id, store, setNodes, setEdges]);
 
   const handleAddParent = useCallback(() => {
+    const { getNodes, getEdges } = store.getState();
     const newId = crypto.randomUUID();
     const newNode = {
       id: newId,
       data: { label: 'New Role' },
-      position: { x: xPos, y: yPos - 120 },
+      position: { x: 0, y: 0 },
       type: 'orgChartNode',
     };
     const newEdge = { id: `e-${newId}-${id}`, source: newId, target: id };
 
-    setEdges((edges) => edges.filter((edge) => edge.target !== id).concat(newEdge));
-    addNodes(newNode);
-  }, [addNodes, setEdges, id, xPos, yPos]);
+    const newEdges = getEdges().filter((edge) => edge.target !== id).concat(newEdge);
+
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      [...getNodes(), newNode],
+      newEdges
+    );
+
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+  }, [id, store, setNodes, setEdges]);
   
   const handleDelete = useCallback(() => {
     deleteElements({ nodes: [{ id }] });

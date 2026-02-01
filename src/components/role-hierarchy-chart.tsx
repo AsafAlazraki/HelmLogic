@@ -20,11 +20,11 @@ import ReactFlow, {
   Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import dagre from 'dagre';
 
 import { Button } from './ui/button';
 import { PlusCircle } from 'lucide-react';
 import OrgChartNode from './org-chart-node';
+import { getLayoutedElements } from '@/lib/layout-utils';
 
 export type Role = {
   id: string;
@@ -64,40 +64,6 @@ const areRolesEqual = (rolesA?: Role[], rolesB?: Role[]): boolean => {
     }
     return true;
 };
-
-
-const dagreGraph = new dagre.graphlib.Graph();
-dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-const nodeWidth = 172;
-const nodeHeight = 100;
-
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
-  dagreGraph.setGraph({ rankdir: direction });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  nodes.forEach((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    node.targetPosition = Position.Top;
-    node.sourcePosition = Position.Bottom;
-    node.position = {
-      x: nodeWithPosition.x - nodeWidth / 2,
-      y: nodeWithPosition.y - nodeHeight / 2,
-    };
-  });
-
-  return { nodes, edges };
-};
-
 
 function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
