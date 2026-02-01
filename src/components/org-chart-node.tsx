@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useState, useEffect } from 'react';
-import { Handle, Position, NodeProps, useReactFlow, useStoreApi } from 'reactflow';
+import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Plus, Trash2 } from 'lucide-react';
@@ -10,8 +10,7 @@ import { getLayoutedElements } from '@/lib/layout-utils';
 function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
-  const { setNodes, setEdges, deleteElements } = useReactFlow();
-  const store = useStoreApi();
+  const { setNodes, setEdges, deleteElements, getNodes, getEdges } = useReactFlow();
 
   useEffect(() => {
     setLabel(data.label);
@@ -22,9 +21,8 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
   };
 
   const handleBlur = () => {
-    const { nodeInternals } = store.getState();
-    setNodes(
-      Array.from(nodeInternals.values()).map((node) => {
+    setNodes((nodes) =>
+      nodes.map((node) => {
         if (node.id === id) {
           node.data = {
             ...node.data,
@@ -44,7 +42,6 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
   };
 
   const handleAddChild = useCallback(() => {
-    const { getNodes, getEdges } = store.getState();
     const newId = crypto.randomUUID();
     const newNode = {
       id: newId,
@@ -61,10 +58,9 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
     
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [id, store, setNodes, setEdges]);
+  }, [id, getNodes, getEdges, setNodes, setEdges]);
 
   const handleAddParent = useCallback(() => {
-    const { getNodes, getEdges } = store.getState();
     const newId = crypto.randomUUID();
     const newNode = {
       id: newId,
@@ -83,7 +79,7 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
 
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [id, store, setNodes, setEdges]);
+  }, [id, getNodes, getEdges, setNodes, setEdges]);
   
   const handleDelete = useCallback(() => {
     deleteElements({ nodes: [{ id }] });
