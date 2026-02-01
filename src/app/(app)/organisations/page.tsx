@@ -50,8 +50,7 @@ export default function OrganisationsPage() {
                             organisations.map((org) => (
                                 <Link href={`/organisations/${org.slug || org.id}`} key={org.id} className="group">
                                     <Card 
-                                        className="h-full transition-all duration-300 ease-in-out group-hover:-translate-y-1 group-hover:shadow-xl overflow-hidden flex flex-col"
-                                        style={{ borderTop: `4px solid ${org.primaryColor || 'hsl(var(--primary))'}` }}
+                                        className="h-full transition-all duration-300 ease-in-out group-hover:-translate-y-1 group-hover:shadow-xl group-hover:border-primary overflow-hidden flex flex-col"
                                     >
                                         <CardHeader>
                                             <div className="flex items-start justify-between gap-4">
