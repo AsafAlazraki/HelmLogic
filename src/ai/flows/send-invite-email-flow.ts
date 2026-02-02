@@ -10,7 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const SendInviteEmailInputSchema = z.object({
+const SendInviteEmailInputSchema = z.object({
   email: z.string().email().describe('The email address of the user to invite.'),
   organisationName: z.string().describe('The name of the organisation the user is being invited to.'),
   roleName: z.string().describe('The role the user is being invited to.'),
@@ -22,7 +22,7 @@ const EmailContentSchema = z.object({
     body: z.string().describe('The HTML body of the email.'),
 });
 
-export const SendInviteEmailOutputSchema = z.object({
+const SendInviteEmailOutputSchema = z.object({
   success: z.boolean(),
   message: z.string(),
 });
