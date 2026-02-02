@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useFirestore } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
@@ -46,7 +46,7 @@ export function Header() {
             organisationId: null,
             organisationRole: null,
         };
-        await updateDoc(userRef, dataToUpdate)
+        await setDoc(userRef, dataToUpdate, { merge: true })
         .catch((serverError) => {
             const permissionError = new FirestorePermissionError({
                 path: userRef.path, operation: 'update', requestResourceData: dataToUpdate,
@@ -64,7 +64,7 @@ export function Header() {
                 organisationId: northsideMarine.id,
                 organisationRole: adminRole.id,
             };
-            await updateDoc(userRef, dataToUpdate)
+            await setDoc(userRef, dataToUpdate, { merge: true })
             .catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
                     path: userRef.path, operation: 'update', requestResourceData: dataToUpdate,
