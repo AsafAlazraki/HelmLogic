@@ -36,6 +36,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { fileToDataUri } from '@/firebase/storage-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
 
 const hexColorValidation = z.string().nullable().optional();
 
@@ -119,16 +120,45 @@ export default function OrganisationDetailsPage() {
     }, [organisation, form]);
 
     async function onInviteSubmit(values: InviteFormData) {
+        if (!organisation) return;
         setIsInviting(true);
-        console.log("Inviting user with data:", values);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        toast({
-            title: "Invite Sent",
-            description: `${values.email} has been invited to join the organisation.`
-        });
-        inviteForm.reset();
-        setIsInviting(false);
+        
+        const roleName = organisation.roles?.find(r => r.id === values.roleId)?.name;
+        if (!roleName) {
+            toast({
+                variant: "destructive",
+                title: "Invalid Role",
+                description: "The selected role could not be found."
+            });
+            setIsInviting(false);
+            return;
+        }
+    
+        try {
+            const result = await sendInviteEmail({
+                email: values.email,
+                organisationName: organisation.name,
+                roleName: roleName,
+            });
+    
+            if (result.success) {
+                toast({
+                    title: "Invite Sent",
+                    description: result.message
+                });
+                inviteForm.reset();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Failed to Send Invite",
+                description: error.message || "An unexpected error occurred."
+            });
+        } finally {
+            setIsInviting(false);
+        }
     }
 
     async function onSubmit(values: OrganisationFormData) {
@@ -211,7 +241,7 @@ export default function OrganisationDetailsPage() {
             <FormItem>
               <FormLabel>{label}</FormLabel>
               <div className="flex items-center gap-2">
-                <Input type="color" className="h-10 w-14 p-1" onChange={field.onChange} value={field.value ?? ''} />
+                <Input type="color" className="h-10 w-14 p-1" {...field} value={field.value ?? ''} />
                 <FormControl>
                     <Input placeholder="#RRGGBB" {...field} value={field.value ?? ''} />
                 </FormControl>
