@@ -38,18 +38,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
 
-const hexColorValidation = z.string().nullable().optional();
+const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
+    message: "Must be a valid hex color code (e.g., #RRGGBB)",
+}).optional().or(z.literal(''));
+
 
 const roleSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: "Role name is required." }),
-  parent: z.string(),
+  parent: z.preprocess((val) => val ?? '', z.string()),
 });
 
 const formSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
-  slug: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
   phoneNumber: z.string().nullable().optional(),
   abn: z.string().nullable().optional(),
@@ -241,7 +243,9 @@ export default function OrganisationDetailsPage() {
             <FormItem>
               <FormLabel>{label}</FormLabel>
               <div className="flex items-center gap-2">
-                <Input type="color" className="h-10 w-14 p-1" {...field} value={field.value ?? ''} />
+                <FormControl>
+                    <Input type="color" className="h-10 w-14 p-1" {...field} value={field.value ?? ''} />
+                </FormControl>
                 <FormControl>
                     <Input placeholder="#RRGGBB" {...field} value={field.value ?? ''} />
                 </FormControl>

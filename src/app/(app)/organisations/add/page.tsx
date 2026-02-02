@@ -37,7 +37,7 @@ const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.te
 const roleSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: "Role name is required." }),
-  parent: z.string(),
+  parent: z.preprocess((val) => val ?? '', z.string()),
 });
 
 const formSchema = z.object({
