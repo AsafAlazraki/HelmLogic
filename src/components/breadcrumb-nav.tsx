@@ -100,8 +100,12 @@ export function BreadcrumbNav({ pageTitle }: { pageTitle?: string }) {
 
   const pathParts = findPathParts(pathname);
 
-  // Always start with Dashboard
-  const breadcrumbs = [{ href: '/dashboard', label: 'Dashboard' }, ...pathParts];
+  // Always start with Dashboard, unless it's an admin path
+  let breadcrumbs = [{ href: '/dashboard', label: 'Dashboard' }, ...pathParts];
+  if (pathname.startsWith('/admin')) {
+    breadcrumbs.shift();
+  }
+  
   if (pageTitle && breadcrumbs.length > 1) {
     breadcrumbs[breadcrumbs.length - 1].label = pageTitle;
   }

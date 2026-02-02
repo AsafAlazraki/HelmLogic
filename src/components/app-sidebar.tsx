@@ -60,15 +60,18 @@ export function AppSidebar() {
 
     return navLinks.filter(link => {
       if (link.label === 'Admin') {
-        return isAdmin; // Only show for admins
+        return isAdmin;
+      }
+      if (link.label === 'Dashboard' && isAdmin) {
+        return false; // Hide Dashboard for admins
       }
       if (link.label === 'Manage') {
-        return isOrgMember && !isAdmin; // Only show for org members who are not admins
+        return isOrgMember && !isAdmin;
       }
       if (link.label === 'Sub Dealers') {
-        return isOrgMember && !isAdmin && subDealersEnabled; // Only for org members with the feature enabled
+        return isOrgMember && !isAdmin && subDealersEnabled;
       }
-      return true; // Always show dashboard etc.
+      return true;
     });
   }, [userProfile, isLoading, organisation]);
 
