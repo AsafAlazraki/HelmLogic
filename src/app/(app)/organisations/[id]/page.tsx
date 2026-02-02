@@ -427,7 +427,7 @@ export default function OrganisationDetailsPage() {
                                             <TabsContent value="manage-users" className="pt-6">
                                                 <h3 className="text-lg font-medium">Invite New User</h3>
                                                 <Form {...inviteForm}>
-                                                    <form onSubmit={inviteForm.handleSubmit(onInviteSubmit)} className="mt-4 space-y-4 max-w-lg">
+                                                    <div className="mt-4 space-y-4 max-w-lg">
                                                         <FormField control={inviteForm.control} name="email" render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Email Address</FormLabel>
@@ -457,11 +457,11 @@ export default function OrganisationDetailsPage() {
                                                                 <FormMessage />
                                                             </FormItem>
                                                         )} />
-                                                        <Button type="submit" disabled={isInviting}>
+                                                        <Button type="button" disabled={isInviting} onClick={inviteForm.handleSubmit(onInviteSubmit)}>
                                                             {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                             <Mail className="mr-2 h-4 w-4" /> Send Invite
                                                         </Button>
-                                                    </form>
+                                                    </div>
                                                 </Form>
                                                 <Separator className="my-6" />
                                                 <h3 className="text-lg font-medium">Existing Users</h3>
