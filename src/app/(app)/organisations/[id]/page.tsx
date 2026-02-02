@@ -549,103 +549,116 @@ export default function OrganisationDetailsPage() {
                             </TabsContent>
 
                             <TabsContent value="access">
-                                <div className="space-y-8">
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Module Access Control</CardTitle>
-                                            <CardDescription>Enable or disable specific modules for this organisation.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="subDealersEnabled"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                        <div className="space-y-0.5">
-                                                            <FormLabel className="text-base">Enable Sub Dealers Module</FormLabel>
-                                                            <FormDescription>
-                                                                Allow users in this organisation to manage their own sub dealers.
-                                                            </FormDescription>
-                                                        </div>
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={field.value}
-                                                                onCheckedChange={field.onChange}
-                                                            />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Data Warehouse Subscriptions</CardTitle>
-                                            <CardDescription>Select which data sources this organisation can access.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {vendorsLoading ? (
-                                                <Loader2 className="h-6 w-6 animate-spin" />
-                                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                                    <div className="lg:col-span-1 space-y-8">
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Sub Dealer Module</CardTitle>
+                                                <CardDescription>Enable or disable the Sub Dealers module for this organisation.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
                                                 <FormField
                                                     control={form.control}
-                                                    name="dataWarehouseSubscriptions"
+                                                    name="subDealersEnabled"
                                                     render={({ field }) => (
-                                                        <FormItem>
-                                                            {allVendors && allVendors.length > 0 ? (
-                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                                                    {allVendors.map((vendor) => {
-                                                                        const isSubscribed = field.value?.includes(vendor.id);
-                                                                        
-                                                                        const handleToggle = () => {
-                                                                            if (isSubscribed) {
-                                                                                setVendorToUnsubscribe(vendor);
-                                                                            } else {
-                                                                                const newValue = [...(field.value || []), vendor.id];
-                                                                                field.onChange(newValue);
-                                                                            }
-                                                                        };
-
-                                                                        return (
-                                                                            <Card 
-                                                                                key={vendor.id}
-                                                                                onClick={handleToggle}
-                                                                                className={cn(
-                                                                                    "cursor-pointer transition-all duration-200 ease-in-out hover:shadow-md hover:-translate-y-1 relative overflow-hidden",
-                                                                                    isSubscribed ? "border-primary ring-2 ring-primary" : "border-border"
-                                                                                )}
-                                                                            >
-                                                                                {isSubscribed && (
-                                                                                    <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5 z-10">
-                                                                                        <Check className="h-3 w-3" />
-                                                                                    </div>
-                                                                                )}
-                                                                                <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
-                                                                                    {vendor.logoUrl ? (
-                                                                                        <div className="relative h-full w-full">
-                                                                                            <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <Building className="h-8 w-8 text-muted-foreground"/>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div className="p-3 text-center">
-                                                                                    <p className="text-sm font-medium truncate">{vendor.name}</p>
-                                                                                </div>
-                                                                            </Card>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            ) : (
-                                                                <p className="text-sm text-muted-foreground">No data warehouse vendors found. Add vendors in the Data Warehouse section.</p>
-                                                            )}
-                                                            <FormMessage />
+                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                            <div className="space-y-0.5">
+                                                                <FormLabel className="text-base">Enable Sub Dealers</FormLabel>
+                                                                <FormDescription>
+                                                                    Allow this organisation to manage their own sub dealers.
+                                                                </FormDescription>
+                                                            </div>
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                />
+                                                            </FormControl>
                                                         </FormItem>
                                                     )}
                                                 />
-                                            )}
-                                        </CardContent>
-                                    </Card>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                    <div className="lg:col-span-3 space-y-8">
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Data Warehouse Subscriptions</CardTitle>
+                                                <CardDescription>Select which data sources this organisation can access.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                {vendorsLoading ? (
+                                                    <Loader2 className="h-6 w-6 animate-spin" />
+                                                ) : (
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="dataWarehouseSubscriptions"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                {allVendors && allVendors.length > 0 ? (
+                                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                                        {allVendors.map((vendor) => {
+                                                                            const isSubscribed = field.value?.includes(vendor.id);
+                                                                            
+                                                                            const handleToggle = () => {
+                                                                                if (isSubscribed) {
+                                                                                    setVendorToUnsubscribe(vendor);
+                                                                                } else {
+                                                                                    const newValue = [...(field.value || []), vendor.id];
+                                                                                    field.onChange(newValue);
+                                                                                }
+                                                                            };
+
+                                                                            return (
+                                                                                <Card 
+                                                                                    key={vendor.id}
+                                                                                    onClick={handleToggle}
+                                                                                    className={cn(
+                                                                                        "cursor-pointer transition-all duration-200 ease-in-out hover:shadow-md hover:-translate-y-1 relative overflow-hidden",
+                                                                                        isSubscribed ? "border-primary ring-2 ring-primary" : "border-border"
+                                                                                    )}
+                                                                                >
+                                                                                    {isSubscribed && (
+                                                                                        <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5 z-10">
+                                                                                            <Check className="h-3 w-3" />
+                                                                                        </div>
+                                                                                    )}
+                                                                                    <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
+                                                                                        {vendor.logoUrl ? (
+                                                                                            <div className="relative h-full w-full">
+                                                                                                <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <Building className="h-8 w-8 text-muted-foreground"/>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <div className="p-3 text-center">
+                                                                                        <p className="text-sm font-medium truncate">{vendor.name}</p>
+                                                                                    </div>
+                                                                                </Card>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-sm text-muted-foreground">No data warehouse vendors found. Add vendors in the Data Warehouse section.</p>
+                                                                )}
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Module Control</CardTitle>
+                                                <CardDescription>Further module controls will be available here.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <p className="text-sm text-muted-foreground">This feature is coming soon.</p>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
                                 </div>
                             </TabsContent>
 
