@@ -68,6 +68,7 @@ const formSchema = z.object({
   primaryLogoUrl: z.string().nullable().optional(),
   secondaryLogoUrl: z.string().nullable().optional(),
   subDealersEnabled: z.boolean().optional(),
+  dataWarehouseSubscriptions: z.array(z.string()).optional(),
 });
 
 type OrganisationFormData = z.infer<typeof formSchema>;
@@ -78,6 +79,11 @@ const inviteFormSchema = z.object({
 });
 
 type InviteFormData = z.infer<typeof inviteFormSchema>;
+
+interface Vendor {
+    id: string;
+    name: string;
+}
 
 const createSlug = (name: string) =>
   name
@@ -115,6 +121,8 @@ export default function OrganisationDetailsPage() {
     const organisation = useMemo(() => organisationsBySlug?.[0] || organisationById, [organisationsBySlug, organisationById]);
     const orgLoading = slugLoading || idLoading;
 
+    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
+
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {},
@@ -140,6 +148,7 @@ export default function OrganisationDetailsPage() {
                 ...organisation, 
                 permissions: initialPermissions,
                 subDealersEnabled: organisation.subDealersEnabled || false,
+                dataWarehouseSubscriptions: organisation.dataWarehouseSubscriptions || [],
             });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
@@ -209,6 +218,7 @@ export default function OrganisationDetailsPage() {
                 roles: values.roles || [],
                 permissions: values.permissions || {},
                 subDealersEnabled: values.subDealersEnabled || false,
+                dataWarehouseSubscriptions: values.dataWarehouseSubscriptions || [],
             };
             
             if (values.primaryLogo instanceof File) {
@@ -526,34 +536,81 @@ export default function OrganisationDetailsPage() {
                             </TabsContent>
 
                             <TabsContent value="access">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Module Access Control</CardTitle>
-                                        <CardDescription>Enable or disable specific modules for this organisation.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="subDealersEnabled"
-                                            render={({ field }) => (
-                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                    <div className="space-y-0.5">
-                                                        <FormLabel className="text-base">Enable Sub Dealers Module</FormLabel>
-                                                        <FormDescription>
-                                                            Allow users in this organisation to manage their own sub dealers.
-                                                        </FormDescription>
-                                                    </div>
-                                                    <FormControl>
-                                                        <Checkbox
-                                                            checked={field.value}
-                                                            onCheckedChange={field.onChange}
-                                                        />
-                                                    </FormControl>
-                                                </FormItem>
+                                <div className="space-y-8">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Module Access Control</CardTitle>
+                                            <CardDescription>Enable or disable specific modules for this organisation.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="subDealersEnabled"
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                        <div className="space-y-0.5">
+                                                            <FormLabel className="text-base">Enable Sub Dealers Module</FormLabel>
+                                                            <FormDescription>
+                                                                Allow users in this organisation to manage their own sub dealers.
+                                                            </FormDescription>
+                                                        </div>
+                                                        <FormControl>
+                                                            <Checkbox
+                                                                checked={field.value}
+                                                                onCheckedChange={field.onChange}
+                                                            />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </CardContent>
+                                    </Card>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Data Warehouse Subscriptions</CardTitle>
+                                            <CardDescription>Select which data sources this organisation can access.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {vendorsLoading ? (
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                            ) : (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="dataWarehouseSubscriptions"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <div className="space-y-2">
+                                                            {allVendors && allVendors.length > 0 ? (
+                                                                allVendors.map((vendor) => (
+                                                                    <FormItem key={vendor.id} className="flex flex-row items-center space-x-3 space-y-0">
+                                                                        <FormControl>
+                                                                            <Checkbox
+                                                                                checked={field.value?.includes(vendor.id)}
+                                                                                onCheckedChange={(checked) => {
+                                                                                    const newValue = checked
+                                                                                        ? [...(field.value || []), vendor.id]
+                                                                                        : (field.value || []).filter((value) => value !== vendor.id);
+                                                                                    field.onChange(newValue);
+                                                                                }}
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormLabel className="font-normal">
+                                                                            {vendor.name}
+                                                                        </FormLabel>
+                                                                    </FormItem>
+                                                                ))
+                                                            ) : (
+                                                                <p className="text-sm text-muted-foreground">No data warehouse vendors found. Add vendors in the Data Warehouse section.</p>
+                                                            )}
+                                                            </div>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
                                             )}
-                                        />
-                                    </CardContent>
-                                </Card>
+                                        </CardContent>
+                                    </Card>
+                                </div>
                             </TabsContent>
 
                             <TabsContent value="sub-dealers">
