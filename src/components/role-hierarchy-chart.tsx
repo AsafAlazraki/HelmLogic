@@ -17,7 +17,6 @@ import ReactFlow, {
   Connection,
   ReactFlowProvider,
   useReactFlow,
-  Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -75,6 +74,9 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
 
   const nodeTypes = useMemo(() => ({ orgChartNode: OrgChartNode }), []);
 
+  // Forward declare attachCallbacks via a ref to break the dependency cycle
+  const attachCallbacksRef = useRef<(node: Node) => Node>(n => n);
+
   const handleLabelChange = useCallback((id: string, newLabel: string) => {
     userInteraction.current = true;
     setNodes((nds) => nds.map((node) => {
@@ -84,62 +86,6 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
         return node;
     }));
   }, []);
-
-  const handleAddChild = useCallback((id: string) => {
-    userInteraction.current = true;
-    const newId = crypto.randomUUID();
-    const currentNodes = getNodes();
-    const currentEdges = getEdges();
-
-    const newNode: Node = {
-      id: newId,
-      data: { label: 'New Role' }, // Callbacks will be attached in useEffect or map? No, must be here.
-      position: { x: 0, y: 0 },
-      type: 'orgChartNode',
-    };
-    // Attach callbacks to newNode data. 
-    // Problem: createNodeData needs callbacks which depend on handleAddChild. Recursion?
-    // Solution: pass createNodeData to a function? Or construct it here.
-    // Actually, I can update the nodes in useEffect or render loop? 
-    // Better: Helper function to attach callbacks.
-    
-    // ... logic continues below
-    
-    const newEdge = { id: `e-${id}-${newId}`, source: id, target: newId };
-    
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      [...currentNodes, newNode],
-      [...currentEdges, newEdge]
-    );
-    
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [getNodes, getEdges]);
-
-  const handleAddParent = useCallback((id: string) => {
-    userInteraction.current = true;
-    const newId = crypto.randomUUID();
-    const currentNodes = getNodes();
-    const currentEdges = getEdges();
-
-    const newNode: Node = {
-      id: newId,
-      data: { label: 'New Role' },
-      position: { x: 0, y: 0 },
-      type: 'orgChartNode',
-    };
-
-    const newEdge = { id: `e-${newId}-${id}`, source: newId, target: id };
-    const newEdges = currentEdges.filter((edge) => edge.target !== id).concat(newEdge);
-
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      [...currentNodes, newNode],
-      newEdges
-    );
-
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [getNodes, getEdges]);
 
   const handleDelete = useCallback((id: string) => {
       userInteraction.current = true;
@@ -158,7 +104,70 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
       setEdges(layoutedEdges);
   }, [getNodes, getEdges]);
 
-  // Helper to attach callbacks
+  const handleAddChild = useCallback((id: string) => {
+    userInteraction.current = true;
+    const newId = crypto.randomUUID();
+    const currentNodes = getNodes();
+    const currentEdges = getEdges();
+
+    let newNode: Node = {
+      id: newId,
+      data: { label: 'New Role' },
+      position: { x: 0, y: 0 },
+      type: 'orgChartNode',
+    };
+    newNode = attachCallbacksRef.current(newNode);
+    
+    const newEdge = { id: `e-${id}-${newId}`, source: id, target: newId };
+    
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      [...currentNodes, newNode],
+      [...currentEdges, newEdge]
+    );
+    
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+  }, [getNodes, getEdges]);
+
+  const handleAddParent = useCallback((id: string) => {
+    userInteraction.current = true;
+    const newId = crypto.randomUUID();
+    const currentNodes = getNodes();
+    const currentEdges = getEdges();
+
+    let newNode: Node = {
+      id: newId,
+      data: { label: 'New Role' },
+      position: { x: 0, y: 0 },
+      type: 'orgChartNode',
+    };
+    newNode = attachCallbacksRef.current(newNode);
+
+    const newEdge = { id: `e-${newId}-${id}`, source: newId, target: id };
+    const newEdges = currentEdges.filter((edge) => edge.target !== id).concat(newEdge);
+
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      [...currentNodes, newNode],
+      newEdges
+    );
+
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+  }, [getNodes, getEdges]);
+  
+  const handleAddRole = () => {
+    userInteraction.current = true;
+    const newId = crypto.randomUUID();
+    let newNode: Node = {
+      id: newId,
+      data: { label: 'New Role' },
+      position: { x: 0, y: 0 },
+      type: 'orgChartNode',
+    };
+    newNode = attachCallbacksRef.current(newNode);
+    setNodes((nds) => [...nds, newNode]);
+  };
+  
   const attachCallbacks = useCallback((node: Node) => {
       return {
           ...node,
@@ -172,11 +181,10 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
       };
   }, [handleLabelChange, handleAddChild, handleAddParent, handleDelete]);
 
-  // Wrap setNodes to ensure callbacks are attached when nodes are updated via layout/init?
-  // Or just map them when rendering? No, ReactFlow needs them in nodes state?
-  // Yes, nodes passed to ReactFlow must have data populated.
+  useEffect(() => {
+    attachCallbacksRef.current = attachCallbacks;
+  }, [attachCallbacks]);
 
-  // Effect 1: Init from props
   useEffect(() => {
     if (isInternalChange.current) {
         isInternalChange.current = false;
@@ -216,7 +224,6 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
     }
   }, [value, fitView, attachCallbacks]);
 
-  // Effect 2: Update form on user interaction
   useEffect(() => {
     if (userInteraction.current) {
         const newRoles = flowToRoles(nodes, edges);
@@ -226,92 +233,13 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
         }
         userInteraction.current = false;
     } else if (isSyncing.current) {
-        // Just sync finished (nodes updated from props)
         isSyncing.current = false;
     }
-    // If neither, it might be internal re-render or something else.
-    // If nodes changed but NOT userInteraction and NOT syncing? 
-    // Should not happen unless we missed setting userInteraction.
   }, [nodes, edges, onChange, value]);
-  
-  // We also need to update nodes state when adding child/parent to include callbacks.
-  // I updated handleAddChild/Parent to call setNodes with layoutedNodes.
-  // But those layoutedNodes need callbacks attached!
-  
-  // I need to intercept setNodes or ensure getLayoutedElements uses nodes with callbacks.
-  // getLayoutedElements preserves data? Yes.
-  // But newNode has no callbacks.
-  
-  // Fix handleAddChild/Parent: attach callbacks to newNode.
-  
-  const handleAddChildFixed = useCallback((id: string) => {
-    userInteraction.current = true;
-    const newId = crypto.randomUUID();
-    const currentNodes = getNodes();
-    const currentEdges = getEdges();
-
-    let newNode: Node = {
-      id: newId,
-      data: { label: 'New Role' },
-      position: { x: 0, y: 0 },
-      type: 'orgChartNode',
-    };
-    newNode = attachCallbacks(newNode); // Attach!
-    
-    const newEdge = { id: `e-${id}-${newId}`, source: id, target: newId };
-    
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      [...currentNodes, newNode],
-      [...currentEdges, newEdge]
-    );
-    
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [getNodes, getEdges, attachCallbacks]);
-
-  const handleAddParentFixed = useCallback((id: string) => {
-    userInteraction.current = true;
-    const newId = crypto.randomUUID();
-    const currentNodes = getNodes();
-    const currentEdges = getEdges();
-
-    let newNode: Node = {
-      id: newId,
-      data: { label: 'New Role' },
-      position: { x: 0, y: 0 },
-      type: 'orgChartNode',
-    };
-    newNode = attachCallbacks(newNode); // Attach!
-
-    const newEdge = { id: `e-${newId}-${id}`, source: newId, target: id };
-    const newEdges = currentEdges.filter((edge) => edge.target !== id).concat(newEdge);
-
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      [...currentNodes, newNode],
-      newEdges
-    );
-
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [getNodes, getEdges, attachCallbacks]);
-  
-  // Also handleAddRole (button)
-  const handleAddRoleFixed = () => {
-    userInteraction.current = true;
-    const newId = crypto.randomUUID();
-    let newNode: Node = {
-      id: newId,
-      data: { label: 'New Role' },
-      position: { x: 0, y: 0 },
-      type: 'orgChartNode',
-    };
-    newNode = attachCallbacks(newNode);
-    setNodes((nds) => [...nds, newNode]);
-  };
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      userInteraction.current = true; // Dragging etc.
+      userInteraction.current = true;
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
     [setNodes]
@@ -359,7 +287,7 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
           type="button"
           variant="outline"
           size="sm"
-          onClick={handleAddRoleFixed}
+          onClick={handleAddRole}
         >
           <PlusCircle className="mr-2 h-4 w-4" />
           Add Role
