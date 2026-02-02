@@ -25,7 +25,10 @@ service cloud.firestore {
     }
 
     match /organisations/{organisationId} {
-      allow read: if isHelmLogicAdmin() || isMemberOfOrganisation(organisationId);
+      // Any authenticated user can read organisation data.
+      // This allows non-admins to view organisation pages by slug.
+      // Writes are restricted to admins or members of that specific organisation.
+      allow read: if request.auth != null;
       allow write: if isHelmLogicAdmin() || isMemberOfOrganisation(organisationId);
     }
 
