@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, query, where } from 'firebase/firestore';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +28,9 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { fileToDataUri } from '@/firebase/storage-utils';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useDoc } from '@/firebase/firestore/use-doc';
+
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -70,7 +73,17 @@ export default function AddSubDealerPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const params = useParams();
-  const parentOrganisationId = params.id as string;
+  const parentOrgSlugOrId = params.id as string;
+
+  const orgQueryBySlug = useMemo(() => {
+    if (!parentOrgSlugOrId) return null;
+    return query(collection(firestore, 'organisations'), where('slug', '==', parentOrgSlugOrId));
+  }, [firestore, parentOrgSlugOrId]);
+
+  const { data: orgsBySlug } = useCollection<{id: string, name: string}>(orgQueryBySlug);
+  const { data: orgById } = useDoc<{id: string, name: string}>(parentOrgSlugOrId ? `/organisations/${parentOrgSlugOrId}` : null);
+
+  const parentOrganisation = useMemo(() => orgsBySlug?.[0] || orgById, [orgsBySlug, orgById]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -91,6 +104,16 @@ export default function AddSubDealerPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+
+    if (!parentOrganisation) {
+        toast({
+            variant: 'destructive',
+            title: 'Parent organisation not found',
+            description: 'Please ensure the parent organisation exists before adding a sub-dealer.',
+        });
+        setIsLoading(false);
+        return;
+    }
     
     try {
       const orgsCollection = collection(firestore, 'organisations');
@@ -109,7 +132,7 @@ export default function AddSubDealerPage() {
           primaryLogoUrl: null,
           secondaryLogoUrl: null,
           subDealersEnabled: values.subDealersEnabled || false,
-          parentOrganisationId: parentOrganisationId,
+          parentOrganisationId: parentOrganisation.id,
       };
 
       if (values.primaryLogo instanceof File) {
@@ -135,7 +158,7 @@ export default function AddSubDealerPage() {
         title: 'Sub Dealer created',
         description: `${values.name} has been added successfully.`,
       });
-      router.push(`/organisations/${parentOrganisationId}`);
+      router.push(`/organisations/${parentOrgSlugOrId}`);
 
     } catch (error: any) {
       console.error("Failed to create sub dealer:", error);
@@ -177,7 +200,7 @@ export default function AddSubDealerPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-2xl font-semibold">Add New Sub Dealer</h1>
+                  <h1 className="text-2xl font-semibold">Add New Sub Dealer {parentOrganisation ? `to ${parentOrganisation.name}` : ''}</h1>
                   <BreadcrumbNav pageTitle="Add Sub Dealer" />
                 </div>
                 <div className="flex gap-2">
