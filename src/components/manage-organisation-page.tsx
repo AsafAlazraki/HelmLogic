@@ -1,35 +1,23 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
 
-import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail } from 'lucide-react';
-import AdminGuard from '@/components/admin-guard';
+import { Loader2, Save, X, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -91,28 +79,16 @@ const permissionsConfig = [
     { id: 'manageDataSources', label: 'Manage Data Sources' },
 ];
 
-export default function OrganisationDetailsPage() {
-    const params = useParams();
+export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const router = useRouter();
     const { toast } = useToast();
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isInviting, setIsInviting] = useState(false);
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
-    const slugOrId = params.id as string;
     const firestore = useFirestore();
 
-    const orgQueryBySlug = useMemo(() => {
-        if (!slugOrId) return null;
-        return query(collection(firestore, 'organisations'), where('slug', '==', slugOrId));
-    }, [firestore, slugOrId]);
-
-    const { data: organisationsBySlug, loading: slugLoading } = useCollection<OrganisationFormData>(orgQueryBySlug);
-    const { data: organisationById, loading: idLoading } = useDoc<OrganisationFormData>(slugOrId ? `/organisations/${slugOrId}` : null);
-
-    const organisation = useMemo(() => organisationsBySlug?.[0] || organisationById, [organisationsBySlug, organisationById]);
-    const orgLoading = slugLoading || idLoading;
+    const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(`/organisations/${orgId}`);
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
@@ -231,9 +207,6 @@ export default function OrganisationDetailsPage() {
                 });
 
             toast({ title: 'Organisation updated', description: `${values.name} has been updated successfully.` });
-            if (dataToUpdate.slug !== slugOrId) {
-                router.replace(`/organisations/${dataToUpdate.slug}`);
-            }
 
         } catch (error: any) {
             console.error("Failed to update organisation:", error);
@@ -242,24 +215,6 @@ export default function OrganisationDetailsPage() {
             setIsSubmitting(false);
         }
     }
-
-    const handleDelete = async () => {
-        if (!organisation) return;
-        try {
-            const orgDocRef = doc(firestore, 'organisations', organisation.id);
-            await deleteDoc(orgDocRef).catch((serverError) => {
-                const permissionError = new FirestorePermissionError({ path: orgDocRef.path, operation: 'delete' });
-                errorEmitter.emit('permission-error', permissionError);
-                throw serverError;
-            });
-            toast({ title: 'Organisation deleted', description: `${organisation.name} has been permanently removed.` });
-            window.location.href = '/organisations';
-        } catch (error) {
-            console.error("Failed to delete organisation:", error);
-            toast({ variant: 'destructive', title: 'Deletion failed', description: 'Could not delete the organisation.' });
-            setIsDeleteDialogOpen(false);
-        }
-    };
 
     const ColorFormField = ({ name, label, description }: { name: "primaryColor" | "accentColor" | "secondaryColor", label: string, description: string }) => (
         <FormField control={form.control} name={name} render={({ field }) => (
@@ -280,32 +235,24 @@ export default function OrganisationDetailsPage() {
     );
 
     return (
-        <AdminGuard>
+        <>
             {orgLoading ? (
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : organisation ? (
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <h1 className="text-2xl font-semibold">Edit {organisation.name}</h1>
-                                <BreadcrumbNav pageTitle={organisation?.name} />
-                            </div>
-                            <div className="flex items-center justify-end gap-2">
-                                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    <Save className="mr-2 h-4 w-4" /> Save Changes
-                                </Button>
-                            </div>
+                        <div className="flex items-center justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                <Save className="mr-2 h-4 w-4" /> Save Changes
+                            </Button>
                         </div>
 
                         <Tabs defaultValue="details" className="space-y-4">
-                            <TabsList className="grid w-full grid-cols-4">
+                            <TabsList className="grid w-full grid-cols-2">
                                 <TabsTrigger value="details">Company Details</TabsTrigger>
                                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
-                                <TabsTrigger value="access">Access</TabsTrigger>
-                                <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>
                             </TabsList>
                             
                             <TabsContent value="details" className="space-y-8">
@@ -405,13 +352,6 @@ export default function OrganisationDetailsPage() {
                                         </Card>
                                     </div>
                                 </div>
-                                <Card className="border-destructive">
-                                    <CardHeader><CardTitle className="text-destructive">Danger Zone</CardTitle></CardHeader>
-                                    <CardContent><p className="text-sm text-muted-foreground">Deleting this organisation is permanent and cannot be undone. All associated data will be lost.</p></CardContent>
-                                    <CardFooter>
-                                        <Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete Organisation</Button>
-                                    </CardFooter>
-                                </Card>
                             </TabsContent>
                             
                             <TabsContent value="users">
@@ -518,45 +458,12 @@ export default function OrganisationDetailsPage() {
                                     </CardContent>
                                 </Card>
                             </TabsContent>
-
-                            <TabsContent value="access">
-                                <Card>
-                                    <CardHeader><CardTitle>Access Control</CardTitle><CardDescription>Manage access permissions and integrations for this organisation.</CardDescription></CardHeader>
-                                    <CardContent><p>This feature is not yet available.</p></CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            <TabsContent value="sub-dealers">
-                                <Card>
-                                    <CardHeader><CardTitle>Sub Dealers</CardTitle><CardDescription>Manage sub dealers associated with this organisation.</CardDescription></CardHeader>
-                                    <CardContent><p>This feature is not yet available.</p></CardContent>
-                                </Card>
-                            </TabsContent>
                         </Tabs>
                     </form>
                 </Form>
             ) : (
                 <Card><CardHeader><CardTitle>Organisation not found</CardTitle></CardHeader><CardContent><p>The requested organisation could not be found.</p></CardContent></Card>
             )}
-
-            {organisation && (
-                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete <strong>{organisation.name}</strong> and all its data. This action cannot be undone.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-                            Yes, delete it
-                        </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
-        </AdminGuard>
+        </>
     );
 }

@@ -17,9 +17,19 @@
         "appRole": {
           "type": "string",
           "description": "The user's role within the application."
+        },
+        "organisationId": {
+          "type": "string",
+          "description": "The ID of the organisation the user belongs to."
+        },
+        "organisationRole": {
+          "type": "string",
+          "description": "The ID of the user's role within their organisation."
         }
       },
-      "required": ["email"]
+      "required": [
+        "email"
+      ]
     },
     "Organisation": {
       "title": "Organisation",
@@ -55,8 +65,8 @@
           "description": "The accent branding color in hex format."
         },
         "secondaryColor": {
-            "type": "string",
-            "description": "The secondary branding color in hex format."
+          "type": "string",
+          "description": "The secondary branding color in hex format."
         },
         "primaryLogoUrl": {
           "type": "string",
@@ -85,7 +95,10 @@
                 "description": "The ID of the parent role. Empty for top-level roles."
               }
             },
-            "required": ["id", "name"]
+            "required": [
+              "id",
+              "name"
+            ]
           }
         },
         "permissions": {

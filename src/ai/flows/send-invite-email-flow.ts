@@ -14,6 +14,8 @@ const SendInviteEmailInputSchema = z.object({
   email: z.string().email().describe('The email address of the user to invite.'),
   organisationName: z.string().describe('The name of the organisation the user is being invited to.'),
   roleName: z.string().describe('The role the user is being invited to.'),
+  organisationId: z.string().describe('The ID of the organisation.'),
+  roleId: z.string().describe('The ID of the role being assigned.'),
 });
 export type SendInviteEmailInput = z.infer<typeof SendInviteEmailInputSchema>;
 
@@ -44,7 +46,7 @@ The user's email is: {{{email}}}
 The organisation is: {{{organisationName}}}
 The user's role will be: {{{roleName}}}
 
-The email should be welcoming and clearly state the purpose of the invitation. It must include a call-to-action link to sign up. The link should be: \`https://[YOUR_APP_URL]/signup?org_invite=true&email={{{email}}}\`. Replace [YOUR_APP_URL] with a placeholder. The body should be in HTML format.
+The email should be welcoming and clearly state the purpose of the invitation. It must include a call-to-action link to sign up. The link should be: \`https://[YOUR_APP_URL]/signup?org_id={{{organisationId}}}&role_id={{{roleId}}}&email={{{email}}}\`. Replace [YOUR_APP_URL] with a placeholder. The body should be in HTML format.
 `,
 });
 

@@ -31,7 +31,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
   const { user, loading: userLoading } = useUser();
-  const { data: userProfile, loading: profileLoading } = useDoc<{ appRole: string }>(
+  const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string }>(
     user ? `/users/${user.uid}` : null
   );
   const isLoading = userLoading || profileLoading;
@@ -48,11 +48,15 @@ export function AppSidebar() {
     subLinks && subLinks.some((sub) => pathname.startsWith(sub.href));
 
   const filteredNavLinks = useMemo(() => {
+    if (isLoading) return [];
     if (userProfile?.appRole === 'HelmLogic Admin') {
-      return navLinks;
+      return navLinks.filter((link) => link.label !== 'Manage');
     }
-    return navLinks.filter((link) => link.label !== 'Admin');
-  }, [userProfile]);
+    if (userProfile?.organisationId) {
+      return navLinks.filter((link) => link.label !== 'Admin');
+    }
+    return navLinks.filter(link => link.label !== 'Admin' && link.label !== 'Manage');
+  }, [userProfile, isLoading]);
 
 
   return (

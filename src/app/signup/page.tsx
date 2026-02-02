@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore } from '@/firebase/provider';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Ship } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,7 @@ function SignUpPageContent() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,6 +54,13 @@ function SignUpPageContent() {
     },
   });
 
+  useEffect(() => {
+    const emailFromQuery = searchParams.get('email');
+    if (emailFromQuery) {
+      form.setValue('email', emailFromQuery);
+    }
+  }, [searchParams, form]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
@@ -60,7 +68,15 @@ function SignUpPageContent() {
       const user = userCredential.user;
       
       const userRef = doc(firestore, 'users', user.uid);
-      const userData: { email: string | null; appRole?: string } = { email: user.email };
+      const userData: { email: string | null; appRole?: string, organisationId?: string; organisationRole?: string; } = { email: user.email };
+      
+      const orgId = searchParams.get('org_id');
+      const roleId = searchParams.get('role_id');
+
+      if (orgId && roleId) {
+        userData.organisationId = orgId;
+        userData.organisationRole = roleId;
+      }
 
       if (values.assignAdminRole) {
         userData.appRole = 'HelmLogic Admin';
@@ -169,7 +185,9 @@ function SignUpPageContent() {
 export default function SignUpPage() {
     return (
         <FirebaseClientProvider>
-            <SignUpPageContent />
+            <Suspense>
+              <SignUpPageContent />
+            </Suspense>
         </FirebaseClientProvider>
     );
 }

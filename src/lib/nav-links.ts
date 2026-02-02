@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Settings, Shield, Warehouse, Building2 } from 'lucide-react';
+import { LayoutDashboard, Settings, Shield, Warehouse, Building2, Briefcase } from 'lucide-react';
 
 export type SubNavLink = {
   href: string;
@@ -16,6 +16,7 @@ export type NavLink = {
 
 export const navLinks: NavLink[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/manage', label: 'Manage', icon: Briefcase },
   {
     href: '/admin',
     label: 'Admin',

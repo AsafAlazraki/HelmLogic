@@ -6,6 +6,10 @@ service cloud.firestore {
       return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
     }
 
+    function isMemberOfOrganisation(organisationId) {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == organisationId;
+    }
+
     match /users/{userId} {
       // A user can create their own user document.
       allow create: if request.auth.uid == userId;
@@ -21,7 +25,8 @@ service cloud.firestore {
     }
 
     match /organisations/{organisationId} {
-      allow read, write: if isHelmLogicAdmin();
+      allow read: if isHelmLogicAdmin() || isMemberOfOrganisation(organisationId);
+      allow write: if isHelmLogicAdmin() || isMemberOfOrganisation(organisationId);
     }
 
     match /data-warehouse/{vendorId} {
