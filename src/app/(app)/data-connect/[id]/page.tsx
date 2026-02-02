@@ -41,16 +41,16 @@ const formSchema = z.object({
   name: z.string().min(1, { message: 'Vendor name is required.' }),
   vendorType: z.string().min(1, { message: 'Vendor type is required.' }),
   dataSource: z.string().min(1, { message: 'Data source is required.' }),
-  address: z.string().optional(),
-  abn: z.string().optional(),
+  address: z.string().nullable().optional(),
+  abn: z.string().nullable().optional(),
   logo: z.any().optional(),
   attachment: z.any().optional(),
-  primaryContact: z.string().optional(),
-  website: z.string().optional(),
-  notes: z.string().optional(),
-  logoUrl: z.string().optional(),
-  attachmentUrl: z.string().optional(),
-  attachmentName: z.string().optional(),
+  primaryContact: z.string().nullable().optional(),
+  website: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  logoUrl: z.string().nullable().optional(),
+  attachmentUrl: z.string().nullable().optional(),
+  attachmentName: z.string().nullable().optional(),
 });
 
 type VendorFormData = z.infer<typeof formSchema>;
@@ -199,14 +199,14 @@ export default function VendorDetailsPage() {
                                                 <FormField control={form.control} name="vendorType" render={({ field }) => ( <FormItem><FormLabel>Vendor Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a vendor type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Boat Brand">Boat Brand</SelectItem><SelectItem value="Motor Brand">Motor Brand</SelectItem><SelectItem value="Trailer Brand">Trailer Brand</SelectItem><SelectItem value="Electronics Brand">Electronics Brand</SelectItem><SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem><SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <FormField control={form.control} name="primaryContact" render={({ field }) => ( <FormItem><FormLabel>Primary Contact</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <FormField control={form.control} name="website" render={({ field }) => ( <FormItem><FormLabel>Website</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name="primaryContact" render={({ field }) => ( <FormItem><FormLabel>Primary Contact</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name="website" render={({ field }) => ( <FormItem><FormLabel>Website</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <FormField control={form.control} name="abn" render={({ field }) => ( <FormItem><FormLabel>ABN</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name="abn" render={({ field }) => ( <FormItem><FormLabel>ABN</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                 </div>
-                                                <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                             </CardContent>
                                         </Card>
                                     </div>

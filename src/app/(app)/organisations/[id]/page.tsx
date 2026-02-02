@@ -13,7 +13,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -34,8 +34,10 @@ import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { fileToDataUri } from '@/firebase/storage-utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const hexColorValidation = z.string().optional();
+const hexColorValidation = z.string().nullable().optional();
 
 const roleSchema = z.object({
   id: z.string(),
@@ -46,20 +48,28 @@ const roleSchema = z.object({
 const formSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
-  address: z.string().optional(),
-  phoneNumber: z.string().optional(),
-  abn: z.string().optional(),
+  slug: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
+  phoneNumber: z.string().nullable().optional(),
+  abn: z.string().nullable().optional(),
   primaryColor: hexColorValidation,
   accentColor: hexColorValidation,
   secondaryColor: hexColorValidation,
   roles: z.array(roleSchema).optional(),
   primaryLogo: z.any().optional(),
   secondaryLogo: z.any().optional(),
-  primaryLogoUrl: z.string().optional(),
-  secondaryLogoUrl: z.string().optional(),
+  primaryLogoUrl: z.string().nullable().optional(),
+  secondaryLogoUrl: z.string().nullable().optional(),
 });
 
 type OrganisationFormData = z.infer<typeof formSchema>;
+
+const inviteFormSchema = z.object({
+    email: z.string().email({ message: 'Please enter a valid email address.' }),
+    roleId: z.string().min(1, { message: 'Please select a role for the user.' }),
+});
+
+type InviteFormData = z.infer<typeof inviteFormSchema>;
 
 const createSlug = (name: string) =>
   name
@@ -73,6 +83,7 @@ export default function OrganisationDetailsPage() {
     const { toast } = useToast();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isInviting, setIsInviting] = useState(false);
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
     const slugOrId = params.id as string;
@@ -91,16 +102,12 @@ export default function OrganisationDetailsPage() {
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: '',
-            address: '',
-            phoneNumber: '',
-            abn: '',
-            primaryColor: '',
-            accentColor: '',
-            secondaryColor: '',
-            roles: [],
-        },
+        defaultValues: {},
+    });
+
+    const inviteForm = useForm<InviteFormData>({
+        resolver: zodResolver(inviteFormSchema),
+        defaultValues: { email: '', roleId: '' },
     });
 
     useEffect(() => {
@@ -110,6 +117,19 @@ export default function OrganisationDetailsPage() {
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
         }
     }, [organisation, form]);
+
+    async function onInviteSubmit(values: InviteFormData) {
+        setIsInviting(true);
+        console.log("Inviting user with data:", values);
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        toast({
+            title: "Invite Sent",
+            description: `${values.email} has been invited to join the organisation.`
+        });
+        inviteForm.reset();
+        setIsInviting(false);
+    }
 
     async function onSubmit(values: OrganisationFormData) {
         if (!organisation) return;
@@ -205,135 +225,225 @@ export default function OrganisationDetailsPage() {
             {orgLoading ? (
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : organisation ? (
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <h1 className="text-2xl font-semibold">Edit {organisation.name}</h1>
-                                <BreadcrumbNav pageTitle={organisation?.name} />
-                            </div>
-                            <div className="flex gap-2">
-                                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    <Save className="mr-2 h-4 w-4" /> Save Changes
-                                </Button>
-                            </div>
+                <Tabs defaultValue="details" className="space-y-4">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <h1 className="text-2xl font-semibold">Edit {organisation.name}</h1>
+                            <BreadcrumbNav pageTitle={organisation?.name} />
                         </div>
-                        
-                        <div className="grid gap-8 lg:grid-cols-3">
-                            <div className="lg:col-span-2 space-y-8">
-                                <Card>
-                                    <CardHeader><CardTitle>Organisation Details</CardTitle><CardDescription>Primary details for the organisation.</CardDescription></CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <FormField control={form.control} name="name" render={({ field }) => (
-                                            <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="address" render={({ field }) => (
-                                            <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Ocean Ave, Metropolis, NY 10001" {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-                                                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(+1) 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="abn" render={({ field }) => (
-                                                <FormItem><FormLabel>ABN</FormLabel><FormControl><Input placeholder="e.g., 53 004 085 616" {...field} /></FormControl><FormMessage /></FormItem>
-                                            )} />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardHeader><CardTitle>Role Hierarchy</CardTitle><CardDescription>Build the organisation's role structure.</CardDescription></CardHeader>
-                                    <CardContent>
-                                        <FormField control={form.control} name="roles" render={({ field }) => (<RoleHierarchyChart value={field.value || []} onChange={field.onChange} />)} />
-                                    </CardContent>
-                                </Card>
-                            </div>
-                            <div className="lg:col-span-1 space-y-8">
-                                <Card>
-                                    <CardHeader><CardTitle>Organisation Branding</CardTitle><CardDescription>Customize the look and feel.</CardDescription></CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <ColorFormField name="primaryColor" label="Primary Color" description="The main brand color."/>
-                                        <ColorFormField name="accentColor" label="Accent Color" description="Color for highlights and links."/>
-                                        <ColorFormField name="secondaryColor" label="Secondary Color" description="Used for backgrounds and panels."/>
-                                        <Separator />
-                                        <FormField control={form.control} name="primaryLogo" render={({ field }) => (
-                                            <FormItem><FormLabel>Primary Logo</FormLabel>
-                                                {primaryLogoPreview && (
-                                                    <div className="mt-2 w-32 h-32 relative group">
-                                                        <Image src={primaryLogoPreview} alt="Primary Logo Preview" fill className="rounded-md object-contain border p-1" />
-                                                        <Button
-                                                            type="button"
-                                                            variant="destructive"
-                                                            size="icon"
-                                                            className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                                            onClick={() => {
-                                                                setPrimaryLogoPreview(null);
-                                                                form.setValue('primaryLogoUrl', '');
-                                                                field.onChange(null);
-                                                            }}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                                <FormControl><Input type="file" accept="image/*" onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    field.onChange(file);
-                                                    setPrimaryLogoPreview(file ? URL.createObjectURL(file) : null);
-                                                }} /></FormControl>
-                                                <FormDescription>Upload a new logo to replace the existing one.</FormDescription><FormMessage />
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="secondaryLogo" render={({ field }) => (
-                                            <FormItem><FormLabel>Secondary Logo</FormLabel>
-                                                {secondaryLogoPreview && (
-                                                    <div className="mt-2 w-32 h-32 relative group">
-                                                        <Image src={secondaryLogoPreview} alt="Secondary Logo Preview" fill className="rounded-md object-contain border p-1" />
-                                                        <Button
-                                                            type="button"
-                                                            variant="destructive"
-                                                            size="icon"
-                                                            className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                                            onClick={() => {
-                                                                setSecondaryLogoPreview(null);
-                                                                form.setValue('secondaryLogoUrl', '');
-                                                                field.onChange(null);
-                                                            }}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                                <FormControl><Input type="file" accept="image/*" onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    field.onChange(file);
-                                                    setSecondaryLogoPreview(file ? URL.createObjectURL(file) : null);
-                                                }} /></FormControl>
-                                                <FormDescription>An icon or alternative brand mark.</FormDescription><FormMessage />
-                                            </FormItem>
-                                        )} />
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </div>
+                    </div>
+                    <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="details">Company Details</TabsTrigger>
+                        <TabsTrigger value="users">Users</TabsTrigger>
+                        <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>
+                        <TabsTrigger value="access">Access</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="details">
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                                <div className="flex items-center justify-end gap-2">
+                                    <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        <Save className="mr-2 h-4 w-4" /> Save Changes
+                                    </Button>
+                                </div>
+                                
+                                <div className="grid gap-8 lg:grid-cols-3">
+                                    <div className="lg:col-span-2 space-y-8">
+                                        <Card>
+                                            <CardHeader><CardTitle>Organisation Details</CardTitle><CardDescription>Primary details for the organisation.</CardDescription></CardHeader>
+                                            <CardContent className="space-y-6">
+                                                <FormField control={form.control} name="name" render={({ field }) => (
+                                                    <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="address" render={({ field }) => (
+                                                    <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Ocean Ave, Metropolis, NY 10001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+                                                        <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(+1) 555-123-4567" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="abn" render={({ field }) => (
+                                                        <FormItem><FormLabel>ABN</FormLabel><FormControl><Input placeholder="e.g., 53 004 085 616" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                                    )} />
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                        <Card>
+                                            <CardHeader><CardTitle>Role Hierarchy</CardTitle><CardDescription>Build the organisation's role structure.</CardDescription></CardHeader>
+                                            <CardContent>
+                                                <FormField control={form.control} name="roles" render={({ field }) => (<RoleHierarchyChart value={field.value || []} onChange={field.onChange} />)} />
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                    <div className="lg:col-span-1 space-y-8">
+                                        <Card>
+                                            <CardHeader><CardTitle>Organisation Branding</CardTitle><CardDescription>Customize the look and feel.</CardDescription></CardHeader>
+                                            <CardContent className="space-y-6">
+                                                <ColorFormField name="primaryColor" label="Primary Color" description="The main brand color."/>
+                                                <ColorFormField name="accentColor" label="Accent Color" description="Color for highlights and links."/>
+                                                <ColorFormField name="secondaryColor" label="Secondary Color" description="Used for backgrounds and panels."/>
+                                                <Separator />
+                                                <FormField control={form.control} name="primaryLogo" render={({ field }) => (
+                                                    <FormItem><FormLabel>Primary Logo</FormLabel>
+                                                        {primaryLogoPreview && (
+                                                            <div className="mt-2 w-32 h-32 relative group">
+                                                                <Image src={primaryLogoPreview} alt="Primary Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                                    onClick={() => {
+                                                                        setPrimaryLogoPreview(null);
+                                                                        form.setValue('primaryLogoUrl', '');
+                                                                        field.onChange(null);
+                                                                    }}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                        <FormControl><Input type="file" accept="image/*" onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            field.onChange(file);
+                                                            setPrimaryLogoPreview(file ? URL.createObjectURL(file) : null);
+                                                        }} /></FormControl>
+                                                        <FormDescription>Upload a new logo to replace the existing one.</FormDescription><FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="secondaryLogo" render={({ field }) => (
+                                                    <FormItem><FormLabel>Secondary Logo</FormLabel>
+                                                        {secondaryLogoPreview && (
+                                                            <div className="mt-2 w-32 h-32 relative group">
+                                                                <Image src={secondaryLogoPreview} alt="Secondary Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                                    onClick={() => {
+                                                                        setSecondaryLogoPreview(null);
+                                                                        form.setValue('secondaryLogoUrl', '');
+                                                                        field.onChange(null);
+                                                                    }}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                        <FormControl><Input type="file" accept="image/*" onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            field.onChange(file);
+                                                            setSecondaryLogoPreview(file ? URL.createObjectURL(file) : null);
+                                                        }} /></FormControl>
+                                                        <FormDescription>An icon or alternative brand mark.</FormDescription><FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </div>
 
-                        <Card className="border-destructive">
-                          <CardHeader>
-                              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                              <p className="text-sm text-muted-foreground">Deleting this organisation is permanent and cannot be undone. All associated data will be lost.</p>
-                          </CardContent>
-                          <CardFooter>
-                              <Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}>
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete Organisation
-                              </Button>
-                          </CardFooter>
+                                <Card className="border-destructive">
+                                <CardHeader>
+                                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground">Deleting this organisation is permanent and cannot be undone. All associated data will be lost.</p>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete Organisation
+                                    </Button>
+                                </CardFooter>
+                                </Card>
+                            </form>
+                        </Form>
+                    </TabsContent>
+                    
+                    <TabsContent value="users">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Manage Users</CardTitle>
+                                <CardDescription>Invite new users and manage existing members of the organisation.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground mb-6">A list of existing users will be displayed here once the feature is implemented.</p>
+                                <Separator />
+                                <div className="mt-6">
+                                    <h3 className="text-lg font-medium">Invite New User</h3>
+                                    <Form {...inviteForm}>
+                                        <form onSubmit={inviteForm.handleSubmit(onInviteSubmit)} className="mt-4 space-y-4 max-w-lg">
+                                            <FormField control={inviteForm.control} name="email" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Email Address</FormLabel>
+                                                    <FormControl><Input placeholder="name@example.com" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={inviteForm.control} name="roleId" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Role</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select a role to assign" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {organisation.roles && organisation.roles.length > 0 ? (
+                                                                organisation.roles.map(role => (
+                                                                    <SelectItem key={role.id} value={role.id}>
+                                                                        {role.name}
+                                                                    </SelectItem>
+                                                                ))
+                                                            ) : (
+                                                                <SelectItem value="no-roles" disabled>No roles defined for this organisation</SelectItem>
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <Button type="submit" disabled={isInviting}>
+                                                {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                <Mail className="mr-2 h-4 w-4" /> Send Invite
+                                            </Button>
+                                        </form>
+                                    </Form>
+                                </div>
+                            </CardContent>
                         </Card>
-                    </form>
-                </Form>
+                    </TabsContent>
+
+                    <TabsContent value="sub-dealers">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Sub Dealers</CardTitle>
+                                <CardDescription>Manage sub dealers associated with this organisation.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p>This feature is not yet available.</p>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    
+                    <TabsContent value="access">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Access Control</CardTitle>
+                                <CardDescription>Manage access permissions and integrations for this organisation.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p>This feature is not yet available.</p>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             ) : (
                 <Card><CardHeader><CardTitle>Organisation not found</CardTitle></CardHeader><CardContent><p>The requested organisation could not be found.</p></CardContent></Card>
             )}
