@@ -1,16 +1,22 @@
 'use client';
 
-import React, { useCallback, useState, useEffect } from 'react';
-import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
+import React, { useState, useEffect } from 'react';
+import { Handle, Position, NodeProps } from 'reactflow';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Plus, Trash2 } from 'lucide-react';
-import { getLayoutedElements } from '@/lib/layout-utils';
 
-function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
+type OrgChartNodeData = {
+    label: string;
+    onLabelChange?: (label: string) => void;
+    onAddChild?: () => void;
+    onAddParent?: () => void;
+    onDelete?: () => void;
+};
+
+function OrgChartNode({ data, id }: NodeProps<OrgChartNodeData>) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
-  const { setNodes, setEdges, deleteElements, getNodes, getEdges } = useReactFlow();
 
   useEffect(() => {
     setLabel(data.label);
@@ -21,17 +27,9 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
   };
 
   const handleBlur = () => {
-    setNodes((nodes) =>
-      nodes.map((node) => {
-        if (node.id === id) {
-          node.data = {
-            ...node.data,
-            label: label,
-          };
-        }
-        return node;
-      })
-    );
+    if (data.onLabelChange && label !== data.label) {
+        data.onLabelChange(label);
+    }
     setIsEditing(false);
   };
 
@@ -41,58 +39,13 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
     }
   };
 
-  const handleAddChild = useCallback(() => {
-    const newId = crypto.randomUUID();
-    const newNode = {
-      id: newId,
-      data: { label: 'New Role' },
-      position: { x: 0, y: 0 },
-      type: 'orgChartNode',
-    };
-    const newEdge = { id: `e-${id}-${newId}`, source: id, target: newId };
-    
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      [...getNodes(), newNode],
-      [...getEdges(), newEdge]
-    );
-    
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [id, getNodes, getEdges, setNodes, setEdges]);
-
-  const handleAddParent = useCallback(() => {
-    const newId = crypto.randomUUID();
-    const newNode = {
-      id: newId,
-      data: { label: 'New Role' },
-      position: { x: 0, y: 0 },
-      type: 'orgChartNode',
-    };
-    const newEdge = { id: `e-${newId}-${id}`, source: newId, target: id };
-
-    const newEdges = getEdges().filter((edge) => edge.target !== id).concat(newEdge);
-
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      [...getNodes(), newNode],
-      newEdges
-    );
-
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [id, getNodes, getEdges, setNodes, setEdges]);
-  
-  const handleDelete = useCallback(() => {
-    deleteElements({ nodes: [{ id }] });
-  }, [id, deleteElements]);
-
-
   return (
     <div className="relative group">
         <Button
             type="button"
             size="icon"
             variant="ghost"
-            onClick={handleAddParent}
+            onClick={data.onAddParent}
             className="absolute -top-5 left-1/2 -translate-x-1/2 h-6 w-6 rounded-full bg-card border border-primary text-primary opacity-0 group-hover:opacity-100 transition-opacity z-10"
         >
             <Plus className="h-4 w-4" />
@@ -102,7 +55,7 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
             type="button"
             size="icon"
             variant="ghost"
-            onClick={handleDelete}
+            onClick={data.onDelete}
             className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-card border border-destructive text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-20"
         >
             <Trash2 className="h-4 w-4" />
@@ -126,7 +79,7 @@ function OrgChartNode({ data, id, xPos, yPos }: NodeProps<{ label: string }>) {
             type="button"
             size="icon"
             variant="ghost"
-            onClick={handleAddChild}
+            onClick={data.onAddChild}
             className="absolute -bottom-5 left-1/2 -translate-x-1/2 h-6 w-6 rounded-full bg-card border border-primary text-primary opacity-0 group-hover:opacity-100 transition-opacity z-10"
         >
             <Plus className="h-4 w-4" />

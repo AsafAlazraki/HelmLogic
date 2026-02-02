@@ -34,6 +34,10 @@ export function AppSidebar() {
   const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string }>(
     user ? `/users/${user.uid}` : null
   );
+  const { data: organisation } = useDoc<{ subDealersEnabled?: boolean }>(
+    userProfile?.organisationId ? `/organisations/${userProfile.organisationId}` : null
+  );
+
   const isLoading = userLoading || profileLoading;
 
   useEffect(() => {
@@ -49,14 +53,24 @@ export function AppSidebar() {
 
   const filteredNavLinks = useMemo(() => {
     if (isLoading) return [];
-    if (userProfile?.appRole === 'HelmLogic Admin') {
-      return navLinks.filter((link) => link.label !== 'Manage');
-    }
-    if (userProfile?.organisationId) {
-      return navLinks.filter((link) => link.label !== 'Admin');
-    }
-    return navLinks.filter(link => link.label !== 'Admin' && link.label !== 'Manage');
-  }, [userProfile, isLoading]);
+    
+    const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
+    const isOrgMember = !!userProfile?.organisationId;
+    const subDealersEnabled = !!organisation?.subDealersEnabled;
+
+    return navLinks.filter(link => {
+      if (link.label === 'Admin') {
+        return isAdmin; // Only show for admins
+      }
+      if (link.label === 'Manage') {
+        return isOrgMember && !isAdmin; // Only show for org members who are not admins
+      }
+      if (link.label === 'Sub Dealers') {
+        return isOrgMember && !isAdmin && subDealersEnabled; // Only for org members with the feature enabled
+      }
+      return true; // Always show dashboard etc.
+    });
+  }, [userProfile, isLoading, organisation]);
 
 
   return (

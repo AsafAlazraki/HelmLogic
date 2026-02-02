@@ -17,6 +17,7 @@ import { useCollection } from "@/firebase/firestore/use-collection";
 import { doc, setDoc } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { useToast } from "@/hooks/use-toast";
 
 
 const UserMenu = dynamic(() => import('@/components/user-menu').then(mod => mod.UserMenu), {
@@ -35,59 +36,74 @@ export function Header() {
   const { data: userProfile, loading: profileLoading } = useDoc<{ appRole: string, organisationId?: string }>(user ? `/users/${user.uid}` : null);
   const { data: organisations, loading: orgsLoading } = useCollection<Organisation>('organisations');
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const handleRoleChange = async (value: string) => {
     if (!user) return;
     const userRef = doc(firestore, "users", user.uid);
 
-    if (value === 'admin') {
-        const dataToUpdate = {
-            appRole: 'HelmLogic Admin',
-            organisationId: null,
-            organisationRole: null,
-        };
-        await setDoc(userRef, dataToUpdate, { merge: true })
-        .catch((serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: userRef.path, operation: 'update', requestResourceData: dataToUpdate,
+    try {
+        if (value === 'admin') {
+            const dataToUpdate = {
+                appRole: 'HelmLogic Admin',
+                organisationId: null,
+                organisationRole: null,
+            };
+            await setDoc(userRef, dataToUpdate, { merge: true });
+            toast({ title: "Role updated", description: "Switched to HelmLogic Admin." });
+
+        } else if (value === 'employee') {
+            const northsideMarine = organisations?.find(o => o.name === 'Northside Marine');
+            if (northsideMarine && northsideMarine.roles && northsideMarine.roles.length > 0) {
+                // Assuming the first role is the one with "all rights"
+                const adminRole = northsideMarine.roles[0];
+                const dataToUpdate = {
+                    appRole: 'General User',
+                    organisationId: northsideMarine.id,
+                    organisationRole: adminRole.id,
+                };
+                await setDoc(userRef, dataToUpdate, { merge: true });
+                toast({ title: "Role updated", description: "Switched to Northside Marine Employee." });
+            } else {
+                toast({ 
+                    variant: "destructive", 
+                    title: "Cannot switch role", 
+                    description: "Northside Marine organisation or roles not found." 
+                });
+            }
+        }
+    } catch (error: any) {
+        console.error("Failed to switch role:", error);
+        toast({ 
+            variant: "destructive", 
+            title: "Role switch failed", 
+            description: "An error occurred while updating your role." 
+        });
+        
+        if (error.code === 'permission-denied') {
+             const permissionError = new FirestorePermissionError({
+                path: userRef.path, operation: 'update', 
             });
             errorEmitter.emit('permission-error', permissionError);
-        });
-
-    } else if (value === 'employee') {
-        const northsideMarine = organisations?.find(o => o.name === 'Northside Marine');
-        if (northsideMarine && northsideMarine.roles && northsideMarine.roles.length > 0) {
-            // Assuming the first role is the one with "all rights"
-            const adminRole = northsideMarine.roles[0];
-            const dataToUpdate = {
-                appRole: 'General User',
-                organisationId: northsideMarine.id,
-                organisationRole: adminRole.id,
-            };
-            await setDoc(userRef, dataToUpdate, { merge: true })
-            .catch((serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: userRef.path, operation: 'update', requestResourceData: dataToUpdate,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            });
         }
     }
   };
 
   const northsideMarineOrg = organisations?.find(o => o.name === 'Northside Marine');
+  const isEmployeeOptionDisabled = !northsideMarineOrg || !northsideMarineOrg.roles || northsideMarineOrg.roles.length === 0;
   
   const getCurrentRole = () => {
     if (userProfile?.appRole === 'HelmLogic Admin') {
         return 'admin';
     }
-    if (userProfile?.organisationId && userProfile.organisationId === northsideMarineOrg?.id) {
+    if (userProfile?.organisationId && northsideMarineOrg && userProfile.organisationId === northsideMarineOrg.id) {
         return 'employee';
     }
-    return 'other';
+    return '';
   };
   
   const loading = profileLoading || orgsLoading;
+  const currentRole = getCurrentRole();
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-card px-4 sm:px-6">
@@ -97,13 +113,13 @@ export function Header() {
         {loading ? (
             <Skeleton className="h-8 w-48" />
         ) : user ? (
-            <Select onValueChange={handleRoleChange} value={getCurrentRole()}>
+            <Select onValueChange={handleRoleChange} value={currentRole}>
                 <SelectTrigger className="w-[250px]">
                     <SelectValue placeholder="Select test role" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="admin">HelmLogic Admin</SelectItem>
-                    <SelectItem value="employee" disabled={!northsideMarineOrg}>
+                    <SelectItem value="employee" disabled={isEmployeeOptionDisabled}>
                         Northside Marine Employee
                     </SelectItem>
                 </SelectContent>
