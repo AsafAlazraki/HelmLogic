@@ -55,6 +55,7 @@ const formSchema = z.object({
   secondaryLogo: z.any().optional(),
   primaryLogoUrl: z.string().nullable().optional(),
   secondaryLogoUrl: z.string().nullable().optional(),
+  subDealersEnabled: z.boolean().optional(),
 });
 
 type OrganisationFormData = z.infer<typeof formSchema>;
@@ -111,7 +112,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 }
             });
 
-            form.reset({ ...organisation, permissions: initialPermissions });
+            form.reset({ 
+                ...organisation, 
+                permissions: initialPermissions,
+                subDealersEnabled: organisation.subDealersEnabled || false,
+            });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
         }
@@ -234,6 +239,8 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         )} />
     );
 
+    const hasSubDealers = organisation?.subDealersEnabled;
+
     return (
         <>
             {orgLoading ? (
@@ -250,9 +257,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                         </div>
 
                         <Tabs defaultValue="details" className="space-y-4">
-                            <TabsList className="grid w-full grid-cols-2">
+                            <TabsList className={`grid w-full ${hasSubDealers ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                 <TabsTrigger value="details">Company Details</TabsTrigger>
                                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
+                                {hasSubDealers && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                             </TabsList>
                             
                             <TabsContent value="details" className="space-y-8">
@@ -458,6 +466,15 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                     </CardContent>
                                 </Card>
                             </TabsContent>
+
+                            {hasSubDealers && (
+                                <TabsContent value="sub-dealers">
+                                    <Card>
+                                        <CardHeader><CardTitle>Sub Dealers</CardTitle><CardDescription>Manage sub dealers associated with this organisation.</CardDescription></CardHeader>
+                                        <CardContent><p>This feature is not yet available.</p></CardContent>
+                                    </Card>
+                                </TabsContent>
+                            )}
                         </Tabs>
                     </form>
                 </Form>

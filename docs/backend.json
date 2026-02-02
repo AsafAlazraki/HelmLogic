@@ -76,6 +76,10 @@
           "type": "string",
           "description": "URL for the secondary company logo or icon."
         },
+        "subDealersEnabled": {
+          "type": "boolean",
+          "description": "Indicates if the Sub Dealers module is enabled for the organisation."
+        },
         "roles": {
           "type": "array",
           "description": "A list of roles within the organisation, forming a hierarchy.",

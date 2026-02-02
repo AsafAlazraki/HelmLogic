@@ -67,6 +67,7 @@ const formSchema = z.object({
   secondaryLogo: z.any().optional(),
   primaryLogoUrl: z.string().nullable().optional(),
   secondaryLogoUrl: z.string().nullable().optional(),
+  subDealersEnabled: z.boolean().optional(),
 });
 
 type OrganisationFormData = z.infer<typeof formSchema>;
@@ -135,7 +136,11 @@ export default function OrganisationDetailsPage() {
                 }
             });
 
-            form.reset({ ...organisation, permissions: initialPermissions });
+            form.reset({ 
+                ...organisation, 
+                permissions: initialPermissions,
+                subDealersEnabled: organisation.subDealersEnabled || false,
+            });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
         }
@@ -203,6 +208,7 @@ export default function OrganisationDetailsPage() {
                 secondaryColor: values.secondaryColor || '',
                 roles: values.roles || [],
                 permissions: values.permissions || {},
+                subDealersEnabled: values.subDealersEnabled || false,
             };
             
             if (values.primaryLogo instanceof File) {
@@ -521,8 +527,32 @@ export default function OrganisationDetailsPage() {
 
                             <TabsContent value="access">
                                 <Card>
-                                    <CardHeader><CardTitle>Access Control</CardTitle><CardDescription>Manage access permissions and integrations for this organisation.</CardDescription></CardHeader>
-                                    <CardContent><p>This feature is not yet available.</p></CardContent>
+                                    <CardHeader>
+                                        <CardTitle>Module Access Control</CardTitle>
+                                        <CardDescription>Enable or disable specific modules for this organisation.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="subDealersEnabled"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel className="text-base">Enable Sub Dealers Module</FormLabel>
+                                                        <FormDescription>
+                                                            Allow users in this organisation to manage their own sub dealers.
+                                                        </FormDescription>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </CardContent>
                                 </Card>
                             </TabsContent>
 

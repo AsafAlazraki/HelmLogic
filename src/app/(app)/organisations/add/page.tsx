@@ -53,6 +53,7 @@ const formSchema = z.object({
   roles: z.array(roleSchema).optional(),
   primaryLogo: z.any().optional(),
   secondaryLogo: z.any().optional(),
+  subDealersEnabled: z.boolean().optional(),
 });
 
 const createSlug = (name: string) =>
@@ -83,6 +84,7 @@ export default function AddOrganisationPage() {
       roles: [{ id: 'initial-admin-role', name: 'Admin', parent: '' }],
       primaryLogo: null,
       secondaryLogo: null,
+      subDealersEnabled: false,
     },
   });
 
@@ -106,6 +108,7 @@ export default function AddOrganisationPage() {
           roles: values.roles || [],
           primaryLogoUrl: null,
           secondaryLogoUrl: null,
+          subDealersEnabled: values.subDealersEnabled || false,
       };
 
       if (values.primaryLogo instanceof File) {
