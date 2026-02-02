@@ -13,7 +13,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail, Building, Check } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -39,6 +39,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
@@ -83,6 +84,7 @@ type InviteFormData = z.infer<typeof inviteFormSchema>;
 interface Vendor {
     id: string;
     name: string;
+    logoUrl?: string;
 }
 
 const createSlug = (name: string) =>
@@ -107,6 +109,7 @@ export default function OrganisationDetailsPage() {
     const [isInviting, setIsInviting] = useState(false);
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
+    const [vendorToUnsubscribe, setVendorToUnsubscribe] = useState<Vendor | null>(null);
     const slugOrId = params.id as string;
     const firestore = useFirestore();
 
@@ -579,30 +582,53 @@ export default function OrganisationDetailsPage() {
                                                     name="dataWarehouseSubscriptions"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <div className="space-y-2">
                                                             {allVendors && allVendors.length > 0 ? (
-                                                                allVendors.map((vendor) => (
-                                                                    <FormItem key={vendor.id} className="flex flex-row items-center space-x-3 space-y-0">
-                                                                        <FormControl>
-                                                                            <Checkbox
-                                                                                checked={field.value?.includes(vendor.id)}
-                                                                                onCheckedChange={(checked) => {
-                                                                                    const newValue = checked
-                                                                                        ? [...(field.value || []), vendor.id]
-                                                                                        : (field.value || []).filter((value) => value !== vendor.id);
-                                                                                    field.onChange(newValue);
-                                                                                }}
-                                                                            />
-                                                                        </FormControl>
-                                                                        <FormLabel className="font-normal">
-                                                                            {vendor.name}
-                                                                        </FormLabel>
-                                                                    </FormItem>
-                                                                ))
+                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                                    {allVendors.map((vendor) => {
+                                                                        const isSubscribed = field.value?.includes(vendor.id);
+                                                                        
+                                                                        const handleToggle = () => {
+                                                                            if (isSubscribed) {
+                                                                                setVendorToUnsubscribe(vendor);
+                                                                            } else {
+                                                                                const newValue = [...(field.value || []), vendor.id];
+                                                                                field.onChange(newValue);
+                                                                            }
+                                                                        };
+
+                                                                        return (
+                                                                            <Card 
+                                                                                key={vendor.id}
+                                                                                onClick={handleToggle}
+                                                                                className={cn(
+                                                                                    "cursor-pointer transition-all duration-200 ease-in-out hover:shadow-md hover:-translate-y-1 relative overflow-hidden",
+                                                                                    isSubscribed ? "border-primary ring-2 ring-primary" : "border-border"
+                                                                                )}
+                                                                            >
+                                                                                {isSubscribed && (
+                                                                                    <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5 z-10">
+                                                                                        <Check className="h-3 w-3" />
+                                                                                    </div>
+                                                                                )}
+                                                                                <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
+                                                                                    {vendor.logoUrl ? (
+                                                                                        <div className="relative h-full w-full">
+                                                                                            <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <Building className="h-8 w-8 text-muted-foreground"/>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="p-3 text-center">
+                                                                                    <p className="text-sm font-medium truncate">{vendor.name}</p>
+                                                                                </div>
+                                                                            </Card>
+                                                                        );
+                                                                    })}
+                                                                </div>
                                                             ) : (
                                                                 <p className="text-sm text-muted-foreground">No data warehouse vendors found. Add vendors in the Data Warehouse section.</p>
                                                             )}
-                                                            </div>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
@@ -640,6 +666,33 @@ export default function OrganisationDetailsPage() {
                         <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
                             Yes, delete it
                         </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            
+            {vendorToUnsubscribe && (
+                <AlertDialog open={!!vendorToUnsubscribe} onOpenChange={(open) => !open && setVendorToUnsubscribe(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirm Unsubscription</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to remove access to <strong>{vendorToUnsubscribe.name}</strong> for this organisation? This may affect their data access immediately.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setVendorToUnsubscribe(null)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                                onClick={() => {
+                                    const currentSubs = form.getValues('dataWarehouseSubscriptions') || [];
+                                    const newValue = currentSubs.filter((id) => id !== vendorToUnsubscribe.id);
+                                    form.setValue('dataWarehouseSubscriptions', newValue, { shouldDirty: true });
+                                    setVendorToUnsubscribe(null);
+                                }}
+                                className="bg-destructive hover:bg-destructive/90"
+                            >
+                                Yes, Unsubscribe
+                            </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
