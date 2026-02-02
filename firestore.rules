@@ -29,7 +29,10 @@ service cloud.firestore {
       // This allows non-admins to view organisation pages by slug.
       // Writes are restricted to admins or members of that specific organisation.
       allow read: if request.auth != null;
-      allow write: if isHelmLogicAdmin() || isMemberOfOrganisation(organisationId);
+      allow create: if isHelmLogicAdmin() || 
+                      (request.auth != null && 
+                       request.resource.data.parentOrganisationId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId);
+      allow update, delete: if isHelmLogicAdmin() || isMemberOfOrganisation(organisationId);
     }
 
     match /data-warehouse/{vendorId} {

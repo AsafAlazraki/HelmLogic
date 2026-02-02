@@ -6,13 +6,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Save, X, Mail } from 'lucide-react';
+import { Loader2, Save, X, Mail, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,7 @@ const formSchema = z.object({
   primaryLogoUrl: z.string().nullable().optional(),
   secondaryLogoUrl: z.string().nullable().optional(),
   subDealersEnabled: z.boolean().optional(),
+  parentOrganisationId: z.string().nullable().optional(),
 });
 
 type OrganisationFormData = z.infer<typeof formSchema>;
@@ -90,6 +92,13 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const firestore = useFirestore();
 
     const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(`/organisations/${orgId}`);
+    
+    const subDealersQuery = useMemo(() => {
+        if (!organisation) return null;
+        return query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', organisation.id));
+    }, [firestore, organisation]);
+
+    const { data: subDealers, loading: subDealersLoading } = useCollection<OrganisationFormData>(subDealersQuery);
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
@@ -470,8 +479,58 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                             {hasSubDealers && (
                                 <TabsContent value="sub-dealers">
                                     <Card>
-                                        <CardHeader><CardTitle>Sub Dealers</CardTitle><CardDescription>Manage sub dealers associated with this organisation.</CardDescription></CardHeader>
-                                        <CardContent><p>This feature is not yet available.</p></CardContent>
+                                        <CardHeader className="flex-row items-center justify-between">
+                                            <div>
+                                                <CardTitle>Sub Dealers</CardTitle>
+                                                <CardDescription>Manage sub dealers associated with this organisation.</CardDescription>
+                                            </div>
+                                            <Button asChild>
+                                                <Link href={`/organisations/${organisation.id}/add-sub-dealer`}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                                    Add Sub Dealer
+                                                </Link>
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {subDealersLoading ? (
+                                                <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                                            ) : subDealers && subDealers.length > 0 ? (
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Name</TableHead>
+                                                            <TableHead>Address</TableHead>
+                                                            <TableHead>Phone</TableHead>
+                                                            <TableHead className="text-right">Actions</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {subDealers.map(sd => (
+                                                            <TableRow key={sd.id}>
+                                                                <TableCell className="font-medium">{sd.name}</TableCell>
+                                                                <TableCell>{sd.address || 'N/A'}</TableCell>
+                                                                <TableCell>{sd.phoneNumber || 'N/A'}</TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <Button variant="ghost" size="sm" asChild>
+                                                                        <Link href={`/organisations/${sd.slug || sd.id}`}>Manage</Link>
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            ) : (
+                                                <div className="text-center py-12 text-muted-foreground">
+                                                    <p>No sub dealers have been added yet.</p>
+                                                     <Button asChild variant="secondary" className="mt-4">
+                                                        <Link href={`/organisations/${organisation.id}/add-sub-dealer`}>
+                                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                                            Add First Sub Dealer
+                                                        </Link>
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </CardContent>
                                     </Card>
                                 </TabsContent>
                             )}

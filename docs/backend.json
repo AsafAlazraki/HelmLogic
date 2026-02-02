@@ -80,6 +80,10 @@
           "type": "boolean",
           "description": "Indicates if the Sub Dealers module is enabled for the organisation."
         },
+        "parentOrganisationId": {
+          "type": "string",
+          "description": "The ID of the parent organisation, if this is a sub-dealer."
+        },
         "roles": {
           "type": "array",
           "description": "A list of roles within the organisation, forming a hierarchy.",

@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -13,7 +14,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail, Building, Check } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -70,6 +71,7 @@ const formSchema = z.object({
   secondaryLogoUrl: z.string().nullable().optional(),
   subDealersEnabled: z.boolean().optional(),
   dataWarehouseSubscriptions: z.array(z.string()).optional(),
+  parentOrganisationId: z.string().nullable().optional(),
 });
 
 type OrganisationFormData = z.infer<typeof formSchema>;
@@ -126,6 +128,13 @@ export default function OrganisationDetailsPage() {
 
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
 
+    const subDealersQuery = useMemo(() => {
+        if (!organisation) return null;
+        return query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', organisation.id));
+    }, [firestore, organisation]);
+
+    const { data: subDealers, loading: subDealersLoading } = useCollection<OrganisationFormData>(subDealersQuery);
+
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {},
@@ -137,6 +146,7 @@ export default function OrganisationDetailsPage() {
     });
     
     const watchedRoles = form.watch('roles');
+    const watchedSubDealersEnabled = form.watch('subDealersEnabled');
 
     useEffect(() => {
         if (organisation) {
@@ -320,11 +330,11 @@ export default function OrganisationDetailsPage() {
                         </div>
 
                         <Tabs defaultValue="details" className="space-y-4">
-                            <TabsList className="grid w-full grid-cols-4">
+                            <TabsList className={`grid w-full ${watchedSubDealersEnabled ? 'grid-cols-4' : 'grid-cols-3'}`}>
                                 <TabsTrigger value="details">Company Details</TabsTrigger>
                                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
                                 <TabsTrigger value="access">Access</TabsTrigger>
-                                <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>
+                                {watchedSubDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                             </TabsList>
                             
                             <TabsContent value="details" className="space-y-8">
@@ -639,12 +649,64 @@ export default function OrganisationDetailsPage() {
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="sub-dealers">
-                                <Card>
-                                    <CardHeader><CardTitle>Sub Dealers</CardTitle><CardDescription>Manage sub dealers associated with this organisation.</CardDescription></CardHeader>
-                                    <CardContent><p>This feature is not yet available.</p></CardContent>
-                                </Card>
-                            </TabsContent>
+                            {watchedSubDealersEnabled && (
+                                <TabsContent value="sub-dealers">
+                                    <Card>
+                                        <CardHeader className="flex-row items-center justify-between">
+                                            <div>
+                                                <CardTitle>Sub Dealers</CardTitle>
+                                                <CardDescription>Manage sub dealers associated with this organisation.</CardDescription>
+                                            </div>
+                                            <Button asChild>
+                                                <Link href={`/organisations/${organisation.id}/add-sub-dealer`}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                                    Add Sub Dealer
+                                                </Link>
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {subDealersLoading ? (
+                                                <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                                            ) : subDealers && subDealers.length > 0 ? (
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Name</TableHead>
+                                                            <TableHead>Address</TableHead>
+                                                            <TableHead>Phone</TableHead>
+                                                            <TableHead className="text-right">Actions</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {subDealers.map(sd => (
+                                                            <TableRow key={sd.id}>
+                                                                <TableCell className="font-medium">{sd.name}</TableCell>
+                                                                <TableCell>{sd.address || 'N/A'}</TableCell>
+                                                                <TableCell>{sd.phoneNumber || 'N/A'}</TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <Button variant="ghost" size="sm" asChild>
+                                                                        <Link href={`/organisations/${sd.slug || sd.id}`}>Manage</Link>
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            ) : (
+                                                <div className="text-center py-12 text-muted-foreground">
+                                                    <p>No sub dealers have been added yet.</p>
+                                                    <Button asChild variant="secondary" className="mt-4">
+                                                        <Link href={`/organisations/${organisation.id}/add-sub-dealer`}>
+                                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                                            Add First Sub Dealer
+                                                        </Link>
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+                            )}
                         </Tabs>
                     </form>
                 </Form>
