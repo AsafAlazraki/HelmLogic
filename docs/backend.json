@@ -87,6 +87,17 @@
             },
             "required": ["id", "name"]
           }
+        },
+        "permissions": {
+          "type": "object",
+          "description": "Defines permissions for each role ID.",
+          "additionalProperties": {
+            "type": "object",
+            "description": "A map of permission keys to boolean values.",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
         }
       },
       "required": [

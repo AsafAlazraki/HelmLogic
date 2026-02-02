@@ -37,6 +37,9 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -59,6 +62,7 @@ const formSchema = z.object({
   accentColor: hexColorValidation,
   secondaryColor: hexColorValidation,
   roles: z.array(roleSchema).optional(),
+  permissions: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
   primaryLogo: z.any().optional(),
   secondaryLogo: z.any().optional(),
   primaryLogoUrl: z.string().nullable().optional(),
@@ -79,6 +83,13 @@ const createSlug = (name: string) =>
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^\w-]+/g, '');
+
+const permissionsConfig = [
+    { id: 'viewFinancials', label: 'View Financials' },
+    { id: 'editInventory', label: 'Edit Inventory' },
+    { id: 'manageUsers', label: 'Manage Users' },
+    { id: 'manageDataSources', label: 'Manage Data Sources' },
+];
 
 export default function OrganisationDetailsPage() {
     const params = useParams();
@@ -112,10 +123,19 @@ export default function OrganisationDetailsPage() {
         resolver: zodResolver(inviteFormSchema),
         defaultValues: { email: '', roleId: '' },
     });
+    
+    const watchedRoles = form.watch('roles');
 
     useEffect(() => {
         if (organisation) {
-            form.reset(organisation);
+            const initialPermissions = organisation.permissions || {};
+            (organisation.roles || []).forEach(role => {
+                if (!initialPermissions[role.id]) {
+                    initialPermissions[role.id] = {};
+                }
+            });
+
+            form.reset({ ...organisation, permissions: initialPermissions });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
         }
@@ -180,6 +200,7 @@ export default function OrganisationDetailsPage() {
                 accentColor: values.accentColor || '',
                 secondaryColor: values.secondaryColor || '',
                 roles: values.roles || [],
+                permissions: values.permissions || {},
             };
             
             if (values.primaryLogo instanceof File) {
@@ -261,31 +282,31 @@ export default function OrganisationDetailsPage() {
             {orgLoading ? (
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : organisation ? (
-                <Tabs defaultValue="details" className="space-y-4">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <h1 className="text-2xl font-semibold">Edit {organisation.name}</h1>
-                            <BreadcrumbNav pageTitle={organisation?.name} />
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h1 className="text-2xl font-semibold">Edit {organisation.name}</h1>
+                                <BreadcrumbNav pageTitle={organisation?.name} />
+                            </div>
+                            <div className="flex items-center justify-end gap-2">
+                                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    <Save className="mr-2 h-4 w-4" /> Save Changes
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                    <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="details">Company Details</TabsTrigger>
-                        <TabsTrigger value="users">Users</TabsTrigger>
-                        <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>
-                        <TabsTrigger value="access">Access</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="details">
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                                <div className="flex items-center justify-end gap-2">
-                                    <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
-                                    <Button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        <Save className="mr-2 h-4 w-4" /> Save Changes
-                                    </Button>
-                                </div>
-                                
+
+                        <Tabs defaultValue="details" className="space-y-4">
+                            <TabsList className="grid w-full grid-cols-4">
+                                <TabsTrigger value="details">Company Details</TabsTrigger>
+                                <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
+                                <TabsTrigger value="access">Access</TabsTrigger>
+                                <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="details" className="space-y-8">
                                 <div className="grid gap-8 lg:grid-cols-3">
                                     <div className="lg:col-span-2 space-y-8">
                                         <Card>
@@ -382,104 +403,136 @@ export default function OrganisationDetailsPage() {
                                         </Card>
                                     </div>
                                 </div>
-
                                 <Card className="border-destructive">
-                                <CardHeader>
-                                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-muted-foreground">Deleting this organisation is permanent and cannot be undone. All associated data will be lost.</p>
-                                </CardContent>
-                                <CardFooter>
-                                    <Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete Organisation
-                                    </Button>
-                                </CardFooter>
+                                    <CardHeader><CardTitle className="text-destructive">Danger Zone</CardTitle></CardHeader>
+                                    <CardContent><p className="text-sm text-muted-foreground">Deleting this organisation is permanent and cannot be undone. All associated data will be lost.</p></CardContent>
+                                    <CardFooter>
+                                        <Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete Organisation</Button>
+                                    </CardFooter>
                                 </Card>
-                            </form>
-                        </Form>
-                    </TabsContent>
-                    
-                    <TabsContent value="users">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Manage Users</CardTitle>
-                                <CardDescription>Invite new users and manage existing members of the organisation.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-6">A list of existing users will be displayed here once the feature is implemented.</p>
-                                <Separator />
-                                <div className="mt-6">
-                                    <h3 className="text-lg font-medium">Invite New User</h3>
-                                    <Form {...inviteForm}>
-                                        <form onSubmit={inviteForm.handleSubmit(onInviteSubmit)} className="mt-4 space-y-4 max-w-lg">
-                                            <FormField control={inviteForm.control} name="email" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Email Address</FormLabel>
-                                                    <FormControl><Input placeholder="name@example.com" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            <FormField control={inviteForm.control} name="roleId" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Role</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select a role to assign" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {organisation.roles && organisation.roles.length > 0 ? (
-                                                                organisation.roles.map(role => (
-                                                                    <SelectItem key={role.id} value={role.id}>
-                                                                        {role.name}
-                                                                    </SelectItem>
-                                                                ))
-                                                            ) : (
-                                                                <SelectItem value="no-roles" disabled>No roles defined for this organisation</SelectItem>
+                            </TabsContent>
+                            
+                            <TabsContent value="users">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Users &amp; Permissions</CardTitle>
+                                        <CardDescription>Invite new users, manage existing members, and configure role-based permissions.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Tabs defaultValue="manage-users">
+                                            <TabsList>
+                                                <TabsTrigger value="manage-users">Manage Users</TabsTrigger>
+                                                <TabsTrigger value="manage-permissions">Manage Permissions</TabsTrigger>
+                                            </TabsList>
+                                            <TabsContent value="manage-users" className="pt-6">
+                                                <h3 className="text-lg font-medium">Invite New User</h3>
+                                                <Form {...inviteForm}>
+                                                    <form onSubmit={inviteForm.handleSubmit(onInviteSubmit)} className="mt-4 space-y-4 max-w-lg">
+                                                        <FormField control={inviteForm.control} name="email" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Email Address</FormLabel>
+                                                                <FormControl><Input placeholder="name@example.com" {...field} /></FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )} />
+                                                        <FormField control={inviteForm.control} name="roleId" render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Role</FormLabel>
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <FormControl>
+                                                                        <SelectTrigger>
+                                                                            <SelectValue placeholder="Select a role to assign" />
+                                                                        </SelectTrigger>
+                                                                    </FormControl>
+                                                                    <SelectContent>
+                                                                        {organisation.roles && organisation.roles.length > 0 ? (
+                                                                            organisation.roles.map(role => (
+                                                                                <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                                                            ))
+                                                                        ) : (
+                                                                            <SelectItem value="no-roles" disabled>No roles defined for this organisation</SelectItem>
+                                                                        )}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )} />
+                                                        <Button type="submit" disabled={isInviting}>
+                                                            {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                            <Mail className="mr-2 h-4 w-4" /> Send Invite
+                                                        </Button>
+                                                    </form>
+                                                </Form>
+                                                <Separator className="my-6" />
+                                                <h3 className="text-lg font-medium">Existing Users</h3>
+                                                <p className="text-sm text-muted-foreground mt-2">A list of existing users will be displayed here once the feature is implemented.</p>
+                                            </TabsContent>
+                                            <TabsContent value="manage-permissions" className="pt-6">
+                                                <h3 className="text-lg font-medium">Role Permissions</h3>
+                                                <p className="text-sm text-muted-foreground mt-2">Define what each role can see and do. Changes are saved with the rest of the form.</p>
+                                                <div className="mt-4 rounded-md border">
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead className="w-1/3">Role</TableHead>
+                                                                {permissionsConfig.map(p => <TableHead key={p.id} className="text-center">{p.label}</TableHead>)}
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {watchedRoles && watchedRoles.length > 0 ? watchedRoles.map((role) => (
+                                                                <TableRow key={role.id}>
+                                                                    <TableCell className="font-medium">{role.name}</TableCell>
+                                                                    {permissionsConfig.map(permission => (
+                                                                        <TableCell key={permission.id} className="text-center">
+                                                                            <FormField
+                                                                                control={form.control}
+                                                                                name={`permissions.${role.id}.${permission.id}`}
+                                                                                render={({ field }) => (
+                                                                                    <FormItem className="flex justify-center p-0 m-0">
+                                                                                        <FormControl>
+                                                                                            <Checkbox
+                                                                                                checked={field.value || false}
+                                                                                                onCheckedChange={field.onChange}
+                                                                                            />
+                                                                                        </FormControl>
+                                                                                    </FormItem>
+                                                                                )}
+                                                                            />
+                                                                        </TableCell>
+                                                                    ))}
+                                                                </TableRow>
+                                                            )) : (
+                                                                <TableRow>
+                                                                    <TableCell colSpan={permissionsConfig.length + 1} className="h-24 text-center">
+                                                                        No roles defined. Add roles in the 'Company Details' tab.
+                                                                    </TableCell>
+                                                                </TableRow>
                                                             )}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            <Button type="submit" disabled={isInviting}>
-                                                {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                <Mail className="mr-2 h-4 w-4" /> Send Invite
-                                            </Button>
-                                        </form>
-                                    </Form>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </TabsContent>
+                                        </Tabs>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
 
-                    <TabsContent value="sub-dealers">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Sub Dealers</CardTitle>
-                                <CardDescription>Manage sub dealers associated with this organisation.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p>This feature is not yet available.</p>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                    
-                    <TabsContent value="access">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Access Control</CardTitle>
-                                <CardDescription>Manage access permissions and integrations for this organisation.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p>This feature is not yet available.</p>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
+                            <TabsContent value="access">
+                                <Card>
+                                    <CardHeader><CardTitle>Access Control</CardTitle><CardDescription>Manage access permissions and integrations for this organisation.</CardDescription></CardHeader>
+                                    <CardContent><p>This feature is not yet available.</p></CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            <TabsContent value="sub-dealers">
+                                <Card>
+                                    <CardHeader><CardTitle>Sub Dealers</CardTitle><CardDescription>Manage sub dealers associated with this organisation.</CardDescription></CardHeader>
+                                    <CardContent><p>This feature is not yet available.</p></CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
+                    </form>
+                </Form>
             ) : (
                 <Card><CardHeader><CardTitle>Organisation not found</CardTitle></CardHeader><CardContent><p>The requested organisation could not be found.</p></CardContent></Card>
             )}
