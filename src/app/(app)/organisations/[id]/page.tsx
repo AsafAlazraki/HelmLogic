@@ -211,8 +211,10 @@ export default function OrganisationDetailsPage() {
             <FormItem>
               <FormLabel>{label}</FormLabel>
               <div className="flex items-center gap-2">
-                <FormControl><Input type="color" className="h-10 w-14 p-1" {...field} value={field.value ?? ''} /></FormControl>
-                <FormControl><Input placeholder="#RRGGBB" {...field} value={field.value ?? ''} /></FormControl>
+                <Input type="color" className="h-10 w-14 p-1" onChange={field.onChange} value={field.value ?? ''} />
+                <FormControl>
+                    <Input placeholder="#RRGGBB" {...field} value={field.value ?? ''} />
+                </FormControl>
               </div>
               <FormDescription>{description}</FormDescription>
               <FormMessage />
@@ -256,7 +258,7 @@ export default function OrganisationDetailsPage() {
                                             <CardHeader><CardTitle>Organisation Details</CardTitle><CardDescription>Primary details for the organisation.</CardDescription></CardHeader>
                                             <CardContent className="space-y-6">
                                                 <FormField control={form.control} name="name" render={({ field }) => (
-                                                    <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="address" render={({ field }) => (
                                                     <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Ocean Ave, Metropolis, NY 10001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
