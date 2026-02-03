@@ -153,11 +153,15 @@ function ApiDataFetcher() {
                 description: `Successfully retrieved all records.`,
             });
         } catch (e: any) {
-            setError(e.message || 'Failed to fetch or parse data.');
+            let errorMessage = e.message || 'Failed to fetch or parse data.';
+            if (e instanceof TypeError && e.message === 'Failed to fetch') {
+                errorMessage = 'A network error occurred. This is often due to a CORS (Cross-Origin Resource Sharing) policy on the remote server. The API must be configured to allow requests from this application.';
+            }
+            setError(errorMessage);
             toast({
                 variant: 'destructive',
                 title: 'Fetch Failed',
-                description: e.message || 'Could not fetch data from the provided URL.',
+                description: errorMessage,
             });
         } finally {
             setIsLoading(false);
