@@ -240,24 +240,60 @@ function CsvDataExtractor() {
         reader.onload = (e) => {
             try {
                 const text = e.target?.result as string;
-                const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                
+                const parseCsv = (csvText: string) => {
+                    const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                    if (lines.length < 1) throw new Error("CSV file is empty or invalid.");
 
-                if (lines.length < 1) {
-                    throw new Error("CSV file is empty or invalid.");
-                }
+                    const parseLine = (line: string): string[] => {
+                        const values: string[] = [];
+                        let currentField = "";
+                        let inQuotes = false;
 
-                // This is a naive parser and won't handle commas within quoted fields.
-                const headers = lines[0].split(',').map(h => h.trim());
-                const rows = lines.slice(1).map(line => {
-                    const values = line.split(',');
-                    return headers.reduce((obj, header, index) => {
-                        obj[header] = values[index]?.trim() || '';
-                        return obj;
-                    }, {} as Record<string, string>);
-                });
+                        for (let i = 0; i < line.length; i++) {
+                            const char = line[i];
 
-                setData({ headers, rows });
-                toast({ title: 'CSV Parsed', description: `Successfully extracted ${rows.length} rows.` });
+                            if (inQuotes) {
+                                if (char === '"') {
+                                    if (i + 1 < line.length && line[i + 1] === '"') {
+                                        currentField += '"';
+                                        i++; 
+                                    } else {
+                                        inQuotes = false;
+                                    }
+                                } else {
+                                    currentField += char;
+                                }
+                            } else {
+                                if (char === '"') {
+                                    inQuotes = true;
+                                } else if (char === ',') {
+                                    values.push(currentField);
+                                    currentField = "";
+                                } else {
+                                    currentField += char;
+                                }
+                            }
+                        }
+                        values.push(currentField);
+                        return values;
+                    };
+
+                    const headers = parseLine(lines[0]).map(h => h.trim());
+                    const rows = lines.slice(1).map(line => {
+                        const values = parseLine(line);
+                        return headers.reduce((obj, header, index) => {
+                            obj[header] = values[index] || '';
+                            return obj;
+                        }, {} as Record<string, string>);
+                    });
+
+                    return { headers, rows };
+                };
+                
+                const parsedData = parseCsv(text);
+                setData(parsedData);
+                toast({ title: 'CSV Parsed', description: `Successfully extracted ${parsedData.rows.length} rows.` });
             } catch (err: any) {
                 const errorMsg = err.message || 'Failed to parse the CSV file.';
                 setError(errorMsg);
