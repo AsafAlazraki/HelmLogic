@@ -93,16 +93,20 @@ function ApiDataFetcher() {
         try {
             while (nextUrl) {
                 const response = await fetch(nextUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status} for URL: ${nextUrl}`);
-                }
                 
                 const responseText = await response.text();
                 let pageData;
                 try {
                     pageData = JSON.parse(responseText);
                 } catch (e) {
+                    if (!response.ok) {
+                         throw new Error(`HTTP error! status: ${response.status} for URL: ${nextUrl}`);
+                    }
                     throw new Error(`Response was not valid JSON. Content starts with: "${responseText.substring(0, 100)}..."`);
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} for URL: ${nextUrl}`);
                 }
 
                 // Handle Zoho-like specific error format in the body of a 200 OK response
