@@ -304,7 +304,7 @@ function FileDataExtractor() {
                     
                     const parsedData = parseCsv(text);
                     setData(parsedData);
-                    toast({ title: 'CSV Parsed', description: `Successfully extracted ${parsedData.rows.length} rows.` });
+                    toast({ title: 'File Processed', description: `Successfully processed ${parsedData.rows.length} rows.` });
                 } catch (err: any) {
                     const errorMsg = err.message || 'Failed to parse the CSV file.';
                     setError(errorMsg);
@@ -325,11 +325,11 @@ function FileDataExtractor() {
                     
                     if (jsonData.length === 0) {
                         setData({ headers: [], rows: [] });
-                        toast({ title: 'XLSX Parsed', description: 'The file is empty or has no data.' });
+                        toast({ title: 'File Processed', description: 'The file is empty or has no data.' });
                     } else {
                         const headers = Object.keys(jsonData[0]);
                         setData({ headers, rows: jsonData });
-                        toast({ title: 'XLSX Parsed', description: `Successfully extracted ${jsonData.length} rows.` });
+                        toast({ title: 'File Processed', description: `Successfully processed ${jsonData.length} rows.` });
                     }
 
                 } catch (err: any) {
@@ -349,7 +349,7 @@ function FileDataExtractor() {
             <Card>
                 <CardHeader>
                     <CardTitle>Upload & Extract File Data</CardTitle>
-                    <CardDescription>Select a CSV or XLSX file to extract and visualize its content.</CardDescription>
+                    <CardDescription>Select a CSV or XLSX file to extract its content. The data will be made available in the staging area.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Input type="file" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleFileChange} disabled={isLoading} />
@@ -359,6 +359,7 @@ function FileDataExtractor() {
             {isLoading && (
                 <div className="flex items-center justify-center rounded-md border border-dashed p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-4 text-muted-foreground">Processing file...</p>
                 </div>
             )}
             {error && (
@@ -368,18 +369,13 @@ function FileDataExtractor() {
                 </div>
             )}
             {data && (
-                <Card>
+                 <Card>
                     <CardHeader>
-                        <CardTitle>Extracted Data Preview</CardTitle>
+                        <CardTitle>Processing Complete</CardTitle>
                         <CardDescription>
-                            Showing {Math.min(10, data.rows.length)} of {data.rows.length} rows as JSON.
+                           Successfully processed {data.rows.length} rows. The data is now available for use in the data staging area.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
-                            <code>{JSON.stringify(data.rows.slice(0, 10), null, 2)}</code>
-                        </pre>
-                    </CardContent>
                 </Card>
             )}
         </div>
