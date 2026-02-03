@@ -83,17 +83,49 @@ function ApiDataFetcher() {
         setIsLoading(true);
         setError(null);
         setJsonData(null);
+        
+        let collectedData: any[] = [];
+        let nextUrl: string | null = url;
 
         try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            while (nextUrl) {
+                const response = await fetch(nextUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} for URL: ${nextUrl}`);
+                }
+                const pageData = await response.json();
+
+                // Handle responses that are just an array of items
+                if (Array.isArray(pageData)) {
+                    collectedData = [...collectedData, ...pageData];
+                    nextUrl = null; // Assume no more pages if the root is an array
+                    continue;
+                }
+
+                // Handle object responses with common pagination structures
+                const items = pageData.results || pageData.data;
+                if (Array.isArray(items)) {
+                    collectedData = [...collectedData, ...items];
+                } else {
+                    // If it's the first fetch and no items array, assume it's a single object response
+                    if (nextUrl === url) {
+                         collectedData.push(pageData);
+                         nextUrl = null; // Stop, it's a single object
+                         continue;
+                    }
+                }
+                
+                // Update URL for next iteration, or stop if not present
+                nextUrl = pageData.next || pageData.links?.next || null;
             }
-            const data = await response.json();
-            setJsonData(data);
+
+            // If we only ended up with one item and it's not an array, just show that object directly.
+            // Otherwise, show the full array of items.
+            setJsonData(collectedData.length === 1 && !Array.isArray(collectedData[0]) ? collectedData[0] : collectedData);
+
             toast({
-                title: 'Data Fetched',
-                description: 'Successfully retrieved data from the API.',
+                title: 'Data Fetch Complete',
+                description: `Successfully retrieved all records.`,
             });
         } catch (e: any) {
             setError(e.message || 'Failed to fetch or parse data.');
