@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
+import * as XLSX from 'xlsx';
 
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -215,8 +216,8 @@ function ApiDataFetcher() {
     );
 }
 
-function CsvDataExtractor() {
-    const [data, setData] = useState<{ headers: string[], rows: Record<string, string>[] } | null>(null);
+function FileDataExtractor() {
+    const [data, setData] = useState<{ headers: string[], rows: Record<string, any>[] } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
@@ -225,8 +226,9 @@ function CsvDataExtractor() {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (!file.name.endsWith('.csv')) {
-            const err = 'Please upload a valid CSV file.';
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+        if (fileExtension !== 'csv' && fileExtension !== 'xlsx') {
+            const err = 'Please upload a valid CSV or XLSX file.';
             setError(err);
             toast({ variant: 'destructive', title: 'Invalid File Type', description: err });
             return;
@@ -237,89 +239,120 @@ function CsvDataExtractor() {
         setData(null);
 
         const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const text = e.target?.result as string;
-                
-                const parseCsv = (csvText: string) => {
-                    const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
-                    if (lines.length < 1) throw new Error("CSV file is empty or invalid.");
 
-                    const parseLine = (line: string): string[] => {
-                        const values: string[] = [];
-                        let currentField = "";
-                        let inQuotes = false;
-
-                        for (let i = 0; i < line.length; i++) {
-                            const char = line[i];
-
-                            if (inQuotes) {
-                                if (char === '"') {
-                                    if (i + 1 < line.length && line[i + 1] === '"') {
-                                        currentField += '"';
-                                        i++; 
-                                    } else {
-                                        inQuotes = false;
-                                    }
-                                } else {
-                                    currentField += char;
-                                }
-                            } else {
-                                if (char === '"') {
-                                    inQuotes = true;
-                                } else if (char === ',') {
-                                    values.push(currentField);
-                                    currentField = "";
-                                } else {
-                                    currentField += char;
-                                }
-                            }
-                        }
-                        values.push(currentField);
-                        return values;
-                    };
-
-                    const headers = parseLine(lines[0]).map(h => h.trim());
-                    const rows = lines.slice(1).map(line => {
-                        const values = parseLine(line);
-                        return headers.reduce((obj, header, index) => {
-                            obj[header] = values[index] || '';
-                            return obj;
-                        }, {} as Record<string, string>);
-                    });
-
-                    return { headers, rows };
-                };
-                
-                const parsedData = parseCsv(text);
-                setData(parsedData);
-                toast({ title: 'CSV Parsed', description: `Successfully extracted ${parsedData.rows.length} rows.` });
-            } catch (err: any) {
-                const errorMsg = err.message || 'Failed to parse the CSV file.';
-                setError(errorMsg);
-                toast({ variant: 'destructive', title: 'Parsing Failed', description: errorMsg });
-            } finally {
-                setIsLoading(false);
-            }
-        };
         reader.onerror = () => {
             const errorMsg = 'Failed to read the file.';
             setError(errorMsg);
             toast({ variant: 'destructive', title: 'File Read Error', description: errorMsg });
             setIsLoading(false);
-        }
-        reader.readAsText(file);
-    };
+        };
 
+        if (fileExtension === 'csv') {
+            reader.onload = (e) => {
+                try {
+                    const text = e.target?.result as string;
+                    
+                    const parseCsv = (csvText: string) => {
+                        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                        if (lines.length < 1) throw new Error("CSV file is empty or invalid.");
+
+                        const parseLine = (line: string): string[] => {
+                            const values: string[] = [];
+                            let currentField = "";
+                            let inQuotes = false;
+
+                            for (let i = 0; i < line.length; i++) {
+                                const char = line[i];
+
+                                if (inQuotes) {
+                                    if (char === '"') {
+                                        if (i + 1 < line.length && line[i + 1] === '"') {
+                                            currentField += '"';
+                                            i++; 
+                                        } else {
+                                            inQuotes = false;
+                                        }
+                                    } else {
+                                        currentField += char;
+                                    }
+                                } else {
+                                    if (char === '"') {
+                                        inQuotes = true;
+                                    } else if (char === ',') {
+                                        values.push(currentField);
+                                        currentField = "";
+                                    } else {
+                                        currentField += char;
+                                    }
+                                }
+                            }
+                            values.push(currentField);
+                            return values;
+                        };
+
+                        const headers = parseLine(lines[0]).map(h => h.trim());
+                        const rows = lines.slice(1).map(line => {
+                            const values = parseLine(line);
+                            return headers.reduce((obj, header, index) => {
+                                obj[header] = values[index] || '';
+                                return obj;
+                            }, {} as Record<string, string>);
+                        });
+
+                        return { headers, rows };
+                    };
+                    
+                    const parsedData = parseCsv(text);
+                    setData(parsedData);
+                    toast({ title: 'CSV Parsed', description: `Successfully extracted ${parsedData.rows.length} rows.` });
+                } catch (err: any) {
+                    const errorMsg = err.message || 'Failed to parse the CSV file.';
+                    setError(errorMsg);
+                    toast({ variant: 'destructive', title: 'Parsing Failed', description: errorMsg });
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            reader.readAsText(file);
+        } else if (fileExtension === 'xlsx') {
+            reader.onload = (e) => {
+                try {
+                    const buffer = e.target?.result;
+                    const workbook = XLSX.read(buffer, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    if (jsonData.length === 0) {
+                        setData({ headers: [], rows: [] });
+                        toast({ title: 'XLSX Parsed', description: 'The file is empty or has no data.' });
+                    } else {
+                        const headers = Object.keys(jsonData[0]);
+                        setData({ headers, rows: jsonData });
+                        toast({ title: 'XLSX Parsed', description: `Successfully extracted ${jsonData.length} rows.` });
+                    }
+
+                } catch (err: any) {
+                     const errorMsg = err.message || 'Failed to parse the XLSX file.';
+                    setError(errorMsg);
+                    toast({ variant: 'destructive', title: 'Parsing Failed', description: errorMsg });
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    };
+    
     return (
         <div className="space-y-4">
             <Card>
                 <CardHeader>
-                    <CardTitle>Upload & Extract CSV Data</CardTitle>
-                    <CardDescription>Select a CSV file to extract and visualize its content. This feature uses a simple parser and may not work correctly with complex CSVs (e.g., fields containing commas).</CardDescription>
+                    <CardTitle>Upload & Extract File Data</CardTitle>
+                    <CardDescription>Select a CSV or XLSX file to extract and visualize its content.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Input type="file" accept=".csv" onChange={handleFileChange} disabled={isLoading} />
+                    <Input type="file" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleFileChange} disabled={isLoading} />
                 </CardContent>
             </Card>
 
@@ -489,7 +522,7 @@ export default function VendorDetailsPage() {
                         {vendor.dataSource === 'Direct API' ? (
                             <ApiDataFetcher />
                         ) : vendor.dataSource === 'Document Upload' ? (
-                            <CsvDataExtractor />
+                            <FileDataExtractor />
                         ) : (
                             <Card>
                                 <CardHeader>
