@@ -210,7 +210,7 @@ function ApiDataFetcher() {
 
 function DocumentAnalyzer() {
     const [file, setFile] = useState<File | null>(null);
-    const [instructions, setInstructions] = useState<string>('Identify the main data table in this document. Extract it into a structured format. The data appears to be about product inventory.');
+    const [instructions, setInstructions] = useState<string>('This is a CSV file. Extract all rows and columns, using the first row as the header for JSON keys. Convert keys to camelCase.');
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<AnalyzeDocumentOutput | null>(null);
     const [error, setError] = useState<string | null>(null);

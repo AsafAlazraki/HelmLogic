@@ -14,7 +14,7 @@ const AnalyzeDocumentInputSchema = z.object({
   fileDataUri: z.string().describe("A file as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
   analysisInstructions: z.string().describe('User instructions on how to analyze and what to extract from the data.'),
 });
-export type AnalyzeDocumentInput = z.infer<typeof AnalyzeDocumentInputSchema>;
+type AnalyzeDocumentInput = z.infer<typeof AnalyzeDocumentInputSchema>;
 
 // This is the schema of the object the AI model is asked to return.
 // We ask for a JSON string to avoid strict schema validation issues with nested dynamic objects.
@@ -52,7 +52,7 @@ Here is the file:
 
 Please perform the following actions:
 1.  Provide a concise, one-paragraph summary of the document's content.
-2.  Extract the most relevant tabular data from the document as a valid JSON string representing an array of JSON objects. The keys for the objects should be consistent, descriptive, and in camelCase. This string will be parsed by a machine, so it must be valid JSON.
+2.  Extract the most relevant tabular data from the document as a valid JSON string representing an array of JSON objects. The keys for the objects should be consistent, descriptive, and in camelCase. If the file is a CSV or appears to be a CSV, use the first row as the header for the JSON keys and ensure all data rows are extracted. This string will be parsed by a machine, so it must be valid JSON.
 3.  Based on the extracted data, suggest a list of columns for displaying this data in a table. For each column, provide a 'key' that matches the keys in your extractedData objects, and a 'label' that is a human-readable name for the column header.
 If the document does not contain clear tabular data, do your best to structure the information you can find. If the document is not a text-based format or image that you can read, state that you cannot process the file type.
 `,
