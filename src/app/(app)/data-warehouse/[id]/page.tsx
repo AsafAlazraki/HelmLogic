@@ -25,6 +25,8 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 import { 
   AlertDialog,
@@ -205,6 +207,120 @@ function ApiDataFetcher() {
     );
 }
 
+function CsvDataExtractor() {
+    const [data, setData] = useState<{ headers: string[], rows: Record<string, string>[] } | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const { toast } = useToast();
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.csv')) {
+            const err = 'Please upload a valid CSV file.';
+            setError(err);
+            toast({ variant: 'destructive', title: 'Invalid File Type', description: err });
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setData(null);
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const text = e.target?.result as string;
+                const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+
+                if (lines.length < 1) {
+                    throw new Error("CSV file is empty or invalid.");
+                }
+
+                // This is a naive parser and won't handle commas within quoted fields.
+                const headers = lines[0].split(',').map(h => h.trim());
+                const rows = lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    return headers.reduce((obj, header, index) => {
+                        obj[header] = values[index]?.trim() || '';
+                        return obj;
+                    }, {} as Record<string, string>);
+                });
+
+                setData({ headers, rows });
+                toast({ title: 'CSV Parsed', description: `Successfully extracted ${rows.length} rows.` });
+            } catch (err: any) {
+                const errorMsg = err.message || 'Failed to parse the CSV file.';
+                setError(errorMsg);
+                toast({ variant: 'destructive', title: 'Parsing Failed', description: errorMsg });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        reader.onerror = () => {
+            const errorMsg = 'Failed to read the file.';
+            setError(errorMsg);
+            toast({ variant: 'destructive', title: 'File Read Error', description: errorMsg });
+            setIsLoading(false);
+        }
+        reader.readAsText(file);
+    };
+
+    return (
+        <div className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Upload & Extract CSV Data</CardTitle>
+                    <CardDescription>Select a CSV file to extract and visualize its content. This feature uses a simple parser and may not work correctly with complex CSVs (e.g., fields containing commas).</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Input type="file" accept=".csv" onChange={handleFileChange} disabled={isLoading} />
+                </CardContent>
+            </Card>
+
+            {isLoading && (
+                <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            )}
+            {error && (
+                <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+                    <p className="font-bold">Error:</p>
+                    <p>{error}</p>
+                </div>
+            )}
+            {data && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Extracted Data Preview</CardTitle>
+                        <CardDescription>
+                            Showing {Math.min(10, data.rows.length)} of {data.rows.length} rows.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    {data.headers.map(header => <TableHead key={header}>{header}</TableHead>)}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {data.rows.slice(0, 10).map((row, rowIndex) => (
+                                    <TableRow key={rowIndex}>
+                                        {data.headers.map(header => <TableCell key={header}>{row[header]}</TableCell>)}
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
+}
+
+
 export default function VendorDetailsPage() {
     const params = useParams();
     const router = useRouter();
@@ -349,6 +465,8 @@ export default function VendorDetailsPage() {
                             <CardContent>
                                 {vendor.dataSource === 'Direct API' ? (
                                     <ApiDataFetcher />
+                                ) : vendor.dataSource === 'Document Upload' ? (
+                                    <CsvDataExtractor />
                                 ) : (
                                     <p className="text-muted-foreground">Data integration is not yet available for this vendor.</p>
                                 )}
