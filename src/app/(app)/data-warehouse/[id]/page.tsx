@@ -175,39 +175,45 @@ function ApiDataFetcher() {
     };
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center gap-2">
-                <Input
-                    placeholder="https://api.example.com/data"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    disabled={isLoading}
-                />
-                <Button onClick={handleFetchData} disabled={isLoading}>
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube2 className="h-4 w-4" />}
-                    <span className="ml-2 hidden sm:inline">Fetch Data</span>
-                </Button>
-            </div>
-            {isLoading && (
-                <div className="flex items-center justify-center rounded-md border border-dashed p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Card>
+            <CardHeader>
+                <CardTitle>API Data Fetcher</CardTitle>
+                <CardDescription>Enter an API endpoint to fetch and view JSON data.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <Input
+                        placeholder="https://api.example.com/data"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        disabled={isLoading}
+                    />
+                    <Button onClick={handleFetchData} disabled={isLoading}>
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube2 className="h-4 w-4" />}
+                        <span className="ml-2 hidden sm:inline">Fetch Data</span>
+                    </Button>
                 </div>
-            )}
-            {error && (
-                <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
-                    <p className="font-bold">Error:</p>
-                    <p>{error}</p>
-                </div>
-            )}
-            {jsonData && (
-                <div className="relative">
-                     <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Code className="h-5 w-5" />JSON Response</h3>
-                    <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
-                        <code>{JSON.stringify(jsonData, null, 2)}</code>
-                    </pre>
-                </div>
-            )}
-        </div>
+                {isLoading && (
+                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                )}
+                {error && (
+                    <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+                        <p className="font-bold">Error:</p>
+                        <p>{error}</p>
+                    </div>
+                )}
+                {jsonData && (
+                    <div className="relative">
+                        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Code className="h-5 w-5" />JSON Response</h3>
+                        <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
+                            <code>{JSON.stringify(jsonData, null, 2)}</code>
+                        </pre>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
@@ -457,25 +463,21 @@ export default function VendorDetailsPage() {
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
                     <TabsContent value="data">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Vendor Data</CardTitle>
-                                <CardDescription>
-                                    {vendor.dataSource === 'Direct API'
-                                        ? 'Enter an API endpoint to fetch and view JSON data.'
-                                        : 'Data sourced from this vendor will be displayed here.'}
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {vendor.dataSource === 'Direct API' ? (
-                                    <ApiDataFetcher />
-                                ) : vendor.dataSource === 'Document Upload' ? (
-                                    <CsvDataExtractor />
-                                ) : (
+                        {vendor.dataSource === 'Direct API' ? (
+                            <ApiDataFetcher />
+                        ) : vendor.dataSource === 'Document Upload' ? (
+                            <CsvDataExtractor />
+                        ) : (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Vendor Data</CardTitle>
+                                    <CardDescription>Data integration is not yet available for this vendor.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
                                     <p className="text-muted-foreground">Data integration is not yet available for this vendor.</p>
-                                )}
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        )}
                     </TabsContent>
                     <TabsContent value="details">
                         <Form {...form}>
