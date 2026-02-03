@@ -18,6 +18,8 @@ import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -25,6 +27,7 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { analyzeDocument, type AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-flow';
 
 import { 
   AlertDialog,
@@ -205,6 +208,132 @@ function ApiDataFetcher() {
     );
 }
 
+function DocumentAnalyzer() {
+    const [file, setFile] = useState<File | null>(null);
+    const [instructions, setInstructions] = useState<string>('Identify the main data table in this document. Extract it into a structured format. The data appears to be about product inventory.');
+    const [isLoading, setIsLoading] = useState(false);
+    const [result, setResult] = useState<AnalyzeDocumentOutput | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const { toast } = useToast();
+
+    const handleAnalyze = async () => {
+        if (!file) {
+            toast({
+                variant: 'destructive',
+                title: 'File Required',
+                description: 'Please select a file to analyze.',
+            });
+            return;
+        }
+        setIsLoading(true);
+        setResult(null);
+        setError(null);
+        try {
+            const fileDataUri = await fileToDataUri(file);
+            const analysisResult = await analyzeDocument({
+                fileDataUri,
+                analysisInstructions: instructions,
+            });
+            setResult(analysisResult);
+            toast({
+                title: 'Analysis Complete',
+                description: 'The document has been successfully analyzed.',
+            });
+        } catch (e: any) {
+            console.error(e);
+            const errorMessage = e.message || 'An unknown error occurred during analysis.';
+            setError(errorMessage);
+            toast({
+                variant: 'destructive',
+                title: 'Analysis Failed',
+                description: errorMessage,
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="space-y-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="document-upload">Upload Document</Label>
+                    <Input id="document-upload" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="analysis-instructions">Analysis Instructions</Label>
+                    <Textarea
+                        id="analysis-instructions"
+                        placeholder="e.g., Extract all products and their prices."
+                        value={instructions}
+                        onChange={(e) => setInstructions(e.target.value)}
+                    />
+                </div>
+                <Button onClick={handleAnalyze} disabled={isLoading || !file}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                    Analyze Document
+                </Button>
+            </div>
+
+            {isLoading && (
+                <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-4">Gemini is analyzing your document...</p>
+                </div>
+            )}
+
+            {error && (
+                 <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+                    <p className="font-bold">Error:</p>
+                    <p>{error}</p>
+                </div>
+            )}
+
+            {result && (
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Analysis Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p>{result.summary}</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Extracted Data</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {result.extractedData && result.extractedData.length > 0 ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            {result.suggestedColumns.map(col => <TableHead key={col.key}>{col.label}</TableHead>)}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {result.extractedData.map((row, rowIndex) => (
+                                            <TableRow key={rowIndex}>
+                                                {result.suggestedColumns.map(col => (
+                                                    <TableCell key={`${rowIndex}-${col.key}`}>
+                                                        {typeof row[col.key] === 'object' ? JSON.stringify(row[col.key]) : String(row[col.key] ?? '')}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <p>No tabular data was extracted.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+        </div>
+    );
+}
+
 
 export default function VendorDetailsPage() {
     const params = useParams();
@@ -345,22 +474,15 @@ export default function VendorDetailsPage() {
                                     {vendor.dataSource === 'Direct API'
                                         ? 'Enter an API endpoint to fetch and view JSON data.'
                                         : vendor.dataSource === 'Document Upload'
-                                        ? 'Data for this vendor is managed via document upload.'
+                                        ? 'Upload a document to analyze and extract data using AI.'
                                         : 'Data sourced from this vendor will be displayed here.'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {vendor.dataSource === 'Direct API' ? (
                                     <ApiDataFetcher />
-                                ) : vendor.dataSource === 'Document Upload' && vendor.attachmentUrl ? (
-                                    <div>
-                                      <h3 className="text-lg font-semibold mb-2">Attached Document</h3>
-                                       <a href={vendor.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-2">
-                                            <FileText className="h-4 w-4" />
-                                            {vendor.attachmentName || 'View Attachment'}
-                                        </a>
-                                       <p className="text-sm text-muted-foreground mt-2">This vendor's data is provided via file upload. You can manage the file in the 'Details' tab.</p>
-                                    </div>
+                                ) : vendor.dataSource === 'Document Upload' ? (
+                                    <DocumentAnalyzer />
                                 ) : (
                                     <p className="text-muted-foreground">Data integration is not yet available for this vendor.</p>
                                 )}
