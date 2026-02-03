@@ -86,6 +86,7 @@ function ApiDataFetcher() {
         
         let collectedData: any[] = [];
         let nextUrl: string | null = url;
+        let isFirstRequest = true;
 
         try {
             while (nextUrl) {
@@ -93,34 +94,58 @@ function ApiDataFetcher() {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status} for URL: ${nextUrl}`);
                 }
-                const pageData = await response.json();
+                
+                const responseText = await response.text();
+                let pageData;
+                try {
+                    pageData = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`Response was not valid JSON. Content starts with: "${responseText.substring(0, 100)}..."`);
+                }
 
-                // Handle responses that are just an array of items
-                if (Array.isArray(pageData)) {
-                    collectedData = [...collectedData, ...pageData];
-                    nextUrl = null; // Assume no more pages if the root is an array
+                // Handle Zoho-like specific error format in the body of a 200 OK response
+                if (pageData.code && pageData.code !== 3000 && pageData.result?.status === 'Failure') {
+                    const errorMessage = pageData.result?.errors?.[0] || pageData.message || 'The API returned an error in the response body.';
+                    throw new Error(`API Error: ${errorMessage}`);
+                }
+                
+                const items = Array.isArray(pageData) ? pageData : pageData.data || pageData.results;
+
+                if (Array.isArray(items)) {
+                    collectedData.push(...items);
+                } else if (isFirstRequest) {
+                    // Not an array of items, not a paginated object we recognize. Treat as single object response.
+                    collectedData.push(pageData);
+                    nextUrl = null; // Stop after this
                     continue;
                 }
 
-                // Handle object responses with common pagination structures
-                const items = pageData.results || pageData.data;
-                if (Array.isArray(items)) {
-                    collectedData = [...collectedData, ...items];
-                } else {
-                    // If it's the first fetch and no items array, assume it's a single object response
-                    if (nextUrl === url) {
-                         collectedData.push(pageData);
-                         nextUrl = null; // Stop, it's a single object
-                         continue;
+                isFirstRequest = false;
+
+                // Pagination logic
+                let tempNextUrl = null;
+                const hasMoreZoho = pageData.more_records === true || pageData.more_records === 'true'; 
+                if (url.includes('zohoapis.com') && pageData.data && 'more_records' in pageData) {
+                    if (hasMoreZoho) {
+                        const currentUrl = new URL(nextUrl);
+                        const currentPage = parseInt(currentUrl.searchParams.get('pageIndex') || '1', 10);
+                        currentUrl.searchParams.set('pageIndex', (currentPage + 1).toString());
+                        tempNextUrl = currentUrl.toString();
+                        // Safety break
+                        if (currentPage >= 100) {
+                            toast({ variant: 'default', title: 'Stopping fetch', description: 'Reached 100 page limit.' });
+                            tempNextUrl = null;
+                        }
+                    } else {
+                        tempNextUrl = null;
                     }
+                } else {
+                    // Generic link-based pagination
+                    tempNextUrl = pageData.next || pageData.links?.next || null;
                 }
-                
-                // Update URL for next iteration, or stop if not present
-                nextUrl = pageData.next || pageData.links?.next || null;
+                nextUrl = tempNextUrl;
             }
 
-            // If we only ended up with one item and it's not an array, just show that object directly.
-            // Otherwise, show the full array of items.
             setJsonData(collectedData.length === 1 && !Array.isArray(collectedData[0]) ? collectedData[0] : collectedData);
 
             toast({
