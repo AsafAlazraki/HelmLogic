@@ -13,7 +13,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, FileText } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -62,6 +62,87 @@ const createSlug = (name: string) =>
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^\w-]+/g, '');
+
+function ApiDataFetcher() {
+    const [url, setUrl] = useState('');
+    const [jsonData, setJsonData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const { toast } = useToast();
+
+    const handleFetchData = async () => {
+        if (!url) {
+            toast({
+                variant: 'destructive',
+                title: 'URL Required',
+                description: 'Please enter an API URL to fetch data.',
+            });
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setJsonData(null);
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setJsonData(data);
+            toast({
+                title: 'Data Fetched',
+                description: 'Successfully retrieved data from the API.',
+            });
+        } catch (e: any) {
+            setError(e.message || 'Failed to fetch or parse data.');
+            toast({
+                variant: 'destructive',
+                title: 'Fetch Failed',
+                description: e.message || 'Could not fetch data from the provided URL.',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-2">
+                <Input
+                    placeholder="https://api.example.com/data"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    disabled={isLoading}
+                />
+                <Button onClick={handleFetchData} disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube2 className="h-4 w-4" />}
+                    <span className="ml-2 hidden sm:inline">Fetch Data</span>
+                </Button>
+            </div>
+            {isLoading && (
+                <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            )}
+            {error && (
+                <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+                    <p className="font-bold">Error:</p>
+                    <p>{error}</p>
+                </div>
+            )}
+            {jsonData && (
+                <div className="relative">
+                     <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Code className="h-5 w-5" />JSON Response</h3>
+                    <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
+                        <code>{JSON.stringify(jsonData, null, 2)}</code>
+                    </pre>
+                </div>
+            )}
+        </div>
+    );
+}
 
 
 export default function VendorDetailsPage() {
@@ -199,10 +280,29 @@ export default function VendorDetailsPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Vendor Data</CardTitle>
-                                <CardDescription>Data sourced from this vendor will be displayed here.</CardDescription>
+                                <CardDescription>
+                                    {vendor.dataSource === 'Direct API'
+                                        ? 'Enter an API endpoint to fetch and view JSON data.'
+                                        : vendor.dataSource === 'Document Upload'
+                                        ? 'Data for this vendor is managed via document upload.'
+                                        : 'Data sourced from this vendor will be displayed here.'}
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <p>Data integration is not yet available for this vendor.</p>
+                                {vendor.dataSource === 'Direct API' ? (
+                                    <ApiDataFetcher />
+                                ) : vendor.dataSource === 'Document Upload' && vendor.attachmentUrl ? (
+                                    <div>
+                                      <h3 className="text-lg font-semibold mb-2">Attached Document</h3>
+                                       <a href={vendor.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-2">
+                                            <FileText className="h-4 w-4" />
+                                            {vendor.attachmentName || 'View Attachment'}
+                                        </a>
+                                       <p className="text-sm text-muted-foreground mt-2">This vendor's data is provided via file upload. You can manage the file in the 'Details' tab.</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-muted-foreground">Data integration is not yet available for this vendor.</p>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>
