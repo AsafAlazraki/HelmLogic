@@ -25,8 +25,6 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
 
 import { 
   AlertDialog,
@@ -305,24 +303,13 @@ function CsvDataExtractor() {
                     <CardHeader>
                         <CardTitle>Extracted Data Preview</CardTitle>
                         <CardDescription>
-                            Showing {Math.min(10, data.rows.length)} of {data.rows.length} rows.
+                            Showing {Math.min(10, data.rows.length)} of {data.rows.length} rows as JSON.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    {data.headers.map(header => <TableHead key={header}>{header}</TableHead>)}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {data.rows.slice(0, 10).map((row, rowIndex) => (
-                                    <TableRow key={rowIndex}>
-                                        {data.headers.map(header => <TableCell key={header}>{row[header]}</TableCell>)}
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                    <CardContent>
+                        <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
+                            <code>{JSON.stringify(data.rows.slice(0, 10), null, 2)}</code>
+                        </pre>
                     </CardContent>
                 </Card>
             )}
