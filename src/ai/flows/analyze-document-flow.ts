@@ -18,7 +18,7 @@ export type AnalyzeDocumentInput = z.infer<typeof AnalyzeDocumentInputSchema>;
 
 const AnalyzeDocumentOutputSchema = z.object({
   summary: z.string().describe("A brief summary of the document's content."),
-  extractedData: z.array(z.record(z.string())).describe('The data extracted from the document, structured as an array of objects.'),
+  extractedData: z.array(z.any()).describe('The data extracted from the document, structured as an array of objects.'),
   suggestedColumns: z.array(z.object({ key: z.string(), label: z.string() })).describe('Suggested columns for displaying the data in a table.'),
 });
 export type AnalyzeDocumentOutput = z.infer<typeof AnalyzeDocumentOutputSchema>;
