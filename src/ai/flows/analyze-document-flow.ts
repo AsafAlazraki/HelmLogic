@@ -16,16 +16,7 @@ const AnalyzeDocumentInputSchema = z.object({
 });
 type AnalyzeDocumentInput = z.infer<typeof AnalyzeDocumentInputSchema>;
 
-// This is the schema of the object the AI model is asked to return.
-// We ask for a JSON string to avoid strict schema validation issues with nested dynamic objects.
-const AiOutputSchema = z.object({
-  summary: z.string().describe("A brief summary of the document's content."),
-  extractedDataJson: z.string().describe('The data extracted from the document, structured as a JSON string representing an array of objects. It must be a valid JSON string.'),
-  suggestedColumns: z.array(z.object({ key: z.string(), label: z.string() })).describe('Suggested columns for displaying the data in a table.'),
-});
-
-// This is the final output schema of the flow, after parsing the JSON string.
-// This is also what the front-end component expects.
+// This is the final output schema of the flow. Genkit will ensure the AI's output is parsed into this structure.
 const AnalyzeDocumentOutputSchema = z.object({
   summary: z.string().describe("A brief summary of the document's content."),
   extractedData: z.array(z.record(z.string(), z.any())).describe('The data extracted from the document, structured as an array of objects.'),
@@ -40,8 +31,7 @@ export async function analyzeDocument(input: AnalyzeDocumentInput): Promise<Anal
 const analyzeDocumentPrompt = ai.definePrompt({
   name: 'analyzeDocumentPrompt',
   input: { schema: AnalyzeDocumentInputSchema },
-  // The prompt returns the AI-specific output schema
-  output: { schema: AiOutputSchema },
+  output: { schema: AnalyzeDocumentOutputSchema }, // The output schema now expects a parsed object
   prompt: `You are an expert data analyst. Your task is to analyze the provided file and extract structured data from it based on the user's instructions. Pay close attention to any hierarchical relationships in the data.
 
 The user has provided the following instructions:
@@ -52,7 +42,7 @@ Here is the file:
 
 Please perform the following actions:
 1.  Provide a concise, one-paragraph summary of the document's content.
-2.  Extract the data from the document as a valid JSON string for the 'extractedDataJson' field. This string will be parsed programmatically, so it must be a valid JSON. Do NOT wrap the JSON string in markdown backticks. If the data is hierarchical (e.g., categories containing products), you should represent this with nested objects or arrays within your JSON structure. The keys for the objects should be consistent, descriptive, and in camelCase.
+2.  Extract the data from the document and provide it in the 'extractedData' field. If the data is hierarchical (e.g., categories containing products), you should represent this with nested objects or arrays within your JSON structure. The keys for the objects should be consistent, descriptive, and in camelCase.
 3.  Based on the extracted data's structure, suggest a list of columns for displaying the top-level data in a table. For each column, provide a 'key' that matches the keys in your top-level extractedData objects, and a 'label' that is a human-readable name for the column header.
 If the document does not contain clear tabular data, do your best to structure the information you can find. If the document is not a text-based format or image that you can read, state that you cannot process the file type.
 `,
@@ -63,34 +53,16 @@ const analyzeDocumentFlow = ai.defineFlow(
   {
     name: 'analyzeDocumentFlow',
     inputSchema: AnalyzeDocumentInputSchema,
-    // The flow returns the final, parsed output schema
     outputSchema: AnalyzeDocumentOutputSchema,
   },
   async (input) => {
     // We use a model that supports multimodal input (like documents and images).
-    const { output: aiOutput } = await analyzeDocumentPrompt(input);
-    if (!aiOutput) {
+    const { output } = await analyzeDocumentPrompt(input);
+    if (!output) {
       throw new Error("The AI model did not return any output.");
     }
     
-    try {
-        let jsonString = aiOutput.extractedDataJson;
-        const match = jsonString.match(/```(json)?\s*([\s\S]*?)\s*```/);
-        if (match && match[2]) {
-            jsonString = match[2];
-        }
-        
-        const extractedData = JSON.parse(jsonString);
-        
-        const finalOutput: AnalyzeDocumentOutput = {
-            summary: aiOutput.summary,
-            suggestedColumns: aiOutput.suggestedColumns,
-            extractedData: extractedData,
-        };
-        return finalOutput;
-    } catch (e) {
-        console.error("Failed to parse extractedDataJson from AI output:", e, "Raw JSON string:", aiOutput.extractedDataJson);
-        throw new Error("The AI returned invalid JSON for the extracted data. Please try again.");
-    }
+    // No manual parsing needed. Genkit handles parsing and validation.
+    return output;
   }
 );

@@ -16,13 +16,7 @@ const AnalyzeJsonInputSchema = z.object({
 });
 export type AnalyzeJsonInput = z.infer<typeof AnalyzeJsonInputSchema>;
 
-// Schema for the direct AI output
-const AiOutputSchema = z.object({
-  summary: z.string().describe("A brief summary of the data transformation performed."),
-  restructuredJson: z.string().describe('The restructured data, formatted as a valid JSON string.'),
-});
-
-// Schema for the final flow output
+// The schema for the final flow output. Genkit will ensure the AI's output is parsed into this structure.
 const AnalyzeJsonOutputSchema = z.object({
   summary: z.string().describe("A brief summary of the data transformation performed."),
   restructuredData: z.any().describe('The restructured data as a parsed JSON object or array.'),
@@ -36,7 +30,7 @@ export async function analyzeJson(input: AnalyzeJsonInput): Promise<AnalyzeJsonO
 const analyzeJsonPrompt = ai.definePrompt({
   name: 'analyzeJsonPrompt',
   input: { schema: AnalyzeJsonInputSchema },
-  output: { schema: AiOutputSchema },
+  output: { schema: AnalyzeJsonOutputSchema }, // The output schema now expects a parsed object
   prompt: `You are an expert data analyst who specializes in transforming JSON data. Your task is to analyze the provided JSON data and restructure it based on the user's instructions.
 
 Here is the JSON data:
@@ -49,7 +43,7 @@ The user has provided the following instructions:
 
 Please perform the following actions:
 1.  Provide a brief summary of the transformation you are about to perform.
-2.  Restructure the JSON data according to the user's instructions. The value for 'restructuredJson' must be a valid JSON string that can be parsed programmatically. It should NOT be wrapped in markdown backticks. Pay close attention to hierarchical structures if the user requests them. If the user asks to extract specific fields, only include those fields.
+2.  Restructure the JSON data according to the user's instructions. Respond with a valid JSON object where the restructured data is in the 'restructuredData' field. Pay close attention to hierarchical structures if the user requests them. If the user asks to extract specific fields, only include those fields.
 `,
 });
 
@@ -61,26 +55,12 @@ const analyzeJsonFlow = ai.defineFlow(
     outputSchema: AnalyzeJsonOutputSchema,
   },
   async (input) => {
-    const { output: aiOutput } = await analyzeJsonPrompt(input);
-    if (!aiOutput) {
+    const { output } = await analyzeJsonPrompt(input);
+    if (!output) {
       throw new Error("The AI model did not return any output.");
     }
-    try {
-        let jsonString = aiOutput.restructuredJson;
-        const match = jsonString.match(/```(json)?\s*([\s\S]*?)\s*```/);
-        if (match && match[2]) {
-            jsonString = match[2];
-        }
-
-        const restructuredData = JSON.parse(jsonString);
-        const finalOutput: AnalyzeJsonOutput = {
-            summary: aiOutput.summary,
-            restructuredData: restructuredData,
-        };
-        return finalOutput;
-    } catch (e) {
-        console.error("Failed to parse restructuredJson from AI output:", e, "Raw JSON string:", aiOutput.restructuredJson);
-        throw new Error("The AI returned invalid JSON for the restructured data. Please try again.");
-    }
+    // No manual parsing needed. Genkit handles the JSON parsing based on the output schema.
+    // If parsing fails, Genkit will throw an error.
+    return output;
   }
 );
