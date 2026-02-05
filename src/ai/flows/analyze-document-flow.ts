@@ -52,7 +52,7 @@ Here is the file:
 
 Please perform the following actions:
 1.  Provide a concise, one-paragraph summary of the document's content.
-2.  Extract the data from the document as a valid JSON string. This string will be parsed programmatically, so it must be a valid JSON. The structure of the JSON should represent an array of objects. If the data is hierarchical (e.g., categories containing products), you should represent this with nested objects or arrays within your JSON structure. The keys for the objects should be consistent, descriptive, and in camelCase.
+2.  Extract the data from the document as a valid JSON string for the 'extractedDataJson' field. This string will be parsed programmatically, so it must be a valid JSON. The structure of the JSON should represent an array of objects. Do NOT wrap the JSON string in markdown backticks. If the data is hierarchical (e.g., categories containing products), you should represent this with nested objects or arrays within your JSON structure. The keys for the objects should be consistent, descriptive, and in camelCase.
 3.  Based on the extracted data's structure, suggest a list of columns for displaying the top-level data in a table. For each column, provide a 'key' that matches the keys in your top-level extractedData objects, and a 'label' that is a human-readable name for the column header.
 If the document does not contain clear tabular data, do your best to structure the information you can find. If the document is not a text-based format or image that you can read, state that you cannot process the file type.
 `,

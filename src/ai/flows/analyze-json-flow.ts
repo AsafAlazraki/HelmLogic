@@ -49,7 +49,7 @@ The user has provided the following instructions:
 
 Please perform the following actions:
 1.  Provide a brief summary of the transformation you are about to perform.
-2.  Restructure the JSON data according to the user's instructions. The output must be a valid JSON string that will be parsed programmatically. Pay close attention to hierarchical structures if the user requests them. If the user asks to extract specific fields, only include those fields.
+2.  Restructure the JSON data according to the user's instructions. The value for 'restructuredJson' must be a valid JSON string that can be parsed programmatically. It should NOT be wrapped in markdown backticks. Pay close attention to hierarchical structures if the user requests them. If the user asks to extract specific fields, only include those fields.
 `,
 });
 
