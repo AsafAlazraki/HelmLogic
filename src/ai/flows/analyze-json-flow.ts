@@ -66,7 +66,13 @@ const analyzeJsonFlow = ai.defineFlow(
       throw new Error("The AI model did not return any output.");
     }
     try {
-        const restructuredData = JSON.parse(aiOutput.restructuredJson);
+        let jsonString = aiOutput.restructuredJson;
+        const match = jsonString.match(/```(json)?\s*([\s\S]*?)\s*```/);
+        if (match && match[2]) {
+            jsonString = match[2];
+        }
+
+        const restructuredData = JSON.parse(jsonString);
         const finalOutput: AnalyzeJsonOutput = {
             summary: aiOutput.summary,
             restructuredData: restructuredData,
