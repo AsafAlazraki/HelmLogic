@@ -74,8 +74,8 @@ const createSlug = (name: string) =>
     .replace(/[^\w-]+/g, '');
 
 function JsonDataVisualizer({ data }: { data: any }) {
-    if (!data) {
-        return <p className="text-muted-foreground">No data to visualize.</p>;
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+        return <p className="text-muted-foreground p-4 text-center">No data to visualize.</p>;
     }
 
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
@@ -84,19 +84,21 @@ function JsonDataVisualizer({ data }: { data: any }) {
         return (
             <div className="max-h-[600px] overflow-auto rounded-md border">
                 <Table>
-                    <TableHeader className="sticky top-0 bg-secondary">
+                    <TableHeader className="sticky top-0 bg-secondary z-10">
                         <TableRow>
-                            {headers.map(header => <TableHead key={header}>{header}</TableHead>)}
+                            {headers.map(header => <TableHead key={header} className="whitespace-nowrap">{header}</TableHead>)}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {data.map((row, rowIndex) => (
-                            <TableRow key={rowIndex}>
+                            <TableRow key={rowIndex} className="odd:bg-muted/50">
                                 {headers.map(header => (
-                                    <TableCell key={`${rowIndex}-${header}`}>
-                                        {typeof row[header] === 'object' && row[header] !== null 
-                                            ? JSON.stringify(row[header]) 
-                                            : String(row[header])}
+                                    <TableCell key={`${rowIndex}-${header}`} className="align-top text-sm">
+                                        {typeof row[header] === 'object' && row[header] !== null ? (
+                                            <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto"><code>{JSON.stringify(row[header], null, 2)}</code></pre>
+                                        ) : (
+                                            String(row[header])
+                                        )}
                                     </TableCell>
                                 ))}
                             </TableRow>
@@ -108,34 +110,26 @@ function JsonDataVisualizer({ data }: { data: any }) {
     }
 
     if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-        // Single object -> render key-value table
+        // Single object -> render key-value list
         return (
-             <div className="max-h-[600px] overflow-auto rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Key</TableHead>
-                            <TableHead>Value</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {Object.entries(data).map(([key, value]) => (
-                            <TableRow key={key}>
-                                <TableCell className="font-medium">{key}</TableCell>
-                                <TableCell>
-                                    {typeof value === 'object' && value !== null 
-                                        ? JSON.stringify(value) 
-                                        : String(value)}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+             <div className="max-h-[600px] overflow-auto rounded-md border p-4 space-y-3 bg-secondary/30">
+                {Object.entries(data).map(([key, value]) => (
+                    <div key={key} className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm items-start">
+                        <div className="font-semibold text-muted-foreground md:text-right md:pr-4">{key}</div>
+                        <div className="md:col-span-3">
+                            {typeof value === 'object' && value !== null ? (
+                                <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto"><code>{JSON.stringify(value, null, 2)}</code></pre>
+                            ) : (
+                                <span className="text-foreground break-words">{String(value)}</span>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
         );
     }
     
-    // Fallback for primitive types or empty arrays
+    // Fallback for primitive types or other cases
     return <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm"><code>{JSON.stringify(data, null, 2)}</code></pre>;
 }
 
