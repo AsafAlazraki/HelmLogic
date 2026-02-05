@@ -14,7 +14,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2 } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { proxyFetch } from '@/actions/proxy-fetch';
+import { analyzeJson, type AnalyzeJsonOutput } from '@/ai/flows/analyze-json-flow';
 import {
   Table,
   TableBody,
@@ -139,6 +140,8 @@ function ApiDataFetcher() {
     const [jsonData, setJsonData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [analysis, setAnalysis] = useState<AnalyzeJsonOutput | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
     const { toast } = useToast();
 
     const handleFetchData = async () => {
@@ -154,6 +157,7 @@ function ApiDataFetcher() {
         setIsLoading(true);
         setError(null);
         setJsonData(null);
+        setAnalysis(null);
         
         let collectedData: any[] = [];
         let nextUrl: string | null = url;
@@ -241,6 +245,36 @@ function ApiDataFetcher() {
         }
     };
 
+    const handleAnalyzeData = async () => {
+        if (!jsonData) {
+            toast({
+                variant: 'destructive',
+                title: 'No Data to Analyze',
+                description: 'Please fetch data from an API endpoint first.',
+            });
+            return;
+        }
+
+        setIsAnalyzing(true);
+        setAnalysis(null);
+        try {
+            const result = await analyzeJson({ jsonString: JSON.stringify(jsonData, null, 2) });
+            setAnalysis(result);
+            toast({
+                title: 'Analysis Complete',
+                description: 'The AI has finished analyzing the data.',
+            });
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'AI Analysis Failed',
+                description: e.message || 'An unexpected error occurred.',
+            });
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -273,10 +307,18 @@ function ApiDataFetcher() {
                 )}
                 {jsonData && (
                     <Tabs defaultValue="json" className="pt-4">
-                        <TabsList>
-                            <TabsTrigger value="json"><Code className="h-4 w-4 mr-2" />JSON Response</TabsTrigger>
-                            <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize Data</TabsTrigger>
-                        </TabsList>
+                        <div className="flex items-center justify-between mb-4">
+                            <TabsList>
+                                <TabsTrigger value="json"><Code className="h-4 w-4 mr-2" />JSON Response</TabsTrigger>
+                                <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize Data</TabsTrigger>
+                                {analysis && <TabsTrigger value="analysis"><Wand2 className="h-4 w-4 mr-2" />AI Analysis</TabsTrigger>}
+                            </TabsList>
+                             <Button variant="outline" size="sm" onClick={handleAnalyzeData} disabled={isAnalyzing}>
+                                {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                                Analyze with AI
+                            </Button>
+                        </div>
+
                         <TabsContent value="json">
                             <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
                                 <code>{JSON.stringify(jsonData, null, 2)}</code>
@@ -284,6 +326,40 @@ function ApiDataFetcher() {
                         </TabsContent>
                         <TabsContent value="visualize">
                             <JsonDataVisualizer data={jsonData} />
+                        </TabsContent>
+                        <TabsContent value="analysis">
+                            {isAnalyzing ? (
+                                <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                    <p className="ml-4 text-muted-foreground">AI is analyzing...</p>
+                                </div>
+                            ) : analysis ? (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>AI Analysis</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div>
+                                            <h4 className="font-semibold">Summary</h4>
+                                            <p className="text-sm text-muted-foreground">{analysis.summary}</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold">Key Fields Identified</h4>
+                                            <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                                {analysis.keyFields.map(field => <li key={field}>{field}</li>)}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold">Usage Suggestions</h4>
+                                            <p className="text-sm text-muted-foreground">{analysis.usageSuggestions}</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                 <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                                    <p className="text-muted-foreground">Click "Analyze with AI" to generate an analysis.</p>
+                                </div>
+                            )}
                         </TabsContent>
                     </Tabs>
                 )}
