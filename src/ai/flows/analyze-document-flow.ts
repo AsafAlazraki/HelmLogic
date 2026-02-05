@@ -42,7 +42,7 @@ const analyzeDocumentPrompt = ai.definePrompt({
   input: { schema: AnalyzeDocumentInputSchema },
   // The prompt returns the AI-specific output schema
   output: { schema: AiOutputSchema },
-  prompt: `You are a data analysis expert. Your task is to analyze the provided file and extract structured data from it based on user instructions.
+  prompt: `You are an expert data analyst. Your task is to analyze the provided file and extract structured data from it based on the user's instructions. Pay close attention to any hierarchical relationships in the data.
 
 The user has provided the following instructions:
 "{{{analysisInstructions}}}"
@@ -52,8 +52,8 @@ Here is the file:
 
 Please perform the following actions:
 1.  Provide a concise, one-paragraph summary of the document's content.
-2.  Extract the most relevant tabular data from the document as a valid JSON string representing an array of JSON objects. The keys for the objects should be consistent, descriptive, and in camelCase. If the file is a CSV or appears to be a CSV, use the first row as the header for the JSON keys and ensure all data rows are extracted. This string will be parsed by a machine, so it must be valid JSON.
-3.  Based on the extracted data, suggest a list of columns for displaying this data in a table. For each column, provide a 'key' that matches the keys in your extractedData objects, and a 'label' that is a human-readable name for the column header.
+2.  Extract the data from the document as a valid JSON string. This string will be parsed programmatically, so it must be a valid JSON. The structure of the JSON should represent an array of objects. If the data is hierarchical (e.g., categories containing products), you should represent this with nested objects or arrays within your JSON structure. The keys for the objects should be consistent, descriptive, and in camelCase.
+3.  Based on the extracted data's structure, suggest a list of columns for displaying the top-level data in a table. For each column, provide a 'key' that matches the keys in your top-level extractedData objects, and a 'label' that is a human-readable name for the column header.
 If the document does not contain clear tabular data, do your best to structure the information you can find. If the document is not a text-based format or image that you can read, state that you cannot process the file type.
 `,
 });

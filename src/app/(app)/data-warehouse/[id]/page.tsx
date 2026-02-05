@@ -19,6 +19,7 @@ import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -28,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { proxyFetch } from '@/actions/proxy-fetch';
 import { analyzeJson, type AnalyzeJsonOutput } from '@/ai/flows/analyze-json-flow';
+import { analyzeDocument, type AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-flow';
 import {
   Table,
   TableBody,
@@ -368,166 +370,126 @@ function ApiDataFetcher() {
     );
 }
 
-function FileDataExtractor() {
-    const [data, setData] = useState<{ headers: string[], rows: Record<string, any>[] } | null>(null);
+function AiDocumentAnalyzer() {
+    const [file, setFile] = useState<File | null>(null);
+    const [analysisInstructions, setAnalysisInstructions] = useState('Extract the key information from the document. If it is tabular, extract all rows. Please structure it according to any hierarchies present in the document.');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [result, setResult] = useState<AnalyzeDocumentOutput | null>(null);
     const { toast } = useToast();
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0] || null;
+        setFile(selectedFile);
+        setResult(null); // Reset result when file changes
+        setError(null);
+    };
 
-        const fileExtension = file.name.split('.').pop()?.toLowerCase();
-        if (fileExtension !== 'csv' && fileExtension !== 'xlsx') {
-            const err = 'Please upload a valid CSV or XLSX file.';
-            setError(err);
-            toast({ variant: 'destructive', title: 'Invalid File Type', description: err });
+    const handleAnalyze = async () => {
+        if (!file) {
+            toast({
+                variant: 'destructive',
+                title: 'No File Selected',
+                description: 'Please select a file to analyze.',
+            });
             return;
         }
 
         setIsLoading(true);
         setError(null);
-        setData(null);
+        setResult(null);
 
-        const reader = new FileReader();
-
-        reader.onerror = () => {
-            const errorMsg = 'Failed to read the file.';
-            setError(errorMsg);
-            toast({ variant: 'destructive', title: 'File Read Error', description: errorMsg });
+        try {
+            const fileDataUri = await fileToDataUri(file);
+            const analysisResult = await analyzeDocument({
+                fileDataUri,
+                analysisInstructions,
+            });
+            setResult(analysisResult);
+            toast({
+                title: 'Analysis Complete',
+                description: 'The AI has finished processing the document.',
+            });
+        } catch (e: any) {
+            const errorMessage = e.message || 'An unexpected error occurred during analysis.';
+            setError(errorMessage);
+            toast({
+                variant: 'destructive',
+                title: 'Analysis Failed',
+                description: errorMessage,
+            });
+        } finally {
             setIsLoading(false);
-        };
-
-        if (fileExtension === 'csv') {
-            reader.onload = (e) => {
-                try {
-                    const text = e.target?.result as string;
-                    
-                    const parseCsv = (csvText: string) => {
-                        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
-                        if (lines.length < 1) throw new Error("CSV file is empty or invalid.");
-
-                        const parseLine = (line: string): string[] => {
-                            const values: string[] = [];
-                            let currentField = "";
-                            let inQuotes = false;
-
-                            for (let i = 0; i < line.length; i++) {
-                                const char = line[i];
-
-                                if (inQuotes) {
-                                    if (char === '"') {
-                                        if (i + 1 < line.length && line[i + 1] === '"') {
-                                            currentField += '"';
-                                            i++; 
-                                        } else {
-                                            inQuotes = false;
-                                        }
-                                    } else {
-                                        currentField += char;
-                                    }
-                                } else {
-                                    if (char === '"') {
-                                        inQuotes = true;
-                                    } else if (char === ',') {
-                                        values.push(currentField);
-                                        currentField = "";
-                                    } else {
-                                        currentField += char;
-                                    }
-                                }
-                            }
-                            values.push(currentField);
-                            return values;
-                        };
-
-                        const headers = parseLine(lines[0]).map(h => h.trim());
-                        const rows = lines.slice(1).map(line => {
-                            const values = parseLine(line);
-                            return headers.reduce((obj, header, index) => {
-                                obj[header] = values[index] || '';
-                                return obj;
-                            }, {} as Record<string, string>);
-                        });
-
-                        return { headers, rows };
-                    };
-                    
-                    const parsedData = parseCsv(text);
-                    setData(parsedData);
-                    toast({ title: 'File Processed', description: `Successfully processed ${parsedData.rows.length} rows.` });
-                } catch (err: any) {
-                    const errorMsg = err.message || 'Failed to parse the CSV file.';
-                    setError(errorMsg);
-                    toast({ variant: 'destructive', title: 'Parsing Failed', description: errorMsg });
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            reader.readAsText(file);
-        } else if (fileExtension === 'xlsx') {
-            reader.onload = (e) => {
-                try {
-                    const buffer = e.target?.result;
-                    const workbook = XLSX.read(buffer, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonData: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet);
-                    
-                    if (jsonData.length === 0) {
-                        setData({ headers: [], rows: [] });
-                        toast({ title: 'File Processed', description: 'The file is empty or has no data.' });
-                    } else {
-                        const headers = Object.keys(jsonData[0]);
-                        setData({ headers, rows: jsonData });
-                        toast({ title: 'File Processed', description: `Successfully processed ${jsonData.length} rows.` });
-                    }
-
-                } catch (err: any) {
-                     const errorMsg = err.message || 'Failed to parse the XLSX file.';
-                    setError(errorMsg);
-                    toast({ variant: 'destructive', title: 'Parsing Failed', description: errorMsg });
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            reader.readAsArrayBuffer(file);
         }
     };
-    
+
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Upload & Extract File Data</CardTitle>
-                    <CardDescription>Select a CSV or XLSX file to extract its content. The data will be made available in the staging area.</CardDescription>
+                    <CardTitle>AI-Powered Document Analysis</CardTitle>
+                    <CardDescription>
+                        Upload a document (e.g., PDF, CSV, TXT, PNG, JPG) and provide instructions for the AI to extract and structure the data.
+                    </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <Input type="file" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleFileChange} disabled={isLoading} />
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="document-file">Document File</Label>
+                        <Input id="document-file" type="file" onChange={handleFileChange} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="analysis-instructions">Analysis Instructions</Label>
+                        <Textarea
+                            id="analysis-instructions"
+                            placeholder="e.g., Extract all products, their prices, and SKUs. Group them by category."
+                            value={analysisInstructions}
+                            onChange={(e) => setAnalysisInstructions(e.target.value)}
+                            rows={3}
+                        />
+                    </div>
                 </CardContent>
+                <CardFooter>
+                    <Button onClick={handleAnalyze} disabled={isLoading || !file}>
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Analyzing...
+                            </>
+                        ) : (
+                            <>
+                                <Wand2 className="mr-2 h-4 w-4" />
+                                Analyze Document
+                            </>
+                        )}
+                    </Button>
+                </CardFooter>
             </Card>
 
-            {isLoading && (
-                <div className="flex items-center justify-center rounded-md border border-dashed p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-4 text-muted-foreground">Processing file...</p>
-                </div>
-            )}
             {error && (
                 <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
                     <p className="font-bold">Error:</p>
                     <p>{error}</p>
                 </div>
             )}
-            {data && (
-                 <Card>
+
+            {result && (
+                <Card>
                     <CardHeader>
-                        <CardTitle>Processing Complete</CardTitle>
-                        <CardDescription>
-                           Successfully processed {data.rows.length} rows. The data is now available for use in the data staging area.
-                        </CardDescription>
+                        <CardTitle>Analysis Results</CardTitle>
                     </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div>
+                            <h3 className="font-semibold text-lg">Summary</h3>
+                            <p className="text-muted-foreground mt-1">{result.summary}</p>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-lg">Extracted Data</h3>
+                            <p className="text-muted-foreground mt-1 mb-4">
+                                The AI suggested the following columns for a table view: {result.suggestedColumns.map(c => `"${c.label}"`).join(', ')}.
+                            </p>
+                            <JsonDataVisualizer data={result.extractedData} />
+                        </div>
+                    </CardContent>
                 </Card>
             )}
         </div>
@@ -670,7 +632,7 @@ export default function VendorDetailsPage() {
                         {vendor.dataSource === 'Direct API' ? (
                             <ApiDataFetcher />
                         ) : vendor.dataSource === 'Document Upload' ? (
-                            <FileDataExtractor />
+                            <AiDocumentAnalyzer />
                         ) : (
                             <Card>
                                 <CardHeader>
