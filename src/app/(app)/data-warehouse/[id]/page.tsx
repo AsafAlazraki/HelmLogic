@@ -14,7 +14,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2 } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, Upload } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -136,7 +136,6 @@ function JsonDataVisualizer({ data }: { data: any }) {
     return <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm"><code>{JSON.stringify(data, null, 2)}</code></pre>;
 }
 
-
 function ApiDataFetcher() {
     const [url, setUrl] = useState('');
     const [jsonData, setJsonData] = useState<any>(null);
@@ -144,6 +143,7 @@ function ApiDataFetcher() {
     const [error, setError] = useState<string | null>(null);
     const [analysis, setAnalysis] = useState<AnalyzeJsonOutput | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [instructions, setInstructions] = useState('Extract the most important fields and simplify the structure. If there is a list of items, return an array of those items with only their key properties.');
     const { toast } = useToast();
 
     const handleFetchData = async () => {
@@ -256,15 +256,26 @@ function ApiDataFetcher() {
             });
             return;
         }
+        if (!instructions) {
+            toast({
+                variant: 'destructive',
+                title: 'Instructions Required',
+                description: 'Please provide instructions for the AI.',
+            });
+            return;
+        }
 
         setIsAnalyzing(true);
         setAnalysis(null);
         try {
-            const result = await analyzeJson({ jsonString: JSON.stringify(jsonData, null, 2) });
+            const result = await analyzeJson({
+                jsonString: JSON.stringify(jsonData, null, 2),
+                instructions,
+            });
             setAnalysis(result);
             toast({
                 title: 'Analysis Complete',
-                description: 'The AI has finished analyzing the data.',
+                description: 'The AI has finished restructuring the data.',
             });
         } catch (e: any) {
             toast({
@@ -309,17 +320,11 @@ function ApiDataFetcher() {
                 )}
                 {jsonData && (
                     <Tabs defaultValue="json" className="pt-4">
-                        <div className="flex items-center justify-between mb-4">
-                            <TabsList>
-                                <TabsTrigger value="json"><Code className="h-4 w-4 mr-2" />JSON Response</TabsTrigger>
-                                <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize Data</TabsTrigger>
-                                {analysis && <TabsTrigger value="analysis"><Wand2 className="h-4 w-4 mr-2" />AI Analysis</TabsTrigger>}
-                            </TabsList>
-                             <Button variant="outline" size="sm" onClick={handleAnalyzeData} disabled={isAnalyzing}>
-                                {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                                Analyze with AI
-                            </Button>
-                        </div>
+                        <TabsList>
+                            <TabsTrigger value="json"><Code className="h-4 w-4 mr-2" />JSON Response</TabsTrigger>
+                            <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize Data</TabsTrigger>
+                            <TabsTrigger value="ai-restructure"><Wand2 className="h-4 w-4 mr-2" />AI Restructure</TabsTrigger>
+                        </TabsList>
 
                         <TabsContent value="json">
                             <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
@@ -329,39 +334,48 @@ function ApiDataFetcher() {
                         <TabsContent value="visualize">
                             <JsonDataVisualizer data={jsonData} />
                         </TabsContent>
-                        <TabsContent value="analysis">
-                            {isAnalyzing ? (
-                                <div className="flex items-center justify-center rounded-md border border-dashed p-8">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                    <p className="ml-4 text-muted-foreground">AI is analyzing...</p>
-                                </div>
-                            ) : analysis ? (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>AI Analysis</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
+                        <TabsContent value="ai-restructure" className="mt-4 space-y-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="ai-instructions">Instructions</Label>
+                                <Textarea
+                                    id="ai-instructions"
+                                    placeholder="e.g., Extract just the name and id from each item in the array."
+                                    value={instructions}
+                                    onChange={(e) => setInstructions(e.target.value)}
+                                    rows={3}
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                    Tell the AI how to restructure the JSON data.
+                                </p>
+                            </div>
+                            <Button onClick={handleAnalyzeData} disabled={isAnalyzing}>
+                                {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                                Restructure with AI
+                            </Button>
+                            
+                            <div className="pt-4">
+                                {isAnalyzing ? (
+                                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                        <p className="ml-4 text-muted-foreground">AI is restructuring...</p>
+                                    </div>
+                                ) : analysis ? (
+                                    <div className="space-y-4">
                                         <div>
-                                            <h4 className="font-semibold">Summary</h4>
-                                            <p className="text-sm text-muted-foreground">{analysis.summary}</p>
+                                            <h4 className="font-semibold">Summary from AI</h4>
+                                            <p className="text-sm text-muted-foreground mt-1">{analysis.summary}</p>
                                         </div>
                                         <div>
-                                            <h4 className="font-semibold">Key Fields Identified</h4>
-                                            <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                                {analysis.keyFields.map(field => <li key={field}>{field}</li>)}
-                                            </ul>
+                                            <h4 className="font-semibold">Restructured Data</h4>
+                                            <JsonDataVisualizer data={analysis.restructuredData} />
                                         </div>
-                                        <div>
-                                            <h4 className="font-semibold">Usage Suggestions</h4>
-                                            <p className="text-sm text-muted-foreground">{analysis.usageSuggestions}</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                 <div className="flex items-center justify-center rounded-md border border-dashed p-8">
-                                    <p className="text-muted-foreground">Click "Analyze with AI" to generate an analysis.</p>
-                                </div>
-                            )}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                                        <p className="text-muted-foreground">AI results will be displayed here.</p>
+                                    </div>
+                                )}
+                            </div>
                         </TabsContent>
                     </Tabs>
                 )}
@@ -370,132 +384,192 @@ function ApiDataFetcher() {
     );
 }
 
-function AiDocumentAnalyzer() {
+function DocumentExtractor() {
     const [file, setFile] = useState<File | null>(null);
-    const [analysisInstructions, setAnalysisInstructions] = useState('Extract the key information from the document. If it is tabular, extract all rows. Please structure it according to any hierarchies present in the document.');
-    const [isLoading, setIsLoading] = useState(false);
+    const [processed, setProcessed] = useState(false);
+    const [rowCount, setRowCount] = useState(0);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [result, setResult] = useState<AnalyzeDocumentOutput | null>(null);
     const { toast } = useToast();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
         setFile(selectedFile);
-        setResult(null); // Reset result when file changes
+        setProcessed(false);
+        setRowCount(0);
         setError(null);
     };
 
-    const handleAnalyze = async () => {
+    const robustCsvParser = (csvText: string): string[][] => {
+        const rows: string[][] = [];
+        let currentRow: string[] = [];
+        let currentField = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < csvText.length; i++) {
+            const char = csvText[i];
+
+            if (inQuotes) {
+                if (char === '"') {
+                    if (i + 1 < csvText.length && csvText[i + 1] === '"') {
+                        // Escaped quote
+                        currentField += '"';
+                        i++; // Skip next quote
+                    } else {
+                        // End of quoted field
+                        inQuotes = false;
+                    }
+                } else {
+                    currentField += char;
+                }
+            } else {
+                if (char === '"') {
+                    inQuotes = true;
+                } else if (char === ',') {
+                    currentRow.push(currentField);
+                    currentField = '';
+                } else if (char === '\n' || char === '\r') {
+                    if(i > 0 && csvText[i-1] !== '\n' && csvText[i-1] !== '\r') {
+                      currentRow.push(currentField);
+                      rows.push(currentRow);
+                      currentRow = [];
+                      currentField = '';
+                    }
+                    if (char === '\r' && i + 1 < csvText.length && csvText[i+1] === '\n') {
+                        i++; // handle CRLF
+                    }
+                } else {
+                    currentField += char;
+                }
+            }
+        }
+        // Add the last field and row if the file doesn't end with a newline
+        if (currentField || currentRow.length > 0) {
+            currentRow.push(currentField);
+            rows.push(currentRow);
+        }
+        return rows;
+    };
+    
+    const handleProcessFile = async () => {
         if (!file) {
-            toast({
-                variant: 'destructive',
-                title: 'No File Selected',
-                description: 'Please select a file to analyze.',
-            });
+            toast({ variant: 'destructive', title: 'No file selected', description: 'Please upload a CSV or XLSX file.' });
             return;
         }
-
-        setIsLoading(true);
+        setIsProcessing(true);
         setError(null);
-        setResult(null);
-
+        
         try {
-            const fileDataUri = await fileToDataUri(file);
-            const analysisResult = await analyzeDocument({
-                fileDataUri,
-                analysisInstructions,
-            });
-            setResult(analysisResult);
-            toast({
-                title: 'Analysis Complete',
-                description: 'The AI has finished processing the document.',
-            });
-        } catch (e: any) {
-            const errorMessage = e.message || 'An unexpected error occurred during analysis.';
-            setError(errorMessage);
-            toast({
-                variant: 'destructive',
-                title: 'Analysis Failed',
-                description: errorMessage,
-            });
-        } finally {
-            setIsLoading(false);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = e.target?.result;
+                    if (!data) throw new Error("Could not read file.");
+
+                    let jsonData: any[] = [];
+                    if (file.name.endsWith('.csv')) {
+                        const text = typeof data === 'string' ? data : new TextDecoder().decode(data as ArrayBuffer);
+                        const parsedRows = robustCsvParser(text);
+                        if(parsedRows.length < 2) {
+                            throw new Error("CSV must have at least a header row and one data row.");
+                        }
+                        const headers = parsedRows[0];
+                        const rows = parsedRows.slice(1);
+                        jsonData = rows.map(row => {
+                            const obj: { [key: string]: any } = {};
+                            headers.forEach((header, index) => {
+                                obj[header] = row[index];
+                            });
+                            return obj;
+                        });
+                    } else if (file.name.endsWith('.xlsx')) {
+                        const workbook = XLSX.read(data, { type: 'binary' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    } else {
+                        throw new Error('Unsupported file type. Please upload a CSV or XLSX file.');
+                    }
+                    
+                    setRowCount(jsonData.length);
+                    setProcessed(true);
+                    toast({ title: "File Processed", description: `Found ${jsonData.length} rows.` });
+                } catch(err: any) {
+                    setError(err.message);
+                    toast({ variant: 'destructive', title: "Processing Failed", description: err.message });
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+            reader.onerror = () => {
+                setError("Failed to read file.");
+                setIsProcessing(false);
+            };
+
+            if(file.name.endsWith('.csv')) {
+              reader.readAsText(file);
+            } else {
+              reader.readAsBinaryString(file);
+            }
+
+        } catch (err: any) {
+            setError(err.message);
+            setIsProcessing(false);
         }
     };
 
     return (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-                <CardHeader>
-                    <CardTitle>AI-Powered Document Analysis</CardTitle>
-                    <CardDescription>
-                        Upload a document (e.g., PDF, CSV, TXT, PNG, JPG) and provide instructions for the AI to extract and structure the data.
-                    </CardDescription>
+                 <CardHeader>
+                    <CardTitle>Upload File</CardTitle>
+                    <CardDescription>Select a CSV or XLSX file to extract data from.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="document-file">Document File</Label>
-                        <Input id="document-file" type="file" onChange={handleFileChange} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="analysis-instructions">Analysis Instructions</Label>
-                        <Textarea
-                            id="analysis-instructions"
-                            placeholder="e.g., Extract all products, their prices, and SKUs. Group them by category."
-                            value={analysisInstructions}
-                            onChange={(e) => setAnalysisInstructions(e.target.value)}
-                            rows={3}
-                        />
+                     <div className="space-y-2">
+                        <Label htmlFor="document-file">Data File</Label>
+                        <div className="flex items-center gap-2">
+                            <Input id="document-file" type="file" onChange={handleFileChange} accept=".csv,.xlsx" />
+                            <Button onClick={handleProcessFile} disabled={isProcessing || !file}>
+                                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                <span className="ml-2 hidden sm:inline">Process</span>
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
-                <CardFooter>
-                    <Button onClick={handleAnalyze} disabled={isLoading || !file}>
-                        {isLoading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Analyzing...
-                            </>
-                        ) : (
-                            <>
-                                <Wand2 className="mr-2 h-4 w-4" />
-                                Analyze Document
-                            </>
-                        )}
-                    </Button>
-                </CardFooter>
             </Card>
-
-            {error && (
-                <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
-                    <p className="font-bold">Error:</p>
-                    <p>{error}</p>
-                </div>
-            )}
-
-            {result && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Analysis Results</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
-                            <h3 className="font-semibold text-lg">Summary</h3>
-                            <p className="text-muted-foreground mt-1">{result.summary}</p>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Processing Result</CardTitle>
+                    <CardDescription>Status of the file processing.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isProcessing ? (
+                        <div className="flex items-center justify-center p-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <p className="ml-4 text-muted-foreground">Processing file...</p>
                         </div>
-                        <div>
-                            <h3 className="font-semibold text-lg">Extracted Data</h3>
-                            <p className="text-muted-foreground mt-1 mb-4">
-                                The AI suggested the following columns for a table view: {result.suggestedColumns.map(c => `"${c.label}"`).join(', ')}.
-                            </p>
-                            <JsonDataVisualizer data={result.extractedData} />
+                    ) : error ? (
+                        <div className="text-destructive p-4 bg-destructive/10 rounded-md">
+                            <p className="font-bold">Error:</p>
+                            <p>{error}</p>
                         </div>
-                    </CardContent>
-                </Card>
-            )}
+                    ) : processed ? (
+                         <div className="text-center p-8">
+                            <p className="text-lg">File processed successfully.</p>
+                            <p className="text-4xl font-bold mt-2">{rowCount}</p>
+                            <p className="text-muted-foreground">rows found.</p>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center p-8">
+                            <p className="text-muted-foreground">Upload and process a file to see the results.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }
-
 
 export default function VendorDetailsPage() {
     const params = useParams();
@@ -629,15 +703,13 @@ export default function VendorDetailsPage() {
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
                     <TabsContent value="data">
-                        {vendor.dataSource === 'Direct API' ? (
-                            <ApiDataFetcher />
-                        ) : vendor.dataSource === 'Document Upload' ? (
-                            <AiDocumentAnalyzer />
-                        ) : (
+                         {vendor.dataSource === 'Direct API' && <ApiDataFetcher />}
+                         {vendor.dataSource === 'Document Upload' && <DocumentExtractor />}
+                         {vendor.dataSource !== 'Direct API' && vendor.dataSource !== 'Document Upload' && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Vendor Data</CardTitle>
-                                    <CardDescription>Data integration is not yet available for this vendor.</CardDescription>
+                                    <CardDescription>Data integration for this source type is not yet available.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <p className="text-muted-foreground">Data integration is not yet available for this vendor.</p>
