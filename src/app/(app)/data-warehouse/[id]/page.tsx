@@ -268,10 +268,24 @@ function ApiDataFetcher() {
         setIsAnalyzing(true);
         setAnalysis(null);
         try {
+            let jsonStringForAI = JSON.stringify(jsonData, null, 2);
+            let analysisInstructions = instructions;
+            const MAX_CHARS = 20000;
+
+            if (jsonStringForAI.length > MAX_CHARS) {
+                jsonStringForAI = jsonStringForAI.substring(0, MAX_CHARS) + '...';
+                analysisInstructions = instructions + "\n\nIMPORTANT: The JSON data provided was too large and has been truncated. Your analysis should be based on this partial data, and you should mention that the data was truncated in your summary.";
+                 toast({
+                    title: 'Data Truncated for AI',
+                    description: `The JSON data is large and has been shortened for AI analysis.`,
+                });
+            }
+
             const result = await analyzeJson({
-                jsonString: JSON.stringify(jsonData, null, 2),
-                instructions,
+                jsonString: jsonStringForAI,
+                instructions: analysisInstructions,
             });
+
             setAnalysis(result);
             toast({
                 title: 'Analysis Complete',
@@ -281,7 +295,7 @@ function ApiDataFetcher() {
             toast({
                 variant: 'destructive',
                 title: 'AI Analysis Failed',
-                description: e.message || 'An unexpected error occurred.',
+                description: e.message || 'An unexpected response was received from the server.',
             });
         } finally {
             setIsAnalyzing(false);
