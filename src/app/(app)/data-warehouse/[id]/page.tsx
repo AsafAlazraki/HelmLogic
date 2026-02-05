@@ -14,7 +14,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -26,6 +26,15 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { proxyFetch } from '@/actions/proxy-fetch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 import { 
   AlertDialog,
@@ -64,6 +73,73 @@ const createSlug = (name: string) =>
     .replace(/\s+/g, '-')
     .replace(/[^\w-]+/g, '');
 
+function JsonDataVisualizer({ data }: { data: any }) {
+    if (!data) {
+        return <p className="text-muted-foreground">No data to visualize.</p>;
+    }
+
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+        // Array of objects -> render a table
+        const headers = Object.keys(data[0]);
+        return (
+            <div className="max-h-[600px] overflow-auto rounded-md border">
+                <Table>
+                    <TableHeader className="sticky top-0 bg-secondary">
+                        <TableRow>
+                            {headers.map(header => <TableHead key={header}>{header}</TableHead>)}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {data.map((row, rowIndex) => (
+                            <TableRow key={rowIndex}>
+                                {headers.map(header => (
+                                    <TableCell key={`${rowIndex}-${header}`}>
+                                        {typeof row[header] === 'object' && row[header] !== null 
+                                            ? JSON.stringify(row[header]) 
+                                            : String(row[header])}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        );
+    }
+
+    if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+        // Single object -> render key-value table
+        return (
+             <div className="max-h-[600px] overflow-auto rounded-md border">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Key</TableHead>
+                            <TableHead>Value</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {Object.entries(data).map(([key, value]) => (
+                            <TableRow key={key}>
+                                <TableCell className="font-medium">{key}</TableCell>
+                                <TableCell>
+                                    {typeof value === 'object' && value !== null 
+                                        ? JSON.stringify(value) 
+                                        : String(value)}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        );
+    }
+    
+    // Fallback for primitive types or empty arrays
+    return <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm"><code>{JSON.stringify(data, null, 2)}</code></pre>;
+}
+
+
 function ApiDataFetcher() {
     const [url, setUrl] = useState('');
     const [jsonData, setJsonData] = useState<any>(null);
@@ -91,21 +167,19 @@ function ApiDataFetcher() {
 
         try {
             while (nextUrl) {
-                const response = await fetch(nextUrl);
-                
-                const responseText = await response.text();
-                let pageData;
-                try {
-                    pageData = JSON.parse(responseText);
-                } catch (e) {
-                    if (!response.ok) {
-                         throw new Error(`HTTP error! status: ${response.status} for URL: ${nextUrl}`);
-                    }
-                    throw new Error(`Response was not valid JSON. Content starts with: "${responseText.substring(0, 100)}..."`);
-                }
+                const result = await proxyFetch(nextUrl);
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status} for URL: ${nextUrl}`);
+                if (!result.success) {
+                     throw new Error(result.error);
+                }
+                
+                let pageData = result.data;
+                if (typeof pageData === 'string') {
+                    try {
+                        pageData = JSON.parse(pageData);
+                    } catch (e) {
+                         throw new Error(`Response was not valid JSON. Content starts with: "${pageData.substring(0, 100)}..."`);
+                    }
                 }
 
                 // Handle Zoho-like specific error format in the body of a 200 OK response
@@ -132,7 +206,7 @@ function ApiDataFetcher() {
                 const hasMoreZoho = pageData.more_records === true || pageData.more_records === 'true'; 
                 if (url.includes('zohoapis.com') && pageData.data && 'more_records' in pageData) {
                     if (hasMoreZoho) {
-                        const currentUrl = new URL(nextUrl);
+                        const currentUrl = new URL(nextUrl!);
                         const currentPage = parseInt(currentUrl.searchParams.get('pageIndex') || '1', 10);
                         currentUrl.searchParams.set('pageIndex', (currentPage + 1).toString());
                         tempNextUrl = currentUrl.toString();
@@ -159,8 +233,8 @@ function ApiDataFetcher() {
             });
         } catch (e: any) {
             let errorMessage = e.message || 'Failed to fetch or parse data.';
-            if (e instanceof TypeError && e.message === 'Failed to fetch') {
-                errorMessage = 'A network error occurred. This is often due to a CORS (Cross-Origin Resource Sharing) policy on the remote server. The API must be configured to allow requests from this application.';
+            if (e.message && e.message.includes('Failed to fetch')) { // Check generic error message from server action
+                 errorMessage = 'A network error occurred. This is often due to a CORS policy or the URL is unreachable from the server.';
             }
             setError(errorMessage);
             toast({
@@ -204,12 +278,20 @@ function ApiDataFetcher() {
                     </div>
                 )}
                 {jsonData && (
-                    <div className="relative">
-                        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Code className="h-5 w-5" />JSON Response</h3>
-                        <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
-                            <code>{JSON.stringify(jsonData, null, 2)}</code>
-                        </pre>
-                    </div>
+                    <Tabs defaultValue="json" className="pt-4">
+                        <TabsList>
+                            <TabsTrigger value="json"><Code className="h-4 w-4 mr-2" />JSON Response</TabsTrigger>
+                            <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize Data</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="json">
+                            <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
+                                <code>{JSON.stringify(jsonData, null, 2)}</code>
+                            </pre>
+                        </TabsContent>
+                        <TabsContent value="visualize">
+                            <JsonDataVisualizer data={jsonData} />
+                        </TabsContent>
+                    </Tabs>
                 )}
             </CardContent>
         </Card>
