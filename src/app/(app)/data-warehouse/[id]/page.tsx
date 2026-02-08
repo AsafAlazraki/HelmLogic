@@ -14,7 +14,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, Upload } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, Upload, UploadCloud } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -705,7 +705,7 @@ export default function VendorDetailsPage() {
             {vendorLoading ? (
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : vendor ? (
-                <Tabs defaultValue="data" className="space-y-4">
+                <Tabs defaultValue="initial-upload" className="space-y-4">
                     <div className="flex items-start justify-between">
                         <div>
                             <h1 className="text-2xl font-semibold">Data Warehouse - {vendor.name}</h1>
@@ -713,16 +713,35 @@ export default function VendorDetailsPage() {
                         </div>
                     </div>
                     <TabsList>
-                        <TabsTrigger value="data">Data</TabsTrigger>
+                        <TabsTrigger value="initial-upload">Initial Upload</TabsTrigger>
+                        <TabsTrigger value="data-connection">Data Connection</TabsTrigger>
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="data">
+                    <TabsContent value="initial-upload">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Initial Data Upload for {vendor.name}</CardTitle>
+                                <CardDescription>
+                                    This is where you will upload and manage the initial data set for this vendor.
+                                    Each vendor has a unique data structure, and the uploader will be configured accordingly.
+                                    We will start by building the uploader for Highfield here.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                                    <UploadCloud className="h-16 w-16 text-muted-foreground" />
+                                    <p className="mt-4 text-sm text-muted-foreground">Vendor-specific uploader coming soon.</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="data-connection">
                          {vendor.dataSource === 'Direct API' && <ApiDataFetcher />}
                          {vendor.dataSource === 'Document Upload' && <DocumentExtractor />}
                          {vendor.dataSource !== 'Direct API' && vendor.dataSource !== 'Document Upload' && (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Vendor Data</CardTitle>
+                                    <CardTitle>Vendor Data Connection</CardTitle>
                                     <CardDescription>Data integration for this source type is not yet available.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
