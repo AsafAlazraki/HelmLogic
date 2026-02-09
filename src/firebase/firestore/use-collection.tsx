@@ -40,8 +40,16 @@ export function useCollection<T = DocumentData>(
         setError(null);
       },
       async (err) => {
+        // It's not guaranteed that a Query has a `path` property.
+        // A CollectionReference does, but a query with `where` clauses does not.
+        // We'll try to access it safely for better error messages.
+        let pathForError = 'unknown path';
+        if ('path' in queryRef && typeof queryRef.path === 'string') {
+          pathForError = queryRef.path;
+        }
+
         const permissionError = new FirestorePermissionError({
-          path: (queryRef as CollectionReference).path,
+          path: pathForError,
           operation: 'list',
         } satisfies SecurityRuleContext);
 

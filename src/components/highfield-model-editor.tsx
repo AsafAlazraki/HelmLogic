@@ -196,17 +196,17 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
 
     const getSafeDefaultValues = (modelData: any): ModelFormData => {
         const data = modelData || {};
+        const specs = data.specifications || {};
         return {
             coverImageUrl: data.coverImageUrl ?? null,
             cost: data.cost ?? 0,
             sellPriceExclGst: data.sellPriceExclGst ?? 0,
             freightCostExclGst: data.freightCostExclGst ?? 0,
             specifications: {
-                minHp: 0,
-                maxHp: 0,
-                recommendedHp: 0,
-                otherSpecs: [],
-                ...(data.specifications || {}),
+                minHp: specs.minHp ?? 0,
+                maxHp: specs.maxHp ?? 0,
+                recommendedHp: specs.recommendedHp ?? 0,
+                otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
             optionalFeatures: data.optionalFeatures ?? [],
@@ -275,7 +275,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Specifications">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: crypto.randomUUID(), label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}-${Math.random()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-6">
@@ -329,7 +329,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Features">
-                                     <Button type="button" variant="outline" size="sm" onClick={() => appendOptional({ id: crypto.randomUUID(), name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional</Button>
+                                     <Button type="button" variant="outline" size="sm" onClick={() => appendOptional({ id: `opt-${Date.now()}-${Math.random()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
@@ -346,7 +346,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Color Variants">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: crypto.randomUUID(), name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}-${Math.random()}`, name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">

@@ -106,7 +106,7 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
 
   const handleAddChild = useCallback((id: string) => {
     userInteraction.current = true;
-    const newId = crypto.randomUUID();
+    const newId = `role-${Date.now()}-${Math.random()}`;
     const currentNodes = getNodes();
     const currentEdges = getEdges();
 
@@ -131,7 +131,7 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
 
   const handleAddParent = useCallback((id: string) => {
     userInteraction.current = true;
-    const newId = crypto.randomUUID();
+    const newId = `role-${Date.now()}-${Math.random()}`;
     const currentNodes = getNodes();
     const currentEdges = getEdges();
 
@@ -157,7 +157,7 @@ function RoleHierarchyChartInternal({ value, onChange }: RoleHierarchyChartProps
   
   const handleAddRole = () => {
     userInteraction.current = true;
-    const newId = crypto.randomUUID();
+    const newId = `role-${Date.now()}-${Math.random()}`;
     let newNode: Node = {
       id: newId,
       data: { label: 'New Role' },
