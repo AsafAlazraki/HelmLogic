@@ -143,7 +143,7 @@ function ModelCard({ vendor, range, model, onModelDeleted }: { vendor: Vendor; r
                 </DropdownMenu>
 
                 <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="flex flex-col h-full">
-                    <div className="h-32 bg-secondary flex items-center justify-center p-4 relative">
+                    <div className="h-40 bg-secondary flex items-center justify-center p-4 relative">
                          {model.coverImageUrl ? (
                             <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
                         ) : (
@@ -220,7 +220,16 @@ export default function RangeDetailsPage() {
     const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
     const vendorLoading = slugLoading || idLoading;
 
-    const {data: range, loading: rangeLoading} = useDoc<Range>(vendor && rangeSlugOrId ? `/data-warehouse/${vendor.id}/ranges/${rangeSlugOrId}` : null);
+    const rangeQueryBySlug = useMemo(() => {
+        if (!vendor || !rangeSlugOrId) return null;
+        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), where('slug', '==', rangeSlugOrId));
+    }, [firestore, vendor, rangeSlugOrId]);
+    
+    const { data: rangesBySlug, loading: rangeSlugLoading } = useCollection<Range>(rangeQueryBySlug);
+    const { data: rangeById, loading: rangeIdLoading } = useDoc<Range>(vendor && rangeSlugOrId ? `/data-warehouse/${vendor.id}/ranges/${rangeSlugOrId}` : null);
+    const range = useMemo(() => rangesBySlug?.[0] || rangeById, [rangesBySlug, rangeById]);
+    const rangeLoading = rangeSlugLoading || rangeIdLoading;
+
 
     const modelsCollectionPath = useMemo(() => {
         if (!vendor || !range) return null;
@@ -284,8 +293,9 @@ export default function RangeDetailsPage() {
                     <CardHeader>
                         <div className="flex items-start justify-between">
                             <div>
-                                <h1 className="text-2xl font-semibold">{range.name} Models</h1>
+                                <h1 className="text-2xl font-semibold">Models in {range.name}</h1>
                                 <BreadcrumbNav parts={breadcrumbParts} />
+                                <CardDescription>Manage the models available in this product range.</CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
