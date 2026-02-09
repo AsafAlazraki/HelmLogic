@@ -32,6 +32,7 @@ const currencies = Object.keys(exchangeRates);
 type Range = { id: string; name: string };
 type Model = {
     id: string;
+    path: string;
     name: string;
     cost?: number;
     sellPriceExclGst?: number;
@@ -278,48 +279,50 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                                         <TableHead>Freight Cost</TableHead>
                                     </TableRow>
                                 </TableHeader>
-                                <TableBody>
-                                    {modelFields.map((model, modelIndex) => (
-                                        <Collapsible asChild key={model.id}>
-                                            <>
-                                                <TableRow>
-                                                    <TableCell className="font-medium">
-                                                        <CollapsibleTrigger asChild disabled={!model.optionalFeatures || model.optionalFeatures.length === 0}>
-                                                            <div className={cn("flex items-center gap-2", model.optionalFeatures && model.optionalFeatures.length > 0 ? "cursor-pointer" : "cursor-default")}>
-                                                                <ChevronRight className={cn("h-4 w-4 transition-transform", openRows[model.id] && "rotate-90")} />
-                                                                {model.name}
-                                                            </div>
-                                                        </CollapsibleTrigger>
-                                                    </TableCell>
-                                                    <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.cost`} label="Base Cost" /></TableCell>
-                                                    <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.sellPriceExclGst`} label="Base Sell" /></TableCell>
-                                                    <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.freightCostExclGst`} label="Freight Cost" /></TableCell>
-                                                </TableRow>
-                                                <CollapsibleContent asChild>
-                                                    <tr>
-                                                        <td colSpan={4} className="p-0">
-                                                            <div className="bg-muted/50 p-4">
-                                                                <h4 className="font-semibold mb-2 ml-8 text-sm">Optional Features</h4>
-                                                                <Table>
-                                                                    <TableBody>
-                                                                        {model.optionalFeatures?.map((feature, featureIndex) => (
-                                                                            <TableRow key={feature.id} className="border-b-0">
-                                                                                <TableCell className="w-[300px] pl-8 text-muted-foreground">{feature.name}</TableCell>
-                                                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.cost`} label="Cost" /></TableCell>
-                                                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.sellPriceExclGst`} label="Sell" /></TableCell>
-                                                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.freightCostExclGst`} label="Freight" /></TableCell>
-                                                                            </TableRow>
-                                                                        ))}
-                                                                    </TableBody>
-                                                                </Table>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                </CollapsibleContent>
-                                            </>
-                                        </Collapsible>
-                                    ))}
-                                </TableBody>
+                                {modelFields.map((model, modelIndex) => (
+                                    <Collapsible
+                                        asChild
+                                        key={model.id}
+                                        onOpenChange={(isOpen) => setOpenRows(prev => ({...prev, [model.id]: isOpen}))}
+                                    >
+                                        <TableBody className="[&_tr:last-child]:border-0">
+                                            <TableRow>
+                                                <TableCell className="font-medium">
+                                                    <CollapsibleTrigger asChild disabled={!model.optionalFeatures || model.optionalFeatures.length === 0}>
+                                                        <div className={cn("flex items-center gap-2", model.optionalFeatures && model.optionalFeatures.length > 0 ? "cursor-pointer" : "cursor-default")}>
+                                                            <ChevronRight className={cn("h-4 w-4 transition-transform", openRows[model.id] && "rotate-90")} />
+                                                            {model.name}
+                                                        </div>
+                                                    </CollapsibleTrigger>
+                                                </TableCell>
+                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.cost`} label="Base Cost" /></TableCell>
+                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.sellPriceExclGst`} label="Base Sell" /></TableCell>
+                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.freightCostExclGst`} label="Freight Cost" /></TableCell>
+                                            </TableRow>
+                                            <CollapsibleContent asChild>
+                                                <tr>
+                                                    <td colSpan={4} className="p-0">
+                                                        <div className="bg-muted/50 p-4">
+                                                            <h4 className="font-semibold mb-2 ml-8 text-sm">Optional Features</h4>
+                                                            <Table>
+                                                                <TableBody>
+                                                                    {model.optionalFeatures?.map((feature, featureIndex) => (
+                                                                        <TableRow key={feature.id} className="border-b-0">
+                                                                            <TableCell className="w-[300px] pl-8 text-muted-foreground">{feature.name}</TableCell>
+                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.cost`} label="Cost" /></TableCell>
+                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.sellPriceExclGst`} label="Sell" /></TableCell>
+                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.freightCostExclGst`} label="Freight" /></TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </CollapsibleContent>
+                                        </TableBody>
+                                    </Collapsible>
+                                ))}
                             </Table>
                         </div>
                         <div className="flex justify-end mt-6">
