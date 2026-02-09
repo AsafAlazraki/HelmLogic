@@ -39,12 +39,14 @@ const optionalFeatureSchema = z.object({
     imageUrl: z.string().nullable().optional(),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
+    freightCostExclGst: z.coerce.number().min(0).default(0),
 });
 
 const highfieldModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
+    freightCostExclGst: z.coerce.number().min(0).default(0),
     specifications: z.object({
         minHp: z.coerce.number().min(0).default(0),
         maxHp: z.coerce.number().min(0).default(0),
@@ -147,6 +149,7 @@ function PricingCard({ form }: { form: any }) {
                         <Input type="text" value={sellPriceInclGst.toFixed(2)} readOnly disabled className="bg-muted" />
                     </FormControl>
                 </FormItem>
+                <FormField control={form.control} name="freightCostExclGst" render={({ field }) => ( <FormItem><FormLabel>Freight Cost (excl. GST)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem> )} />
             </CardContent>
         </Card>
     );
@@ -164,6 +167,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             ...model,
             cost: model.cost || 0,
             sellPriceExclGst: model.sellPriceExclGst || 0,
+            freightCostExclGst: model.freightCostExclGst || 0,
             specifications: model.specifications || { minHp: 0, maxHp: 0, recommendedHp: 0, otherSpecs: [] },
             standardFeatures: model.standardFeatures || [],
             optionalFeatures: model.optionalFeatures || [],
@@ -264,7 +268,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 ))}
                             </CardContent>
                             <CardFooter>
-                                <Button type="button" variant="outline" className="w-full" onClick={() => appendOptional({ id: crypto.randomUUID(), name: '', cost: 0, sellPriceExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional Feature</Button>
+                                <Button type="button" variant="outline" className="w-full" onClick={() => appendOptional({ id: crypto.randomUUID(), name: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional Feature</Button>
                             </CardFooter>
                         </Card>
                     </div>

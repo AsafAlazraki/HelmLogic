@@ -256,6 +256,18 @@
           "type": "string",
           "description": "URL for the boat's main cover image."
         },
+        "cost": {
+          "type": "number",
+          "description": "Base cost of the model."
+        },
+        "sellPriceExclGst": {
+          "type": "number",
+          "description": "Base selling price, excluding GST."
+        },
+        "freightCostExclGst": {
+            "type": "number",
+            "description": "Freight cost, excluding GST."
+        },
         "colors": {
           "type": "array",
           "description": "Available color variants for the model, each with associated images.",
@@ -307,6 +319,9 @@
                 "type": "number"
               },
               "sellPriceExclGst": {
+                "type": "number"
+              },
+              "freightCostExclGst": {
                 "type": "number"
               }
             },

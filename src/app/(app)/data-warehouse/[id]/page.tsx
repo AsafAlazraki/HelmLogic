@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
 import * as XLSX from 'xlsx';
+import Link from 'next/link';
 
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -14,7 +15,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, Upload, UploadCloud } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, Upload, UploadCloud, FileCog } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -710,7 +711,7 @@ export default function VendorDetailsPage() {
             {vendorLoading ? (
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : vendor ? (
-                <Tabs defaultValue="initial-upload" className="space-y-4">
+                <Tabs defaultValue="master-data" className="space-y-4">
                     <div className="flex items-start justify-between">
                         <div>
                             <h1 className="text-2xl font-semibold">Data Warehouse - {vendor.name}</h1>
@@ -718,13 +719,29 @@ export default function VendorDetailsPage() {
                         </div>
                     </div>
                     <TabsList>
-                        <TabsTrigger value="initial-upload">Initial Upload</TabsTrigger>
+                        <TabsTrigger value="master-data">Master Data Set</TabsTrigger>
                         <TabsTrigger value="data-connection">Data Connection</TabsTrigger>
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="initial-upload">
+                    <TabsContent value="master-data">
                         {vendor.slug === 'highfield' ? (
-                            <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
+                            <div className="space-y-6">
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div className="space-y-1">
+                                            <CardTitle>Costings & Financials</CardTitle>
+                                            <CardDescription>Manage costs, pricing, and currency for all Highfield models.</CardDescription>
+                                        </div>
+                                        <Button asChild>
+                                            <Link href={`/data-warehouse/${vendor.slug || vendor.id}/costings`}>
+                                                <FileCog className="mr-2 h-4 w-4" />
+                                                Edit Costings
+                                            </Link>
+                                        </Button>
+                                    </CardHeader>
+                                </Card>
+                                <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
+                            </div>
                         ) : (
                             <Card>
                                 <CardHeader>
