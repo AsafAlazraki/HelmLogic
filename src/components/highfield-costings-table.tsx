@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -80,86 +80,101 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 
-// --- CurrencyInput Component ---
-interface CurrencyInputProps {
-    control: any;
-    name: any;
-}
-
-function CurrencyInput({ control, name }: CurrencyInputProps) {
-    const [popoverOpen, setPopoverOpen] = useState(false);
+// --- PairedCurrencyInput Component ---
+function PairedCurrencyInput({ control, name }: { control: any; name: string; }) {
     const [currency, setCurrency] = useState('AUD');
+    const [popoverOpen, setPopoverOpen] = useState(false);
+    const { field } = useController({ control, name });
+
+    const audValueExclGst = field.value || 0;
+    const audValueInclGst = audValueExclGst * (1 + GST_RATE);
+
+    const displayValueExclGst = (audValueExclGst / exchangeRates[currency]).toFixed(2);
+    const displayValueInclGst = (audValueInclGst / exchangeRates[currency]).toFixed(2);
+    
+    const handleExclGstChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newDisplayValue = e.target.value;
+        if (newDisplayValue === '') {
+            field.onChange(0);
+            return;
+        }
+        const newAudValue = parseFloat(newDisplayValue) * exchangeRates[currency];
+        field.onChange(isNaN(newAudValue) ? field.value : newAudValue);
+    };
+
+    const handleInclGstChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newDisplayValue = e.target.value;
+         if (newDisplayValue === '') {
+            field.onChange(0);
+            return;
+        }
+        const newAudValue = parseFloat(newDisplayValue) * exchangeRates[currency];
+        field.onChange(isNaN(newAudValue) ? field.value : newAudValue / (1 + GST_RATE));
+    };
 
     return (
-        <FormField
-            control={control}
-            name={name}
-            render={({ field }) => {
-                const audValue = field.value || 0;
-                const displayValue = (audValue / exchangeRates[currency]).toFixed(2);
-                const valueInclGst = audValue * (1 + GST_RATE);
-
-                const handleDisplayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-                    const newDisplayValue = e.target.value;
-                    const newAudValue = parseFloat(newDisplayValue) * exchangeRates[currency];
-                    field.onChange(isNaN(newAudValue) ? 0 : newAudValue);
-                };
-                
-                return (
-                    <FormItem>
-                        <div className="flex items-center">
-                            <FormControl>
-                                <Input
-                                    type="number"
-                                    value={displayValue === '0.00' ? '' : displayValue}
-                                    onChange={handleDisplayChange}
-                                    className="w-24 text-right rounded-r-none"
-                                    placeholder="0.00"
-                                />
-                            </FormControl>
-                            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        className="w-[70px] justify-between rounded-l-none border-l-0"
-                                    >
-                                        {currency}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[120px] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search..." />
-                                        <CommandList>
-                                            <CommandEmpty>No currency found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {currencies.map((c) => (
-                                                <CommandItem
-                                                    key={c.value}
-                                                    value={c.value}
-                                                    onSelect={(currentValue) => {
-                                                        setCurrency(currentValue.toUpperCase());
-                                                        setPopoverOpen(false);
-                                                    }}
-                                                >
-                                                    <Check className={cn("mr-2 h-4 w-4", currency === c.value ? "opacity-100" : "opacity-0")} />
-                                                    {c.label}
-                                                </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                         <div className="text-[11px] text-muted-foreground pt-1 space-y-0.5">
-                            <p>ex. GST: {audValue?.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}</p>
-                            <p>inc. GST: {valueInclGst.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}</p>
-                        </div>
-                    </FormItem>
-                )
-            }}
-        />
+        <div className="space-y-1 w-40">
+            <div className="flex items-center">
+                 <div className="flex-1">
+                    <FormLabel className="text-[10px] font-normal text-muted-foreground">ex. GST ({currency})</FormLabel>
+                    <Input
+                        type="number"
+                        step="0.01"
+                        value={displayValueExclGst === '0.00' ? '' : displayValueExclGst}
+                        onChange={handleExclGstChange}
+                        className="h-8 rounded-r-none"
+                        placeholder="0.00"
+                    />
+                </div>
+                 <div className="self-end">
+                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                className="h-8 w-[60px] justify-center rounded-l-none border-l-0 text-xs px-2"
+                            >
+                                {currency}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[120px] p-0">
+                            <Command>
+                                <CommandInput placeholder="Search..." />
+                                <CommandList>
+                                    <CommandEmpty>No currency found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {currencies.map((c) => (
+                                        <CommandItem
+                                            key={c.value}
+                                            value={c.value}
+                                            onSelect={(currentValue) => {
+                                                setCurrency(currentValue.toUpperCase());
+                                                setPopoverOpen(false);
+                                            }}
+                                        >
+                                            <Check className={cn("mr-2 h-4 w-4", currency === c.value ? "opacity-100" : "opacity-0")} />
+                                            {c.label}
+                                        </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                 </div>
+            </div>
+            <div>
+                 <FormLabel className="text-[10px] font-normal text-muted-foreground">inc. GST ({currency})</FormLabel>
+                <Input
+                    type="number"
+                    step="0.01"
+                    value={displayValueInclGst === '0.00' ? '' : displayValueInclGst}
+                    onChange={handleInclGstChange}
+                    className="h-8"
+                    placeholder="0.00"
+                />
+            </div>
+        </div>
     );
 }
 
@@ -243,7 +258,9 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
     }, [fetchData]);
 
     const filteredModelIndices = useMemo(() => {
-        return form.getValues('models').map((model, index) => ({ model, index }))
+        const models = form.getValues('models');
+        if (!models) return [];
+        return models.map((model, index) => ({ model, index }))
             .filter(({ model }) => {
                 const searchMatch = searchTerm ? model.name.toLowerCase().includes(searchTerm.toLowerCase()) : true;
                 const rangeMatch = rangeFilter === 'all' ? true : model.rangeId === rangeFilter;
@@ -284,7 +301,7 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
         try {
             await batch.commit();
             toast({ title: 'Success!', description: 'Costings have been updated.' });
-            form.reset(data);
+            form.reset(data); // Reset form state to make it not dirty
         } catch (error) {
             console.error('Error saving costs:', error);
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save changes.' });
@@ -342,7 +359,7 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[30%] pl-10">Model</TableHead>
+                                        <TableHead className="w-[25%] pl-10">Model</TableHead>
                                         <TableHead className="w-[15%]">Range</TableHead>
                                         <TableHead>Base Cost</TableHead>
                                         <TableHead>Base Sell</TableHead>
@@ -358,7 +375,7 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                                             onOpenChange={(isOpen) => setOpenRows(prev => ({...prev, [model.id]: isOpen}))}
                                         >
                                             <tbody className="[&_tr:last-child]:border-0 border-b">
-                                                <TableRow className="text-xs">
+                                                <TableRow className="text-sm">
                                                     <TableCell className="font-medium py-2">
                                                         <CollapsibleTrigger asChild disabled={!model.optionalFeatures || model.optionalFeatures.length === 0}>
                                                             <div className={cn("flex items-center gap-2 h-full", model.optionalFeatures && model.optionalFeatures.length > 0 ? "cursor-pointer" : "cursor-default")}>
@@ -368,9 +385,9 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                                                         </CollapsibleTrigger>
                                                     </TableCell>
                                                     <TableCell className="py-2 text-muted-foreground">{model.rangeName}</TableCell>
-                                                    <TableCell className="py-2"><CurrencyInput control={form.control} name={`models.${modelIndex}.cost`} /></TableCell>
-                                                    <TableCell className="py-2"><CurrencyInput control={form.control} name={`models.${modelIndex}.sellPriceExclGst`} /></TableCell>
-                                                    <TableCell className="py-2"><CurrencyInput control={form.control} name={`models.${modelIndex}.freightCostExclGst`} /></TableCell>
+                                                    <TableCell className="py-2"><PairedCurrencyInput control={form.control} name={`models.${modelIndex}.cost`} /></TableCell>
+                                                    <TableCell className="py-2"><PairedCurrencyInput control={form.control} name={`models.${modelIndex}.sellPriceExclGst`} /></TableCell>
+                                                    <TableCell className="py-2"><PairedCurrencyInput control={form.control} name={`models.${modelIndex}.freightCostExclGst`} /></TableCell>
                                                 </TableRow>
                                                 <CollapsibleContent asChild>
                                                     <tr className="text-xs">
@@ -381,11 +398,11 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                                                                     <TableBody>
                                                                         {model.optionalFeatures?.map((feature, featureIndex) => (
                                                                             <TableRow key={feature.id} className="border-b-0 hover:bg-muted/50">
-                                                                                <TableCell className="w-[30%] pl-8 py-2 text-muted-foreground">{feature.name}</TableCell>
+                                                                                <TableCell className="w-[25%] pl-8 py-2 text-muted-foreground">{feature.name}</TableCell>
                                                                                 <TableCell className="w-[15%] py-2"></TableCell>
-                                                                                <TableCell className="py-2"><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.cost`} /></TableCell>
-                                                                                <TableCell className="py-2"><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.sellPriceExclGst`} /></TableCell>
-                                                                                <TableCell className="py-2"><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.freightCostExclGst`} /></TableCell>
+                                                                                <TableCell className="py-2"><PairedCurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.cost`} /></TableCell>
+                                                                                <TableCell className="py-2"><PairedCurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.sellPriceExclGst`} /></TableCell>
+                                                                                <TableCell className="py-2"><PairedCurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.freightCostExclGst`} /></TableCell>
                                                                             </TableRow>
                                                                         ))}
                                                                     </TableBody>
