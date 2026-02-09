@@ -38,6 +38,16 @@ service cloud.firestore {
     match /data-warehouse/{vendorId} {
       allow read: if request.auth != null;
       allow write: if isHelmLogicAdmin();
+
+      match /ranges/{rangeId} {
+        allow read: if request.auth != null;
+        allow write: if isHelmLogicAdmin();
+
+        match /models/{modelId} {
+          allow read: if request.auth != null;
+          allow write: if isHelmLogicAdmin();
+        }
+      }
     }
 
     match /{document=**} {

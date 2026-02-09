@@ -206,6 +206,59 @@
         "name",
         "slug"
       ]
+    },
+    "Range": {
+      "title": "Range",
+      "description": "Represents a product range for a vendor.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the range."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the range name."
+        },
+        "vendorId": {
+          "type": "string",
+          "description": "The ID of the vendor this range belongs to."
+        }
+      },
+      "required": [
+        "name",
+        "slug",
+        "vendorId"
+      ]
+    },
+    "Model": {
+      "title": "Model",
+      "description": "Represents a specific model within a product range.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the model."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the model name."
+        },
+        "rangeId": {
+          "type": "string",
+          "description": "The ID of the range this model belongs to."
+        },
+        "vendorId": {
+          "type": "string",
+          "description": "The ID of the vendor this model belongs to."
+        }
+      },
+      "required": [
+        "name",
+        "slug",
+        "rangeId",
+        "vendorId"
+      ]
     }
   },
   "auth": {
@@ -231,6 +284,18 @@
         "$ref": "#/backend/entities/Vendor"
       },
       "description": "Vendor documents for the data warehouse, keyed by a unique ID."
+    },
+    "/data-warehouse/{vendorId}/ranges/{rangeId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Range"
+      },
+      "description": "Product ranges for a specific vendor."
+    },
+    "/data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Model"
+      },
+      "description": "Specific models within a product range."
     }
   }
 }

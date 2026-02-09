@@ -49,6 +49,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { createSlug } from '@/lib/utils';
+import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 
 const formSchema = z.object({
   id: z.string(),
@@ -69,12 +71,6 @@ const formSchema = z.object({
 });
 
 type VendorFormData = z.infer<typeof formSchema>;
-
-const createSlug = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '');
 
 function JsonDataVisualizer({ data }: { data: any }) {
     if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -718,22 +714,25 @@ export default function VendorDetailsPage() {
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
                     <TabsContent value="initial-upload">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Initial Data Upload for {vendor.name}</CardTitle>
-                                <CardDescription>
-                                    This is where you will upload and manage the initial data set for this vendor.
-                                    Each vendor has a unique data structure, and the uploader will be configured accordingly.
-                                    We will start by building the uploader for Highfield here.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                                    <UploadCloud className="h-16 w-16 text-muted-foreground" />
-                                    <p className="mt-4 text-sm text-muted-foreground">Vendor-specific uploader coming soon.</p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        {vendor.slug === 'highfield' ? (
+                            <HighfieldDataStructure vendorId={vendor.id} />
+                        ) : (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Initial Data Upload for {vendor.name}</CardTitle>
+                                    <CardDescription>
+                                        This is where you will upload and manage the initial data set for this vendor.
+                                        Each vendor has a unique data structure, and the uploader will be configured accordingly.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                                        <UploadCloud className="h-16 w-16 text-muted-foreground" />
+                                        <p className="mt-4 text-sm text-muted-foreground">Vendor-specific uploader coming soon.</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </TabsContent>
                     <TabsContent value="data-connection">
                          {vendor.dataSource === 'Direct API' && <ApiDataFetcher />}
