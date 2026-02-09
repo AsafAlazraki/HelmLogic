@@ -43,6 +43,8 @@ const optionalFeatureSchema = z.object({
 
 const highfieldModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
+    cost: z.coerce.number().min(0).default(0),
+    sellPriceExclGst: z.coerce.number().min(0).default(0),
     specifications: z.object({
         minHp: z.coerce.number().min(0).default(0),
         maxHp: z.coerce.number().min(0).default(0),
@@ -126,6 +128,30 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
     );
 }
 
+function PricingCard({ form }: { form: any }) {
+    const sellPriceExclGst = useWatch({
+        control: form.control,
+        name: "sellPriceExclGst"
+    });
+    const sellPriceInclGst = (sellPriceExclGst || 0) * (1 + GST_RATE);
+
+    return (
+        <Card>
+            <CardHeader><CardTitle>Pricing</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+                <FormField control={form.control} name="cost" render={({ field }) => ( <FormItem><FormLabel>Cost</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="sellPriceExclGst" render={({ field }) => ( <FormItem><FormLabel>Sell Price (excl. GST)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormItem>
+                    <FormLabel>Sell Price (inc. GST)</FormLabel>
+                    <FormControl>
+                        <Input type="text" value={sellPriceInclGst.toFixed(2)} readOnly disabled className="bg-muted" />
+                    </FormControl>
+                </FormItem>
+            </CardContent>
+        </Card>
+    );
+}
+
 export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -136,6 +162,8 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         resolver: zodResolver(highfieldModelSchema),
         defaultValues: {
             ...model,
+            cost: model.cost || 0,
+            sellPriceExclGst: model.sellPriceExclGst || 0,
             specifications: model.specifications || { minHp: 0, maxHp: 0, recommendedHp: 0, otherSpecs: [] },
             standardFeatures: model.standardFeatures || [],
             optionalFeatures: model.optionalFeatures || [],
@@ -229,6 +257,8 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         </Card>
                     </div>
                     <div className="lg:col-span-1 space-y-8">
+                         {/* Pricing Card */}
+                         <PricingCard form={form} />
                          {/* Cover Image Card */}
                         <Card>
                             <CardHeader><CardTitle>Cover Image</CardTitle></CardHeader>
