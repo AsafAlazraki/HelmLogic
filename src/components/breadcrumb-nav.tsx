@@ -13,78 +13,50 @@ import {
 import { Fragment } from 'react';
 import { navLinks } from '@/lib/nav-links';
 
-type BreadcrumbPart = {
+export type BreadcrumbPart = {
   href: string;
   label: string;
 };
 
-// A simple helper to convert a slug to a title.
-// e.g. "route-optimization" -> "Route Optimization"
 const segmentToTitle = (segment: string) => {
     // A simple guard against displaying long IDs.
-    if (segment.length > 20) {
+    if (segment.length >= 20) {
         return "Details";
     }
     return segment.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
-const findPathParts = (pathname: string): BreadcrumbPart[] => {
-    const parts: BreadcrumbPart[] = [];
-    
-    // Exact match for top-level links without children
-    const exactMatch = navLinks.find(l => l.href === pathname && !l.subLinks);
-    if (exactMatch) {
-        return [{ href: exactMatch.href, label: exactMatch.label }];
-    }
-
-    for (const navLink of navLinks) {
-        // Check sublinks for a match
-        if (navLink.subLinks) {
-            for (const subLink of navLink.subLinks) {
-                if (pathname.startsWith(subLink.href)) {
-                    // Add parent link (e.g., Admin)
-                    if (navLink.href) {
-                      parts.push({ href: navLink.href, label: navLink.label });
-                    }
-                    
-                    // Add the matched sublink (e.g., Organisations)
-                    parts.push({ href: subLink.href, label: subLink.label });
-                    
-                    // Handle additional segments (e.g., /add in /organisations/add)
-                    const remainingPath = pathname.substring(subLink.href.length);
-                    if (remainingPath) {
-                        const segments = remainingPath.split('/').filter(Boolean);
-                        segments.forEach((segment, index) => {
-                            const currentSubPath = segments.slice(0, index + 1).join('/');
-                            parts.push({
-                                href: `${subLink.href}/${currentSubPath}`,
-                                label: segmentToTitle(segment),
-                            });
-                        });
-                    }
-                    return parts;
-                }
+const generatePartsFromPath = (pathname: string): BreadcrumbPart[] => {
+    const segments = pathname.split('/').filter(Boolean);
+    let cumulativePath = '';
+    const parts = segments.map(segment => {
+        cumulativePath += `/${segment}`;
+        // Try to find a label from navLinks first
+        for (const navLink of navLinks) {
+            if (navLink.href === cumulativePath) return { href: cumulativePath, label: navLink.label };
+            if (navLink.subLinks) {
+                const subLink = navLink.subLinks.find(sl => sl.href === cumulativePath);
+                if (subLink) return { href: cumulativePath, label: subLink.label };
             }
         }
+        return { href: cumulativePath, label: segmentToTitle(segment) };
+    });
+
+    // Add dashboard as root if not an admin page
+    if (!pathname.startsWith('/admin') && (parts.length === 0 || parts[0].label.toLowerCase() !== 'dashboard')) {
+        parts.unshift({ href: '/dashboard', label: 'Dashboard'});
+    } else if (pathname.startsWith('/admin') && (parts.length === 0 || parts[0].label.toLowerCase() !== 'admin')) {
+         parts.unshift({ href: '/admin', label: 'Admin'});
     }
     
-    // Check for a match on a parent link that is also a page itself (e.g. /admin)
-    const parentPageMatch = navLinks.find(l => l.href === pathname);
-    if(parentPageMatch) {
-        return [{ href: parentPageMatch.href, label: parentPageMatch.label }];
-    }
-
-
-    // Generic fallback based on URL segments if no match is found in navLinks
-    const segments = pathname.split('/').filter(Boolean);
-    return segments.map((segment, index) => {
-        const href = `/${segments.slice(0, index + 1).join('/')}`;
-        return { href, label: segmentToTitle(segment) };
-    });
+    return parts;
 };
 
-export function BreadcrumbNav({ pageTitle }: { pageTitle?: string }) {
+
+export function BreadcrumbNav({ parts }: { parts?: BreadcrumbPart[] }) {
   const pathname = usePathname();
+  
+  const breadcrumbParts = parts && parts.length > 0 ? parts : generatePartsFromPath(pathname);
 
   if (pathname === '/dashboard') {
     return (
@@ -98,25 +70,13 @@ export function BreadcrumbNav({ pageTitle }: { pageTitle?: string }) {
     );
   }
 
-  const pathParts = findPathParts(pathname);
-
-  // Always start with Dashboard, unless it's an admin path
-  let breadcrumbs = [{ href: '/dashboard', label: 'Dashboard' }, ...pathParts];
-  if (pathname.startsWith('/admin')) {
-    breadcrumbs.shift();
-  }
-  
-  if (pageTitle && breadcrumbs.length > 1) {
-    breadcrumbs[breadcrumbs.length - 1].label = pageTitle;
-  }
-
   return (
     <Breadcrumb className="hidden md:flex mt-2 mb-6">
       <BreadcrumbList>
-        {breadcrumbs.map((part, index) => {
-            const isLast = index === breadcrumbs.length - 1;
+        {breadcrumbParts.map((part, index) => {
+            const isLast = index === breadcrumbParts.length - 1;
             return (
-                <Fragment key={part.href}>
+                <Fragment key={`${part.href}-${index}`}>
                     {index > 0 && <BreadcrumbSeparator />}
                     <BreadcrumbItem>
                     {isLast ? (

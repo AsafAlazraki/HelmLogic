@@ -3,8 +3,9 @@
 import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Loader2 } from 'lucide-react';
-import { BreadcrumbNav } from '@/components/breadcrumb-nav';
+import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { useMemo } from 'react';
 
 interface Vendor {
     id: string;
@@ -16,6 +17,14 @@ export default function VendorDataPage() {
   const vendorId = params.vendorId as string;
 
   const { data: vendor, loading: vendorLoading } = useDoc<Vendor>(vendorId ? `/data-warehouse/${vendorId}` : null);
+
+  const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
+    if (!vendor) return [];
+    return [
+      { href: '/dashboard', label: 'Dashboard' },
+      { href: `/vendor-data/${vendor.id}`, label: `${vendor.name} Data` },
+    ];
+  }, [vendor]);
   
   if (vendorLoading) {
       return (
@@ -42,7 +51,7 @@ export default function VendorDataPage() {
     <div className="space-y-4">
         <div>
             <h1 className="text-2xl font-semibold">{vendor.name} - Data</h1>
-            <BreadcrumbNav pageTitle={vendor.name} />
+            <BreadcrumbNav parts={breadcrumbParts} />
         </div>
         <Card>
             <CardHeader>

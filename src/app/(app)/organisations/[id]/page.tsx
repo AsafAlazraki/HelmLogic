@@ -8,7 +8,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import Link from 'next/link';
 
-import { BreadcrumbNav } from '@/components/breadcrumb-nav';
+import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
@@ -57,6 +57,7 @@ const roleSchema = z.object({
 const formSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
+  slug: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
   phoneNumber: z.string().nullable().optional(),
   abn: z.string().nullable().optional(),
@@ -167,6 +168,16 @@ export default function OrganisationDetailsPage() {
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
         }
     }, [organisation, form]);
+
+    const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
+        if (!organisation) return [];
+        const parts: BreadcrumbPart[] = [
+            { href: '/admin', label: 'Admin' },
+            { href: '/organisations', label: 'Organisations' },
+            { href: `/organisations/${organisation.slug || organisation.id}`, label: organisation.name },
+        ];
+        return parts;
+    }, [organisation]);
 
     async function onInviteSubmit(values: InviteFormData) {
         if (!organisation) return;
@@ -318,7 +329,7 @@ export default function OrganisationDetailsPage() {
                         <div className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-2xl font-semibold">Edit {organisation.name}</h1>
-                                <BreadcrumbNav pageTitle={organisation?.name} />
+                                <BreadcrumbNav parts={breadcrumbParts} />
                             </div>
                             <div className="flex items-center justify-end gap-2">
                                 <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>

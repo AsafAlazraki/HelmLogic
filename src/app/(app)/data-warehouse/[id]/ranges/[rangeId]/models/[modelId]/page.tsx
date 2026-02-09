@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Loader2 } from 'lucide-react';
-import { BreadcrumbNav } from '@/components/breadcrumb-nav';
+import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { useMemo } from 'react';
 import { useFirestore } from '@/firebase/provider';
@@ -72,6 +72,17 @@ export default function ModelDetailsPage() {
 
   const loading = vendorLoading || rangeLoading || modelLoading;
 
+  const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
+    if (!vendor || !range || !model) return [];
+    return [
+      { href: "/admin", label: "Admin" },
+      { href: "/data-warehouse", label: "Data Warehouse" },
+      { href: `/data-warehouse/${vendor.slug || vendor.id}`, label: vendor.name },
+      { href: `/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}`, label: range.name },
+      { href: `/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`, label: model.name },
+    ];
+  }, [vendor, range, model]);
+
   if (loading) {
       return (
         <div className="flex h-[400px] w-full items-center justify-center">
@@ -97,7 +108,7 @@ export default function ModelDetailsPage() {
     <div className="space-y-4">
         <div>
             <h1 className="text-2xl font-semibold">{vendor.name} - {range.name} - {model.name}</h1>
-            <BreadcrumbNav pageTitle={model.name} />
+            <BreadcrumbNav parts={breadcrumbParts} />
         </div>
         <Card>
             <CardHeader>

@@ -22,7 +22,7 @@ import { collection, doc, setDoc, query, where } from 'firebase/firestore';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BreadcrumbNav } from '@/components/breadcrumb-nav';
+import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
@@ -46,6 +46,7 @@ const formSchema = z.object({
   name: z.string().min(1, {
     message: 'Organisation name is required.',
   }),
+  slug: z.string().nullable().optional(),
   address: z.string().optional(),
   phoneNumber: z.string().optional(),
   abn: z.string().optional(),
@@ -80,10 +81,11 @@ export default function AddSubDealerPage() {
     return query(collection(firestore, 'organisations'), where('slug', '==', parentOrgSlugOrId));
   }, [firestore, parentOrgSlugOrId]);
 
-  const { data: orgsBySlug } = useCollection<{id: string, name: string}>(orgQueryBySlug);
-  const { data: orgById } = useDoc<{id: string, name: string}>(parentOrgSlugOrId ? `/organisations/${parentOrgSlugOrId}` : null);
+  const { data: orgsBySlug, loading: slugLoading } = useCollection<{id: string, name: string, slug?: string}>(orgQueryBySlug);
+  const { data: orgById, loading: idLoading } = useDoc<{id: string, name: string, slug?: string}>(parentOrgSlugOrId ? `/organisations/${parentOrgSlugOrId}` : null);
 
   const parentOrganisation = useMemo(() => orgsBySlug?.[0] || orgById, [orgsBySlug, orgById]);
+  const parentOrgLoading = slugLoading || idLoading;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -101,6 +103,16 @@ export default function AddSubDealerPage() {
       subDealersEnabled: false,
     },
   });
+
+  const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
+    if (!parentOrganisation) return [];
+    return [
+        { href: '/admin', label: 'Admin' },
+        { href: '/organisations', label: 'Organisations' },
+        { href: `/organisations/${parentOrganisation.slug || parentOrganisation.id}`, label: parentOrganisation.name },
+        { href: `/organisations/${parentOrganisation.slug || parentOrganisation.id}/add-sub-dealer`, label: 'Add Sub Dealer' },
+    ];
+  }, [parentOrganisation]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -158,7 +170,7 @@ export default function AddSubDealerPage() {
         title: 'Sub Dealer created',
         description: `${values.name} has been added successfully.`,
       });
-      router.push(`/organisations/${parentOrgSlugOrId}`);
+      router.push(`/organisations/${parentOrganisation.slug || parentOrganisation.id}`);
 
     } catch (error: any) {
       console.error("Failed to create sub dealer:", error);
@@ -201,12 +213,12 @@ export default function AddSubDealerPage() {
             <div className="flex items-start justify-between">
                 <div>
                   <h1 className="text-2xl font-semibold">Add New Sub Dealer {parentOrganisation ? `to ${parentOrganisation.name}` : ''}</h1>
-                  <BreadcrumbNav pageTitle="Add Sub Dealer" />
+                  <BreadcrumbNav parts={breadcrumbParts} />
                 </div>
                 <div className="flex gap-2">
                     <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>Cancel</Button>
-                    <Button type="submit" disabled={isLoading}>
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Button type="submit" disabled={isLoading || parentOrgLoading}>
+                        {(isLoading || parentOrgLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Create Sub Dealer
                     </Button>
                 </div>

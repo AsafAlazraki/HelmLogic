@@ -8,7 +8,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import * as XLSX from 'xlsx';
 
-import { BreadcrumbNav } from '@/components/breadcrumb-nav';
+import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
@@ -617,6 +617,15 @@ export default function VendorDetailsPage() {
         }
     }, [vendor, form]);
 
+    const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
+        if (!vendor) return [];
+        return [
+            { href: "/admin", label: "Admin" },
+            { href: "/data-warehouse", label: "Data Warehouse" },
+            { href: `/data-warehouse/${vendor.slug || vendor.id}`, label: vendor.name },
+        ];
+    }, [vendor]);
+
     async function onSubmit(values: VendorFormData) {
         if (!vendor) return;
         setIsSubmitting(true);
@@ -705,7 +714,7 @@ export default function VendorDetailsPage() {
                     <div className="flex items-start justify-between">
                         <div>
                             <h1 className="text-2xl font-semibold">Data Warehouse - {vendor.name}</h1>
-                            <BreadcrumbNav pageTitle={vendor.name} />
+                            <BreadcrumbNav parts={breadcrumbParts} />
                         </div>
                     </div>
                     <TabsList>

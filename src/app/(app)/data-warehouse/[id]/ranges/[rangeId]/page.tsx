@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Loader2, PlusCircle } from 'lucide-react';
-import { BreadcrumbNav } from '@/components/breadcrumb-nav';
+import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { useMemo, useState } from 'react';
 import { useFirestore } from '@/firebase/provider';
@@ -71,6 +71,16 @@ export default function RangeDetailsPage() {
   
   const loading = vendorLoading || rangeLoading;
 
+  const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
+    if (!vendor || !range) return [];
+    return [
+      { href: "/admin", label: "Admin" },
+      { href: "/data-warehouse", label: "Data Warehouse" },
+      { href: `/data-warehouse/${vendor.slug || vendor.id}`, label: vendor.name },
+      { href: `/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}`, label: range.name },
+    ];
+  }, [vendor, range]);
+
   const handleAddModel = async () => {
       if (!newModelName.trim() || !range || !vendor?.id) return;
       setIsAdding(true);
@@ -118,7 +128,7 @@ export default function RangeDetailsPage() {
     <div className="space-y-4">
         <div>
             <h1 className="text-2xl font-semibold">{vendor.name} - {range.name}</h1>
-            <BreadcrumbNav pageTitle={range.name} />
+            <BreadcrumbNav parts={breadcrumbParts} />
         </div>
         <Card>
             <CardHeader>
@@ -147,7 +157,7 @@ export default function RangeDetailsPage() {
                 ) : models && models.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                        {models.map(model => (
-                           <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${model.slug || model.id}`} key={model.id} className="group">
+                           <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`} key={model.id} className="group">
                                <Card className="h-full transition-all hover:border-primary hover:-translate-y-1 hover:shadow-md">
                                    <CardHeader>
                                        <CardTitle className="text-base">{model.name}</CardTitle>
