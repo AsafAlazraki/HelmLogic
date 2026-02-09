@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -62,17 +62,76 @@ type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
 const GST_RATE = 0.10;
 
-function OptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
-    const sellPriceExclGst = useWatch({
-        control: form.control,
-        name: `optionalFeatures.${index}.sellPriceExclGst`
-    });
+function GstInputPair({ control, name, label }: { control: any, name: string, label: string }) {
+    const { field } = useController({ control, name });
+    
+    const valueExcl = field.value || 0;
+    const valueIncl = valueExcl * (1 + GST_RATE);
 
-    const sellPriceInclGst = (sellPriceExclGst || 0) * (1 + GST_RATE);
+    const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const numValue = parseFloat(e.target.value);
+        field.onChange(isNaN(numValue) ? 0 : numValue);
+    };
+
+    const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const numValue = parseFloat(e.target.value);
+        field.onChange(isNaN(numValue) ? 0 : numValue / (1 + GST_RATE));
+    };
+
+    return (
+        <div>
+            <FormLabel>{label}</FormLabel>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+                <FormItem>
+                    <FormLabel className="text-xs font-normal text-muted-foreground">ex. GST</FormLabel>
+                    <FormControl>
+                        <Input 
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={valueExcl === 0 ? '' : valueExcl}
+                            onChange={handleExclChange}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                <FormItem>
+                    <FormLabel className="text-xs font-normal text-muted-foreground">inc. GST</FormLabel>
+                    <FormControl>
+                        <Input 
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={valueIncl === 0 ? '' : valueIncl.toFixed(2)}
+                            onChange={handleInclChange}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            </div>
+        </div>
+    );
+}
+
+function PricingCard({ form }: { form: any }) {
+    return (
+        <Card>
+            <CardHeader><CardTitle>Pricing</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+                <GstInputPair control={form.control} name="cost" label="Base Cost" />
+                <GstInputPair control={form.control} name="sellPriceExclGst" label="Sell Price" />
+                <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
+            </CardContent>
+        </Card>
+    );
+}
+
+
+function OptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
     const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
 
     return (
-         <Card key={index} className="p-4 relative">
+         <Card key={index} className="p-4 relative bg-muted/50">
             <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
             <div className="space-y-4">
                 <FormField
@@ -115,42 +174,10 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
                     )}
                 />
                 <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name={`optionalFeatures.${index}.cost`} render={({ field }) => ( <FormItem><FormLabel>Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name={`optionalFeatures.${index}.sellPriceExclGst`} render={({ field }) => ( <FormItem><FormLabel>Sell (ex. GST)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                </div>
-                 <FormItem>
-                    <FormLabel>Sell (inc. GST)</FormLabel>
-                    <FormControl>
-                        <Input type="text" value={sellPriceInclGst.toFixed(2)} readOnly disabled className="bg-muted" />
-                    </FormControl>
-                </FormItem>
+                <GstInputPair control={form.control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                <GstInputPair control={form.control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
+                <GstInputPair control={form.control} name={`optionalFeatures.${index}.freightCostExclGst`} label="Freight Cost" />
             </div>
-        </Card>
-    );
-}
-
-function PricingCard({ form }: { form: any }) {
-    const sellPriceExclGst = useWatch({
-        control: form.control,
-        name: "sellPriceExclGst"
-    });
-    const sellPriceInclGst = (sellPriceExclGst || 0) * (1 + GST_RATE);
-
-    return (
-        <Card>
-            <CardHeader><CardTitle>Pricing</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-                <FormField control={form.control} name="cost" render={({ field }) => ( <FormItem><FormLabel>Cost</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="sellPriceExclGst" render={({ field }) => ( <FormItem><FormLabel>Sell Price (excl. GST)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormItem>
-                    <FormLabel>Sell Price (inc. GST)</FormLabel>
-                    <FormControl>
-                        <Input type="text" value={sellPriceInclGst.toFixed(2)} readOnly disabled className="bg-muted" />
-                    </FormControl>
-                </FormItem>
-                <FormField control={form.control} name="freightCostExclGst" render={({ field }) => ( <FormItem><FormLabel>Freight Cost (excl. GST)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem> )} />
-            </CardContent>
         </Card>
     );
 }
