@@ -26,6 +26,7 @@ interface Organisation {
 interface Vendor {
     id:string;
     name: string;
+    slug?: string;
     logoUrl?: string;
 }
 
@@ -63,7 +64,7 @@ function EmployeeDashboard({ organisationId }: { organisationId: string }) {
                         {subscribedVendors.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {subscribedVendors.map(vendor => (
-                                    <Link href={`/vendor-data/${vendor.id}`} key={vendor.id} className="group">
+                                    <Link href={`/vendor-data/${vendor.slug || vendor.id}`} key={vendor.id} className="group">
                                         <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:-translate-y-1 group-hover:shadow-md overflow-hidden">
                                             <div className="h-24 bg-secondary flex items-center justify-center p-4">
                                                 {vendor.logoUrl ? (

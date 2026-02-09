@@ -678,7 +678,7 @@ export default function OrganisationDetailsPage() {
                                                 <CardDescription>Manage sub dealers associated with this organisation.</CardDescription>
                                             </div>
                                             <Button asChild>
-                                                <Link href={`/organisations/${organisation.id}/add-sub-dealer`}>
+                                                <Link href={`/organisations/${organisation.slug || organisation.id}/add-sub-dealer`}>
                                                     <PlusCircle className="mr-2 h-4 w-4" />
                                                     Add Sub Dealer
                                                 </Link>
@@ -716,7 +716,7 @@ export default function OrganisationDetailsPage() {
                                                 <div className="text-center py-12 text-muted-foreground">
                                                     <p>No sub dealers have been added yet.</p>
                                                     <Button asChild variant="secondary" className="mt-4">
-                                                        <Link href={`/organisations/${organisation.id}/add-sub-dealer`}>
+                                                        <Link href={`/organisations/${organisation.slug || organisation.id}/add-sub-dealer`}>
                                                             <PlusCircle className="mr-2 h-4 w-4" />
                                                             Add First Sub Dealer
                                                         </Link>

@@ -20,7 +20,7 @@ interface Range {
 
 const initialRanges = ['Sport', 'Classic', 'Roll-Up', 'Adventure', 'Patrol'];
 
-export function HighfieldDataStructure({ vendorId }: { vendorId: string }) {
+export function HighfieldDataStructure({ vendorId, vendorSlugOrId }: { vendorId: string, vendorSlugOrId: string }) {
     const firestore = useFirestore();
     const { data: ranges, loading: rangesLoading } = useCollection<Range>(`data-warehouse/${vendorId}/ranges`);
     const [isSeeding, setIsSeeding] = useState(false);
@@ -65,7 +65,7 @@ export function HighfieldDataStructure({ vendorId }: { vendorId: string }) {
                 {ranges && ranges.length > 0 ? (
                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {ranges.map(range => (
-                            <Link href={`/data-warehouse/${vendorId}/ranges/${range.slug || range.id}`} key={range.id} className="group">
+                            <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${range.slug || range.id}`} key={range.id} className="group">
                                 <Card className="h-full transition-all hover:border-primary hover:-translate-y-1 hover:shadow-md">
                                     <CardHeader>
                                         <CardTitle className="text-lg">{range.name}</CardTitle>

@@ -2,27 +2,40 @@
 
 import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { Loader2 } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { useMemo } from 'react';
+import { useFirestore } from '@/firebase/provider';
+import { collection, query, where } from 'firebase/firestore';
 
 interface Vendor {
     id: string;
     name: string;
+    slug?: string;
 }
 
 export default function VendorDataPage() {
   const params = useParams();
-  const vendorId = params.vendorId as string;
+  const firestore = useFirestore();
+  const slugOrId = params.vendorId as string;
 
-  const { data: vendor, loading: vendorLoading } = useDoc<Vendor>(vendorId ? `/data-warehouse/${vendorId}` : null);
+  const vendorQueryBySlug = useMemo(() => {
+    if (!slugOrId) return null;
+    return query(collection(firestore, 'data-warehouse'), where('slug', '==', slugOrId));
+  }, [firestore, slugOrId]);
+  
+  const { data: vendorsBySlug, loading: slugLoading } = useCollection<Vendor>(vendorQueryBySlug);
+  const { data: vendorById, loading: idLoading } = useDoc<Vendor>(slugOrId ? `/data-warehouse/${slugOrId}`: null);
+  const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
+  const vendorLoading = slugLoading || idLoading;
 
   const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
     if (!vendor) return [];
     return [
       { href: '/dashboard', label: 'Dashboard' },
-      { href: `/vendor-data/${vendor.id}`, label: `${vendor.name} Data` },
+      { href: `/vendor-data/${vendor.slug || vendor.id}`, label: `${vendor.name} Data` },
     ];
   }, [vendor]);
   

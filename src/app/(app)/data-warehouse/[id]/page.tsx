@@ -724,7 +724,7 @@ export default function VendorDetailsPage() {
                     </TabsList>
                     <TabsContent value="initial-upload">
                         {vendor.slug === 'highfield' ? (
-                            <HighfieldDataStructure vendorId={vendor.id} />
+                            <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
                         ) : (
                             <Card>
                                 <CardHeader>
