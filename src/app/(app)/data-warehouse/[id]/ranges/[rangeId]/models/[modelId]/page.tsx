@@ -11,6 +11,7 @@ import { useFirestore } from '@/firebase/provider';
 import { collection, query, where } from 'firebase/firestore';
 import { HighfieldModelEditor } from '@/components/highfield-model-editor';
 import AdminGuard from '@/components/admin-guard';
+import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
 
 interface Model {
     id: string;
@@ -123,6 +124,8 @@ export default function ModelDetailsPage() {
             
             {vendor.slug === 'highfield' ? (
                 <HighfieldModelEditor model={model} docPath={modelDocPath} />
+            ) : vendor.slug === 'jeanneau' ? (
+                <JeanneauModelEditor model={model} docPath={modelDocPath} />
             ) : (
                 <Card>
                     <CardHeader>

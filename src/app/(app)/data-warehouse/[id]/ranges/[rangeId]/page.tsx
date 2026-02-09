@@ -5,10 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight, PlusCircle } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
@@ -209,6 +210,10 @@ export default function RangeDetailsPage() {
     const firestore = useFirestore();
     const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
     const [models, setModels] = useState<Model[]>([]);
+    const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
+    const [newModelName, setNewModelName] = useState('');
+    const [isAddingModel, setIsAddingModel] = useState(false);
+    const { toast } = useToast();
 
     const vendorQuery = useMemo(() => {
         if (!vendorSlugOrId) return null;
@@ -246,6 +251,28 @@ export default function RangeDetailsPage() {
 
     const handleModelDeleted = (deletedId: string) => {
         setModels(currentModels => currentModels.filter(m => m.id !== deletedId));
+    };
+
+    const handleAddModel = async () => {
+        if (!newModelName.trim() || !vendor || !range) return;
+        setIsAddingModel(true);
+        try {
+            const modelsCollectionRef = collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`);
+            await addDoc(modelsCollectionRef, {
+                name: newModelName,
+                slug: createSlug(newModelName),
+                rangeId: range.id,
+                vendorId: vendor.id,
+            });
+            toast({ title: 'Model Added', description: `${newModelName} was added successfully.` });
+            setNewModelName('');
+            setIsAddModelDialogOpen(false);
+        } catch (error) {
+            console.error('Error adding model:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not add model.' });
+        } finally {
+            setIsAddingModel(false);
+        }
     };
     
     const loading = vendorLoading || rangeLoading || modelsLoading;
@@ -298,6 +325,10 @@ export default function RangeDetailsPage() {
                                 <CardDescription>Manage the models available in this product range.</CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
+                                <Button variant="outline" onClick={() => setIsAddModelDialogOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Model
+                                </Button>
                                 <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
                                     <LayoutGrid className="h-4 w-4" />
                                     <span className="sr-only">Card View</span>
@@ -357,6 +388,31 @@ export default function RangeDetailsPage() {
                     </CardContent>
                 </Card>
             </div>
+            <Dialog open={isAddModelDialogOpen} onOpenChange={setIsAddModelDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add New Model</DialogTitle>
+                        <DialogDescription>
+                            Enter the name for the new model in the {range?.name} range.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">Name</Label>
+                            <Input id="name" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                         <DialogClose asChild>
+                            <Button type="button" variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim()}>
+                            {isAddingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Add Model
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AdminGuard>
     );
 }
