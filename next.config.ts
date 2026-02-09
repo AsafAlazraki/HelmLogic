@@ -30,6 +30,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    config.module = {
+      ...config.module,
+      // Suppress the warning from opentelemetry, a dependency of genkit.
+      // This is a known issue with how the library uses dynamic requires.
+      exprContextCritical: false,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;
