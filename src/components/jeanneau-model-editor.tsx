@@ -15,11 +15,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal, Plus } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 
 // Schemas for validation
@@ -27,6 +28,12 @@ const specSchema = z.object({
     id: z.string(),
     label: z.string().min(1, 'Label is required'),
     value: z.string().min(1, 'Value is required'),
+});
+
+const colorVariantSchema = z.object({
+    id: z.string(),
+    name: z.string().min(1, 'Color name is required'),
+    imageUrls: z.array(z.string()).default([]),
 });
 
 const optionalFeatureSchema = z.object({
@@ -64,6 +71,7 @@ const modelSchema = z.object({
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(topLevelOptionalFeatureSchema).default([]),
     packages: z.array(packageSchema).default([]),
+    colors: z.array(colorVariantSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
@@ -357,6 +365,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             standardFeatures: data.standardFeatures ?? [],
             optionalFeatures: data.optionalFeatures ?? [],
             packages: (data.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [] })),
+            colors: data.colors ?? [],
         };
     };
 
@@ -373,7 +382,9 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
     const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({ control: form.control, name: "packages" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
+    const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
     
+    const watchedColors = useWatch({ control: form.control, name: 'colors' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
     function onSubmit(values: ModelFormData) {
@@ -482,6 +493,61 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                             <PackageItem key={field.id} form={form} index={index} remove={removePackage} />
                                         ))}
                                         {packageFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional packages added.</p>}
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
+                        {/* Colors Card */}
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Color Variants">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4">
+                                        {colorFields.map((field, index) => (
+                                            <Card key={field.id} className="p-4 bg-muted/50">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <FormLabel>Images</FormLabel>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
+                                                            <div key={imgIndex} className="relative aspect-square group">
+                                                                <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
+                                                                 <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                    onClick={() => {
+                                                                        const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
+                                                                        updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
+                                                                    }}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                        <label htmlFor={`color-image-upload-${index}`} className={cn(
+                                                            "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
+                                                            (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
+                                                        )}>
+                                                             <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                const files = Array.from(e.target.files || []);
+                                                                const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                const currentUrls = watchedColors[index].imageUrls || [];
+                                                                updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
+                                                             }}/>
+                                                             <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                        {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
                                     </CardContent>
                                 </CollapsibleContent>
                             </Card>
