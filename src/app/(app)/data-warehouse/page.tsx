@@ -395,5 +395,4 @@ export default function DataWarehousePage() {
         </AlertDialog>
       </AdminGuard>
     );
-
-    
+}
