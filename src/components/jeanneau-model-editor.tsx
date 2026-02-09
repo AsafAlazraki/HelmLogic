@@ -28,6 +28,13 @@ const specSchema = z.object({
     value: z.string().min(1, 'Value is required'),
 });
 
+const optionalFeatureSchema = z.object({
+    id: z.string(),
+    name: z.string().min(1, 'Feature name is required'),
+    cost: z.coerce.number().min(0).default(0),
+    sellPriceExclGst: z.coerce.number().min(0).default(0),
+});
+
 const packageSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package name is required'),
@@ -36,6 +43,7 @@ const packageSchema = z.object({
     sellPriceExclGst: z.coerce.number().min(0).default(0),
     freightCostExclGst: z.coerce.number().min(0).default(0),
     includedFeatures: z.array(z.string()).default([]),
+    optionalFeatures: z.array(optionalFeatureSchema).default([]),
 });
 
 const modelSchema = z.object({
@@ -142,14 +150,54 @@ function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
     );
 }
 
+function OptionalPackageFeatures({ packageIndex }: { packageIndex: number }) {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `packages.${packageIndex}.optionalFeatures`
+    });
+
+    return (
+        <div className="space-y-3 pl-4 pt-4 mt-4 border-t">
+            <FormLabel className="text-xs text-muted-foreground">Optional Add-ons</FormLabel>
+            {fields.map((field, index) => (
+                <div key={field.id} className="p-3 bg-background/50 rounded-md border">
+                    <div className="flex items-center gap-2">
+                        <FormField
+                            control={control}
+                            name={`packages.${packageIndex}.optionalFeatures.${index}.name`}
+                            render={({ field }) => (
+                                <FormItem className="flex-1">
+                                    <FormControl><Input {...field} placeholder={`Optional Feature ${index + 1}`} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                        <GstInputPair control={control} name={`packages.${packageIndex}.optionalFeatures.${index}.cost`} label="Cost" />
+                        <GstInputPair control={control} name={`packages.${packageIndex}.optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
+                    </div>
+                </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `opt-feat-${Date.now()}-${Math.random()}`, name: '', cost: 0, sellPriceExclGst: 0 })}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Optional Feature
+            </Button>
+        </div>
+    );
+}
+
 function PackageItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
     const imageUrl = useWatch({ control: form.control, name: `packages.${index}.imageUrl` });
     const {control} = form;
 
     return (
         <Collapsible asChild>
-            <Card key={index} className="relative bg-muted/50 overflow-hidden">
-                 <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
+            <Card key={index} className="relative bg-muted/50 overflow-hidden group/package-item">
+                 <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-6 w-6 z-10 opacity-0 group-hover/package-item:opacity-100 transition-opacity" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
                 <CollapsibleTrigger asChild>
                     <div className="p-4 pr-12 cursor-pointer group">
                         <FormField control={form.control} name={`packages.${index}.name`} render={({ field }) => ( 
@@ -204,10 +252,23 @@ function PackageItem({ form, index, remove }: { form: any; index: number; remove
                                 </FormItem>
                             )}
                         />
-                        <GstInputPair control={control} name={`packages.${index}.cost`} label="Cost" />
-                        <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Sell Price" />
-                        <GstInputPair control={control} name={`packages.${index}.freightCostExclGst`} label="Freight Cost" />
+                        
+                        <Collapsible>
+                            <CollapsibleTrigger asChild>
+                                <Button type="button" variant="ghost" className="w-full justify-between px-0 hover:bg-transparent -mb-2">
+                                    <span className="text-xs text-muted-foreground font-semibold">PRICING</span>
+                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="space-y-4 pt-2">
+                                <GstInputPair control={control} name={`packages.${index}.cost`} label="Cost" />
+                                <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Sell Price" />
+                                <GstInputPair control={control} name={`packages.${index}.freightCostExclGst`} label="Freight Cost" />
+                            </CollapsibleContent>
+                        </Collapsible>
+                        
                         <IncludedFeatures packageIndex={index} />
+                        <OptionalPackageFeatures packageIndex={index} />
                     </div>
                 </CollapsibleContent>
             </Card>
@@ -254,7 +315,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
-            packages: data.packages ?? [],
+            packages: (data.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [], optionalFeatures: p.optionalFeatures ?? [] })),
         };
     };
 
@@ -371,7 +432,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Packages">
-                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}-${Math.random()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
+                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}-${Math.random()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0, includedFeatures: [], optionalFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
