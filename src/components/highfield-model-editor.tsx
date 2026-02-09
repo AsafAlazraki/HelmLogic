@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -133,9 +133,9 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
                                     <Image src={imageUrl} alt="Feature image" fill className="object-cover" />
                                     <Button
                                         type="button"
-                                        variant="destructive"
+                                        variant="outline"
                                         size="icon"
-                                        className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
+                                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                                         onClick={() => field.onChange(null)}
                                     >
                                         <X className="h-4 w-4" />
@@ -180,7 +180,7 @@ const CollapsibleCardHeader = ({ title, description, children }: { title: string
             {children}
             <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="icon">
-                    <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                    <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </Button>
             </CollapsibleTrigger>
         </div>
@@ -194,19 +194,34 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
 
+    const getSafeDefaultValues = (modelData: any): ModelFormData => {
+        const data = modelData || {};
+        return {
+            coverImageUrl: data.coverImageUrl ?? null,
+            cost: data.cost ?? 0,
+            sellPriceExclGst: data.sellPriceExclGst ?? 0,
+            freightCostExclGst: data.freightCostExclGst ?? 0,
+            specifications: {
+                minHp: 0,
+                maxHp: 0,
+                recommendedHp: 0,
+                otherSpecs: [],
+                ...(data.specifications || {}),
+            },
+            standardFeatures: data.standardFeatures ?? [],
+            optionalFeatures: data.optionalFeatures ?? [],
+            colors: data.colors ?? [],
+        };
+    };
+
     const form = useForm<ModelFormData>({
         resolver: zodResolver(highfieldModelSchema),
-        defaultValues: {
-            ...model,
-            cost: model.cost || 0,
-            sellPriceExclGst: model.sellPriceExclGst || 0,
-            freightCostExclGst: model.freightCostExclGst || 0,
-            specifications: model.specifications || { minHp: 0, maxHp: 0, recommendedHp: 0, otherSpecs: [] },
-            standardFeatures: model.standardFeatures || [],
-            optionalFeatures: model.optionalFeatures || [],
-            colors: model.colors || [],
-        },
+        defaultValues: getSafeDefaultValues(model),
     });
+    
+    useEffect(() => {
+        form.reset(getSafeDefaultValues(model));
+    }, [model, form]);
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
@@ -226,13 +241,12 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 form.reset(values);
             })
             .catch((serverError) => {
-                const permissionError = new FirestorePermissionError({
+                 const permissionError = new FirestorePermissionError({
                     path: modelDocRef.path,
                     operation: 'update',
                     requestResourceData: values,
                 });
                 errorEmitter.emit('permission-error', permissionError);
-                toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save changes.' });
             })
             .finally(() => {
                 setIsSubmitting(false);
@@ -345,14 +359,14 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                 <div className="space-y-2">
                                                     <FormLabel>Images</FormLabel>
                                                     <div className="grid grid-cols-3 gap-2">
-                                                        {(watchedColors[index]?.imageUrls || []).map((url, imgIndex) => (
+                                                        {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
                                                             <div key={imgIndex} className="relative aspect-square group">
                                                                 <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
                                                                  <Button
                                                                     type="button"
-                                                                    variant="destructive"
+                                                                    variant="outline"
                                                                     size="icon"
-                                                                    className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
+                                                                    className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                                                                     onClick={() => {
                                                                         const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
                                                                         updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
@@ -364,7 +378,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                         ))}
                                                         <label htmlFor={`color-image-upload-${index}`} className={cn(
                                                             "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
-                                                            (watchedColors[index]?.imageUrls.length || 0) >= 6 && 'hidden'
+                                                            (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
                                                         )}>
                                                              <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
                                                                 const files = Array.from(e.target.files || []);
@@ -412,9 +426,9 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                         <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
                                                         <Button
                                                             type="button"
-                                                            variant="destructive"
+                                                            variant="outline"
                                                             size="icon"
-                                                            className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
+                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                                                             onClick={() => field.onChange(null)}
                                                         >
                                                             <X className="h-4 w-4" />
