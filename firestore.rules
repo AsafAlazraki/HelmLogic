@@ -3,11 +3,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isHelmLogicAdmin() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return request.auth != null && 
+             userDoc.data != null &&
+             'appRole' in userDoc.data && 
+             userDoc.data.appRole == 'HelmLogic Admin';
     }
 
     function isMemberOfOrganisation(organisationId) {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == organisationId;
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return request.auth != null &&
+             userDoc.data != null &&
+             'organisationId' in userDoc.data &&
+             userDoc.data.organisationId == organisationId;
     }
 
     match /users/{userId} {
@@ -38,16 +46,16 @@ service cloud.firestore {
     match /data-warehouse/{vendorId} {
       allow read: if request.auth != null;
       allow write: if isHelmLogicAdmin();
+    }
 
-      match /ranges/{rangeId} {
-        allow read: if request.auth != null;
-        allow write: if isHelmLogicAdmin();
+    match /data-warehouse/{vendorId}/ranges/{rangeId} {
+      allow read: if request.auth != null;
+      allow write: if isHelmLogicAdmin();
+    }
 
-        match /models/{modelId} {
-          allow read: if request.auth != null;
-          allow write: if isHelmLogicAdmin();
-        }
-      }
+    match /data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId} {
+      allow read: if request.auth != null;
+      allow write: if isHelmLogicAdmin();
     }
 
     match /{document=**} {
