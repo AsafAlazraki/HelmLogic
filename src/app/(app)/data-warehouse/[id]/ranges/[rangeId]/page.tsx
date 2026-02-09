@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { Loader2, PlusCircle } from 'lucide-react';
+import { Loader2, PlusCircle, Sailboat } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { useMemo, useState } from 'react';
@@ -14,6 +14,7 @@ import { createSlug } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Range {
     id: string;
@@ -31,6 +32,7 @@ interface Model {
     id: string;
     name: string;
     slug?: string;
+    coverImageUrl?: string;
 }
 
 export default function RangeDetailsPage() {
@@ -158,9 +160,21 @@ export default function RangeDetailsPage() {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                        {models.map(model => (
                            <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`} key={model.id} className="group">
-                               <Card className="h-full transition-all hover:border-primary hover:-translate-y-1 hover:shadow-md">
-                                   <CardHeader>
-                                       <CardTitle className="text-base">{model.name}</CardTitle>
+                               <Card className="h-full transition-all hover:border-primary hover:-translate-y-1 hover:shadow-md overflow-hidden flex flex-col">
+                                   <div className="h-32 bg-secondary flex items-center justify-center p-4 relative">
+                                       {model.coverImageUrl ? (
+                                           <Image
+                                               src={model.coverImageUrl}
+                                               alt={`${model.name} cover image`}
+                                               fill
+                                               className="object-contain"
+                                           />
+                                       ) : (
+                                           <Sailboat className="h-10 w-10 text-muted-foreground" />
+                                       )}
+                                   </div>
+                                   <CardHeader className="p-4 flex-grow flex items-center justify-center">
+                                       <CardTitle className="text-base text-center">{model.name}</CardTitle>
                                    </CardHeader>
                                </Card>
                            </Link>
