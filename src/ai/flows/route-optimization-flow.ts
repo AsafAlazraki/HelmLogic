@@ -61,23 +61,22 @@ const prompt = ai.definePrompt({
   input: {schema: OptimizeRouteInputSchema},
   output: {schema: OptimizeRouteOutputSchema},
   tools: [shouldConsiderWeather],
-  prompt: `You are a maritime route optimization expert.
+  system: `You are a maritime route optimization expert. Your task is to suggest the most efficient and safe route based on the provided details. Use the 'shouldConsiderWeather' tool to determine if the journey's timeframe requires special attention to weather conditions. If it does, prioritize routes that minimize exposure to adverse weather in your suggestions.`,
+  prompt: `
+  Based on the following information, provide an optimal route and alternative routes.
 
-  Based on the vessel specifications, origin, destination, and timeframe, suggest the most efficient and safe route, considering weather, traffic, and regulations.
+  Vessel Specifications: {{{vesselSpecs}}}
+  Origin: {{{origin}}}
+  Destination: {{{destination}}}
+  Timeframe: {{{timeframe}}}
 
-Vessel Specifications: {{{vesselSpecs}}}
-Origin: {{{origin}}}
-Destination: {{{destination}}}
-Timeframe: {{{timeframe}}}
-
-{{#if (await shouldConsiderWeather timeframe=timeframe origin=origin destination=destination)}}
-  Pay close attention to weather conditions and suggest routes that minimize exposure to adverse weather.
-{{/if}}
-
-  Consider maritime traffic conditions and suggest routes that avoid congested areas.
-  Also consider any regulatory information that may impact the route.
-
-  Return the optimal route, including estimated travel time, weather conditions, traffic conditions, regulatory information, and safety considerations. Also provide alternative route suggestions.
+  For each route, include:
+  - The route as a list of GPS coordinates.
+  - Estimated travel time.
+  - Expected weather conditions.
+  - Expected maritime traffic conditions.
+  - Any relevant regulatory information.
+  - Important safety considerations.
   `,
 });
 
