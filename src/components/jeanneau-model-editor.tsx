@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -15,9 +15,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
 
 // Schemas for validation
 const specSchema = z.object({
@@ -26,8 +28,21 @@ const specSchema = z.object({
     value: z.string().min(1, 'Value is required'),
 });
 
+const packageSchema = z.object({
+    id: z.string(),
+    name: z.string().min(1, 'Package name is required'),
+    imageUrl: z.string().nullable().optional(),
+    cost: z.coerce.number().min(0).default(0),
+    sellPriceExclGst: z.coerce.number().min(0).default(0),
+    freightCostExclGst: z.coerce.number().min(0).default(0),
+    includedFeatures: z.array(z.string()).default([]),
+});
+
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
+    cost: z.coerce.number().min(0).default(0),
+    sellPriceExclGst: z.coerce.number().min(0).default(0),
+    freightCostExclGst: z.coerce.number().min(0).default(0),
     specifications: z.object({
         minHp: z.coerce.number().min(0).default(0),
         maxHp: z.coerce.number().min(0).default(0),
@@ -35,9 +50,188 @@ const modelSchema = z.object({
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
+    packages: z.array(packageSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
+
+const GST_RATE = 0.10;
+
+function GstInputPair({ control, name, label }: { control: any, name: string, label: string }) {
+    const { field } = useController({ control, name });
+    
+    const valueExcl = field.value || 0;
+    const valueIncl = valueExcl * (1 + GST_RATE);
+
+    const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const numValue = parseFloat(e.target.value);
+        field.onChange(isNaN(numValue) ? 0 : numValue);
+    };
+
+    const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const numValue = parseFloat(e.target.value);
+        field.onChange(isNaN(numValue) ? 0 : numValue / (1 + GST_RATE));
+    };
+
+    return (
+        <div>
+            <FormLabel>{label}</FormLabel>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+                <FormItem>
+                    <FormLabel className="text-xs font-normal text-muted-foreground">excl. GST</FormLabel>
+                    <FormControl>
+                        <Input 
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={valueExcl === 0 ? '' : valueExcl}
+                            onChange={handleExclChange}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                <FormItem>
+                    <FormLabel className="text-xs font-normal text-muted-foreground">inc. GST</FormLabel>
+                    <FormControl>
+                        <Input 
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={valueIncl === 0 ? '' : valueIncl.toFixed(2)}
+                            onChange={handleInclChange}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            </div>
+        </div>
+    );
+}
+
+function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `packages.${packageIndex}.includedFeatures`
+    });
+
+    return (
+        <div className="space-y-2 pl-4 pt-4 mt-4 border-t">
+            <FormLabel className="text-xs text-muted-foreground">Included Features</FormLabel>
+            {fields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2">
+                    <FormField
+                        control={control}
+                        name={`packages.${packageIndex}.includedFeatures.${index}`}
+                        render={({ field }) => (
+                            <FormItem className="flex-1">
+                                <FormControl><Input {...field} placeholder={`Feature ${index + 1}`} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => append('')}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Feature
+            </Button>
+        </div>
+    );
+}
+
+function PackageItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
+    const imageUrl = useWatch({ control: form.control, name: `packages.${index}.imageUrl` });
+    const {control} = form;
+
+    return (
+        <Collapsible asChild>
+            <Card key={index} className="relative bg-muted/50 overflow-hidden">
+                 <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
+                <CollapsibleTrigger asChild>
+                    <div className="p-4 pr-12 cursor-pointer group">
+                        <FormField control={form.control} name={`packages.${index}.name`} render={({ field }) => ( 
+                            <FormItem>
+                                <FormControl>
+                                    <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" placeholder="Package Name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem> 
+                        )} />
+                        <ChevronDown className="absolute right-4 top-6 h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <div className="px-4 pb-4 space-y-4">
+                        <FormField
+                            control={control}
+                            name={`packages.${index}.imageUrl`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="sr-only">Package Image</FormLabel>
+                                    {imageUrl ? (
+                                        <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                            <Image src={imageUrl} alt="Package image" fill className="object-cover" />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                onClick={() => field.onChange(null)}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-center w-full">
+                                            <label htmlFor={`package-upload-${index}`} className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                    <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
+                                                </div>
+                                                <FormControl>
+                                                    <Input id={`package-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) field.onChange(await fileToDataUri(file));
+                                                    }} />
+                                                </FormControl>
+                                            </label>
+                                        </div> 
+                                    )}
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <GstInputPair control={control} name={`packages.${index}.cost`} label="Cost" />
+                        <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Sell Price" />
+                        <GstInputPair control={control} name={`packages.${index}.freightCostExclGst`} label="Freight Cost" />
+                        <IncludedFeatures packageIndex={index} />
+                    </div>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
+    );
+}
+
+const CollapsibleCardHeader = ({ title, description, children }: { title: string, description?: string, children?: React.ReactNode }) => (
+    <CardHeader className="flex flex-row items-start justify-between">
+        <div className="flex-1 space-y-1">
+            <CardTitle>{title}</CardTitle>
+            {description && <CardDescription>{description}</CardDescription>}
+        </div>
+        <div className="flex items-center gap-2">
+            {children}
+            <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </Button>
+            </CollapsibleTrigger>
+        </div>
+    </CardHeader>
+);
+
 
 export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
@@ -50,6 +244,9 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         const specs = data.specifications || {};
         return {
             coverImageUrl: data.coverImageUrl ?? null,
+            cost: data.cost ?? 0,
+            sellPriceExclGst: data.sellPriceExclGst ?? 0,
+            freightCostExclGst: data.freightCostExclGst ?? 0,
             specifications: {
                 minHp: specs.minHp ?? 0,
                 maxHp: specs.maxHp ?? 0,
@@ -57,6 +254,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
+            packages: data.packages ?? [],
         };
     };
 
@@ -71,6 +269,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
+    const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({ control: form.control, name: "packages" });
     
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
@@ -112,104 +311,137 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    <div className="lg:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
+                    <div className="lg:col-span-4 space-y-8">
                         {/* Specifications Card */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Specifications</CardTitle>
-                                <CardDescription>Define the technical specifications for this model.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <FormLabel>Other Specs</FormLabel>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}-${Math.random()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
-                                    </div>
-                                    {specFields.map((field, index) => (
-                                        <div key={field.id} className="flex items-end gap-2">
-                                            <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Specifications">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}-${Math.random()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
                                         </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                        <div className="space-y-4">
+                                            {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
+                                            {specFields.map((field, index) => (
+                                                <div key={field.id} className="flex items-end gap-2">
+                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
                         
                         {/* Standard Features Card */}
-                        <Card>
-                             <CardHeader>
-                                <CardTitle>Standard Features</CardTitle>
-                                <CardDescription>List the standard features included with this model.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {featureFields.map((field, index) => (
-                                     <div key={field.id} className="flex items-center gap-2">
-                                        <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                    </div>
-                                ))}
-                                <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                            </CardContent>
-                             <CardContent>
-                                <div className="space-y-2">
-                                    <FormLabel>Bulk Add Features</FormLabel>
-                                    <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                    <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Standard Features">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4">
+                                        {featureFields.map((field, index) => (
+                                             <div key={field.id} className="flex items-center gap-2">
+                                                <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            <FormLabel>Bulk Add Features</FormLabel>
+                                            <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                                            <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
+
+                         {/* Packages Card */}
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Optional Packages">
+                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}-${Math.random()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4">
+                                        {packageFields.map((field, index) => (
+                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} />
+                                        ))}
+                                        {packageFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional packages added.</p>}
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
                     </div>
 
-                    <div className="lg:col-span-1 space-y-8">
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>Cover Image</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                   <FormItem>
-                                       <FormLabel className="sr-only">Cover Image</FormLabel>
-                                        {coverImageUrl ? (
-                                             <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                    onClick={() => field.onChange(null)}
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-center w-full">
-                                                <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                        <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                    <div className="lg:col-span-3 space-y-8">
+                        <Collapsible asChild defaultOpen>
+                             <Card>
+                                <CollapsibleCardHeader title="Pricing" />
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-6">
+                                        <GstInputPair control={form.control} name="cost" label="Base Cost" />
+                                        <GstInputPair control={form.control} name="sellPriceExclGst" label="Sell Price" />
+                                        <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Cover Image" />
+                                <CollapsibleContent>
+                                    <CardContent>
+                                        <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
+                                           <FormItem>
+                                               <FormLabel className="sr-only">Cover Image</FormLabel>
+                                                {coverImageUrl ? (
+                                                     <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                        <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                            onClick={() => field.onChange(null)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
-                                                     <FormControl>
-                                                        <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) field.onChange(await fileToDataUri(file));
-                                                        }} />
-                                                    </FormControl>
-                                                </label>
-                                            </div> 
-                                        )}
-                                       <FormMessage />
-                                   </FormItem>
-                               )} />
-                            </CardContent>
-                        </Card>
+                                                ) : (
+                                                    <div className="flex items-center justify-center w-full">
+                                                        <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                                <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                            </div>
+                                                             <FormControl>
+                                                                <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) field.onChange(await fileToDataUri(file));
+                                                                }} />
+                                                            </FormControl>
+                                                        </label>
+                                                    </div> 
+                                                )}
+                                               <FormMessage />
+                                           </FormItem>
+                                       )} />
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
                     </div>
                 </div>
             </form>

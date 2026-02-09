@@ -300,9 +300,9 @@
             "type": "string"
           }
         },
-        "optionalFeatures": {
+        "packages": {
           "type": "array",
-          "description": "A list of optional add-ons for the model.",
+          "description": "A list of optional packages for the model.",
           "items": {
             "type": "object",
             "properties": {
@@ -323,12 +323,18 @@
               },
               "freightCostExclGst": {
                 "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package.",
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "required": [
               "id",
-              "name",
-              "sellPriceExclGst"
+              "name"
             ]
           }
         },
@@ -421,5 +427,3 @@
     }
   }
 }
-
-    

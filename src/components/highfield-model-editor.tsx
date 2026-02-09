@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -34,13 +34,14 @@ const colorVariantSchema = z.object({
     imageUrls: z.array(z.string()).default([]),
 });
 
-const optionalFeatureSchema = z.object({
+const packageSchema = z.object({
     id: z.string(),
-    name: z.string().min(1, 'Feature name is required'),
+    name: z.string().min(1, 'Package name is required'),
     imageUrl: z.string().nullable().optional(),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
     freightCostExclGst: z.coerce.number().min(0).default(0),
+    includedFeatures: z.array(z.string()).default([]),
 });
 
 const highfieldModelSchema = z.object({
@@ -55,7 +56,7 @@ const highfieldModelSchema = z.object({
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
-    optionalFeatures: z.array(optionalFeatureSchema).default([]),
+    packages: z.array(packageSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
 });
 
@@ -114,59 +115,111 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
     );
 }
 
-function OptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
-    const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
+function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `packages.${packageIndex}.includedFeatures`
+    });
+
+    return (
+        <div className="space-y-2 pl-4 pt-4 mt-4 border-t">
+            <FormLabel className="text-xs text-muted-foreground">Included Features</FormLabel>
+            {fields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2">
+                    <FormField
+                        control={control}
+                        name={`packages.${packageIndex}.includedFeatures.${index}`}
+                        render={({ field }) => (
+                            <FormItem className="flex-1">
+                                <FormControl><Input {...field} placeholder={`Feature ${index + 1}`} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => append('')}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Feature
+            </Button>
+        </div>
+    );
+}
+
+
+function PackageItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
+    const imageUrl = useWatch({ control: form.control, name: `packages.${index}.imageUrl` });
     const {control} = form;
 
     return (
-         <Card key={index} className="p-4 relative bg-muted/50">
-            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
-            <div className="space-y-4">
-                <FormField
-                    control={control}
-                    name={`optionalFeatures.${index}.imageUrl`}
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="sr-only">Feature Image</FormLabel>
-                            {imageUrl ? (
-                                <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                    <Image src={imageUrl} alt="Feature image" fill className="object-cover" />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                        onClick={() => field.onChange(null)}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-center w-full">
-                                    <label htmlFor={`optional-feature-upload-${index}`} className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                            <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
+        <Collapsible asChild>
+            <Card key={index} className="relative bg-muted/50 overflow-hidden">
+                 <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
+                <CollapsibleTrigger asChild>
+                    <div className="p-4 pr-12 cursor-pointer group">
+                        <FormField control={form.control} name={`packages.${index}.name`} render={({ field }) => ( 
+                            <FormItem>
+                                <FormControl>
+                                    <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" placeholder="Package Name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem> 
+                        )} />
+                        <ChevronDown className="absolute right-4 top-6 h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <div className="px-4 pb-4 space-y-4">
+                        <FormField
+                            control={control}
+                            name={`packages.${index}.imageUrl`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="sr-only">Package Image</FormLabel>
+                                    {imageUrl ? (
+                                        <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                            <Image src={imageUrl} alt="Package image" fill className="object-cover" />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                onClick={() => field.onChange(null)}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
                                         </div>
-                                        <FormControl>
-                                            <Input id={`optional-feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) field.onChange(await fileToDataUri(file));
-                                            }} />
-                                        </FormControl>
-                                    </label>
-                                </div> 
+                                    ) : (
+                                        <div className="flex items-center justify-center w-full">
+                                            <label htmlFor={`package-upload-${index}`} className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                    <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
+                                                </div>
+                                                <FormControl>
+                                                    <Input id={`package-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) field.onChange(await fileToDataUri(file));
+                                                    }} />
+                                                </FormControl>
+                                            </label>
+                                        </div> 
+                                    )}
+                                    <FormMessage />
+                                </FormItem>
                             )}
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
-                <GstInputPair control={control} name={`optionalFeatures.${index}.freightCostExclGst`} label="Freight Cost" />
-            </div>
-        </Card>
+                        />
+                        <GstInputPair control={control} name={`packages.${index}.cost`} label="Cost" />
+                        <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Sell Price" />
+                        <GstInputPair control={control} name={`packages.${index}.freightCostExclGst`} label="Freight Cost" />
+                        <IncludedFeatures packageIndex={index} />
+                    </div>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
     );
 }
 
@@ -209,7 +262,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
-            optionalFeatures: data.optionalFeatures ?? [],
+            packages: (data.packages || data.optionalFeatures || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [] })),
             colors: data.colors ?? [],
         };
     };
@@ -225,7 +278,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
-    const { fields: optionalFields, append: appendOptional, remove: removeOptional } = useFieldArray({ control: form.control, name: "optionalFeatures" });
+    const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({ control: form.control, name: "packages" });
     const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
     
     const watchedColors = useWatch({ control: form.control, name: 'colors' });
@@ -235,7 +288,12 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         setIsSubmitting(true);
         const modelDocRef = doc(firestore, docPath);
 
-        updateDoc(modelDocRef, values)
+        const dataToSave = {
+            ...values,
+            optionalFeatures: null, // To clean up old data structure
+        };
+
+        updateDoc(modelDocRef, dataToSave)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
                 form.reset(values);
@@ -325,18 +383,18 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </Card>
                         </Collapsible>
                         
-                        {/* Optional Features Card */}
+                        {/* Packages Card */}
                         <Collapsible asChild defaultOpen>
                             <Card>
-                                <CollapsibleCardHeader title="Optional Features">
-                                     <Button type="button" variant="outline" size="sm" onClick={() => appendOptional({ id: `opt-${Date.now()}-${Math.random()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional</Button>
+                                <CollapsibleCardHeader title="Optional Packages">
+                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}-${Math.random()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
-                                        {optionalFields.map((field, index) => (
-                                            <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptional} />
+                                        {packageFields.map((field, index) => (
+                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} />
                                         ))}
-                                        {optionalFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                        {packageFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional packages added.</p>}
                                     </CardContent>
                                 </CollapsibleContent>
                             </Card>
