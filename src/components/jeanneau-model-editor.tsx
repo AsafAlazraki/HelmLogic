@@ -48,7 +48,6 @@ const packageSchema = z.object({
     sellPriceExclGst: z.coerce.number().min(0).default(0),
     freightCostExclGst: z.coerce.number().min(0).default(0),
     includedFeatures: z.array(z.string()).default([]),
-    optionalFeatures: z.array(optionalFeatureSchema).default([]),
 });
 
 const modelSchema = z.object({
@@ -158,48 +157,6 @@ function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
     );
 }
 
-function OptionalPackageFeatures({ packageIndex }: { packageIndex: number }) {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: `packages.${packageIndex}.optionalFeatures`
-    });
-
-    return (
-        <div className="space-y-3 pt-4 mt-4 border-t">
-             <div className="flex justify-between items-center">
-                <FormLabel className="text-xs text-muted-foreground">Optional Add-ons</FormLabel>
-                <Button type="button" variant="ghost" size="sm" onClick={() => append({ id: `opt-feat-${Date.now()}-${Math.random()}`, name: '', cost: 0, sellPriceExclGst: 0 })}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add
-                </Button>
-            </div>
-            {fields.map((field, index) => (
-                <div key={field.id} className="p-3 bg-background/50 rounded-md border">
-                    <div className="flex items-center gap-2">
-                        <FormField
-                            control={control}
-                            name={`packages.${packageIndex}.optionalFeatures.${index}.name`}
-                            render={({ field }) => (
-                                <FormItem className="flex-1">
-                                    <FormControl><Input {...field} placeholder={`Optional Feature ${index + 1}`} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                        <GstInputPair control={control} name={`packages.${packageIndex}.optionalFeatures.${index}.cost`} label="Cost" />
-                        <GstInputPair control={control} name={`packages.${packageIndex}.optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
 function PackageItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
     const imageUrl = useWatch({ control: form.control, name: `packages.${index}.imageUrl` });
     const {control} = form;
@@ -291,7 +248,6 @@ function PackageItem({ form, index, remove }: { form: any; index: number; remove
                         </Collapsible>
                         
                         <IncludedFeatures packageIndex={index} />
-                        <OptionalPackageFeatures packageIndex={index} />
                     </div>
                 </CollapsibleContent>
             </Card>
@@ -400,7 +356,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             },
             standardFeatures: data.standardFeatures ?? [],
             optionalFeatures: data.optionalFeatures ?? [],
-            packages: (data.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [], optionalFeatures: p.optionalFeatures ?? [] })),
+            packages: (data.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [] })),
         };
     };
 
@@ -464,7 +420,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Specifications">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}-${Math.random()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-6">
@@ -518,7 +474,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Packages">
-                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}-${Math.random()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0, includedFeatures: [], optionalFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
+                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
@@ -592,7 +548,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Features">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}-${Math.random()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
@@ -610,3 +566,5 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         </Form>
     );
 }
+
+    

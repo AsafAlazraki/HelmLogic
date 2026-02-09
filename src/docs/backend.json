@@ -264,6 +264,10 @@
             "type": "number",
             "description": "Base selling price, excluding GST."
         },
+        "freightCostExclGst": {
+            "type": "number",
+            "description": "Freight cost, excluding GST."
+        },
         "colors": {
           "type": "array",
           "description": "Available color variants for the model, each with associated images.",
@@ -320,8 +324,45 @@
             },
             "required": [
               "id",
-              "name",
-              "sellPriceExclGst"
+              "name"
+            ]
+          }
+        },
+        "packages": {
+          "type": "array",
+          "description": "A list of optional packages for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "freightCostExclGst": {
+                "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
             ]
           }
         },
@@ -414,3 +455,5 @@
     }
   }
 }
+
+    
