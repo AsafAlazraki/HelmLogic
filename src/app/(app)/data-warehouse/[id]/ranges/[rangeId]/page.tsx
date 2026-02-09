@@ -5,7 +5,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Loader2, PlusCircle, Sailboat, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { useMemo, useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -259,7 +259,7 @@ export default function RangeDetailsPage() {
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                                 <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`} className="flex flex-col flex-grow">
-                                    <div className="flex-grow flex items-center justify-center p-4 relative bg-secondary h-32">
+                                    <div className="h-32 bg-secondary flex items-center justify-center p-4 relative">
                                         {model.coverImageUrl ? (
                                             <Image
                                                 src={model.coverImageUrl}
@@ -271,7 +271,7 @@ export default function RangeDetailsPage() {
                                             <Sailboat className="h-10 w-10 text-muted-foreground" />
                                         )}
                                     </div>
-                                    <CardHeader className="p-4 pt-2 flex-grow-0">
+                                    <CardHeader className="p-4 pt-2 flex-grow-0 items-center">
                                         <CardTitle className="text-base text-center">{model.name}</CardTitle>
                                     </CardHeader>
                                 </Link>
