@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { createSlug } from '@/lib/utils';
 import { HighfieldDataStructure } from '@/components/highfield-data-structure';
+import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 
 const formSchema = z.object({
   id: z.string(),
@@ -742,6 +743,8 @@ export default function VendorDetailsPage() {
                                 </Card>
                                 <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
                             </div>
+                        ) : vendor.slug === 'jeanneau' ? (
+                            <JeanneauDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
                         ) : (
                             <Card>
                                 <CardHeader>
