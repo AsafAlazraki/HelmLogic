@@ -15,10 +15,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 // Schemas for validation
@@ -33,6 +34,10 @@ const optionalFeatureSchema = z.object({
     name: z.string().min(1, 'Feature name is required'),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
+});
+
+const topLevelOptionalFeatureSchema = optionalFeatureSchema.extend({
+    imageUrl: z.string().nullable().optional(),
 });
 
 const packageSchema = z.object({
@@ -58,6 +63,7 @@ const modelSchema = z.object({
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
+    optionalFeatures: z.array(topLevelOptionalFeatureSchema).default([]),
     packages: z.array(packageSchema).default([]),
 });
 
@@ -124,8 +130,13 @@ function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
     });
 
     return (
-        <div className="space-y-2 pl-4 pt-4 mt-4 border-t">
-            <FormLabel className="text-xs text-muted-foreground">Included Features</FormLabel>
+        <div className="space-y-2 pt-4 mt-4 border-t">
+            <div className="flex justify-between items-center">
+                <FormLabel className="text-xs text-muted-foreground">Included Features</FormLabel>
+                <Button type="button" variant="ghost" size="sm" onClick={() => append('')}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add
+                </Button>
+            </div>
             {fields.map((field, index) => (
                 <div key={field.id} className="flex items-center gap-2">
                     <FormField
@@ -143,9 +154,6 @@ function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
                     </Button>
                 </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => append('')}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Feature
-            </Button>
         </div>
     );
 }
@@ -158,8 +166,13 @@ function OptionalPackageFeatures({ packageIndex }: { packageIndex: number }) {
     });
 
     return (
-        <div className="space-y-3 pl-4 pt-4 mt-4 border-t">
-            <FormLabel className="text-xs text-muted-foreground">Optional Add-ons</FormLabel>
+        <div className="space-y-3 pt-4 mt-4 border-t">
+             <div className="flex justify-between items-center">
+                <FormLabel className="text-xs text-muted-foreground">Optional Add-ons</FormLabel>
+                <Button type="button" variant="ghost" size="sm" onClick={() => append({ id: `opt-feat-${Date.now()}-${Math.random()}`, name: '', cost: 0, sellPriceExclGst: 0 })}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add
+                </Button>
+            </div>
             {fields.map((field, index) => (
                 <div key={field.id} className="p-3 bg-background/50 rounded-md border">
                     <div className="flex items-center gap-2">
@@ -183,9 +196,6 @@ function OptionalPackageFeatures({ packageIndex }: { packageIndex: number }) {
                     </div>
                 </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `opt-feat-${Date.now()}-${Math.random()}`, name: '', cost: 0, sellPriceExclGst: 0 })}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Optional Feature
-            </Button>
         </div>
     );
 }
@@ -196,10 +206,9 @@ function PackageItem({ form, index, remove }: { form: any; index: number; remove
 
     return (
         <Collapsible asChild>
-            <Card key={index} className="relative bg-muted/50 overflow-hidden group/package-item">
-                 <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-6 w-6 z-10 opacity-0 group-hover/package-item:opacity-100 transition-opacity" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
-                <CollapsibleTrigger asChild>
-                    <div className="p-4 pr-12 cursor-pointer group">
+            <Card key={index} className="bg-muted/50 overflow-hidden">
+                <div className="p-4 flex justify-between items-start">
+                    <div className="flex-1 pr-4">
                         <FormField control={form.control} name={`packages.${index}.name`} render={({ field }) => ( 
                             <FormItem>
                                 <FormControl>
@@ -208,9 +217,23 @@ function PackageItem({ form, index, remove }: { form: any; index: number; remove
                                 <FormMessage />
                             </FormItem> 
                         )} />
-                        <ChevronDown className="absolute right-4 top-6 h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
-                </CollapsibleTrigger>
+                    <div className="flex items-center">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => remove(index)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </Button>
+                        </CollapsibleTrigger>
+                    </div>
+                </div>
                 <CollapsibleContent>
                     <div className="px-4 pb-4 space-y-4">
                         <FormField
@@ -293,6 +316,67 @@ const CollapsibleCardHeader = ({ title, description, children }: { title: string
     </CardHeader>
 );
 
+function OptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
+    const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
+    const { control } = form;
+
+    return (
+        <Card key={index} className="relative bg-muted/50 overflow-hidden p-4 group/item">
+            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10 opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+            
+            <div className="flex gap-4 items-start">
+                 <FormField
+                    control={control}
+                    name={`optionalFeatures.${index}.imageUrl`}
+                    render={({ field }) => (
+                        <FormItem className="w-32 flex-shrink-0">
+                            <FormLabel className="sr-only">Feature Image</FormLabel>
+                             {imageUrl ? (
+                                <div className="relative aspect-square w-full overflow-hidden rounded-md group">
+                                    <Image src={imageUrl} alt="Feature image" fill className="object-cover" />
+                                    <Button type="button" variant="outline" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive" onClick={() => field.onChange(null)}>
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center w-full">
+                                    <label htmlFor={`feature-upload-${index}`} className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                        <div className="flex flex-col items-center justify-center text-center p-2">
+                                            <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
+                                            <p className="text-xs text-muted-foreground">Upload</p>
+                                        </div>
+                                        <FormControl>
+                                            <Input id={`feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) field.onChange(await fileToDataUri(file));
+                                            }} />
+                                        </FormControl>
+                                    </label>
+                                </div> 
+                            )}
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <div className="flex-1 space-y-3">
+                     <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
+                        <FormItem>
+                            <FormLabel className="sr-only">Feature Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Feature Name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem> 
+                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+}
 
 export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
@@ -315,6 +399,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
+            optionalFeatures: data.optionalFeatures ?? [],
             packages: (data.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [], optionalFeatures: p.optionalFeatures ?? [] })),
         };
     };
@@ -331,6 +416,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
     const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({ control: form.control, name: "packages" });
+    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
     
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
@@ -499,6 +585,21 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                <FormMessage />
                                            </FormItem>
                                        )} />
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Optional Features">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}-${Math.random()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4">
+                                        {optionalFeatureFields.map((field, index) => (
+                                            <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                        ))}
+                                        {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
                                     </CardContent>
                                 </CollapsibleContent>
                             </Card>

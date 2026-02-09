@@ -300,6 +300,34 @@
             "type": "string"
           }
         },
+        "optionalFeatures": {
+          "type": "array",
+          "description": "A list of optional add-ons for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
         "packages": {
           "type": "array",
           "description": "A list of optional packages for the model.",
