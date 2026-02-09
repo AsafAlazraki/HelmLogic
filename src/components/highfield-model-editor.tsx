@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { cn } from '@/lib/utils';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -57,27 +58,71 @@ type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
 const GST_RATE = 0.10;
 
-function OptionalFeatureItem({ form, index }: { form: any; index: number; }) {
+function OptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
     const sellPriceExclGst = useWatch({
         control: form.control,
         name: `optionalFeatures.${index}.sellPriceExclGst`
     });
 
     const sellPriceInclGst = (sellPriceExclGst || 0) * (1 + GST_RATE);
+    const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
 
     return (
-        <div className="space-y-4">
-            <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-            <FormField control={form.control} name={`optionalFeatures.${index}.cost`} render={({ field }) => ( <FormItem><FormLabel>Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-            <FormField control={form.control} name={`optionalFeatures.${index}.sellPriceExclGst`} render={({ field }) => ( <FormItem><FormLabel>Sell Price (ex. GST)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-            <FormItem>
-                <FormLabel>Sell Price (inc. GST)</FormLabel>
-                <FormControl>
-                    <Input type="text" value={sellPriceInclGst.toFixed(2)} readOnly disabled />
-                </FormControl>
-                <FormDescription>Calculated at 10% GST.</FormDescription>
-            </FormItem>
-        </div>
+         <Card key={index} className="p-4 relative">
+            <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
+            <div className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name={`optionalFeatures.${index}.imageUrl`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="sr-only">Feature Image</FormLabel>
+                            {imageUrl ? (
+                                <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                    <Image src={imageUrl} alt="Feature image" fill className="object-cover" />
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                        onClick={() => field.onChange(null)}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center w-full">
+                                    <label htmlFor={`optional-feature-upload-${index}`} className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                            <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
+                                        </div>
+                                        <FormControl>
+                                            <Input id={`optional-feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) field.onChange(await fileToDataUri(file));
+                                            }} />
+                                        </FormControl>
+                                    </label>
+                                </div> 
+                            )}
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name={`optionalFeatures.${index}.cost`} render={({ field }) => ( <FormItem><FormLabel>Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name={`optionalFeatures.${index}.sellPriceExclGst`} render={({ field }) => ( <FormItem><FormLabel>Sell (ex. GST)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                </div>
+                 <FormItem>
+                    <FormLabel>Sell (inc. GST)</FormLabel>
+                    <FormControl>
+                        <Input type="text" value={sellPriceInclGst.toFixed(2)} readOnly disabled className="bg-muted" />
+                    </FormControl>
+                </FormItem>
+            </div>
+        </Card>
     );
 }
 
@@ -101,8 +146,9 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
     const { fields: optionalFields, append: appendOptional, remove: removeOptional } = useFieldArray({ control: form.control, name: "optionalFeatures" });
-    const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control: form.control, name: "colors" });
+    const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
     
+    const watchedColors = useWatch({ control: form.control, name: 'colors' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
     async function onSubmit(values: ModelFormData) {
@@ -125,7 +171,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     
     const handleBulkAddFeatures = () => {
         const features = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-        replaceFeatures(features.map(f => f)); // useFieldArray expects an object array for replace, but string array for standardFeatures
+        replaceFeatures(features.map(f => f));
         setBulkFeatures('');
     };
 
@@ -187,23 +233,38 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         <Card>
                             <CardHeader><CardTitle>Cover Image</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
-                                {coverImageUrl && (
-                                     <div className="relative aspect-video w-full overflow-hidden rounded-md">
-                                        <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                    </div>
-                                )}
                                <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
                                    <FormItem>
                                        <FormLabel className="sr-only">Cover Image</FormLabel>
-                                       <FormControl>
-                                           <Input type="file" accept="image/*" onChange={async (e) => {
-                                               const file = e.target.files?.[0];
-                                               if (file) {
-                                                   const dataUri = await fileToDataUri(file);
-                                                   field.onChange(dataUri);
-                                               }
-                                           }} />
-                                       </FormControl>
+                                        {coverImageUrl ? (
+                                             <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="icon"
+                                                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    onClick={() => field.onChange(null)}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center w-full">
+                                                <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                        <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                    </div>
+                                                     <FormControl>
+                                                        <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) field.onChange(await fileToDataUri(file));
+                                                        }} />
+                                                    </FormControl>
+                                                </label>
+                                            </div> 
+                                        )}
                                        <FormMessage />
                                    </FormItem>
                                )} />
@@ -216,12 +277,44 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             <CardContent className="space-y-4">
                                 {colorFields.map((field, index) => (
                                     <Card key={field.id} className="p-4">
-                                        <div className="flex justify-between items-center mb-2">
+                                        <div className="flex justify-between items-start mb-4">
                                             <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} /></FormControl><FormMessage /></FormItem> )} />
                                             <Button type="button" variant="ghost" size="icon" onClick={() => removeColor(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                         </div>
-                                        {/* Image handling for colors would go here */}
-                                        <p className="text-xs text-muted-foreground text-center py-4">Color image upload coming soon.</p>
+                                        <div className="space-y-2">
+                                            <FormLabel className="text-xs text-muted-foreground">Images</FormLabel>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {(watchedColors[index]?.imageUrls || []).map((url, imgIndex) => (
+                                                    <div key={imgIndex} className="relative aspect-square group">
+                                                        <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
+                                                         <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-1 -right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                            onClick={() => {
+                                                                const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
+                                                                updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
+                                                            }}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                                <label htmlFor={`color-image-upload-${index}`} className={cn(
+                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
+                                                    (watchedColors[index]?.imageUrls.length || 0) >= 6 && 'hidden' // Example limit
+                                                )}>
+                                                     <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                        const files = Array.from(e.target.files || []);
+                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                        const currentUrls = watchedColors[index].imageUrls || [];
+                                                        updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
+                                                     }}/>
+                                                     <PlusCircle className="h-6 w-6 text-muted-foreground"/>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </Card>
                                 ))}
                                 <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: crypto.randomUUID(), name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
@@ -233,10 +326,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             <CardHeader><CardTitle>Optional Features</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
                                 {optionalFields.map((field, index) => (
-                                    <Card key={field.id} className="p-4 relative">
-                                        <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 z-10" onClick={() => removeOptional(index)}><X className="h-4 w-4" /></Button>
-                                        <OptionalFeatureItem form={form} index={index} />
-                                    </Card>
+                                    <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptional} />
                                 ))}
                             </CardContent>
                             <CardFooter>
