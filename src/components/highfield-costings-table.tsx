@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useForm, useFieldArray, useWatch, type Control } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore } from '@/firebase/provider';
-import { collection, doc, writeBatch, getDocs, query as firestoreQuery, WriteBatch } from 'firebase/firestore';
-import { Loader2, Save, ChevronRight, AlertTriangle } from 'lucide-react';
+import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { Loader2, Save, ChevronRight, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check } from 'lucide-react';
+
 
 // --- Constants & Types ---
 const GST_RATE = 0.10;
@@ -27,7 +31,7 @@ const exchangeRates: Record<string, number> = {
   GBP: 1.95,
   CNY: 0.21,
 };
-const currencies = Object.keys(exchangeRates);
+const currencies = Object.keys(exchangeRates).map(key => ({ value: key, label: key}));
 
 type Range = { id: string; name: string };
 type Model = {
@@ -75,70 +79,49 @@ type FormValues = z.infer<typeof formSchema>;
 
 // --- CurrencyInput Component ---
 interface CurrencyInputProps {
-    control: Control<FormValues>;
-    name: `models.${number}.${'cost' | 'sellPriceExclGst' | 'freightCostExclGst'}` | `models.${number}.optionalFeatures.${number}.${'cost' | 'sellPriceExclGst' | 'freightCostExclGst'}`;
-    label: string;
+    control: any;
+    name: any;
+    globalCurrency: string;
 }
 
-function CurrencyInput({ control, name, label }: CurrencyInputProps) {
-    const audValue = useWatch({ control, name });
-    const [displayAmount, setDisplayAmount] = useState<string | number>('');
-    const [selectedCurrency, setSelectedCurrency] = useState('AUD');
+function CurrencyInput({ control, name, globalCurrency }: CurrencyInputProps) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => {
+        const audValue = field.value || 0;
+        const displayValue = (audValue / exchangeRates[globalCurrency]).toFixed(2);
+        const valueInclGst = audValue * (1 + GST_RATE);
 
-    useEffect(() => {
-        if (audValue !== undefined) {
-            const convertedValue = audValue / exchangeRates[selectedCurrency];
-            setDisplayAmount(convertedValue.toFixed(2));
-        } else {
-            setDisplayAmount('');
-        }
-    }, [audValue, selectedCurrency]);
-
-    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newDisplayAmount = e.target.value;
-        setDisplayAmount(newDisplayAmount);
-        const newAudValue = parseFloat(newDisplayAmount) * exchangeRates[selectedCurrency];
-        // @ts-ignore
-        control.setValue(name, isNaN(newAudValue) ? 0 : newAudValue, { shouldDirty: true });
-    };
-
-    const handleCurrencyChange = (newCurrency: string) => {
-        setSelectedCurrency(newCurrency);
-        if (audValue !== undefined) {
-          const convertedValue = audValue / exchangeRates[newCurrency];
-          setDisplayAmount(convertedValue.toFixed(2));
-        }
-    };
-    
-    const valueInclGst = (audValue || 0) * (1 + GST_RATE);
-
-    return (
-        <div className="space-y-1">
-            <FormLabel>{label}</FormLabel>
-            <div className="flex items-center gap-1">
-                <Input
-                    type="number"
-                    value={displayAmount}
-                    onChange={handleAmountChange}
-                    className="w-24"
-                    placeholder="0.00"
-                />
-                <Select value={selectedCurrency} onValueChange={handleCurrencyChange}>
-                    <SelectTrigger className="w-[70px]">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {currencies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="text-xs text-muted-foreground pt-1">
-                <p>ex. GST: {audValue?.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' }) || '$0.00'}</p>
-                <p>inc. GST: {valueInclGst.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}</p>
-            </div>
-        </div>
-    );
+        const handleDisplayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const newDisplayValue = e.target.value;
+            const newAudValue = parseFloat(newDisplayValue) * exchangeRates[globalCurrency];
+            field.onChange(isNaN(newAudValue) ? 0 : newAudValue);
+        };
+        
+        return (
+            <FormItem>
+                <FormControl>
+                    <Input
+                        type="number"
+                        value={displayValue === '0.00' ? '' : displayValue}
+                        onChange={handleDisplayChange}
+                        className="w-28 text-right"
+                        placeholder="0.00"
+                    />
+                </FormControl>
+                 <div className="text-xs text-muted-foreground pt-1 space-y-0.5">
+                    <p>ex. GST: {audValue?.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}</p>
+                    <p>inc. GST: {valueInclGst.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}</p>
+                </div>
+            </FormItem>
+        )
+      }}
+    />
+  );
 }
+
 
 // --- Main Table Component ---
 export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
@@ -147,6 +130,9 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [openRows, setOpenRows] = useState<Record<string, boolean>>({});
+    const [globalCurrency, setGlobalCurrency] = useState('AUD');
+    const [popoverOpen, setPopoverOpen] = useState(false)
+
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -228,7 +214,6 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                         cost: of.cost,
                         sellPriceExclGst: of.sellPriceExclGst,
                         freightCostExclGst: of.freightCostExclGst,
-                        // Make sure to spread other properties if they exist on the original object
                     }));
                 }
                 
@@ -256,24 +241,70 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Highfield Model Costings</CardTitle>
-                <CardDescription>
-                    Manage costs for all Highfield models below. Prices can be entered in different currencies and are saved as AUD.
-                    <span className="block mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 p-2 rounded-md flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        Currency conversion rates are for demonstration purposes and are not live.
-                    </span>
-                </CardDescription>
+            <CardHeader className="flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Highfield Model Costings</CardTitle>
+                    <CardDescription className="pt-2">
+                        Manage costs for all Highfield models. Select a currency to enter values, which are then saved as AUD.
+                    </CardDescription>
+                </div>
+                 <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-muted-foreground">Input Currency</span>
+                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={popoverOpen}
+                            className="w-[100px] justify-between"
+                            >
+                            {globalCurrency}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[120px] p-0">
+                            <Command>
+                            <CommandInput placeholder="Search currency..." />
+                             <CommandList>
+                                <CommandEmpty>No currency found.</CommandEmpty>
+                                <CommandGroup>
+                                    {currencies.map((currency) => (
+                                    <CommandItem
+                                        key={currency.value}
+                                        value={currency.value}
+                                        onSelect={(currentValue) => {
+                                            setGlobalCurrency(currentValue.toUpperCase());
+                                            setPopoverOpen(false);
+                                        }}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                globalCurrency === currency.value ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        {currency.label}
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                             </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </CardHeader>
             <CardContent>
+                <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 p-2 rounded-md flex items-center gap-2 mb-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    Currency conversion rates are for demonstration purposes and are not live.
+                </div>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <div className="rounded-md border">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[300px]">Model</TableHead>
+                                        <TableHead className="w-[40%] pl-10">Model</TableHead>
                                         <TableHead>Base Cost</TableHead>
                                         <TableHead>Base Sell</TableHead>
                                         <TableHead>Freight Cost</TableHead>
@@ -285,7 +316,7 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                                         key={model.id}
                                         onOpenChange={(isOpen) => setOpenRows(prev => ({...prev, [model.id]: isOpen}))}
                                     >
-                                        <TableBody className="[&_tr:last-child]:border-0">
+                                        <tbody className="[&_tr:last-child]:border-0 border-b">
                                             <TableRow>
                                                 <TableCell className="font-medium">
                                                     <CollapsibleTrigger asChild disabled={!model.optionalFeatures || model.optionalFeatures.length === 0}>
@@ -295,9 +326,9 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                                                         </div>
                                                     </CollapsibleTrigger>
                                                 </TableCell>
-                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.cost`} label="Base Cost" /></TableCell>
-                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.sellPriceExclGst`} label="Base Sell" /></TableCell>
-                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.freightCostExclGst`} label="Freight Cost" /></TableCell>
+                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.cost`} globalCurrency={globalCurrency} /></TableCell>
+                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.sellPriceExclGst`} globalCurrency={globalCurrency} /></TableCell>
+                                                <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.freightCostExclGst`} globalCurrency={globalCurrency} /></TableCell>
                                             </TableRow>
                                             <CollapsibleContent asChild>
                                                 <tr>
@@ -307,11 +338,11 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                                                             <Table>
                                                                 <TableBody>
                                                                     {model.optionalFeatures?.map((feature, featureIndex) => (
-                                                                        <TableRow key={feature.id} className="border-b-0">
-                                                                            <TableCell className="w-[300px] pl-8 text-muted-foreground">{feature.name}</TableCell>
-                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.cost`} label="Cost" /></TableCell>
-                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.sellPriceExclGst`} label="Sell" /></TableCell>
-                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.freightCostExclGst`} label="Freight" /></TableCell>
+                                                                        <TableRow key={feature.id} className="border-b-0 hover:bg-muted/75">
+                                                                            <TableCell className="w-[40%] pl-8 text-muted-foreground">{feature.name}</TableCell>
+                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.cost`} globalCurrency={globalCurrency} /></TableCell>
+                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.sellPriceExclGst`} globalCurrency={globalCurrency} /></TableCell>
+                                                                            <TableCell><CurrencyInput control={form.control} name={`models.${modelIndex}.optionalFeatures.${featureIndex}.freightCostExclGst`} globalCurrency={globalCurrency} /></TableCell>
                                                                         </TableRow>
                                                                     ))}
                                                                 </TableBody>
@@ -320,7 +351,7 @@ export function HighfieldCostingsTable({ vendorId }: { vendorId: string }) {
                                                     </td>
                                                 </tr>
                                             </CollapsibleContent>
-                                        </TableBody>
+                                        </tbody>
                                     </Collapsible>
                                 ))}
                             </Table>
