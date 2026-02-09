@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
@@ -213,8 +213,8 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    <div className="lg:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
+                    <div className="lg:col-span-4 space-y-8">
                         {/* Specs Card */}
                         <Card>
                             <CardHeader><CardTitle>Specifications</CardTitle></CardHeader>
@@ -255,8 +255,20 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
                             </CardFooter>
                         </Card>
+                         {/* Optional Features Card */}
+                        <Card>
+                            <CardHeader><CardTitle>Optional Features</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                {optionalFields.map((field, index) => (
+                                    <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptional} />
+                                ))}
+                            </CardContent>
+                            <CardFooter>
+                                <Button type="button" variant="outline" className="w-full" onClick={() => appendOptional({ id: crypto.randomUUID(), name: '', cost: 0, sellPriceExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional Feature</Button>
+                            </CardFooter>
+                        </Card>
                     </div>
-                    <div className="lg:col-span-1 space-y-8">
+                    <div className="lg:col-span-3 space-y-8">
                          {/* Pricing Card */}
                          <PricingCard form={form} />
                          {/* Cover Image Card */}
@@ -306,13 +318,13 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             <CardHeader><CardTitle>Color Variants</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
                                 {colorFields.map((field, index) => (
-                                    <Card key={field.id} className="p-4">
-                                        <div className="flex justify-between items-start mb-4">
+                                    <Card key={field.id} className="p-4 bg-muted/50">
+                                        <div className="flex justify-between items-center mb-4">
                                             <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => removeColor(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                            <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
                                         </div>
                                         <div className="space-y-2">
-                                            <FormLabel className="text-xs text-muted-foreground">Images</FormLabel>
+                                            <FormLabel>Images</FormLabel>
                                             <div className="grid grid-cols-3 gap-2">
                                                 {(watchedColors[index]?.imageUrls || []).map((url, imgIndex) => (
                                                     <div key={imgIndex} className="relative aspect-square group">
@@ -332,8 +344,8 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                     </div>
                                                 ))}
                                                 <label htmlFor={`color-image-upload-${index}`} className={cn(
-                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
-                                                    (watchedColors[index]?.imageUrls.length || 0) >= 6 && 'hidden' // Example limit
+                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
+                                                    (watchedColors[index]?.imageUrls.length || 0) >= 6 && 'hidden'
                                                 )}>
                                                      <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
                                                         const files = Array.from(e.target.files || []);
@@ -341,7 +353,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                         const currentUrls = watchedColors[index].imageUrls || [];
                                                         updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
                                                      }}/>
-                                                     <PlusCircle className="h-6 w-6 text-muted-foreground"/>
+                                                     <Plus className="h-6 w-6 text-muted-foreground"/>
                                                 </label>
                                             </div>
                                         </div>
@@ -350,20 +362,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: crypto.randomUUID(), name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
                             </CardContent>
                         </Card>
-
-                        {/* Optional Features Card */}
-                        <Card>
-                            <CardHeader><CardTitle>Optional Features</CardTitle></CardHeader>
-                            <CardContent className="space-y-4">
-                                {optionalFields.map((field, index) => (
-                                    <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptional} />
-                                ))}
-                            </CardContent>
-                            <CardFooter>
-                                <Button type="button" variant="outline" className="w-full" onClick={() => appendOptional({ id: crypto.randomUUID(), name: '', cost: 0, sellPriceExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional Feature</Button>
-                            </CardFooter>
-                        </Card>
-
                     </div>
                 </div>
             </form>
