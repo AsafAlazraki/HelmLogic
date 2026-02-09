@@ -245,7 +245,7 @@ export default function RangeDetailsPage() {
                             <Card key={model.id} className="group flex flex-col overflow-hidden transition-all hover:border-primary hover:-translate-y-1 hover:shadow-md">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-background" onClick={(e) => e.stopPropagation()}>
+                                        <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-primary/20 hover:text-primary" onClick={(e) => e.stopPropagation()}>
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -259,7 +259,7 @@ export default function RangeDetailsPage() {
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                                 <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`} className="flex flex-col flex-grow">
-                                    <div className="h-32 bg-secondary flex items-center justify-center p-4 relative">
+                                    <div className="h-40 bg-secondary flex items-center justify-center p-4 relative">
                                         {model.coverImageUrl ? (
                                             <Image
                                                 src={model.coverImageUrl}
@@ -271,7 +271,7 @@ export default function RangeDetailsPage() {
                                             <Sailboat className="h-10 w-10 text-muted-foreground" />
                                         )}
                                     </div>
-                                    <CardHeader className="p-4 pt-2 flex-grow-0 items-center">
+                                    <CardHeader className="p-4 flex-grow-0 items-center">
                                         <CardTitle className="text-base text-center">{model.name}</CardTitle>
                                     </CardHeader>
                                 </Link>
