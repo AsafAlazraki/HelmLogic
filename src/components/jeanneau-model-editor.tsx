@@ -39,12 +39,9 @@ const colorVariantSchema = z.object({
 const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
+    imageUrl: z.string().nullable().optional(),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
-});
-
-const topLevelOptionalFeatureSchema = optionalFeatureSchema.extend({
-    imageUrl: z.string().nullable().optional(),
 });
 
 const packageSchema = z.object({
@@ -59,6 +56,7 @@ const packageSchema = z.object({
 
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
+    galleryImageUrls: z.array(z.string()).default([]),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
     freightCostExclGst: z.coerce.number().min(0).default(0),
@@ -69,7 +67,7 @@ const modelSchema = z.object({
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
-    optionalFeatures: z.array(topLevelOptionalFeatureSchema).default([]),
+    optionalFeatures: z.array(optionalFeatureSchema).default([]),
     packages: z.array(packageSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
 });
@@ -353,6 +351,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         const specs = data.specifications || {};
         return {
             coverImageUrl: data.coverImageUrl ?? null,
+            galleryImageUrls: data.galleryImageUrls ?? [],
             cost: data.cost ?? 0,
             sellPriceExclGst: data.sellPriceExclGst ?? 0,
             freightCostExclGst: data.freightCostExclGst ?? 0,
@@ -383,6 +382,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({ control: form.control, name: "packages" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
     const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
+    const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control: form.control, name: 'galleryImageUrls' });
     
     const watchedColors = useWatch({ control: form.control, name: 'colors' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
@@ -607,6 +607,52 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                <FormMessage />
                                            </FormItem>
                                        )} />
+                                       <div className="pt-6">
+                                            <Collapsible>
+                                                <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
+                                                    <span>Image Gallery ({galleryImageFields.length})</span>
+                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent className="border-b">
+                                                    <div className="p-4 bg-muted/20">
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            {galleryImageFields.map((item, index) => (
+                                                                <div key={item.id} className="relative aspect-square group">
+                                                                    <FormField
+                                                                        control={form.control}
+                                                                        name={`galleryImageUrls.${index}`}
+                                                                        render={({ field }) => (
+                                                                            <>
+                                                                                <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="destructive"
+                                                                                    size="icon"
+                                                                                    className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                    onClick={() => removeGalleryImage(index)}
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </>
+                                                                        )}
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                            <label htmlFor="gallery-image-upload" className={cn(
+                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
+                                                            )}>
+                                                                 <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                    const files = Array.from(e.target.files || []);
+                                                                    const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                    dataUris.forEach(uri => appendGalleryImage(uri));
+                                                                 }}/>
+                                                                 <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        </div>
                                     </CardContent>
                                 </CollapsibleContent>
                             </Card>
@@ -632,5 +678,3 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         </Form>
     );
 }
-
-    

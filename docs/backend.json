@@ -256,6 +256,13 @@
           "type": "string",
           "description": "URL for the boat's main cover image."
         },
+        "galleryImageUrls": {
+            "type": "array",
+            "description": "A list of URLs for the model's image gallery.",
+            "items": {
+                "type": "string"
+            }
+        },
         "cost": {
           "type": "number",
           "description": "Base cost of the model."
@@ -357,31 +364,6 @@
                 "description": "A list of features included in this package.",
                 "items": {
                   "type": "string"
-                }
-              },
-              "optionalFeatures": {
-                "type": "array",
-                "description": "A list of optional add-ons within this package.",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "cost": {
-                      "type": "number"
-                    },
-                    "sellPriceExclGst": {
-                      "type": "number"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "name"
-                  ]
                 }
               }
             },
