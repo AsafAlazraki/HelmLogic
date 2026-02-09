@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -116,13 +116,14 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
 
 function OptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
     const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
+    const {control} = form;
 
     return (
          <Card key={index} className="p-4 relative bg-muted/50">
             <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
             <div className="space-y-4">
                 <FormField
-                    control={form.control}
+                    control={control}
                     name={`optionalFeatures.${index}.imageUrl`}
                     render={({ field }) => (
                         <FormItem>
@@ -160,14 +161,32 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
                         </FormItem>
                     )}
                 />
-                <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <GstInputPair control={form.control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                <GstInputPair control={form.control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
-                <GstInputPair control={form.control} name={`optionalFeatures.${index}.freightCostExclGst`} label="Freight Cost" />
+                <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
+                <GstInputPair control={control} name={`optionalFeatures.${index}.freightCostExclGst`} label="Freight Cost" />
             </div>
         </Card>
     );
 }
+
+const CollapsibleCardHeader = ({ title, description, children }: { title: string, description?: string, children?: React.ReactNode }) => (
+    <CardHeader className="flex flex-row items-start justify-between">
+        <div className="text-left">
+            <CardTitle>{title}</CardTitle>
+            {description && <CardDescription className="pt-1">{description}</CardDescription>}
+            <div className="pt-4">
+                {children}
+            </div>
+        </div>
+        <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="icon">
+                <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+            </Button>
+        </CollapsibleTrigger>
+    </CardHeader>
+);
+
 
 export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
@@ -197,22 +216,26 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const watchedColors = useWatch({ control: form.control, name: 'colors' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
-    async function onSubmit(values: ModelFormData) {
+    function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
-        try {
-            const modelDocRef = doc(firestore, docPath);
-            await updateDoc(modelDocRef, values)
-             .catch((serverError) => {
-                    const permissionError = new FirestorePermissionError({ path: modelDocRef.path, operation: 'update', requestResourceData: values, });
-                    errorEmitter.emit('permission-error', permissionError);
-                    throw serverError;
+        const modelDocRef = doc(firestore, docPath);
+
+        updateDoc(modelDocRef, values)
+            .then(() => {
+                toast({ title: "Model Updated", description: "The model details have been saved successfully." });
+                form.reset(values);
+            })
+            .catch((serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: modelDocRef.path,
+                    operation: 'update',
+                    requestResourceData: values,
                 });
-            toast({ title: "Model Updated", description: "The model details have been saved successfully." });
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: error.message || "An unexpected error occurred." });
-        } finally {
-            setIsSubmitting(false);
-        }
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => {
+                setIsSubmitting(false);
+            });
     }
     
     const handleBulkAddFeatures = () => {
@@ -221,28 +244,11 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         setBulkFeatures('');
     };
 
-    const CollapsibleCardHeader = ({ title, description, children }: { title: string, description?: string, children?: React.ReactNode }) => (
-        <CardHeader className="flex flex-row items-center justify-between">
-            <div className="text-left">
-                <CardTitle>{title}</CardTitle>
-                {description && <CardDescription className="pt-1">{description}</CardDescription>}
-            </div>
-            <div className="flex items-center gap-2">
-                {children}
-                <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
-                    </Button>
-                </CollapsibleTrigger>
-            </div>
-        </CardHeader>
-    );
-
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>
@@ -264,7 +270,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                             <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
                                         </div>
                                         <div className="space-y-4">
-                                            <FormLabel>Other Specs</FormLabel>
+                                            {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                             {specFields.map((field, index) => (
                                                 <div key={field.id} className="flex items-end gap-2">
                                                     <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -293,20 +299,22 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                             </div>
                                         ))}
                                     </CardContent>
-                                    <CardFooter className="flex-col items-start gap-2">
-                                        <FormLabel>Bulk Add Features</FormLabel>
-                                        <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                        <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
-                                    </CardFooter>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            <FormLabel>Bulk Add Features</FormLabel>
+                                            <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                                            <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                        </div>
+                                    </CardContent>
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
-
+                        
                         {/* Optional Features Card */}
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Features">
-                                     <Button type="button" variant="outline" size="sm" onClick={() => appendOptional({ id: crypto.randomUUID(), name: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional</Button>
+                                     <Button type="button" variant="outline" size="sm" onClick={() => appendOptional({ id: crypto.randomUUID(), name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0 })}><PlusCircle className="mr-2 h-4 w-4" />Add Optional</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
