@@ -71,7 +71,7 @@ interface Vendor {
     slug?: string;
 }
 
-function ModelCard({ vendor, range, model, onModelDeleted }: { vendor: Vendor; range: Range; model: Model; onModelDeleted: (id: string) => void }) {
+function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; model: Model; }) {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
@@ -88,12 +88,10 @@ function ModelCard({ vendor, range, model, onModelDeleted }: { vendor: Vendor; r
         try {
             await deleteDoc(doc(firestore, modelPath));
             toast({ title: 'Model Deleted', description: `"${model.name}" has been deleted.` });
-            onModelDeleted(model.id);
-            setIsDeleteDialogOpen(false);
+            window.location.reload();
         } catch (error) {
             console.error('Failed to delete model:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not delete model.' });
-        } finally {
             setIsDeleting(false);
         }
     };
@@ -209,7 +207,6 @@ export default function RangeDetailsPage() {
     const rangeSlugOrId = params?.rangeId as string | undefined;
     const firestore = useFirestore();
     const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
-    const [models, setModels] = useState<Model[]>([]);
     const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
     const [newModelName, setNewModelName] = useState('');
     const [isAddingModel, setIsAddingModel] = useState(false);
@@ -242,16 +239,6 @@ export default function RangeDetailsPage() {
     }, [vendor, range]);
 
     const { data: fetchedModels, loading: modelsLoading } = useCollection<Model>(modelsCollectionPath);
-
-    useEffect(() => {
-        if (fetchedModels) {
-            setModels(fetchedModels);
-        }
-    }, [fetchedModels]);
-
-    const handleModelDeleted = (deletedId: string) => {
-        setModels(currentModels => currentModels.filter(m => m.id !== deletedId));
-    };
 
     const handleAddModel = async () => {
         if (!newModelName.trim() || !vendor || !range) return;
@@ -341,12 +328,12 @@ export default function RangeDetailsPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                         {models.length > 0 ? (
+                         {fetchedModels && fetchedModels.length > 0 ? (
                             <>
                                 {viewMode === 'card' ? (
                                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                        {models.map((model) => (
-                                            <ModelCard key={model.id} vendor={vendor} range={range} model={model} onModelDeleted={handleModelDeleted} />
+                                        {fetchedModels.map((model) => (
+                                            <ModelCard key={model.id} vendor={vendor} range={range} model={model} />
                                         ))}
                                     </div>
                                 ) : (
@@ -358,7 +345,7 @@ export default function RangeDetailsPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {models.map((model) => (
+                                            {fetchedModels.map((model) => (
                                                 <TableRow key={model.id}>
                                                     <TableCell className="font-medium">{model.name}</TableCell>
                                                     <TableCell className="text-right">
