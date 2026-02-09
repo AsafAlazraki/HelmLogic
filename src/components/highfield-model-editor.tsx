@@ -222,18 +222,20 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     };
 
     const CollapsibleCardHeader = ({ title, description, children }: { title: string, description?: string, children?: React.ReactNode }) => (
-        <CollapsibleTrigger className="w-full group">
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div className="text-left">
-                    <CardTitle>{title}</CardTitle>
-                    {description && <CardDescription className="pt-1">{description}</CardDescription>}
-                </div>
-                <div className="flex items-center gap-2">
-                    {children}
-                    <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                </div>
-            </CardHeader>
-        </CollapsibleTrigger>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div className="text-left">
+                <CardTitle>{title}</CardTitle>
+                {description && <CardDescription className="pt-1">{description}</CardDescription>}
+            </div>
+            <div className="flex items-center gap-2">
+                {children}
+                <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                    </Button>
+                </CollapsibleTrigger>
+            </div>
+        </CardHeader>
     );
 
     return (
