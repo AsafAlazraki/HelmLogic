@@ -120,7 +120,7 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
 
     return (
          <Card key={index} className="p-4 relative bg-muted/50">
-            <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
+            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
             <div className="space-y-4">
                 <FormField
                     control={control}
@@ -135,7 +135,7 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
                                         type="button"
                                         variant="destructive"
                                         size="icon"
-                                        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
+                                        className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
                                         onClick={() => field.onChange(null)}
                                     >
                                         <X className="h-4 w-4" />
@@ -172,18 +172,18 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
 
 const CollapsibleCardHeader = ({ title, description, children }: { title: string, description?: string, children?: React.ReactNode }) => (
     <CardHeader className="flex flex-row items-start justify-between">
-        <div className="flex-1">
+        <div className="flex-1 space-y-1">
             <CardTitle>{title}</CardTitle>
-            {description && <CardDescription className="pt-1">{description}</CardDescription>}
-            <div className="pt-4">
-                {children}
-            </div>
+            {description && <CardDescription>{description}</CardDescription>}
         </div>
-        <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon">
-                <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
-            </Button>
-        </CollapsibleTrigger>
+        <div className="flex items-center gap-2">
+            {children}
+            <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                </Button>
+            </CollapsibleTrigger>
+        </div>
     </CardHeader>
 );
 
@@ -232,7 +232,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                     requestResourceData: values,
                 });
                 errorEmitter.emit('permission-error', permissionError);
-                throw serverError; // Re-throw the original error after emitting
+                toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save changes.' });
             })
             .finally(() => {
                 setIsSubmitting(false);
@@ -352,7 +352,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                                     type="button"
                                                                     variant="destructive"
                                                                     size="icon"
-                                                                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
+                                                                    className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
                                                                     onClick={() => {
                                                                         const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
                                                                         updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
@@ -414,7 +414,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                             type="button"
                                                             variant="destructive"
                                                             size="icon"
-                                                            className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
+                                                            className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 border-2 border-background"
                                                             onClick={() => field.onChange(null)}
                                                         >
                                                             <X className="h-4 w-4" />
