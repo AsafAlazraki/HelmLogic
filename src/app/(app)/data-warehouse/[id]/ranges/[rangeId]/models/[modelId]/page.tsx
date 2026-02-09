@@ -2,36 +2,74 @@
 
 import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { Loader2 } from 'lucide-react';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { useMemo } from 'react';
+import { useFirestore } from '@/firebase/provider';
+import { collection, query, where } from 'firebase/firestore';
 
 interface Model {
     id: string;
     name: string;
+    slug?: string;
 }
 
 interface Range {
     id: string;
     name: string;
+    slug?: string;
 }
 
 interface Vendor {
     id: string;
     name: string;
+    slug?: string;
 }
 
 
 export default function ModelDetailsPage() {
   const params = useParams();
-  const vendorId = params.id as string;
-  const rangeId = params.rangeId as string;
-  const modelId = params.modelId as string;
+  const firestore = useFirestore();
 
-  const { data: vendor, loading: vendorLoading } = useDoc<Vendor>(vendorId ? `/data-warehouse/${vendorId}` : null);
-  const { data: range, loading: rangeLoading } = useDoc<Range>(vendorId && rangeId ? `/data-warehouse/${vendorId}/ranges/${rangeId}` : null);
-  const { data: model, loading: modelLoading } = useDoc<Model>(vendorId && rangeId && modelId ? `/data-warehouse/${vendorId}/ranges/${rangeId}/models/${modelId}` : null);
+  const vendorSlugOrId = params.id as string;
+  const rangeSlugOrId = params.rangeId as string;
+  const modelSlugOrId = params.modelId as string;
+
+  // Fetch Vendor
+  const vendorQueryBySlug = useMemo(() => {
+    if (!vendorSlugOrId) return null;
+    return query(collection(firestore, 'data-warehouse'), where('slug', '==', vendorSlugOrId));
+  }, [firestore, vendorSlugOrId]);
   
+  const { data: vendorsBySlug, loading: vendorSlugLoading } = useCollection<Vendor>(vendorQueryBySlug);
+  const { data: vendorById, loading: vendorIdLoading } = useDoc<Vendor>(vendorSlugOrId ? `/data-warehouse/${vendorSlugOrId}`: null);
+  const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
+  const vendorLoading = vendorSlugLoading || vendorIdLoading;
+  
+  // Fetch Range
+  const rangeQueryBySlug = useMemo(() => {
+    if (!vendor?.id || !rangeSlugOrId) return null;
+    return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), where('slug', '==', rangeSlugOrId));
+  }, [firestore, vendor, rangeSlugOrId]);
+
+  const { data: rangesBySlug, loading: rangeSlugLoading } = useCollection<Range>(rangeQueryBySlug);
+  const { data: rangeById, loading: rangeIdLoading } = useDoc<Range>(vendor?.id && rangeSlugOrId ? `/data-warehouse/${vendor.id}/ranges/${rangeSlugOrId}` : null);
+  const range = useMemo(() => rangesBySlug?.[0] || rangeById, [rangesBySlug, rangeById]);
+  const rangeLoading = rangeSlugLoading || rangeIdLoading;
+
+  // Fetch Model
+  const modelQueryBySlug = useMemo(() => {
+    if (!vendor?.id || !range?.id || !modelSlugOrId) return null;
+    return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), where('slug', '==', modelSlugOrId));
+  }, [firestore, vendor, range, modelSlugOrId]);
+  
+  const { data: modelsBySlug, loading: modelSlugLoading } = useCollection<Model>(modelQueryBySlug);
+  const { data: modelById, loading: modelIdLoading } = useDoc<Model>(vendor?.id && range?.id && modelSlugOrId ? `/data-warehouse/${vendor.id}/ranges/${range.id}/models/${modelSlugOrId}` : null);
+  const model = useMemo(() => modelsBySlug?.[0] || modelById, [modelsBySlug, modelById]);
+  const modelLoading = modelSlugLoading || modelIdLoading;
+
   const loading = vendorLoading || rangeLoading || modelLoading;
 
   if (loading) {

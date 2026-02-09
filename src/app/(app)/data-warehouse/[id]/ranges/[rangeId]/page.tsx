@@ -6,10 +6,10 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { Loader2, PlusCircle } from 'lucide-react';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, query, where } from 'firebase/firestore';
 import { createSlug } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -35,31 +35,53 @@ interface Model {
 
 export default function RangeDetailsPage() {
   const params = useParams();
-  const vendorId = params.id as string;
-  const rangeId = params.rangeId as string;
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  const vendorSlugOrId = params.id as string;
+  const rangeSlugOrId = params.rangeId as string;
 
   const [newModelName, setNewModelName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
 
-  const { data: vendor, loading: vendorLoading } = useDoc<Vendor>(vendorId ? `/data-warehouse/${vendorId}` : null);
-  const { data: range, loading: rangeLoading } = useDoc<Range>(vendorId && rangeId ? `/data-warehouse/${vendorId}/ranges/${rangeId}` : null);
-  const { data: models, loading: modelsLoading } = useCollection<Model>(vendorId && rangeId ? `/data-warehouse/${vendorId}/ranges/${rangeId}/models` : null);
+  // Fetch Vendor
+  const vendorQueryBySlug = useMemo(() => {
+    if (!vendorSlugOrId) return null;
+    return query(collection(firestore, 'data-warehouse'), where('slug', '==', vendorSlugOrId));
+  }, [firestore, vendorSlugOrId]);
+  
+  const { data: vendorsBySlug, loading: vendorSlugLoading } = useCollection<Vendor>(vendorQueryBySlug);
+  const { data: vendorById, loading: vendorIdLoading } = useDoc<Vendor>(vendorSlugOrId ? `/data-warehouse/${vendorSlugOrId}`: null);
+  const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
+  const vendorLoading = vendorSlugLoading || vendorIdLoading;
+
+  // Fetch Range
+  const rangeQueryBySlug = useMemo(() => {
+    if (!vendor?.id || !rangeSlugOrId) return null;
+    return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), where('slug', '==', rangeSlugOrId));
+  }, [firestore, vendor, rangeSlugOrId]);
+
+  const { data: rangesBySlug, loading: rangeSlugLoading } = useCollection<Range>(rangeQueryBySlug);
+  const { data: rangeById, loading: rangeIdLoading } = useDoc<Range>(vendor?.id && rangeSlugOrId ? `/data-warehouse/${vendor.id}/ranges/${rangeSlugOrId}` : null);
+  const range = useMemo(() => rangesBySlug?.[0] || rangeById, [rangesBySlug, rangeById]);
+  const rangeLoading = rangeSlugLoading || rangeIdLoading;
+
+
+  const { data: models, loading: modelsLoading } = useCollection<Model>(vendor?.id && range?.id ? `/data-warehouse/${vendor.id}/ranges/${range.id}/models` : null);
   
   const loading = vendorLoading || rangeLoading;
 
   const handleAddModel = async () => {
-      if (!newModelName.trim() || !range) return;
+      if (!newModelName.trim() || !range || !vendor?.id) return;
       setIsAdding(true);
       try {
-          const modelsCollection = collection(firestore, `data-warehouse/${vendorId}/ranges/${range.id}/models`);
+          const modelsCollection = collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`);
           const newModelRef = doc(modelsCollection);
           await setDoc(newModelRef, {
               name: newModelName,
               slug: createSlug(newModelName),
               rangeId: range.id,
-              vendorId: vendorId,
+              vendorId: vendor.id,
           });
           setNewModelName('');
           toast({ title: 'Model Added', description: `${newModelName} was added to the ${range.name} range.` });
@@ -125,7 +147,7 @@ export default function RangeDetailsPage() {
                 ) : models && models.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                        {models.map(model => (
-                           <Link href={`/data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.slug || model.id}`} key={model.id} className="group">
+                           <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${model.slug || model.id}`} key={model.id} className="group">
                                <Card className="h-full transition-all hover:border-primary hover:-translate-y-1 hover:shadow-md">
                                    <CardHeader>
                                        <CardTitle className="text-base">{model.name}</CardTitle>
