@@ -3,7 +3,7 @@
 import AdminGuard from "@/components/admin-guard";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { Loader2, PlusCircle, Building2 } from "lucide-react";
 import Image from "next/image";
@@ -52,34 +52,30 @@ export default function OrganisationsPage() {
                                     <Card 
                                         className="h-full transition-all duration-300 ease-in-out group-hover:-translate-y-1 group-hover:shadow-xl group-hover:border-primary overflow-hidden flex flex-col"
                                     >
-                                        <CardHeader>
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="flex-grow overflow-hidden">
-                                                    {org.primaryLogoUrl ? (
-                                                        <div className="relative h-12">
-                                                            <Image
-                                                                src={org.primaryLogoUrl}
-                                                                alt={`${org.name} logo`}
-                                                                fill
-                                                                className="object-contain object-left"
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <CardTitle className="text-lg truncate">{org.name}</CardTitle>
-                                                    )}
+                                        <div className="h-24 bg-secondary flex items-center justify-center p-4">
+                                            {org.primaryLogoUrl ? (
+                                                <div className="relative h-full w-full">
+                                                    <Image
+                                                        src={org.primaryLogoUrl}
+                                                        alt={`${org.name} logo`}
+                                                        fill
+                                                        className="object-contain"
+                                                    />
                                                 </div>
-                                                <div className="text-right shrink-0">
-                                                    {org.phoneNumber && <p className="text-xs font-medium" style={{ color: org.primaryColor || 'hsl(var(--primary))' }}>{org.phoneNumber}</p>}
-                                                    {org.abn && <p className="text-xs font-medium" style={{ color: org.primaryColor || 'hsl(var(--primary))' }}>ABN: {org.abn}</p>}
-                                                </div>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="flex-grow pt-0">
-                                            {org.primaryLogoUrl && (
-                                                <h3 className="font-semibold text-lg truncate">{org.name}</h3>
+                                            ) : (
+                                                <Building2 className="h-10 w-10 text-muted-foreground" />
                                             )}
-                                            <p className="text-sm text-muted-foreground line-clamp-2 mt-2">{org.address || 'No address provided'}</p>
+                                        </div>
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-lg truncate">{org.name}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="flex-grow pt-0 text-sm text-muted-foreground">
+                                             <p className="line-clamp-2">{org.address || 'No address provided'}</p>
                                         </CardContent>
+                                        <CardFooter className="pt-0 mt-auto flex-col items-start text-xs text-muted-foreground">
+                                             {org.phoneNumber && <p>{org.phoneNumber}</p>}
+                                             {org.abn && <p>ABN: {org.abn}</p>}
+                                        </CardFooter>
                                     </Card>
                                 </Link>
                             ))
