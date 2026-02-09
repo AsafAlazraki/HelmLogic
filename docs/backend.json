@@ -251,6 +251,113 @@
         "vendorId": {
           "type": "string",
           "description": "The ID of the vendor this model belongs to."
+        },
+        "coverImageUrl": {
+          "type": "string",
+          "description": "URL for the boat's main cover image."
+        },
+        "colors": {
+          "type": "array",
+          "description": "Available color variants for the model, each with associated images.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "imageUrls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "standardFeatures": {
+          "type": "array",
+          "description": "A list of standard features for the model.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "optionalFeatures": {
+          "type": "array",
+          "description": "A list of optional add-ons for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "sellPriceExclGst"
+            ]
+          }
+        },
+        "specifications": {
+          "type": "object",
+          "properties": {
+            "minHp": {
+              "type": "number"
+            },
+            "maxHp": {
+              "type": "number"
+            },
+            "recommendedHp": {
+              "type": "number"
+            },
+            "otherSpecs": {
+              "type": "array",
+              "description": "A list of other key-value specifications.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "value"
+                ]
+              }
+            }
+          },
+          "required": [
+            "minHp",
+            "maxHp",
+            "recommendedHp"
+          ]
         }
       },
       "required": [
