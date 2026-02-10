@@ -705,12 +705,16 @@ export default function VendorDetailsPage() {
         }
     };
     
+    const isBoatBrand = vendor?.vendorType === 'Boat Brand';
+    const isBulkSupplier = vendor?.vendorType === 'Electronics Supplier' || vendor?.vendorType === 'Parts Wholesaler';
+    const defaultTab = isBoatBrand ? "product-ranges" : isBulkSupplier ? "master-data" : "details";
+    
     return (
         <AdminGuard>
             {vendorLoading ? (
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : vendor ? (
-                <Tabs defaultValue="master-data" className="space-y-4">
+                <Tabs defaultValue={defaultTab} className="space-y-4">
                     <div className="flex items-start justify-between">
                         <div>
                             <h1 className="text-2xl font-semibold">Data Warehouse - {vendor.name}</h1>
@@ -718,13 +722,36 @@ export default function VendorDetailsPage() {
                         </div>
                     </div>
                     <TabsList>
-                        <TabsTrigger value="master-data">Master Data Set</TabsTrigger>
+                        {isBoatBrand && <TabsTrigger value="product-ranges">Product Ranges</TabsTrigger>}
+                        {isBulkSupplier && <TabsTrigger value="master-data">Master Data Set</TabsTrigger>}
                         <TabsTrigger value="data-connection">Data Connection</TabsTrigger>
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="master-data">
-                       <MasterDataSetViewer vendor={vendor} />
-                    </TabsContent>
+                    
+                    {isBoatBrand && (
+                        <TabsContent value="product-ranges">
+                            {vendor.slug === 'highfield' && <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
+                            {vendor.slug === 'jeanneau' && <JeanneauDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
+                            {vendor.slug === 'stacer' && <StacerDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
+                            {vendor.slug !== 'highfield' && vendor.slug !== 'jeanneau' && vendor.slug !== 'stacer' && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Product Ranges</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p>A specific data structure has not been configured for this boat brand.</p>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </TabsContent>
+                    )}
+
+                    {isBulkSupplier && (
+                        <TabsContent value="master-data">
+                            <MasterDataSetViewer vendor={vendor} />
+                        </TabsContent>
+                    )}
+
                     <TabsContent value="data-connection">
                          {vendor.dataSource === 'Direct API' && <ApiDataFetcher />}
                          {vendor.dataSource === 'Document Upload' && <DocumentExtractor vendor={vendor} />}
