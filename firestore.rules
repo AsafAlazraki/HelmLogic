@@ -48,6 +48,11 @@ service cloud.firestore {
       allow write: if isHelmLogicAdmin();
     }
 
+    match /data-warehouse/{vendorId}/masterDataSet/{rowId} {
+      allow read: if request.auth != null;
+      allow write: if isHelmLogicAdmin();
+    }
+
     match /data-warehouse/{vendorId}/ranges/{rangeId} {
       allow read: if request.auth != null;
       allow write: if isHelmLogicAdmin();
