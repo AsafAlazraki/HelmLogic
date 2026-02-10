@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { uploadFileToStorage } from '@/firebase/storage';
+import { uploadFileToStorage, uploadFileWithProgress } from '@/firebase/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
 
 import { 
   AlertDialog,
@@ -200,6 +201,7 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
     const [columns, setColumns] = useState<{key: string, label: string}[] | undefined>(undefined);
     const [isParsing, setIsParsing] = useState(false);
     const [isSavingToMaster, setIsSavingToMaster] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const { toast } = useToast();
@@ -266,9 +268,12 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
             return;
         }
         setIsSavingToMaster(true);
+        setUploadProgress(0);
         try {
             const filePath = `data-warehouse/${vendorData.id}/attachments/${Date.now()}-${file.name}`;
-            const downloadURL = await uploadFileToStorage(storage, file, filePath);
+            const downloadURL = await uploadFileWithProgress(storage, file, filePath, (progress) => {
+                setUploadProgress(progress);
+            });
             
             const vendorDocRef = doc(firestore, 'data-warehouse', vendorData.id);
             
@@ -279,11 +284,12 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
             });
             
             toast({ title: 'Success', description: 'Master data set has been updated from the document.' });
-            setShowUploader(false); // Switch back to the display view
+            setShowUploader(false);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
         } finally {
             setIsSavingToMaster(false);
+            setUploadProgress(null);
         }
     };
     
@@ -350,10 +356,18 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
                              <JsonDataVisualizer data={parsedData} columns={columns} />
                         </CardContent>
                         <CardFooter>
-                            <Button onClick={handleSaveToMaster} disabled={isSavingToMaster}>
-                                {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Save to Master Data Set
-                            </Button>
+                            <div className="flex flex-col items-start gap-4 w-full">
+                                <Button onClick={handleSaveToMaster} disabled={isSavingToMaster}>
+                                    {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                    {isSavingToMaster ? 'Saving...' : 'Save to Master Data Set'}
+                                </Button>
+                                {isSavingToMaster && uploadProgress !== null && (
+                                    <div className="w-full">
+                                        <Progress value={uploadProgress} className="w-full" />
+                                        <p className="text-sm text-muted-foreground mt-2 text-center">Uploading file: {Math.round(uploadProgress)}%</p>
+                                    </div>
+                                )}
+                            </div>
                         </CardFooter>
                     </Card>
                 )}
