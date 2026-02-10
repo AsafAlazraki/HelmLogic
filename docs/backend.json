@@ -200,20 +200,18 @@
         "attachmentUrl": {
           "type": "string",
           "description": "The data URI of the uploaded file attachment."
-        },
-        "masterDataSet": {
-          "type": "array",
-          "description": "Structured data extracted from an uploaded document.",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
         }
       },
       "required": [
         "name",
         "slug"
       ]
+    },
+    "MasterDataRow": {
+      "title": "Master Data Row",
+      "description": "Represents a single row of data from a vendor's master data set.",
+      "type": "object",
+      "additionalProperties": true
     },
     "Range": {
       "title": "Range",
@@ -490,6 +488,12 @@
         "$ref": "#/backend/entities/Vendor"
       },
       "description": "Vendor documents for the data warehouse, keyed by a unique ID."
+    },
+    "/data-warehouse/{vendorId}/masterDataSet/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's master data set."
     },
     "/data-warehouse/{vendorId}/ranges/{rangeId}": {
       "schema": {

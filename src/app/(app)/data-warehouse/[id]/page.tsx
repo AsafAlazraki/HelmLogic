@@ -13,7 +13,7 @@ import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav'
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage } from '@/firebase/provider';
-import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { uploadFileToStorage, uploadFileWithProgress } from '@/firebase/storage';
+import { uploadFileWithProgress } from '@/firebase/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -69,7 +69,6 @@ const formSchema = z.object({
   logoUrl: z.string().nullable().optional(),
   attachmentUrl: z.string().nullable().optional(),
   attachmentName: z.string().nullable().optional(),
-  masterDataSet: z.array(z.any()).optional(),
 });
 
 type VendorFormData = z.infer<typeof formSchema>;
@@ -194,8 +193,15 @@ function ApiDataFetcher() {
     );
 }
 
-function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
-    const [showUploader, setShowUploader] = useState(!vendorData.masterDataSet || vendorData.masterDataSet.length === 0);
+function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
+    const firestore = useFirestore();
+    const storage = useStorage();
+    const { toast } = useToast();
+
+    const masterDataSetPath = vendor ? `data-warehouse/${vendor.id}/masterDataSet` : null;
+    const { data: masterDataSet, loading: masterDataLoading } = useCollection(masterDataSetPath);
+
+    const [showUploader, setShowUploader] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<any[] | null>(null);
     const [columns, setColumns] = useState<{key: string, label: string}[] | undefined>(undefined);
@@ -204,9 +210,11 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const { toast } = useToast();
-    const firestore = useFirestore();
-    const storage = useStorage();
+    useEffect(() => {
+        if (!masterDataLoading) {
+            setShowUploader(!masterDataSet || masterDataSet.length === 0);
+        }
+    }, [masterDataSet, masterDataLoading]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
@@ -263,28 +271,41 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
     };
     
     const handleSaveToMaster = async () => {
-        if (!parsedData || !file) {
+        if (!parsedData || !file || !vendor) {
             toast({ variant: 'destructive', title: 'Error', description: 'No data to save. Please parse a document first.' });
             return;
         }
         setIsSavingToMaster(true);
         setUploadProgress(0);
         try {
-            const filePath = `data-warehouse/${vendorData.id}/attachments/${Date.now()}-${file.name}`;
+            const filePath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${file.name}`;
             const downloadURL = await uploadFileWithProgress(storage, file, filePath, (progress) => {
                 setUploadProgress(progress);
             });
             
-            const vendorDocRef = doc(firestore, 'data-warehouse', vendorData.id);
+            const batch = writeBatch(firestore);
+            const subcollectionRef = collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
+            const existingDocsSnapshot = await getDocs(subcollectionRef);
             
-            await updateDoc(vendorDocRef, {
-                masterDataSet: parsedData,
+            existingDocsSnapshot.forEach(doc => batch.delete(doc.ref));
+
+            parsedData.forEach(row => {
+                const newRowRef = doc(subcollectionRef);
+                batch.set(newRowRef, row);
+            });
+
+            const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
+            batch.update(vendorDocRef, {
                 attachmentUrl: downloadURL,
                 attachmentName: file.name
             });
             
-            toast({ title: 'Success', description: 'Master data set has been updated from the document.' });
+            await batch.commit();
+            
+            toast({ title: 'Success', description: 'Master data set has been updated.' });
             setShowUploader(false);
+            setFile(null);
+            setParsedData(null);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
         } finally {
@@ -293,17 +314,27 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
         }
     };
     
+    if (masterDataLoading) {
+        return (
+            <Card>
+                <CardContent className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </CardContent>
+            </Card>
+        );
+    }
+    
     if (!showUploader) {
         return (
             <Card>
                 <CardHeader>
                     <CardTitle>Master Data Set</CardTitle>
                     <CardDescription>
-                        This data was imported from: <strong>{vendorData.attachmentName || 'an uploaded document'}</strong>
+                        This data was imported from: <strong>{vendor.attachmentName || 'an uploaded document'}</strong>
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <JsonDataVisualizer data={vendorData.masterDataSet} />
+                     <JsonDataVisualizer data={masterDataSet} />
                 </CardContent>
                 <CardFooter>
                     <Button variant="outline" onClick={() => setShowUploader(true)}>
@@ -444,7 +475,8 @@ export default function VendorDetailsPage() {
             if (values.logo instanceof File) {
                 const logoFile = values.logo;
                 const logoPath = `data-warehouse/${vendor.id}/logos/${Date.now()}-${logoFile.name}`;
-                dataToUpdate.logoUrl = await uploadFileToStorage(storage, logoFile, logoPath);
+                const { uploadFile } = await import('@/firebase/storage-utils');
+                dataToUpdate.logoUrl = await uploadFile(storage, logoFile, logoPath);
             } else if (values.logoUrl === '') {
                 dataToUpdate.logoUrl = null;
             } else {
@@ -454,7 +486,8 @@ export default function VendorDetailsPage() {
             if (values.attachment instanceof File) {
                 const attachmentFile = values.attachment;
                 const attachmentPath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${attachmentFile.name}`;
-                dataToUpdate.attachmentUrl = await uploadFileToStorage(storage, attachmentFile, attachmentPath);
+                const { uploadFile } = await import('@/firebase/storage-utils');
+                dataToUpdate.attachmentUrl = await uploadFile(storage, attachmentFile, attachmentPath);
                 dataToUpdate.attachmentName = attachmentFile.name;
             } else if (values.attachmentUrl === '') {
                 dataToUpdate.attachmentUrl = null;
@@ -549,7 +582,7 @@ export default function VendorDetailsPage() {
                     </TabsContent>
                     <TabsContent value="data-connection">
                          {vendor.dataSource === 'Direct API' && <ApiDataFetcher />}
-                         {vendor.dataSource === 'Document Upload' && <DocumentExtractor vendorData={vendor} />}
+                         {vendor.dataSource === 'Document Upload' && <DocumentExtractor vendor={vendor} />}
                          {vendor.dataSource !== 'Direct API' && vendor.dataSource !== 'Document Upload' && (
                             <Card>
                                 <CardHeader>
