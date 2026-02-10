@@ -112,7 +112,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                             type="number"
                             step="0.01"
                             placeholder="0.00"
-                            value={valueExcl === null ? '' : valueExcl}
+                            value={valueExcl ?? ''}
                             onChange={handleExclChange}
                         />
                     </FormControl>
@@ -402,11 +402,24 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     });
     
     useEffect(() => {
-        if (!model?.id || model.id === loadedModelIdRef.current) {
-            return;
+        if (!model?.id) return;
+    
+        const isNewModel = model.id !== loadedModelIdRef.current;
+    
+        if (isNewModel) {
+            form.reset(getSafeDefaultValues(model), { keepIsDirty: false });
+            loadedModelIdRef.current = model.id;
+        } else {
+            // If it's the same model, we only update if the server data is different
+            // to avoid overwriting user's current (dirty) form state.
+            // This is a simplified check. A deep comparison would be more robust.
+            const currentFormValues = form.getValues();
+            if (JSON.stringify(getSafeDefaultValues(model)) !== JSON.stringify(currentFormValues)) {
+                 if (!form.formState.isDirty) {
+                    form.reset(getSafeDefaultValues(model), { keepIsDirty: false });
+                 }
+            }
         }
-        form.reset(getSafeDefaultValues(model));
-        loadedModelIdRef.current = model.id;
     }, [model, form]);
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
@@ -516,7 +529,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Packages">
-                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
+                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: '', imageUrl: '', cost: null, sellPriceExclGst: null, freightCostExclGst: null, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
@@ -592,7 +605,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                 <CollapsibleContent>
                                     <CardContent className="space-y-6">
                                         <GstInputPair control={form.control} name="cost" label="Base Cost" />
-                                        <GstInputPair control={form.control} name="sellPriceExclGst" label="Sell Price" />
+                                        <GstInputPair control={form.control} name="sellPriceExclGst" label="Base Sell" />
                                         <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
                                     </CardContent>
                                 </CollapsibleContent>
@@ -692,7 +705,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Features">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
@@ -710,3 +723,5 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         </Form>
     );
 }
+
+    
