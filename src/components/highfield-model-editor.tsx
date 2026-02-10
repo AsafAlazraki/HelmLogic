@@ -387,13 +387,13 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         const variants: z.infer<typeof variantPricingSchema>[] = [];
         const materials = ['HYP', 'PVC'];
         const existingPricing = new Map(
-            (safeModel.variantPricing || []).map((p: any) => `${p.colorId}-${p.material}`, p)
+            (safeModel.variantPricing || []).map((p: any) => [`${p.colorId}-${p.material}`, p])
         );
     
         (defaultValues.colors || []).forEach(color => {
             materials.forEach(material => {
                 const key = `${color.id}-${material}`;
-                const existing = (safeModel.variantPricing || []).find((p:any) => p.colorId === color.id && p.material === material);
+                const existing = existingPricing.get(key);
                 if (existing) {
                     variants.push(existing);
                 } else {
