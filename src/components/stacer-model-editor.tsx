@@ -33,6 +33,8 @@ const colorVariantSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Color name is required'),
     imageUrls: z.array(z.string()).default([]),
+    cost: z.number().nullable().optional(),
+    sellPriceExclGst: z.number().nullable().optional(),
 });
 
 const optionalFeatureSchema = z.object({
@@ -240,7 +242,14 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                 cost: f.cost ?? null,
                 sellPriceExclGst: f.sellPriceExclGst ?? null,
             })),
-            colors: data.colors ?? [],
+            colors: (data.colors || []).map((c: any) => ({
+                ...c,
+                id: c.id,
+                name: c.name,
+                imageUrls: c.imageUrls || [],
+                cost: c.cost ?? null,
+                sellPriceExclGst: c.sellPriceExclGst ?? null,
+            })),
         };
     };
 
@@ -250,10 +259,11 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
     });
     
     useEffect(() => {
-        const isNewModel = model && model.id !== loadedModelIdRef.current;
-        if (isNewModel) {
+        if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
             form.reset(getSafeDefaultValues(model));
-            loadedModelIdRef.current = model.id;
+            if (model?.id) {
+                loadedModelIdRef.current = model.id;
+            }
         }
     }, [model, form]);
 
@@ -301,8 +311,8 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
                      <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save Changes
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Save className="mr-2 h-4 w-4" /> Save Changes
                     </Button>
                 </div>
 
@@ -366,7 +376,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Color Variants">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [], cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
@@ -376,38 +386,44 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                                                     <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} /></FormControl><FormMessage /></FormItem> )} />
                                                     <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <FormLabel>Images</FormLabel>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
-                                                            <div key={imgIndex} className="relative aspect-square group">
-                                                                <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
-                                                                 <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="icon"
-                                                                    className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                    onClick={() => {
-                                                                        const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
-                                                                        updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
-                                                                    }}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        ))}
-                                                        <label htmlFor={`color-image-upload-${index}`} className={cn(
-                                                            "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
-                                                            (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
-                                                        )}>
-                                                             <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                const files = Array.from(e.target.files || []);
-                                                                const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                const currentUrls = watchedColors[index].imageUrls || [];
-                                                                updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
-                                                             }}/>
-                                                             <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                        </label>
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <FormLabel>Images</FormLabel>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
+                                                                <div key={imgIndex} className="relative aspect-square group">
+                                                                    <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="icon"
+                                                                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                        onClick={() => {
+                                                                            const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
+                                                                            updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
+                                                                        }}
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            ))}
+                                                            <label htmlFor={`color-image-upload-${index}`} className={cn(
+                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
+                                                                (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
+                                                            )}>
+                                                                <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                    const files = Array.from(e.target.files || []);
+                                                                    const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                    const currentUrls = watchedColors[index].imageUrls || [];
+                                                                    updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
+                                                                }}/>
+                                                                <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                                                        <GstInputPair control={form.control} name={`colors.${index}.cost`} label="Additional Cost" />
+                                                        <GstInputPair control={form.control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
                                                     </div>
                                                 </div>
                                             </Card>
