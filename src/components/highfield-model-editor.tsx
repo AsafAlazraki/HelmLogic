@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -226,12 +226,17 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
+    const loadedModelIdRef = useRef<string | null>(null);
 
     const form = useForm<ModelFormData>({
         resolver: zodResolver(highfieldModelSchema),
     });
     
     useEffect(() => {
+        if (model?.id && model.id === loadedModelIdRef.current) {
+            return;
+        }
+
         const safeModel = model || {};
         const defaultValues: Partial<ModelFormData> = {
             coverImageUrl: safeModel.coverImageUrl ?? null,
@@ -283,6 +288,9 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         defaultValues.variantPricing = variants;
 
         form.reset(defaultValues);
+        if (model?.id) {
+            loadedModelIdRef.current = model.id;
+        }
     }, [model, form]);
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });

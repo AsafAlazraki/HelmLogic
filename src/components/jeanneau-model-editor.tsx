@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -355,6 +355,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
+    const loadedModelIdRef = useRef<string | null>(null);
 
     const getSafeDefaultValues = (modelData: any): ModelFormData => {
         const data = modelData || {};
@@ -380,11 +381,16 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
     const form = useForm<ModelFormData>({
         resolver: zodResolver(modelSchema),
-        defaultValues: getSafeDefaultValues(model),
     });
     
     useEffect(() => {
-        form.reset(getSafeDefaultValues(model));
+        if (model?.id && model.id === loadedModelIdRef.current) {
+            return;
+        }
+        if (model?.id) {
+            form.reset(getSafeDefaultValues(model));
+            loadedModelIdRef.current = model.id;
+        }
     }, [model, form]);
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
@@ -472,7 +478,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="space-y-4 max-h-96 overflow-y-auto">
                                         {featureFields.map((field, index) => (
                                              <div key={field.id} className="flex items-center gap-2">
                                                 <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
