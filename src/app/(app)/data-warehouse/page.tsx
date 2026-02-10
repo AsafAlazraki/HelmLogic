@@ -254,7 +254,7 @@ export default function DataWarehousePage() {
                                                 <div className="h-24 bg-secondary flex items-center justify-center p-4">
                                                     {vendor.logoUrl ? (
                                                         <div className="relative h-full w-full">
-                                                            <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
+                                                            <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain p-2" />
                                                         </div>
                                                     ) : (
                                                         <Building className="h-10 w-10 text-muted-foreground"/>
@@ -305,7 +305,7 @@ export default function DataWarehousePage() {
                                                         <div className="flex items-center gap-4">
                                                             <div className="h-10 w-10 relative flex-shrink-0">
                                                                 {vendor.logoUrl ? (
-                                                                    <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="rounded-md object-contain" />
+                                                                    <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="rounded-md object-contain p-1" />
                                                                 ) : (
                                                                     <div className="h-full w-full flex items-center justify-center rounded-md bg-secondary">
                                                                         <Building className="h-5 w-5 text-muted-foreground"/>

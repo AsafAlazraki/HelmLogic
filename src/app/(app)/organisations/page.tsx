@@ -59,7 +59,7 @@ export default function OrganisationsPage() {
                                                         src={org.primaryLogoUrl}
                                                         alt={`${org.name} logo`}
                                                         fill
-                                                        className="object-contain"
+                                                        className="object-contain p-2"
                                                     />
                                                 </div>
                                             ) : (

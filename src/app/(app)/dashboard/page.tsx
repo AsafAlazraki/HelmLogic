@@ -69,7 +69,7 @@ function EmployeeDashboard({ organisationId }: { organisationId: string }) {
                                             <div className="h-24 bg-secondary flex items-center justify-center p-4">
                                                 {vendor.logoUrl ? (
                                                     <div className="relative h-full w-full">
-                                                        <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
+                                                        <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain p-2" />
                                                     </div>
                                                 ) : (
                                                     <Building className="h-10 w-10 text-muted-foreground"/>
