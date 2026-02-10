@@ -256,6 +256,21 @@
           "type": "string",
           "description": "URL for the boat's main cover image."
         },
+        "galleryImageUrls": {
+            "type": "array",
+            "description": "A list of URLs for the model's image gallery.",
+            "items": {
+                "type": "string"
+            }
+        },
+        "material": {
+          "type": "string",
+          "description": "The hull material of the model.",
+          "enum": [
+            "HYP",
+            "PVC"
+          ]
+        },
         "cost": {
           "type": "number",
           "description": "Base cost of the model."
@@ -455,5 +470,3 @@
     }
   }
 }
-
-    

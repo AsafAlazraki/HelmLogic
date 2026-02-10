@@ -21,6 +21,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 // Schemas for validation
@@ -57,6 +58,7 @@ const packageSchema = z.object({
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
+    material: z.enum(['HYP', 'PVC']).optional(),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
     freightCostExclGst: z.coerce.number().min(0).default(0),
@@ -284,7 +286,16 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
 
     return (
         <Card key={index} className="relative bg-muted/50 overflow-hidden p-4 group/item">
-            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10 opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+            <div className="absolute top-2 right-2 z-10">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/item:opacity-100 transition-opacity"><MoreHorizontal className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => remove(index)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
             
             <div className="flex gap-4 items-start">
                  <FormField
@@ -352,6 +363,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         return {
             coverImageUrl: data.coverImageUrl ?? null,
             galleryImageUrls: data.galleryImageUrls ?? [],
+            material: data.material,
             cost: data.cost ?? 0,
             sellPriceExclGst: data.sellPriceExclGst ?? 0,
             freightCostExclGst: data.freightCostExclGst ?? 0,
@@ -567,6 +579,49 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Material</CardTitle>
+                                <CardDescription>Select the hull material for this model.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <FormField
+                                    control={form.control}
+                                    name="material"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-3">
+                                            <FormControl>
+                                                <RadioGroup
+                                                    onValueChange={field.onChange}
+                                                    value={field.value}
+                                                    className="flex flex-col space-y-1"
+                                                >
+                                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                                        <FormControl>
+                                                            <RadioGroupItem value="HYP" />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal">
+                                                            HYP (Hypalon)
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                                        <FormControl>
+                                                            <RadioGroupItem value="PVC" />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal">
+                                                            PVC (Polyvinyl Chloride)
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                </RadioGroup>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+                        
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Cover Image" />
