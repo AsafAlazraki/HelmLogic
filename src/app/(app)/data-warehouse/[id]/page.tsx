@@ -15,7 +15,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -70,7 +70,7 @@ type VendorFormData = z.infer<typeof formSchema>;
 
 function JsonDataVisualizer({ data, columns }: { data: any, columns?: {key: string, label: string}[] }) {
     if (!data || (Array.isArray(data) && data.length === 0)) {
-        return <p className="text-muted-foreground p-4 text-center">No data to visualize.</p>;
+        return <p className="text-muted-foreground p-4 text-center">No data to display.</p>;
     }
 
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
@@ -78,7 +78,7 @@ function JsonDataVisualizer({ data, columns }: { data: any, columns?: {key: stri
         const keys = columns ? columns.map(c => c.key) : headers;
 
         return (
-            <div className="max-h-[600px] overflow-auto rounded-md border">
+            <div className="overflow-auto">
                 <Table>
                     <TableHeader className="sticky top-0 bg-secondary z-10">
                         <TableRow>
@@ -179,7 +179,9 @@ function ApiDataFetcher() {
                             </pre>
                         </TabsContent>
                         <TabsContent value="visualize">
-                            <JsonDataVisualizer data={jsonData} />
+                           <div className="max-h-[600px] overflow-auto rounded-md border">
+                             <JsonDataVisualizer data={jsonData} />
+                           </div>
                         </TabsContent>
                     </Tabs>
                 )}
@@ -260,7 +262,14 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
         }
         setIsSaving(true);
         try {
-            const subcollectionRef = collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
+            const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
+            const subcollectionRef = collection(firestore, masterDataSetPath);
+
+            const oldDocsQuery = query(subcollectionRef);
+            const oldDocsSnapshot = await getDocs(oldDocsQuery);
+            const deleteBatch = writeBatch(firestore);
+            oldDocsSnapshot.forEach(doc => deleteBatch.delete(doc.ref));
+            await deleteBatch.commit();
 
             const writeBatchSize = 500;
             for (let i = 0; i < parsedData.length; i += writeBatchSize) {
@@ -322,7 +331,9 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                             <CardDescription>Review the data parsed from your file below.</CardDescription>
                         </CardHeader>
                         <CardContent>
+                           <div className="max-h-[600px] overflow-auto rounded-md border">
                              <JsonDataVisualizer data={parsedData} columns={columns} />
+                           </div>
                         </CardContent>
                         <CardFooter>
                             <div className="flex flex-col items-start gap-4 w-full">
@@ -342,16 +353,19 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
 function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
     const { data: masterDataSet, loading: masterDataLoading } = useCollection(masterDataSetPath);
+    const [searchTerm, setSearchTerm] = useState('');
 
-    if (masterDataLoading) {
-        return (
-            <Card>
-                <CardContent className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </CardContent>
-            </Card>
+    const filteredData = useMemo(() => {
+        if (!masterDataSet) return null;
+        if (!searchTerm) return masterDataSet;
+
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return masterDataSet.filter(row =>
+            Object.values(row).some(value =>
+                String(value ?? '').toLowerCase().includes(lowercasedTerm)
+            )
         );
-    }
+    }, [masterDataSet, searchTerm]);
 
     return (
         <Card>
@@ -362,14 +376,33 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                {masterDataSet && masterDataSet.length > 0 ? (
-                    <JsonDataVisualizer data={masterDataSet} />
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                        <p className="text-muted-foreground">No master data set found for this vendor.</p>
-                        <p className="mt-2 text-sm text-muted-foreground">You can upload a document in the 'Data Connection' tab.</p>
-                    </div>
-                )}
+                 <div className="border-2 border-dashed rounded-lg p-4 space-y-4">
+                    {masterDataLoading ? (
+                         <div className="flex items-center justify-center h-48">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : masterDataSet && masterDataSet.length > 0 ? (
+                        <>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search data..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="max-w-sm pl-8"
+                                />
+                            </div>
+                            <div className="max-h-[600px] overflow-auto">
+                                <JsonDataVisualizer data={filteredData} />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-48">
+                            <p className="text-muted-foreground">No master data set found for this vendor.</p>
+                            <p className="mt-2 text-sm text-muted-foreground">You can upload a document in the 'Data Connection' tab.</p>
+                        </div>
+                    )}
+                 </div>
             </CardContent>
         </Card>
     );
