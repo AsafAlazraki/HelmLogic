@@ -15,7 +15,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -35,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -46,10 +46,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { createSlug } from '@/lib/utils';
+import { createSlug, cn } from '@/lib/utils';
 import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 import { StacerDataStructure } from '@/components/stacer-data-structure';
+import { uploadFileWithProgress } from '@/firebase/storage';
+import { Progress } from '@/components/ui/progress';
 
 const formSchema = z.object({
   id: z.string(),
@@ -64,11 +66,13 @@ const formSchema = z.object({
   website: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   logoUrl: z.string().nullable().optional(),
+  attachmentName: z.string().optional(),
+  attachmentUrl: z.string().optional(),
 });
 
 type VendorFormData = z.infer<typeof formSchema>;
 
-function JsonDataVisualizer({ data, columns }: { data: any, columns?: {key: string, label: string}[] }) {
+function JsonDataVisualizer({ data, columns, onRowClick }: { data: any, columns?: {key: string, label: string}[], onRowClick?: (row: any) => void }) {
     if (!data || (Array.isArray(data) && data.length === 0)) {
         return <p className="text-muted-foreground p-4 text-center">No data to display.</p>;
     }
@@ -87,7 +91,7 @@ function JsonDataVisualizer({ data, columns }: { data: any, columns?: {key: stri
                     </TableHeader>
                     <TableBody>
                         {data.map((row, rowIndex) => (
-                            <TableRow key={rowIndex} className="odd:bg-muted/50">
+                            <TableRow key={rowIndex} className={cn("odd:bg-muted/50", onRowClick && "cursor-pointer hover:bg-muted")} onClick={() => onRowClick?.(row)}>
                                 {keys.map((key, colIndex) => (
                                     <TableCell key={`${rowIndex}-${colIndex}`} className="align-top text-sm">
                                         {typeof row[key] === 'object' && row[key] !== null ? (
@@ -270,7 +274,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             const deleteBatch = writeBatch(firestore);
             oldDocsSnapshot.forEach(doc => deleteBatch.delete(doc.ref));
             await deleteBatch.commit();
-
+            
             const writeBatchSize = 500;
             for (let i = 0; i < parsedData.length; i += writeBatchSize) {
                 const chunk = parsedData.slice(i, i + writeBatchSize);
@@ -350,10 +354,95 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     );
 }
 
+function MasterDataSetEditorDialog({
+    isOpen,
+    setIsOpen,
+    item,
+    vendorId,
+    onSave,
+}: {
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+    item: any | null;
+    vendorId: string;
+    onSave: () => void;
+}) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSaving, setIsSaving] = useState(false);
+
+    const form = useForm({
+        defaultValues: item || {},
+    });
+
+    useEffect(() => {
+        form.reset(item || {});
+    }, [item, form]);
+
+    if (!item) return null;
+
+    const handleSave = async (data: any) => {
+        setIsSaving(true);
+        try {
+            const docRef = doc(firestore, `data-warehouse/${vendorId}/masterDataSet`, item.id);
+            await updateDoc(docRef, data);
+            toast({ title: 'Success', description: 'Item has been updated.' });
+            onSave();
+            setIsOpen(false);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+            console.error(error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Edit Item</DialogTitle>
+                    <DialogDescription>Make changes to the item below and click save.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form className="space-y-4 overflow-y-auto px-1">
+                        {Object.keys(item).filter(key => key !== 'id').map((key) => (
+                            <FormField
+                                key={key}
+                                control={form.control}
+                                name={key as any}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="capitalize">{key.replace(/_/g, ' ')}</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} value={field.value ?? ''} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        ))}
+                    </form>
+                </Form>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={form.handleSubmit(handleSave)} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
-    const { data: masterDataSet, loading: masterDataLoading } = useCollection(masterDataSetPath);
+    const { data: masterDataSet, loading: masterDataLoading, error } = useCollection(masterDataSetPath);
     const [searchTerm, setSearchTerm] = useState('');
+    const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+    const [selectedItem, setSelectedItem] = useState<any | null>(null);
+    const [isEditorOpen, setIsEditorOpen] = useState(false);
 
     const filteredData = useMemo(() => {
         if (!masterDataSet) return null;
@@ -367,47 +456,91 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         );
     }, [masterDataSet, searchTerm]);
 
+    const handleEditItem = (item: any) => {
+        setSelectedItem(item);
+        setIsEditorOpen(true);
+    };
+
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Master Data Set</CardTitle>
-                <CardDescription>
-                    This is the master data set for this vendor. Upload new data in the 'Data Connection' tab.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <div className="border-2 border-dashed rounded-lg p-4 space-y-4">
-                    {masterDataLoading ? (
-                         <div className="flex items-center justify-center h-48">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                    ) : masterDataSet && masterDataSet.length > 0 ? (
-                        <>
-                            <div className="relative">
+        <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Master Data Set</CardTitle>
+                    <CardDescription>
+                        This is the master data set for this vendor. Upload new data in the 'Data Connection' tab.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                             <div className="relative flex-1">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search data..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="max-w-sm pl-8"
+                                    className="w-full max-w-sm pl-8"
                                 />
                             </div>
-                            <div className="max-h-[600px] overflow-auto">
-                                <JsonDataVisualizer data={filteredData} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-48">
-                            <p className="text-muted-foreground">No master data set found for this vendor.</p>
-                            <p className="mt-2 text-sm text-muted-foreground">You can upload a document in the 'Data Connection' tab.</p>
+                             <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                                <List className="h-4 w-4" />
+                            </Button>
+                            <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
+                                <LayoutGrid className="h-4 w-4" />
+                            </Button>
                         </div>
-                    )}
-                 </div>
-            </CardContent>
-        </Card>
+
+                        {masterDataLoading ? (
+                             <div className="flex items-center justify-center h-48">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                        ) : filteredData && filteredData.length > 0 ? (
+                           viewMode === 'card' ? (
+                                <div className="max-h-[600px] overflow-auto">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
+                                        {filteredData.map((item) => (
+                                            <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleEditItem(item)}>
+                                                <CardHeader>
+                                                    <CardTitle className="truncate text-base">{String(item.name || item.Name || item.NAME || item.part_description || 'Unnamed Item')}</CardTitle>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <div className="space-y-1 text-sm text-muted-foreground">
+                                                        {Object.entries(item).filter(([key]) => !['id', 'name', 'Name', 'NAME', 'part_description'].includes(key)).slice(0, 3).map(([key, value]) => (
+                                                            <div key={key} className="flex justify-between items-start gap-2">
+                                                                <span className="font-medium capitalize truncate text-xs">{key.replace(/_/g, ' ')}:</span>
+                                                                <span className="truncate text-right text-xs text-foreground">{String(value)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="max-h-[600px] overflow-auto rounded-md border">
+                                    <JsonDataVisualizer data={filteredData} onRowClick={handleEditItem} />
+                                </div>
+                            )
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-48">
+                                <p className="text-muted-foreground">No master data set found for this vendor.</p>
+                                <p className="mt-2 text-sm text-muted-foreground">You can upload a document in the 'Data Connection' tab.</p>
+                            </div>
+                        )}
+                     </div>
+                </CardContent>
+            </Card>
+             <MasterDataSetEditorDialog 
+                isOpen={isEditorOpen}
+                setIsOpen={setIsEditorOpen}
+                item={selectedItem}
+                vendorId={vendor.id}
+                onSave={() => { /* Data will refetch automatically via useCollection */ }}
+            />
+        </>
     );
 }
-
 
 export default function VendorDetailsPage() {
     const params = useParams();
@@ -460,7 +593,7 @@ export default function VendorDetailsPage() {
         try {
             const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
 
-            const dataToUpdate: { [key: string]: any } = {
+            const dataToUpdate: Partial<VendorFormData> = {
                 name: values.name,
                 slug: createSlug(values.name),
                 vendorType: values.vendorType,
@@ -473,13 +606,10 @@ export default function VendorDetailsPage() {
             };
 
             if (values.logo instanceof File) {
-                // The uploadFileToStorage function is not available in this context.
-                // Assuming it exists elsewhere and handles file upload to a storage service.
-                // dataToUpdate.logoUrl = await uploadFileToStorage(storage, values.logo, `data-warehouse/${vendor.id}/logos/${values.logo.name}`);
+                const logoPath = `data-warehouse/${vendor.id}/logos/${values.logo.name}`;
+                dataToUpdate.logoUrl = await uploadFileWithProgress(storage, values.logo, logoPath, () => {});
             } else if (values.logoUrl === null) {
                 dataToUpdate.logoUrl = null;
-            } else {
-                dataToUpdate.logoUrl = vendor.logoUrl || null;
             }
             
             await setDoc(vendorDocRef, dataToUpdate, { merge: true })
