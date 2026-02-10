@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -25,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { uploadFileWithProgress } from '@/firebase/storage';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -278,21 +277,37 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
         }
         setIsSavingToMaster(true);
         try {
+            // 1. Upload the original file to storage
             const filePath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${file.name}`;
-            const { uploadFileToStorage } = await import('@/firebase/storage');
             const downloadURL = await uploadFileToStorage(storage, file, filePath);
-            
+    
             const subcollectionRef = collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
-
-            if (parsedData.length > 0) {
-                const batch = writeBatch(firestore);
-                parsedData.forEach(row => {
-                    const newRowRef = doc(subcollectionRef);
-                    batch.set(newRowRef, row);
-                });
-                await batch.commit();
+            
+            // 2. Clear old data from the subcollection in batches
+            const oldDataSnapshot = await getDocs(subcollectionRef);
+            if (!oldDataSnapshot.empty) {
+                const deleteBatchSize = 500;
+                for (let i = 0; i < oldDataSnapshot.docs.length; i += deleteBatchSize) {
+                    const chunk = oldDataSnapshot.docs.slice(i, i + deleteBatchSize);
+                    const deleteBatch = writeBatch(firestore);
+                    chunk.forEach(doc => deleteBatch.delete(doc.ref));
+                    await deleteBatch.commit();
+                }
             }
-
+    
+            // 3. Batch write the new parsed data to the subcollection
+            const writeBatchSize = 500;
+            for (let i = 0; i < parsedData.length; i += writeBatchSize) {
+                const chunk = parsedData.slice(i, i + writeBatchSize);
+                const writeBatchInstance = writeBatch(firestore);
+                chunk.forEach(row => {
+                    const newRowRef = doc(subcollectionRef);
+                    writeBatchInstance.set(newRowRef, row);
+                });
+                await writeBatchInstance.commit();
+            }
+    
+            // 4. Update the vendor document with the new attachment URL
             const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
             await updateDoc(vendorDocRef, {
                 attachmentUrl: downloadURL,
@@ -304,7 +319,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             setFile(null);
             setParsedData(null);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save Failed', description: e.message || 'An unexpected error occurred. Check console for details.' });
             console.error("Save to master data set failed:", e);
         } finally {
             setIsSavingToMaster(false);
@@ -465,7 +480,6 @@ export default function VendorDetailsPage() {
 
             if (values.logo instanceof File) {
                 const logoFile = values.logo;
-                const { uploadFileToStorage } = await import('@/firebase/storage');
                 const logoPath = `data-warehouse/${vendor.id}/logos/${Date.now()}-${logoFile.name}`;
                 dataToUpdate.logoUrl = await uploadFileToStorage(storage, logoFile, logoPath);
             } else if (values.logoUrl === null) {
@@ -475,7 +489,6 @@ export default function VendorDetailsPage() {
             }
             
             if (values.attachment instanceof File) {
-                const { uploadFileToStorage } = await import('@/firebase/storage');
                 const attachmentFile = values.attachment;
                 const attachmentPath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${attachmentFile.name}`;
                 dataToUpdate.attachmentUrl = await uploadFileToStorage(storage, attachmentFile, attachmentPath);
