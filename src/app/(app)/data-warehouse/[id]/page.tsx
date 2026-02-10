@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -14,7 +15,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, UploadCloud, FileCog, FileUp, Replace } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, UploadCloud, FileUp, Replace } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -29,7 +30,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { proxyFetch } from '@/actions/proxy-fetch';
 import { analyzeJson, type AnalyzeJsonOutput } from '@/ai/flows/analyze-json-flow';
-import { analyzeDocument, type AnalyzeDocumentOutput } from '@/ai/flows/analyze-document-flow';
 import {
   Table,
   TableBody,
@@ -394,11 +394,11 @@ function ApiDataFetcher() {
 function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
     const [showUploader, setShowUploader] = useState(!vendorData.masterDataSet || vendorData.masterDataSet.length === 0);
     const [file, setFile] = useState<File | null>(null);
-    const [analysis, setAnalysis] = useState<AnalyzeDocumentOutput | null>(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [parsedData, setParsedData] = useState<any[] | null>(null);
+    const [columns, setColumns] = useState<{key: string, label: string}[] | undefined>(undefined);
+    const [isParsing, setIsParsing] = useState(false);
     const [isSavingToMaster, setIsSavingToMaster] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [instructions, setInstructions] = useState('Extract all data from the document. Present it as a list of JSON objects. Suggest appropriate column headers for a table view.');
 
     const { toast } = useToast();
     const firestore = useFirestore();
@@ -406,34 +406,60 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
         setFile(selectedFile);
-        setAnalysis(null);
+        setParsedData(null);
+        setColumns(undefined);
         setError(null);
+        if (selectedFile) {
+            handleParseData(selectedFile);
+        }
     };
 
-    const handleAnalyzeData = async () => {
-        if (!file) {
-            toast({ variant: 'destructive', title: 'No file selected', description: 'Please select a document to analyze.' });
+    const handleParseData = (fileToParse: File) => {
+        if (!fileToParse) {
+            toast({ variant: 'destructive', title: 'No file selected', description: 'Please select a document to parse.' });
             return;
         }
-        setIsAnalyzing(true);
+        setIsParsing(true);
         setError(null);
-        setAnalysis(null);
-        try {
-            const fileDataUri = await fileToDataUri(file);
-            const result = await analyzeDocument({ fileDataUri, analysisInstructions: instructions });
-            setAnalysis(result);
-            toast({ title: 'Analysis Complete', description: 'The document has been processed by the AI.' });
-        } catch (e: any) {
-            setError(e.message || 'An unexpected error occurred during analysis.');
-            toast({ variant: 'destructive', title: 'Analysis Failed', description: e.message });
-        } finally {
-            setIsAnalyzing(false);
-        }
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = event.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+
+                if (json.length > 0) {
+                    const firstRow = json[0] as Record<string, any>;
+                    const suggestedColumns = Object.keys(firstRow).map(key => ({
+                        key,
+                        label: key,
+                    }));
+                    setColumns(suggestedColumns);
+                }
+
+                setParsedData(json);
+                toast({ title: 'Parsing Complete', description: 'The document has been parsed.' });
+            } catch (e: any) {
+                setError(e.message || 'An unexpected error occurred during parsing.');
+                toast({ variant: 'destructive', title: 'Parsing Failed', description: e.message });
+            } finally {
+                setIsParsing(false);
+            }
+        };
+        reader.onerror = (e) => {
+            setError('Failed to read file.');
+            toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' });
+            setIsParsing(false);
+        };
+        reader.readAsBinaryString(fileToParse);
     };
     
     const handleSaveToMaster = async () => {
-        if (!analysis || !analysis.extractedData || !file) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No data to save. Please analyze a document first.' });
+        if (!parsedData || !file) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No data to save. Please parse a document first.' });
             return;
         }
         setIsSavingToMaster(true);
@@ -442,7 +468,7 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
             const vendorDocRef = doc(firestore, 'data-warehouse', vendorData.id);
             
             await updateDoc(vendorDocRef, {
-                masterDataSet: analysis.extractedData,
+                masterDataSet: parsedData,
                 attachmentUrl: fileDataUri,
                 attachmentName: file.name
             });
@@ -482,7 +508,7 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
         <Card>
             <CardHeader>
                 <CardTitle>Document Data Extractor</CardTitle>
-                <CardDescription>Upload a document (CSV, XLSX, PDF) to extract a structured data set.</CardDescription>
+                <CardDescription>Upload a document (CSV, XLSX) to extract a structured data set.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -497,49 +523,34 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
                                 Choose File
                             </Label>
                         </Button>
-                        <Input id="document-file" type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/pdf" />
+                        <Input id="document-file" type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
                     </div>
                 </div>
-
-                {file && (
-                    <div className="space-y-4 pt-4 border-t">
-                        <div className="space-y-2">
-                            <Label htmlFor="ai-instructions-doc">AI Instructions</Label>
-                            <Textarea
-                                id="ai-instructions-doc"
-                                placeholder="e.g., Extract the name, part number, and price for each item."
-                                value={instructions}
-                                onChange={(e) => setInstructions(e.target.value)}
-                                rows={3}
-                            />
-                        </div>
-                        <Button onClick={handleAnalyzeData} disabled={isAnalyzing}>
-                            {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCog className="mr-2 h-4 w-4" />}
-                            Analyze with AI
-                        </Button>
-                    </div>
-                )}
                 
-                {isAnalyzing && (
+                {isParsing && (
                     <div className="flex items-center justify-center rounded-md border border-dashed p-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="ml-4 text-muted-foreground">AI is analyzing document...</p>
+                        <p className="ml-4 text-muted-foreground">Parsing document...</p>
                     </div>
                 )}
                 {error && <p className="text-destructive text-sm">{error}</p>}
 
-                {analysis && (
-                    <div className="space-y-6 pt-6">
-                        <div className="space-y-2">
-                            <h3 className="text-lg font-semibold">Analysis Result</h3>
-                            <p className="text-sm text-muted-foreground">{analysis.summary}</p>
-                        </div>
-                        <JsonDataVisualizer data={analysis.extractedData} columns={analysis.suggestedColumns} />
-                        <Button onClick={handleSaveToMaster} disabled={isSavingToMaster}>
-                            {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Save to Master Data Set
-                        </Button>
-                    </div>
+                {parsedData && (
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Parsed Data</CardTitle>
+                            <CardDescription>Review the data parsed from your file below.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <JsonDataVisualizer data={parsedData} columns={columns} />
+                        </CardContent>
+                        <CardFooter>
+                            <Button onClick={handleSaveToMaster} disabled={isSavingToMaster}>
+                                {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Save to Master Data Set
+                            </Button>
+                        </CardFooter>
+                    </Card>
                 )}
             </CardContent>
         </Card>
