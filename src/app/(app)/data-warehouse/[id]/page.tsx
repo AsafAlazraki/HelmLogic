@@ -726,23 +726,7 @@ export default function VendorDetailsPage() {
                     </TabsList>
                     <TabsContent value="master-data">
                         {vendor.slug === 'highfield' ? (
-                            <div className="space-y-6">
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between">
-                                        <div className="space-y-1">
-                                            <CardTitle>Costings & Financials</CardTitle>
-                                            <CardDescription>Manage costs, pricing, and currency for all Highfield models.</CardDescription>
-                                        </div>
-                                        <Button asChild>
-                                            <Link href={`/data-warehouse/${vendor.slug || vendor.id}/costings`}>
-                                                <FileCog className="mr-2 h-4 w-4" />
-                                                Edit Costings
-                                            </Link>
-                                        </Button>
-                                    </CardHeader>
-                                </Card>
-                                <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
-                            </div>
+                            <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
                         ) : vendor.slug === 'jeanneau' ? (
                             <JeanneauDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
                         ) : (

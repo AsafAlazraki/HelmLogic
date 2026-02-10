@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,7 +21,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -54,13 +54,18 @@ const packageSchema = z.object({
     includedFeatures: z.array(z.string()).default([]),
 });
 
+const variantPricingSchema = z.object({
+    colorId: z.string(),
+    colorName: z.string(),
+    material: z.string(),
+    cost: z.coerce.number().optional(),
+    sellPriceExclGst: z.coerce.number().optional(),
+    freightCostExclGst: z.coerce.number().optional(),
+});
+
 const highfieldModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
-    material: z.enum(['HYP', 'PVC']).optional(),
-    cost: z.coerce.number().min(0).default(0),
-    sellPriceExclGst: z.coerce.number().min(0).default(0),
-    freightCostExclGst: z.coerce.number().min(0).default(0),
     specifications: z.object({
         minHp: z.coerce.number().min(0).default(0),
         maxHp: z.coerce.number().min(0).default(0),
@@ -71,6 +76,7 @@ const highfieldModelSchema = z.object({
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     packages: z.array(packageSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
+    variantPricing: z.array(variantPricingSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
@@ -356,36 +362,57 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
 
-    const getSafeDefaultValues = (modelData: any): ModelFormData => {
-        const data = modelData || {};
-        const specs = data.specifications || {};
-        return {
-            coverImageUrl: data.coverImageUrl ?? null,
-            galleryImageUrls: data.galleryImageUrls ?? [],
-            material: data.material,
-            cost: data.cost ?? 0,
-            sellPriceExclGst: data.sellPriceExclGst ?? 0,
-            freightCostExclGst: data.freightCostExclGst ?? 0,
-            specifications: {
-                minHp: specs.minHp ?? 0,
-                maxHp: specs.maxHp ?? 0,
-                recommendedHp: specs.recommendedHp ?? 0,
-                otherSpecs: specs.otherSpecs ?? [],
-            },
-            standardFeatures: data.standardFeatures ?? [],
-            optionalFeatures: data.optionalFeatures ?? [],
-            packages: (data.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [] })),
-            colors: data.colors ?? [],
-        };
-    };
-
     const form = useForm<ModelFormData>({
         resolver: zodResolver(highfieldModelSchema),
-        defaultValues: getSafeDefaultValues(model),
     });
     
     useEffect(() => {
-        form.reset(getSafeDefaultValues(model));
+        const safeModel = model || {};
+        const defaultValues: Partial<ModelFormData> = {
+            coverImageUrl: safeModel.coverImageUrl ?? null,
+            galleryImageUrls: safeModel.galleryImageUrls ?? [],
+            specifications: {
+                minHp: safeModel.specifications?.minHp ?? 0,
+                maxHp: safeModel.specifications?.maxHp ?? 0,
+                recommendedHp: safeModel.specifications?.recommendedHp ?? 0,
+                otherSpecs: safeModel.specifications?.otherSpecs ?? [],
+            },
+            standardFeatures: safeModel.standardFeatures ?? [],
+            optionalFeatures: safeModel.optionalFeatures ?? [],
+            packages: (safeModel.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [] })),
+            colors: safeModel.colors ?? [],
+            variantPricing: [],
+        };
+    
+        const variants: z.infer<typeof variantPricingSchema>[] = [];
+        const materials = ['HYP', 'PVC'];
+        const existingPricing = new Map(
+            (safeModel.variantPricing || []).map((p: any) => `${p.colorId}-${p.material}`, p)
+        );
+    
+        (defaultValues.colors || []).forEach(color => {
+            materials.forEach(material => {
+                const key = `${color.id}-${material}`;
+                const existing = (safeModel.variantPricing || []).find((p:any) => p.colorId === color.id && p.material === material);
+                if (existing) {
+                    variants.push(existing);
+                } else {
+                    variants.push({
+                        colorId: color.id,
+                        colorName: color.name,
+                        material: material,
+                        cost: 0,
+                        sellPriceExclGst: 0,
+                        freightCostExclGst: 0,
+                    });
+                }
+            });
+        });
+
+        variants.sort((a, b) => a.colorName.localeCompare(b.colorName) || a.material.localeCompare(b.material));
+        defaultValues.variantPricing = variants;
+
+        form.reset(defaultValues);
     }, [model, form]);
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
@@ -394,6 +421,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control: form.control, name: 'galleryImageUrls' });
+    const { fields: variantPricingFields } = useFieldArray({ control: form.control, name: 'variantPricing' });
     
     const watchedColors = useWatch({ control: form.control, name: 'colors' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
@@ -402,10 +430,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         setIsSubmitting(true);
         const modelDocRef = doc(firestore, docPath);
 
-        // Don't save pricing data from this form
-        const { cost, sellPriceExclGst, freightCostExclGst, ...dataToSave } = values;
-
-        updateDoc(modelDocRef, dataToSave)
+        updateDoc(modelDocRef, values)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
                 form.reset(values);
@@ -414,7 +439,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                  const permissionError = new FirestorePermissionError({
                     path: modelDocRef.path,
                     operation: 'update',
-                    requestResourceData: dataToSave,
+                    requestResourceData: values,
                 });
                 errorEmitter.emit('permission-error', permissionError);
             })
@@ -573,48 +598,13 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         <Card>
                             <CardHeader>
                                 <CardTitle>Material</CardTitle>
-                                <CardDescription>Select the hull material for this model.</CardDescription>
+                                <CardDescription>The hull material options for this model.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <FormField
-                                    control={form.control}
-                                    name="material"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <RadioGroup
-                                                    onValueChange={field.onChange}
-                                                    value={field.value}
-                                                    className="grid grid-cols-2 gap-4"
-                                                >
-                                                    <FormItem>
-                                                        <FormControl>
-                                                            <RadioGroupItem value="HYP" id="mat-hyp" className="peer sr-only" />
-                                                        </FormControl>
-                                                        <FormLabel
-                                                            htmlFor="mat-hyp"
-                                                            className="flex h-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                                                        >
-                                                        HYP (Hypalon)
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                    <FormItem>
-                                                        <FormControl>
-                                                            <RadioGroupItem value="PVC" id="mat-pvc" className="peer sr-only" />
-                                                        </FormControl>
-                                                        <FormLabel
-                                                            htmlFor="mat-pvc"
-                                                            className="flex h-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                                                        >
-                                                        PVC (Polyvinyl Chloride)
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                </RadioGroup>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex h-full cursor-default flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4">HYP (Hypalon)</div>
+                                    <div className="flex h-full cursor-default flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4">PVC (Polyvinyl Chloride)</div>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -725,6 +715,44 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         </Collapsible>
                     </div>
                 </div>
+
+                <Collapsible asChild defaultOpen>
+                    <Card>
+                        <CollapsibleCardHeader title="Variant Costing" description="Define pricing for each model variant based on color and material." />
+                        <CollapsibleContent>
+                            <CardContent>
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Variant (Color / Material)</TableHead>
+                                                <TableHead>Cost</TableHead>
+                                                <TableHead>Sell Price</TableHead>
+                                                <TableHead>Freight Cost</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {variantPricingFields.length > 0 ? variantPricingFields.map((field, index) => (
+                                                <TableRow key={field.id}>
+                                                    <TableCell className="font-medium">{field.colorName} / {field.material}</TableCell>
+                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.cost`} label="" /></TableCell>
+                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.sellPriceExclGst`} label="" /></TableCell>
+                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.freightCostExclGst`} label="" /></TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                                                        No variants to price. Add some color options to get started.
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </CollapsibleContent>
+                    </Card>
+                </Collapsible>
             </form>
         </Form>
     );

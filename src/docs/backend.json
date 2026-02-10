@@ -257,31 +257,23 @@
           "description": "URL for the boat's main cover image."
         },
         "galleryImageUrls": {
-            "type": "array",
-            "description": "A list of URLs for the model's image gallery.",
-            "items": {
-                "type": "string"
-            }
-        },
-        "material": {
-          "type": "string",
-          "description": "The hull material of the model.",
-          "enum": [
-            "HYP",
-            "PVC"
-          ]
+          "type": "array",
+          "description": "A list of URLs for the model's image gallery.",
+          "items": {
+            "type": "string"
+          }
         },
         "cost": {
           "type": "number",
           "description": "Base cost of the model."
         },
         "sellPriceExclGst": {
-            "type": "number",
-            "description": "Base selling price, excluding GST."
+          "type": "number",
+          "description": "Base selling price, excluding GST."
         },
         "freightCostExclGst": {
-            "type": "number",
-            "description": "Freight cost, excluding GST."
+          "type": "number",
+          "description": "Freight cost, excluding GST."
         },
         "colors": {
           "type": "array",
@@ -422,6 +414,41 @@
             "maxHp",
             "recommendedHp"
           ]
+        },
+        "variantPricing": {
+          "type": "array",
+          "description": "Pricing for specific model variants (e.g., by color and material). Highfield specific.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "colorId": {
+                "type": "string"
+              },
+              "colorName": {
+                "type": "string"
+              },
+              "material": {
+                "type": "string",
+                "enum": [
+                  "HYP",
+                  "PVC"
+                ]
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "freightCostExclGst": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "colorId",
+              "material"
+            ]
+          }
         }
       },
       "required": [
