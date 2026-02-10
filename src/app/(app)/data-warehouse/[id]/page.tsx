@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -52,6 +53,7 @@ import { createSlug } from '@/lib/utils';
 import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 import { StacerDataStructure } from '@/components/stacer-data-structure';
+import { fileToDataUri } from '@/firebase/storage-utils';
 
 const formSchema = z.object({
   id: z.string(),
@@ -207,8 +209,6 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     const [columns, setColumns] = useState<{key: string, label: string}[] | undefined>(undefined);
     const [isParsing, setIsParsing] = useState(false);
     const [isSavingToMaster, setIsSavingToMaster] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-    const [statusText, setStatusText] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -277,39 +277,20 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             return;
         }
         setIsSavingToMaster(true);
-        setUploadProgress(0);
-        setStatusText('Uploading file...');
         try {
             const filePath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${file.name}`;
-            const downloadURL = await uploadFileWithProgress(storage, file, filePath, (progress) => {
-                setUploadProgress(progress);
-            });
+            const { uploadFileToStorage } = await import('@/firebase/storage');
+            const downloadURL = await uploadFileToStorage(storage, file, filePath);
             
-            setUploadProgress(null);
-            setStatusText('Clearing old data...');
             const subcollectionRef = collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
-            const existingDocsSnapshot = await getDocs(subcollectionRef);
-            const existingDocs = existingDocsSnapshot.docs;
-            if (existingDocs.length > 0) {
-                for (let i = 0; i < existingDocs.length; i += 500) {
-                    const batch = writeBatch(firestore);
-                    const chunk = existingDocs.slice(i, i + 500);
-                    chunk.forEach(doc => batch.delete(doc.ref));
-                    await batch.commit();
-                }
-            }
 
-            setStatusText('Saving new data...');
             if (parsedData.length > 0) {
-                for (let i = 0; i < parsedData.length; i += 500) {
-                    const batch = writeBatch(firestore);
-                    const chunk = parsedData.slice(i, i + 500);
-                    chunk.forEach(row => {
-                        const newRowRef = doc(subcollectionRef);
-                        batch.set(newRowRef, row);
-                    });
-                    await batch.commit();
-                }
+                const batch = writeBatch(firestore);
+                parsedData.forEach(row => {
+                    const newRowRef = doc(subcollectionRef);
+                    batch.set(newRowRef, row);
+                });
+                await batch.commit();
             }
 
             const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
@@ -327,8 +308,6 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             console.error("Save to master data set failed:", e);
         } finally {
             setIsSavingToMaster(false);
-            setUploadProgress(null);
-            setStatusText('');
         }
     };
     
@@ -408,14 +387,8 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                             <div className="flex flex-col items-start gap-4 w-full">
                                 <Button onClick={handleSaveToMaster} disabled={isSavingToMaster}>
                                     {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    {isSavingToMaster ? statusText : 'Save to Master Data Set'}
+                                    {isSavingToMaster ? 'Saving...' : 'Save to Master Data Set'}
                                 </Button>
-                                {isSavingToMaster && uploadProgress !== null && (
-                                    <div className="w-full">
-                                        <Progress value={uploadProgress} className="w-full" />
-                                        <p className="text-sm text-muted-foreground mt-2 text-center">Uploading file: {Math.round(uploadProgress)}%</p>
-                                    </div>
-                                )}
                             </div>
                         </CardFooter>
                     </Card>
@@ -492,22 +465,22 @@ export default function VendorDetailsPage() {
 
             if (values.logo instanceof File) {
                 const logoFile = values.logo;
+                const { uploadFileToStorage } = await import('@/firebase/storage');
                 const logoPath = `data-warehouse/${vendor.id}/logos/${Date.now()}-${logoFile.name}`;
-                const { uploadFile } = await import('@/firebase/storage-utils');
-                dataToUpdate.logoUrl = await uploadFile(storage, logoFile, logoPath);
-            } else if (values.logoUrl === '') {
+                dataToUpdate.logoUrl = await uploadFileToStorage(storage, logoFile, logoPath);
+            } else if (values.logoUrl === null) {
                 dataToUpdate.logoUrl = null;
             } else {
                 dataToUpdate.logoUrl = vendor.logoUrl || null;
             }
-
+            
             if (values.attachment instanceof File) {
+                const { uploadFileToStorage } = await import('@/firebase/storage');
                 const attachmentFile = values.attachment;
                 const attachmentPath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${attachmentFile.name}`;
-                const { uploadFile } = await import('@/firebase/storage-utils');
-                dataToUpdate.attachmentUrl = await uploadFile(storage, attachmentFile, attachmentPath);
+                dataToUpdate.attachmentUrl = await uploadFileToStorage(storage, attachmentFile, attachmentPath);
                 dataToUpdate.attachmentName = attachmentFile.name;
-            } else if (values.attachmentUrl === '') {
+            } else if (values.attachmentUrl === null) {
                 dataToUpdate.attachmentUrl = null;
                 dataToUpdate.attachmentName = null;
             } else {
@@ -515,7 +488,7 @@ export default function VendorDetailsPage() {
                 dataToUpdate.attachmentName = vendor.attachmentName || null;
             }
 
-            await updateDoc(vendorDocRef, dataToUpdate)
+            await setDoc(vendorDocRef, dataToUpdate, { merge: true })
                 .catch((serverError) => {
                     const permissionError = new FirestorePermissionError({
                         path: vendorDocRef.path, operation: 'update', requestResourceData: dataToUpdate,
@@ -666,7 +639,7 @@ export default function VendorDetailsPage() {
                                                                     className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                                                                     onClick={() => {
                                                                         setLogoPreview(null);
-                                                                        form.setValue('logoUrl', '');
+                                                                        form.setValue('logoUrl', null);
                                                                         field.onChange(null);
                                                                     }}
                                                                 >
@@ -698,8 +671,8 @@ export default function VendorDetailsPage() {
                                                                     className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                                                     onClick={() => {
                                                                         setAttachmentPreview(null);
-                                                                        form.setValue('attachmentUrl', '');
-                                                                        form.setValue('attachmentName', '');
+                                                                        form.setValue('attachmentUrl', null);
+                                                                        form.setValue('attachmentName', null);
                                                                         field.onChange(null);
                                                                     }}
                                                                 >
@@ -761,7 +734,3 @@ export default function VendorDetailsPage() {
         </AdminGuard>
     );
 }
-
-    
-
-    

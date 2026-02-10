@@ -1,3 +1,4 @@
+
 import { ref, uploadBytes, getDownloadURL, Storage, uploadBytesResumable, UploadTaskSnapshot } from 'firebase/storage';
 
 export async function uploadFileToStorage(
@@ -6,8 +7,8 @@ export async function uploadFileToStorage(
   path: string
 ): Promise<string> {
   const storageRef = ref(storage, path);
-  const snapshot = await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(snapshot.ref);
+  await uploadBytes(storageRef, file);
+  const downloadURL = await getDownloadURL(storageRef);
   return downloadURL;
 }
 
@@ -37,4 +38,3 @@ export function uploadFileWithProgress(
     );
   });
 }
-    
