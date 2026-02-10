@@ -21,7 +21,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -581,17 +581,36 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                     name="material"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select a material" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="HYP">HYP (Hypalon)</SelectItem>
-                                                    <SelectItem value="PVC">PVC (Polyvinyl Chloride)</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <FormControl>
+                                                <RadioGroup
+                                                    onValueChange={field.onChange}
+                                                    value={field.value}
+                                                    className="grid grid-cols-2 gap-4"
+                                                >
+                                                    <FormItem>
+                                                        <FormControl>
+                                                            <RadioGroupItem value="HYP" id="mat-hyp" className="peer sr-only" />
+                                                        </FormControl>
+                                                        <FormLabel
+                                                            htmlFor="mat-hyp"
+                                                            className="flex h-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                                                        >
+                                                        HYP (Hypalon)
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                    <FormItem>
+                                                        <FormControl>
+                                                            <RadioGroupItem value="PVC" id="mat-pvc" className="peer sr-only" />
+                                                        </FormControl>
+                                                        <FormLabel
+                                                            htmlFor="mat-pvc"
+                                                            className="flex h-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                                                        >
+                                                        PVC (Polyvinyl Chloride)
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                </RadioGroup>
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
