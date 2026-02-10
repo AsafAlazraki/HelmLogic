@@ -283,24 +283,34 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 setUploadProgress(progress);
             });
             
-            const batch = writeBatch(firestore);
             const subcollectionRef = collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
-            const existingDocsSnapshot = await getDocs(subcollectionRef);
             
-            existingDocsSnapshot.forEach(doc => batch.delete(doc.ref));
+            // Delete existing data in batches
+            const existingDocsSnapshot = await getDocs(subcollectionRef);
+            const existingDocs = existingDocsSnapshot.docs;
+            for (let i = 0; i < existingDocs.length; i += 500) {
+                const batch = writeBatch(firestore);
+                const chunk = existingDocs.slice(i, i + 500);
+                chunk.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
 
-            parsedData.forEach(row => {
-                const newRowRef = doc(subcollectionRef);
-                batch.set(newRowRef, row);
-            });
+            // Add new data in batches
+            for (let i = 0; i < parsedData.length; i += 500) {
+                const batch = writeBatch(firestore);
+                const chunk = parsedData.slice(i, i + 500);
+                chunk.forEach(row => {
+                    const newRowRef = doc(subcollectionRef);
+                    batch.set(newRowRef, row);
+                });
+                await batch.commit();
+            }
 
             const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
-            batch.update(vendorDocRef, {
+            await updateDoc(vendorDocRef, {
                 attachmentUrl: downloadURL,
                 attachmentName: file.name
             });
-            
-            await batch.commit();
             
             toast({ title: 'Success', description: 'Master data set has been updated.' });
             setShowUploader(false);
@@ -308,6 +318,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             setParsedData(null);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+            console.error("Save to master data set failed:", e);
         } finally {
             setIsSavingToMaster(false);
             setUploadProgress(null);
@@ -743,5 +754,7 @@ export default function VendorDetailsPage() {
         </AdminGuard>
     );
 }
+
+    
 
     
