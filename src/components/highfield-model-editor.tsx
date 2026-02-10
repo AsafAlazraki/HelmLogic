@@ -83,20 +83,28 @@ type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
 const GST_RATE = 0.10;
 
-function GstInputPair({ control, name, label }: { control: any, name: string, label: string }) {
+function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field } = useController({ control, name });
-    
-    const valueExcl = field.value || 0;
-    const valueIncl = valueExcl * (1 + GST_RATE);
+
+    const valueExcl = field.value; // Can be undefined or a number
+    const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.value === '') {
+            field.onChange(undefined);
+            return;
+        }
         const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? 0 : numValue);
+        field.onChange(isNaN(numValue) ? undefined : numValue);
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.value === '') {
+            field.onChange(undefined);
+            return;
+        }
         const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? 0 : numValue / (1 + GST_RATE));
+        field.onChange(isNaN(numValue) ? undefined : numValue / (1 + GST_RATE));
     };
 
     return (
@@ -106,11 +114,11 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                 <FormItem>
                     <FormLabel className="text-xs font-normal text-muted-foreground">excl. GST</FormLabel>
                     <FormControl>
-                        <Input 
+                        <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
-                            value={valueExcl === 0 ? '' : valueExcl}
+                            value={valueExcl ?? ''}
                             onChange={handleExclChange}
                         />
                     </FormControl>
@@ -119,7 +127,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                 <FormItem>
                     <FormLabel className="text-xs font-normal text-muted-foreground">inc. GST</FormLabel>
                     <FormControl>
-                        <Input 
+                        <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
@@ -395,15 +403,20 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 const key = `${color.id}-${material}`;
                 const existing = existingPricing.get(key);
                 if (existing) {
-                    variants.push(existing);
+                    variants.push({
+                        ...existing,
+                        cost: existing.cost ?? undefined,
+                        sellPriceExclGst: existing.sellPriceExclGst ?? undefined,
+                        freightCostExclGst: existing.freightCostExclGst ?? undefined,
+                    });
                 } else {
                     variants.push({
                         colorId: color.id,
                         colorName: color.name,
                         material: material,
-                        cost: 0,
-                        sellPriceExclGst: 0,
-                        freightCostExclGst: 0,
+                        cost: undefined,
+                        sellPriceExclGst: undefined,
+                        freightCostExclGst: undefined,
                     });
                 }
             });
