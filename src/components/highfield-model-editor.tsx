@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -48,9 +48,9 @@ const variantPricingSchema = z.object({
     colorId: z.string(),
     colorName: z.string(),
     material: z.string(),
-    cost: z.coerce.number().optional(),
-    sellPriceExclGst: z.coerce.number().optional(),
-    freightCostExclGst: z.coerce.number().optional(),
+    cost: z.coerce.number().optional().nullable(),
+    sellPriceExclGst: z.coerce.number().optional().nullable(),
+    freightCostExclGst: z.coerce.number().optional().nullable(),
 });
 
 const highfieldModelSchema = z.object({
@@ -66,6 +66,7 @@ const highfieldModelSchema = z.object({
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
     variantPricing: z.array(variantPricingSchema).default([]),
+    material: z.string().optional(),
 });
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
@@ -75,25 +76,25 @@ const GST_RATE = 0.10;
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field } = useController({ control, name });
 
-    const valueExcl = field.value; // Can be undefined or a number
+    const valueExcl = field.value; // Can be a number or null
     const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.value === '') {
-            field.onChange(undefined);
+            field.onChange(null);
             return;
         }
         const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? undefined : numValue);
+        field.onChange(isNaN(numValue) ? null : numValue);
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.value === '') {
-            field.onChange(undefined);
+            field.onChange(null);
             return;
         }
         const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? undefined : numValue / (1 + GST_RATE));
+        field.onChange(isNaN(numValue) ? null : numValue / (1 + GST_RATE));
     };
 
     return (
@@ -245,6 +246,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             optionalFeatures: safeModel.optionalFeatures ?? [],
             colors: safeModel.colors ?? [],
             variantPricing: [],
+            material: safeModel.material,
         };
     
         const variants: z.infer<typeof variantPricingSchema>[] = [];
@@ -260,18 +262,18 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 if (existing) {
                     variants.push({
                         ...existing,
-                        cost: existing.cost ?? undefined,
-                        sellPriceExclGst: existing.sellPriceExclGst ?? undefined,
-                        freightCostExclGst: existing.freightCostExclGst ?? undefined,
+                        cost: existing.cost ?? null,
+                        sellPriceExclGst: existing.sellPriceExclGst ?? null,
+                        freightCostExclGst: existing.freightCostExclGst ?? null,
                     });
                 } else {
                     variants.push({
                         colorId: color.id,
                         colorName: color.name,
                         material: material,
-                        cost: undefined,
-                        sellPriceExclGst: undefined,
-                        freightCostExclGst: undefined,
+                        cost: null,
+                        sellPriceExclGst: null,
+                        freightCostExclGst: null,
                     });
                 }
             });
@@ -452,8 +454,8 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex h-full cursor-default flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm">HYP (Hypalon)</div>
-                                    <div className="flex h-full cursor-default flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm">PVC (Polyvinyl Chloride)</div>
+                                    <div className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm font-medium text-popover-foreground whitespace-nowrap">HYP (Hypalon)</div>
+                                    <div className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm font-medium text-popover-foreground whitespace-nowrap">PVC (Polyvinyl Chloride)</div>
                                 </div>
                             </CardContent>
                         </Card>
