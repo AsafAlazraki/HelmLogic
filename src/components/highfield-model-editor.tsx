@@ -21,7 +21,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -402,7 +402,10 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         setIsSubmitting(true);
         const modelDocRef = doc(firestore, docPath);
 
-        updateDoc(modelDocRef, values)
+        // Don't save pricing data from this form
+        const { cost, sellPriceExclGst, freightCostExclGst, ...dataToSave } = values;
+
+        updateDoc(modelDocRef, dataToSave)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
                 form.reset(values);
@@ -411,7 +414,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                  const permissionError = new FirestorePermissionError({
                     path: modelDocRef.path,
                     operation: 'update',
-                    requestResourceData: values,
+                    requestResourceData: dataToSave,
                 });
                 errorEmitter.emit('permission-error', permissionError);
             })
@@ -567,19 +570,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                     </div>
 
                     <div className="lg:col-span-3 space-y-8">
-                         <Collapsible asChild defaultOpen>
-                             <Card>
-                                <CollapsibleCardHeader title="Pricing" />
-                                <CollapsibleContent>
-                                    <CardContent className="space-y-6">
-                                        <GstInputPair control={form.control} name="cost" label="Base Cost" />
-                                        <GstInputPair control={form.control} name="sellPriceExclGst" label="Sell Price" />
-                                        <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
-                        
                         <Card>
                             <CardHeader>
                                 <CardTitle>Material</CardTitle>
@@ -590,31 +580,18 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                     control={form.control}
                                     name="material"
                                     render={({ field }) => (
-                                        <FormItem className="space-y-3">
-                                            <FormControl>
-                                                <RadioGroup
-                                                    onValueChange={field.onChange}
-                                                    value={field.value}
-                                                    className="flex flex-col space-y-1"
-                                                >
-                                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                                        <FormControl>
-                                                            <RadioGroupItem value="HYP" />
-                                                        </FormControl>
-                                                        <FormLabel className="font-normal">
-                                                            HYP (Hypalon)
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                                        <FormControl>
-                                                            <RadioGroupItem value="PVC" />
-                                                        </FormControl>
-                                                        <FormLabel className="font-normal">
-                                                            PVC (Polyvinyl Chloride)
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                </RadioGroup>
-                                            </FormControl>
+                                        <FormItem>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a material" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="HYP">HYP (Hypalon)</SelectItem>
+                                                    <SelectItem value="PVC">PVC (Polyvinyl Chloride)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                             <FormMessage />
                                         </FormItem>
                                     )}
