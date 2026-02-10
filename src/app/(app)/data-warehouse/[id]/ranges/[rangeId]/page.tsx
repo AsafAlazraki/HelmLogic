@@ -122,7 +122,7 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
 
     return (
         <>
-            <Card className="h-full transition-all duration-300 ease-in-out group hover:border-primary hover:shadow-xl overflow-hidden flex flex-col">
+            <Card className="relative h-full transition-all duration-300 ease-in-out group hover:border-primary hover:shadow-xl overflow-hidden flex flex-col">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-primary/10 hover:text-primary" onClick={(e) => e.preventDefault()}>

@@ -41,26 +41,26 @@ const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.coerce.number().min(0).default(0),
-    sellPriceExclGst: z.coerce.number().min(0).default(0),
+    cost: z.coerce.number().min(0).nullable().optional(),
+    sellPriceExclGst: z.coerce.number().min(0).nullable().optional(),
 });
 
 const packageSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.coerce.number().min(0).default(0),
-    sellPriceExclGst: z.coerce.number().min(0).default(0),
-    freightCostExclGst: z.coerce.number().min(0).default(0),
+    cost: z.coerce.number().min(0).nullable().optional(),
+    sellPriceExclGst: z.coerce.number().min(0).nullable().optional(),
+    freightCostExclGst: z.coerce.number().min(0).nullable().optional(),
     includedFeatures: z.array(z.string()).default([]),
 });
 
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
-    cost: z.coerce.number().min(0).default(0),
-    sellPriceExclGst: z.coerce.number().min(0).default(0),
-    freightCostExclGst: z.coerce.number().min(0).default(0),
+    cost: z.coerce.number().min(0).nullable().optional(),
+    sellPriceExclGst: z.coerce.number().min(0).nullable().optional(),
+    freightCostExclGst: z.coerce.number().min(0).nullable().optional(),
     specifications: z.object({
         minHp: z.coerce.number().min(0).default(0),
         maxHp: z.coerce.number().min(0).default(0),
@@ -79,18 +79,26 @@ const GST_RATE = 0.10;
 
 function GstInputPair({ control, name, label }: { control: any, name: string, label: string }) {
     const { field } = useController({ control, name });
-    
-    const valueExcl = field.value || 0;
-    const valueIncl = valueExcl * (1 + GST_RATE);
+
+    const valueExcl = field.value; // Can be a number or null
+    const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.value === '') {
+            field.onChange(null);
+            return;
+        }
         const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? 0 : numValue);
+        field.onChange(isNaN(numValue) ? null : numValue);
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.value === '') {
+            field.onChange(null);
+            return;
+        }
         const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? 0 : numValue / (1 + GST_RATE));
+        field.onChange(isNaN(numValue) ? null : numValue / (1 + GST_RATE));
     };
 
     return (
@@ -104,7 +112,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                             type="number"
                             step="0.01"
                             placeholder="0.00"
-                            value={valueExcl === 0 ? '' : valueExcl}
+                            value={valueExcl === null ? '' : valueExcl}
                             onChange={handleExclChange}
                         />
                     </FormControl>
@@ -363,9 +371,9 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         return {
             coverImageUrl: data.coverImageUrl ?? null,
             galleryImageUrls: data.galleryImageUrls ?? [],
-            cost: data.cost ?? 0,
-            sellPriceExclGst: data.sellPriceExclGst ?? 0,
-            freightCostExclGst: data.freightCostExclGst ?? 0,
+            cost: data.cost ?? null,
+            sellPriceExclGst: data.sellPriceExclGst ?? null,
+            freightCostExclGst: data.freightCostExclGst ?? null,
             specifications: {
                 minHp: specs.minHp ?? 0,
                 maxHp: specs.maxHp ?? 0,
@@ -373,8 +381,18 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
-            optionalFeatures: data.optionalFeatures ?? [],
-            packages: (data.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [] })),
+            optionalFeatures: (data.optionalFeatures || []).map((f: any) => ({
+                ...f,
+                cost: f.cost ?? null,
+                sellPriceExclGst: f.sellPriceExclGst ?? null,
+            })),
+            packages: (data.packages || []).map((p: any) => ({ 
+                ...p, 
+                includedFeatures: p.includedFeatures ?? [],
+                cost: p.cost ?? null,
+                sellPriceExclGst: p.sellPriceExclGst ?? null,
+                freightCostExclGst: p.freightCostExclGst ?? null,
+            })),
             colors: data.colors ?? [],
         };
     };
@@ -384,13 +402,11 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     });
     
     useEffect(() => {
-        if (model?.id && model.id === loadedModelIdRef.current) {
+        if (!model?.id || model.id === loadedModelIdRef.current) {
             return;
         }
-        if (model?.id) {
-            form.reset(getSafeDefaultValues(model));
-            loadedModelIdRef.current = model.id;
-        }
+        form.reset(getSafeDefaultValues(model));
+        loadedModelIdRef.current = model.id;
     }, [model, form]);
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
@@ -410,7 +426,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         updateDoc(modelDocRef, values)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
-                form.reset(values, { keepValues: true });
             })
             .catch((serverError) => {
                  const permissionError = new FirestorePermissionError({
