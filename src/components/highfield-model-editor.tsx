@@ -108,7 +108,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                             type="number"
                             step="0.01"
                             placeholder="0.00"
-                            value={valueExcl ?? ''}
+                            value={valueExcl === null ? '' : valueExcl}
                             onChange={handleExclChange}
                         />
                     </FormControl>
@@ -310,7 +310,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         updateDoc(modelDocRef, values)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
-                form.reset(values);
+                form.reset(values, { keepValues: true });
             })
             .catch((serverError) => {
                  const permissionError = new FirestorePermissionError({
@@ -335,7 +335,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
+                    <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>
@@ -378,7 +378,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="space-y-4 max-h-96 overflow-y-auto">
                                         {featureFields.map((field, index) => (
                                              <div key={field.id} className="flex items-center gap-2">
                                                 <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />

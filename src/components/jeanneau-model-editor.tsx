@@ -410,7 +410,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         updateDoc(modelDocRef, values)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
-                form.reset(values);
+                form.reset(values, { keepValues: true });
             })
             .catch((serverError) => {
                  const permissionError = new FirestorePermissionError({
@@ -435,7 +435,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
+                    <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>
