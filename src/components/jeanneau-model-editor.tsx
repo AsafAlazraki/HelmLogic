@@ -41,26 +41,26 @@ const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.number().min(0).nullable().optional(),
-    sellPriceExclGst: z.number().min(0).nullable().optional(),
+    cost: z.number().nullable().optional(),
+    sellPriceExclGst: z.number().nullable().optional(),
 });
 
 const packageSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.number().min(0).nullable().optional(),
-    sellPriceExclGst: z.number().min(0).nullable().optional(),
-    freightCostExclGst: z.number().min(0).nullable().optional(),
+    cost: z.number().nullable().optional(),
+    sellPriceExclGst: z.number().nullable().optional(),
+    freightCostExclGst: z.number().nullable().optional(),
     includedFeatures: z.array(z.string()).default([]),
 });
 
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
-    cost: z.number().min(0).nullable().optional(),
-    sellPriceExclGst: z.number().min(0).nullable().optional(),
-    freightCostExclGst: z.number().min(0).nullable().optional(),
+    cost: z.number().nullable().optional(),
+    sellPriceExclGst: z.number().nullable().optional(),
+    freightCostExclGst: z.number().nullable().optional(),
     specifications: z.object({
         minHp: z.number().min(0).default(0),
         maxHp: z.number().min(0).default(0),
@@ -80,7 +80,7 @@ const GST_RATE = 0.10;
 function GstInputPair({ control, name, label }: { control: any, name: string, label: string }) {
     const { field } = useController({ control, name, defaultValue: null });
 
-    const valueExcl = field.value; // Can be a number or null
+    const valueExcl = field.value;
     const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -451,7 +451,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                    <Button type="submit">
+                    <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>

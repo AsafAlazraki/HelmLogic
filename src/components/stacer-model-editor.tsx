@@ -21,7 +21,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -40,21 +39,16 @@ const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.number().min(0).nullable().optional(),
-    sellPriceExclGst: z.number().min(0).nullable().optional(),
-});
-
-const variantPricingSchema = z.object({
-    colorId: z.string(),
-    colorName: z.string(),
     cost: z.number().nullable().optional(),
     sellPriceExclGst: z.number().nullable().optional(),
-    freightCostExclGst: z.number().nullable().optional(),
 });
 
 const stacerModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
+    cost: z.number().nullable().optional(),
+    sellPriceExclGst: z.number().nullable().optional(),
+    freightCostExclGst: z.number().nullable().optional(),
     specifications: z.object({
         minHp: z.number().min(0).default(0),
         maxHp: z.number().min(0).default(0),
@@ -64,7 +58,6 @@ const stacerModelSchema = z.object({
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
-    variantPricing: z.array(variantPricingSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof stacerModelSchema>;
@@ -74,7 +67,7 @@ const GST_RATE = 0.10;
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field } = useController({ control, name, defaultValue: null });
 
-    const valueExcl = field.value; // Can be a number or null
+    const valueExcl = field.value;
     const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,62 +219,40 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
     const [bulkFeatures, setBulkFeatures] = useState('');
     const loadedModelIdRef = useRef<string | null>(null);
 
+    const getSafeDefaultValues = (modelData: any): Partial<ModelFormData> => {
+        const data = modelData || {};
+        const specs = data.specifications || {};
+        return {
+            coverImageUrl: data.coverImageUrl ?? null,
+            galleryImageUrls: data.galleryImageUrls ?? [],
+            cost: data.cost ?? null,
+            sellPriceExclGst: data.sellPriceExclGst ?? null,
+            freightCostExclGst: data.freightCostExclGst ?? null,
+            specifications: {
+                minHp: specs.minHp ?? 0,
+                maxHp: specs.maxHp ?? 0,
+                recommendedHp: specs.recommendedHp ?? 0,
+                otherSpecs: specs.otherSpecs ?? [],
+            },
+            standardFeatures: data.standardFeatures ?? [],
+            optionalFeatures: (data.optionalFeatures || []).map((f: any) => ({
+                ...f,
+                cost: f.cost ?? null,
+                sellPriceExclGst: f.sellPriceExclGst ?? null,
+            })),
+            colors: data.colors ?? [],
+        };
+    };
+
     const form = useForm<ModelFormData>({
         resolver: zodResolver(stacerModelSchema),
+        defaultValues: getSafeDefaultValues(model),
     });
     
     useEffect(() => {
-        if (model?.id && model.id === loadedModelIdRef.current) {
-            return;
-        }
-
-        const safeModel = model || {};
-        const defaultValues: Partial<ModelFormData> = {
-            coverImageUrl: safeModel.coverImageUrl ?? null,
-            galleryImageUrls: safeModel.galleryImageUrls ?? [],
-            specifications: {
-                minHp: safeModel.specifications?.minHp ?? 0,
-                maxHp: safeModel.specifications?.maxHp ?? 0,
-                recommendedHp: safeModel.specifications?.recommendedHp ?? 0,
-                otherSpecs: safeModel.specifications?.otherSpecs ?? [],
-            },
-            standardFeatures: safeModel.standardFeatures ?? [],
-            optionalFeatures: safeModel.optionalFeatures ?? [],
-            colors: safeModel.colors ?? [],
-            variantPricing: [],
-        };
-    
-        const variants: z.infer<typeof variantPricingSchema>[] = [];
-        const existingPricing = new Map(
-            (safeModel.variantPricing || []).map((p: any) => [p.colorId, p])
-        );
-    
-        (defaultValues.colors || []).forEach(color => {
-            const key = color.id;
-            const existing = existingPricing.get(key);
-            if (existing) {
-                variants.push({
-                    ...existing,
-                    cost: existing.cost ?? null,
-                    sellPriceExclGst: existing.sellPriceExclGst ?? null,
-                    freightCostExclGst: existing.freightCostExclGst ?? null,
-                });
-            } else {
-                variants.push({
-                    colorId: color.id,
-                    colorName: color.name,
-                    cost: null,
-                    sellPriceExclGst: null,
-                    freightCostExclGst: null,
-                });
-            }
-        });
-
-        variants.sort((a, b) => a.colorName.localeCompare(b.colorName));
-        defaultValues.variantPricing = variants;
-
-        form.reset(defaultValues);
-        if (model?.id) {
+        const isNewModel = model && model.id !== loadedModelIdRef.current;
+        if (isNewModel) {
+            form.reset(getSafeDefaultValues(model));
             loadedModelIdRef.current = model.id;
         }
     }, [model, form]);
@@ -291,7 +262,6 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
     const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control: form.control, name: 'galleryImageUrls' });
-    const { fields: variantPricingFields } = useFieldArray({ control: form.control, name: 'variantPricing' });
     
     const watchedColors = useWatch({ control: form.control, name: 'colors' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
@@ -303,7 +273,9 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         updateDoc(modelDocRef, values)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
-                form.reset(values, { keepValues: true });
+                if (loadedModelIdRef.current) {
+                    form.reset(getSafeDefaultValues(values), { keepValues: true, keepDirty: false });
+                }
             })
             .catch((serverError) => {
                  const permissionError = new FirestorePermissionError({
@@ -328,7 +300,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                    <Button type="submit">
+                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>
@@ -448,6 +420,18 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                     </div>
 
                     <div className="lg:col-span-3 space-y-8">
+                         <Collapsible asChild defaultOpen>
+                             <Card>
+                                <CollapsibleCardHeader title="Pricing" />
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-6">
+                                        <GstInputPair control={form.control} name="cost" label="Base Cost" />
+                                        <GstInputPair control={form.control} name="sellPriceExclGst" label="Base Sell" />
+                                        <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Cover Image" />
@@ -541,7 +525,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                         <Collapsible asChild defaultOpen>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Features">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
@@ -555,44 +539,6 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                         </Collapsible>
                     </div>
                 </div>
-
-                <Collapsible asChild defaultOpen>
-                    <Card>
-                        <CollapsibleCardHeader title="Variant Costing" description="Define pricing for each model variant based on color." />
-                        <CollapsibleContent>
-                            <CardContent>
-                                <div className="rounded-md border">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Variant (Color)</TableHead>
-                                                <TableHead>Base Cost</TableHead>
-                                                <TableHead>Base Sell</TableHead>
-                                                <TableHead>Freight Cost</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {variantPricingFields.length > 0 ? variantPricingFields.map((field, index) => (
-                                                <TableRow key={field.id}>
-                                                    <TableCell className="font-medium">{field.colorName}</TableCell>
-                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.cost`} label="" /></TableCell>
-                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.sellPriceExclGst`} label="" /></TableCell>
-                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.freightCostExclGst`} label="" /></TableCell>
-                                                </TableRow>
-                                            )) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
-                                                        No variants to price. Add some color options to get started.
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </CardContent>
-                        </CollapsibleContent>
-                    </Card>
-                </Collapsible>
             </form>
         </Form>
     );
