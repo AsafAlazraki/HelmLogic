@@ -58,7 +58,6 @@ const packageSchema = z.object({
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
-    material: z.enum(['HYP', 'PVC']).optional(),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
     freightCostExclGst: z.coerce.number().min(0).default(0),
@@ -363,7 +362,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         return {
             coverImageUrl: data.coverImageUrl ?? null,
             galleryImageUrls: data.galleryImageUrls ?? [],
-            material: data.material,
             cost: data.cost ?? 0,
             sellPriceExclGst: data.sellPriceExclGst ?? 0,
             freightCostExclGst: data.freightCostExclGst ?? 0,
@@ -579,48 +577,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Material</CardTitle>
-                                <CardDescription>Select the hull material for this model.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <FormField
-                                    control={form.control}
-                                    name="material"
-                                    render={({ field }) => (
-                                        <FormItem className="space-y-3">
-                                            <FormControl>
-                                                <RadioGroup
-                                                    onValueChange={field.onChange}
-                                                    value={field.value}
-                                                    className="flex flex-col space-y-1"
-                                                >
-                                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                                        <FormControl>
-                                                            <RadioGroupItem value="HYP" />
-                                                        </FormControl>
-                                                        <FormLabel className="font-normal">
-                                                            HYP (Hypalon)
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                                        <FormControl>
-                                                            <RadioGroupItem value="PVC" />
-                                                        </FormControl>
-                                                        <FormLabel className="font-normal">
-                                                            PVC (Polyvinyl Chloride)
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                </RadioGroup>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </CardContent>
-                        </Card>
                         
                         <Collapsible asChild defaultOpen>
                             <Card>
