@@ -41,30 +41,30 @@ const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.coerce.number().min(0).nullable().optional(),
-    sellPriceExclGst: z.coerce.number().min(0).nullable().optional(),
+    cost: z.number().min(0).nullable().optional(),
+    sellPriceExclGst: z.number().min(0).nullable().optional(),
 });
 
 const packageSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.coerce.number().min(0).nullable().optional(),
-    sellPriceExclGst: z.coerce.number().min(0).nullable().optional(),
-    freightCostExclGst: z.coerce.number().min(0).nullable().optional(),
+    cost: z.number().min(0).nullable().optional(),
+    sellPriceExclGst: z.number().min(0).nullable().optional(),
+    freightCostExclGst: z.number().min(0).nullable().optional(),
     includedFeatures: z.array(z.string()).default([]),
 });
 
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
-    cost: z.coerce.number().min(0).nullable().optional(),
-    sellPriceExclGst: z.coerce.number().min(0).nullable().optional(),
-    freightCostExclGst: z.coerce.number().min(0).nullable().optional(),
+    cost: z.number().min(0).nullable().optional(),
+    sellPriceExclGst: z.number().min(0).nullable().optional(),
+    freightCostExclGst: z.number().min(0).nullable().optional(),
     specifications: z.object({
-        minHp: z.coerce.number().min(0).default(0),
-        maxHp: z.coerce.number().min(0).default(0),
-        recommendedHp: z.coerce.number().min(0).default(0),
+        minHp: z.number().min(0).default(0),
+        maxHp: z.number().min(0).default(0),
+        recommendedHp: z.number().min(0).default(0),
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
@@ -403,19 +403,10 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     
     useEffect(() => {
         if (!model?.id) return;
-    
         const isNewModel = model.id !== loadedModelIdRef.current;
-    
         if (isNewModel) {
-            form.reset(getSafeDefaultValues(model), { keepIsDirty: false });
+            form.reset(getSafeDefaultValues(model));
             loadedModelIdRef.current = model.id;
-        } else {
-            const currentFormValues = form.getValues();
-            if (JSON.stringify(getSafeDefaultValues(model)) !== JSON.stringify(currentFormValues)) {
-                 if (!form.formState.isDirty) {
-                    form.reset(getSafeDefaultValues(model), { keepIsDirty: false });
-                 }
-            }
         }
     }, [model, form]);
 
