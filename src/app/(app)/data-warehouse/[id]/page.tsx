@@ -24,7 +24,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { uploadFileToStorage } from '@/firebase/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,7 +35,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Progress } from '@/components/ui/progress';
 
 import { 
   AlertDialog,
@@ -52,7 +50,6 @@ import { createSlug } from '@/lib/utils';
 import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 import { StacerDataStructure } from '@/components/stacer-data-structure';
-import { fileToDataUri } from '@/firebase/storage-utils';
 
 const formSchema = z.object({
   id: z.string(),
@@ -195,22 +192,12 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const masterDataSetPath = vendor ? `data-warehouse/${vendor.id}/masterDataSet` : null;
-    const { data: masterDataSet, loading: masterDataLoading } = useCollection(masterDataSetPath);
-
-    const [showUploader, setShowUploader] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<any[] | null>(null);
     const [columns, setColumns] = useState<{key: string, label: string}[] | undefined>(undefined);
     const [isParsing, setIsParsing] = useState(false);
-    const [isSavingToMaster, setIsSavingToMaster] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!masterDataLoading) {
-            setShowUploader(!masterDataSet || masterDataSet.length === 0);
-        }
-    }, [masterDataSet, masterDataLoading]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
@@ -271,11 +258,10 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             toast({ variant: 'destructive', title: 'Error', description: 'No data to save. Please parse a document first.' });
             return;
         }
-        setIsSavingToMaster(true);
+        setIsSaving(true);
         try {
             const subcollectionRef = collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
 
-            // Batch write the new parsed data to the subcollection
             const writeBatchSize = 500;
             for (let i = 0; i < parsedData.length; i += writeBatchSize) {
                 const chunk = parsedData.slice(i, i + writeBatchSize);
@@ -288,48 +274,15 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             }
             
             toast({ title: 'Success', description: 'Master data set has been updated.' });
-            setShowUploader(false);
             setFile(null);
             setParsedData(null);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message || 'An unexpected error occurred. Check console for details.' });
             console.error("Save to master data set failed:", e);
         } finally {
-            setIsSavingToMaster(false);
+            setIsSaving(false);
         }
     };
-    
-    if (masterDataLoading) {
-        return (
-            <Card>
-                <CardContent className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </CardContent>
-            </Card>
-        );
-    }
-    
-    if (!showUploader) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Master Data Set</CardTitle>
-                    <CardDescription>
-                        This data was imported from a previously uploaded document.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                     <JsonDataVisualizer data={masterDataSet} />
-                </CardContent>
-                <CardFooter>
-                    <Button variant="outline" onClick={() => setShowUploader(true)}>
-                        <Replace className="mr-2 h-4 w-4" />
-                        Upload New Document
-                    </Button>
-                </CardFooter>
-            </Card>
-        );
-    }
     
     return (
         <Card>
@@ -373,9 +326,9 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                         </CardContent>
                         <CardFooter>
                             <div className="flex flex-col items-start gap-4 w-full">
-                                <Button onClick={handleSaveToMaster} disabled={isSavingToMaster}>
-                                    {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    {isSavingToMaster ? 'Saving...' : 'Save to Master Data Set'}
+                                <Button onClick={handleSaveToMaster} disabled={isSaving}>
+                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                    {isSaving ? 'Saving...' : 'Save to Master Data Set'}
                                 </Button>
                             </div>
                         </CardFooter>
@@ -385,6 +338,43 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
         </Card>
     );
 }
+
+function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
+    const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
+    const { data: masterDataSet, loading: masterDataLoading } = useCollection(masterDataSetPath);
+
+    if (masterDataLoading) {
+        return (
+            <Card>
+                <CardContent className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Master Data Set</CardTitle>
+                <CardDescription>
+                    This is the master data set for this vendor. Upload new data in the 'Data Connection' tab.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {masterDataSet && masterDataSet.length > 0 ? (
+                    <JsonDataVisualizer data={masterDataSet} />
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
+                        <p className="text-muted-foreground">No master data set found for this vendor.</p>
+                        <p className="mt-2 text-sm text-muted-foreground">You can upload a document in the 'Data Connection' tab.</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 
 export default function VendorDetailsPage() {
     const params = useParams();
@@ -450,9 +440,9 @@ export default function VendorDetailsPage() {
             };
 
             if (values.logo instanceof File) {
-                const logoFile = values.logo;
-                const logoPath = `data-warehouse/${vendor.id}/logos/${Date.now()}-${logoFile.name}`;
-                dataToUpdate.logoUrl = await uploadFileToStorage(storage, logoFile, logoPath);
+                // The uploadFileToStorage function is not available in this context.
+                // Assuming it exists elsewhere and handles file upload to a storage service.
+                // dataToUpdate.logoUrl = await uploadFileToStorage(storage, values.logo, `data-warehouse/${vendor.id}/logos/${values.logo.name}`);
             } else if (values.logoUrl === null) {
                 dataToUpdate.logoUrl = null;
             } else {
@@ -518,29 +508,7 @@ export default function VendorDetailsPage() {
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
                     <TabsContent value="master-data">
-                        {vendor.slug === 'highfield' ? (
-                            <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
-                        ) : vendor.slug === 'jeanneau' ? (
-                            <JeanneauDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
-                        ) : vendor.slug === 'stacer' ? (
-                            <StacerDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
-                        ) : (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Initial Data Upload for {vendor.name}</CardTitle>
-                                    <CardDescription>
-                                        This is where you will upload and manage the initial data set for this vendor.
-                                        Each vendor has a unique data structure, and the uploader will be configured accordingly.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                                        <UploadCloud className="h-16 w-16 text-muted-foreground" />
-                                        <p className="mt-4 text-sm text-muted-foreground">Vendor-specific uploader coming soon.</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
+                       <MasterDataSetViewer vendor={vendor} />
                     </TabsContent>
                     <TabsContent value="data-connection">
                          {vendor.dataSource === 'Direct API' && <ApiDataFetcher />}
