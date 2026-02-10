@@ -78,7 +78,7 @@ type ModelFormData = z.infer<typeof modelSchema>;
 const GST_RATE = 0.10;
 
 function GstInputPair({ control, name, label }: { control: any, name: string, label: string }) {
-    const { field } = useController({ control, name });
+    const { field } = useController({ control, name, defaultValue: null });
 
     const valueExcl = field.value; // Can be a number or null
     const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
@@ -399,11 +399,11 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
     const form = useForm<ModelFormData>({
         resolver: zodResolver(modelSchema),
+        defaultValues: getSafeDefaultValues(model),
     });
     
     useEffect(() => {
-        if (!model?.id) return;
-        const isNewModel = model.id !== loadedModelIdRef.current;
+        const isNewModel = model && model.id !== loadedModelIdRef.current;
         if (isNewModel) {
             form.reset(getSafeDefaultValues(model));
             loadedModelIdRef.current = model.id;
@@ -451,7 +451,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit">
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>
