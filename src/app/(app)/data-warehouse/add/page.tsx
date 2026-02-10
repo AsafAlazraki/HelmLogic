@@ -37,7 +37,6 @@ const formSchema = z.object({
   address: z.string().optional(),
   abn: z.string().optional(),
   logo: z.any().optional(),
-  attachment: z.any().optional(),
   primaryContact: z.string().optional(),
   website: z.string().optional(),
   notes: z.string().optional(),
@@ -53,7 +52,6 @@ export default function AddVendorPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
-    const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
     const { toast } = useToast();
     const firestore = useFirestore();
     const storage = useStorage();
@@ -70,7 +68,6 @@ export default function AddVendorPage() {
           website: '',
           notes: '',
           logo: null,
-          attachment: null,
         },
     });
 
@@ -92,21 +89,12 @@ export default function AddVendorPage() {
                 website: values.website || '',
                 notes: values.notes || '',
                 logoUrl: null,
-                attachmentUrl: null,
-                attachmentName: null,
             };
 
             if (values.logo instanceof File) {
                 const logoFile = values.logo;
                 const logoPath = `data-warehouse/${vendorId}/logos/${Date.now()}-${logoFile.name}`;
                 dataToCreate.logoUrl = await uploadFileToStorage(storage, logoFile, logoPath);
-            }
-
-            if (values.attachment instanceof File) {
-                const attachmentFile = values.attachment;
-                const attachmentPath = `data-warehouse/${vendorId}/attachments/${Date.now()}-${attachmentFile.name}`;
-                dataToCreate.attachmentUrl = await uploadFileToStorage(storage, attachmentFile, attachmentPath);
-                dataToCreate.attachmentName = attachmentFile.name;
             }
 
             await setDoc(newVendorRef, dataToCreate).catch((serverError) => {
@@ -284,7 +272,7 @@ export default function AddVendorPage() {
                              <div className="lg:col-span-1 space-y-8">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Branding &amp; Attachments</CardTitle>
+                                        <CardTitle>Branding</CardTitle>
                                         <CardDescription>Upload logos and other relevant files.</CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-6">
@@ -321,39 +309,6 @@ export default function AddVendorPage() {
                                                 </FormControl>
                                                 <FormDescription>
                                                     Upload the vendor's logo.
-                                                </FormDescription>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="attachment"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>File Attachment</FormLabel>
-                                                {attachmentPreview && (
-                                                    <div className="mt-2 text-sm text-muted-foreground p-2 bg-muted rounded-md">
-                                                        Selected file: <strong>{attachmentPreview}</strong>
-                                                    </div>
-                                                )}
-                                                <FormControl>
-                                                    <Input 
-                                                        type="file" 
-                                                        onChange={(event) => {
-                                                            const file = event.target.files?.[0];
-                                                            field.onChange(file);
-                                                            if (file) {
-                                                                setAttachmentPreview(file.name);
-                                                            } else {
-                                                                setAttachmentPreview(null);
-                                                            }
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    Upload any relevant file (e.g., contract, price list).
                                                 </FormDescription>
                                                 <FormMessage />
                                                 </FormItem>

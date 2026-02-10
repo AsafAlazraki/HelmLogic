@@ -192,14 +192,6 @@
         "notes": {
           "type": "string",
           "description": "General notes about the vendor."
-        },
-        "attachmentName": {
-          "type": "string",
-          "description": "The name of the uploaded file attachment."
-        },
-        "attachmentUrl": {
-          "type": "string",
-          "description": "The data URI of the uploaded file attachment."
         }
       },
       "required": [

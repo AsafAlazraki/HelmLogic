@@ -13,7 +13,7 @@ import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav'
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage } from '@/firebase/provider';
-import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
@@ -63,13 +63,10 @@ const formSchema = z.object({
   address: z.string().nullable().optional(),
   abn: z.string().nullable().optional(),
   logo: z.any().optional(),
-  attachment: z.any().optional(),
   primaryContact: z.string().nullable().optional(),
   website: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   logoUrl: z.string().nullable().optional(),
-  attachmentUrl: z.string().nullable().optional(),
-  attachmentName: z.string().nullable().optional(),
 });
 
 type VendorFormData = z.infer<typeof formSchema>;
@@ -196,7 +193,6 @@ function ApiDataFetcher() {
 
 function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     const firestore = useFirestore();
-    const storage = useStorage();
     const { toast } = useToast();
 
     const masterDataSetPath = vendor ? `data-warehouse/${vendor.id}/masterDataSet` : null;
@@ -271,31 +267,15 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     };
     
     const handleSaveToMaster = async () => {
-        if (!parsedData || !file || !vendor) {
+        if (!parsedData || !vendor) {
             toast({ variant: 'destructive', title: 'Error', description: 'No data to save. Please parse a document first.' });
             return;
         }
         setIsSavingToMaster(true);
         try {
-            // 1. Upload the original file to storage
-            const filePath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${file.name}`;
-            const downloadURL = await uploadFileToStorage(storage, file, filePath);
-    
             const subcollectionRef = collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
-            
-            // 2. Clear old data from the subcollection in batches
-            const oldDataSnapshot = await getDocs(subcollectionRef);
-            if (!oldDataSnapshot.empty) {
-                const deleteBatchSize = 500;
-                for (let i = 0; i < oldDataSnapshot.docs.length; i += deleteBatchSize) {
-                    const chunk = oldDataSnapshot.docs.slice(i, i + deleteBatchSize);
-                    const deleteBatch = writeBatch(firestore);
-                    chunk.forEach(doc => deleteBatch.delete(doc.ref));
-                    await deleteBatch.commit();
-                }
-            }
-    
-            // 3. Batch write the new parsed data to the subcollection
+
+            // Batch write the new parsed data to the subcollection
             const writeBatchSize = 500;
             for (let i = 0; i < parsedData.length; i += writeBatchSize) {
                 const chunk = parsedData.slice(i, i + writeBatchSize);
@@ -306,13 +286,6 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 });
                 await writeBatchInstance.commit();
             }
-    
-            // 4. Update the vendor document with the new attachment URL
-            const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
-            await updateDoc(vendorDocRef, {
-                attachmentUrl: downloadURL,
-                attachmentName: file.name
-            });
             
             toast({ title: 'Success', description: 'Master data set has been updated.' });
             setShowUploader(false);
@@ -342,7 +315,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 <CardHeader>
                     <CardTitle>Master Data Set</CardTitle>
                     <CardDescription>
-                        This data was imported from: <strong>{vendor.attachmentName || 'an uploaded document'}</strong>
+                        This data was imported from a previously uploaded document.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -435,7 +408,6 @@ export default function VendorDetailsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
-    const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
 
     const form = useForm<VendorFormData>({
         resolver: zodResolver(formSchema),
@@ -446,7 +418,6 @@ export default function VendorDetailsPage() {
         if (vendor) {
             form.reset(vendor);
             if (vendor.logoUrl) setLogoPreview(vendor.logoUrl);
-            if (vendor.attachmentName) setAttachmentPreview(vendor.attachmentName);
         }
     }, [vendor, form]);
 
@@ -488,19 +459,6 @@ export default function VendorDetailsPage() {
                 dataToUpdate.logoUrl = vendor.logoUrl || null;
             }
             
-            if (values.attachment instanceof File) {
-                const attachmentFile = values.attachment;
-                const attachmentPath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${attachmentFile.name}`;
-                dataToUpdate.attachmentUrl = await uploadFileToStorage(storage, attachmentFile, attachmentPath);
-                dataToUpdate.attachmentName = attachmentFile.name;
-            } else if (values.attachmentUrl === null) {
-                dataToUpdate.attachmentUrl = null;
-                dataToUpdate.attachmentName = null;
-            } else {
-                dataToUpdate.attachmentUrl = vendor.attachmentUrl || null;
-                dataToUpdate.attachmentName = vendor.attachmentName || null;
-            }
-
             await setDoc(vendorDocRef, dataToUpdate, { merge: true })
                 .catch((serverError) => {
                     const permissionError = new FirestorePermissionError({
@@ -637,7 +595,7 @@ export default function VendorDetailsPage() {
 
                                     <div className="lg:col-span-1 space-y-8">
                                         <Card>
-                                            <CardHeader><CardTitle>Branding & Attachments</CardTitle></CardHeader>
+                                            <CardHeader><CardTitle>Branding</CardTitle></CardHeader>
                                             <CardContent className="space-y-6">
                                                 <FormField control={form.control} name="logo" render={({ field }) => (
                                                     <FormItem>
@@ -668,39 +626,6 @@ export default function VendorDetailsPage() {
                                                             }} />
                                                         </FormControl>
                                                         <FormDescription>Upload a new logo.</FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )} />
-                                                <FormField control={form.control} name="attachment" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>File Attachment</FormLabel>
-                                                        {attachmentPreview && (
-                                                            <div className="mt-2 relative group p-2 bg-muted rounded-md">
-                                                                <p className="text-sm text-muted-foreground pr-6">Selected: <strong>{attachmentPreview}</strong></p>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="destructive"
-                                                                    size="icon"
-                                                                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                    onClick={() => {
-                                                                        setAttachmentPreview(null);
-                                                                        form.setValue('attachmentUrl', null);
-                                                                        form.setValue('attachmentName', null);
-                                                                        field.onChange(null);
-                                                                    }}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                        <FormControl>
-                                                            <Input type="file" onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                field.onChange(file);
-                                                                setAttachmentPreview(file ? file.name : null);
-                                                            }} />
-                                                        </FormControl>
-                                                        <FormDescription>Upload a new file.</FormDescription>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )} />
