@@ -410,9 +410,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             form.reset(getSafeDefaultValues(model), { keepIsDirty: false });
             loadedModelIdRef.current = model.id;
         } else {
-            // If it's the same model, we only update if the server data is different
-            // to avoid overwriting user's current (dirty) form state.
-            // This is a simplified check. A deep comparison would be more robust.
             const currentFormValues = form.getValues();
             if (JSON.stringify(getSafeDefaultValues(model)) !== JSON.stringify(currentFormValues)) {
                  if (!form.formState.isDirty) {
@@ -723,5 +720,3 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         </Form>
     );
 }
-
-    
