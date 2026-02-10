@@ -44,16 +44,6 @@ const optionalFeatureSchema = z.object({
     sellPriceExclGst: z.coerce.number().min(0).default(0),
 });
 
-const packageSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, 'Package name is required'),
-    imageUrl: z.string().nullable().optional(),
-    cost: z.coerce.number().min(0).default(0),
-    sellPriceExclGst: z.coerce.number().min(0).default(0),
-    freightCostExclGst: z.coerce.number().min(0).default(0),
-    includedFeatures: z.array(z.string()).default([]),
-});
-
 const variantPricingSchema = z.object({
     colorId: z.string(),
     colorName: z.string(),
@@ -74,7 +64,6 @@ const highfieldModelSchema = z.object({
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
-    packages: z.array(packageSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
     variantPricing: z.array(variantPricingSchema).default([]),
 });
@@ -139,139 +128,6 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                 </FormItem>
             </div>
         </div>
-    );
-}
-
-function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: `packages.${packageIndex}.includedFeatures`
-    });
-
-    return (
-        <div className="space-y-2 pt-4 mt-4 border-t">
-            <div className="flex justify-between items-center">
-                <FormLabel className="text-xs text-muted-foreground">Included Features</FormLabel>
-                <Button type="button" variant="ghost" size="sm" onClick={() => append('')}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add
-                </Button>
-            </div>
-            {fields.map((field, index) => (
-                <div key={field.id} className="flex items-center gap-2">
-                    <FormField
-                        control={control}
-                        name={`packages.${packageIndex}.includedFeatures.${index}`}
-                        render={({ field }) => (
-                            <FormItem className="flex-1">
-                                <FormControl><Input {...field} placeholder={`Feature ${index + 1}`} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-function PackageItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
-    const imageUrl = useWatch({ control: form.control, name: `packages.${index}.imageUrl` });
-    const {control} = form;
-
-    return (
-        <Collapsible asChild>
-            <Card key={index} className="bg-muted/50 overflow-hidden">
-                 <div className="p-4 flex justify-between items-start">
-                    <div className="flex-1 pr-4">
-                        <FormField control={form.control} name={`packages.${index}.name`} render={({ field }) => ( 
-                            <FormItem>
-                                <FormControl>
-                                    <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" placeholder="Package Name" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem> 
-                        )} />
-                    </div>
-                    <div className="flex items-center">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => remove(index)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </Button>
-                        </CollapsibleTrigger>
-                    </div>
-                </div>
-                <CollapsibleContent>
-                    <div className="px-4 pb-4 space-y-4">
-                        <FormField
-                            control={control}
-                            name={`packages.${index}.imageUrl`}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="sr-only">Package Image</FormLabel>
-                                    {imageUrl ? (
-                                        <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                            <Image src={imageUrl} alt="Package image" fill className="object-cover" />
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="icon"
-                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                onClick={() => field.onChange(null)}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center justify-center w-full">
-                                            <label htmlFor={`package-upload-${index}`} className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                    <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
-                                                </div>
-                                                <FormControl>
-                                                    <Input id={`package-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) field.onChange(await fileToDataUri(file));
-                                                    }} />
-                                                </FormControl>
-                                            </label>
-                                        </div> 
-                                    )}
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Collapsible>
-                            <CollapsibleTrigger asChild>
-                                <Button type="button" variant="ghost" className="w-full justify-between px-0 hover:bg-transparent -mb-2">
-                                    <span className="text-xs text-muted-foreground font-semibold">PRICING</span>
-                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="space-y-4 pt-2">
-                                <GstInputPair control={control} name={`packages.${index}.cost`} label="Cost" />
-                                <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Sell Price" />
-                                <GstInputPair control={control} name={`packages.${index}.freightCostExclGst`} label="Freight Cost" />
-                            </CollapsibleContent>
-                        </Collapsible>
-
-                        <IncludedFeatures packageIndex={index} />
-                    </div>
-                </CollapsibleContent>
-            </Card>
-        </Collapsible>
     );
 }
 
@@ -387,7 +243,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             },
             standardFeatures: safeModel.standardFeatures ?? [],
             optionalFeatures: safeModel.optionalFeatures ?? [],
-            packages: (safeModel.packages || []).map((p: any) => ({ ...p, includedFeatures: p.includedFeatures ?? [] })),
             colors: safeModel.colors ?? [],
             variantPricing: [],
         };
@@ -430,7 +285,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
-    const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({ control: form.control, name: "packages" });
     const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control: form.control, name: 'galleryImageUrls' });
@@ -533,23 +387,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </Card>
                         </Collapsible>
                         
-                        {/* Packages Card */}
-                        <Collapsible asChild defaultOpen>
-                            <Card>
-                                <CollapsibleCardHeader title="Optional Packages">
-                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: '', imageUrl: '', cost: 0, sellPriceExclGst: 0, freightCostExclGst: 0, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Package</Button>
-                                </CollapsibleCardHeader>
-                                <CollapsibleContent>
-                                    <CardContent className="space-y-4">
-                                        {packageFields.map((field, index) => (
-                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} />
-                                        ))}
-                                        {packageFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional packages added.</p>}
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
-                        
                         {/* Colors Card */}
                         <Collapsible asChild defaultOpen>
                             <Card>
@@ -615,8 +452,8 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex h-full cursor-default flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4">HYP (Hypalon)</div>
-                                    <div className="flex h-full cursor-default flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4">PVC (Polyvinyl Chloride)</div>
+                                    <div className="flex h-full cursor-default flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm">HYP (Hypalon)</div>
+                                    <div className="flex h-full cursor-default flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm">PVC (Polyvinyl Chloride)</div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -739,8 +576,8 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Variant (Color / Material)</TableHead>
-                                                <TableHead>Cost</TableHead>
-                                                <TableHead>Sell Price</TableHead>
+                                                <TableHead>Base Cost</TableHead>
+                                                <TableHead>Base Sell</TableHead>
                                                 <TableHead>Freight Cost</TableHead>
                                             </TableRow>
                                         </TableHeader>
