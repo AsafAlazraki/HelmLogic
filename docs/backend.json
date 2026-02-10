@@ -200,6 +200,14 @@
         "attachmentUrl": {
           "type": "string",
           "description": "The data URI of the uploaded file attachment."
+        },
+        "masterDataSet": {
+          "type": "array",
+          "description": "Structured data extracted from an uploaded document.",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
         }
       },
       "required": [
@@ -414,6 +422,41 @@
             "maxHp",
             "recommendedHp"
           ]
+        },
+        "variantPricing": {
+          "type": "array",
+          "description": "Pricing for specific model variants (e.g., by color and material). Highfield specific.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "colorId": {
+                "type": "string"
+              },
+              "colorName": {
+                "type": "string"
+              },
+              "material": {
+                "type": "string",
+                "enum": [
+                  "HYP",
+                  "PVC"
+                ]
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "freightCostExclGst": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "colorId",
+              "material"
+            ]
+          }
         }
       },
       "required": [

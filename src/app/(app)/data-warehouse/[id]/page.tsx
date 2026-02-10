@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
-import * as XLSX from 'xlsx';
 import Link from 'next/link';
 
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
@@ -15,7 +14,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, Upload, UploadCloud, FileCog } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, UploadCloud, FileCog, FileUp, Replace } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -71,35 +70,37 @@ const formSchema = z.object({
   logoUrl: z.string().nullable().optional(),
   attachmentUrl: z.string().nullable().optional(),
   attachmentName: z.string().nullable().optional(),
+  masterDataSet: z.array(z.any()).optional(),
 });
 
 type VendorFormData = z.infer<typeof formSchema>;
 
-function JsonDataVisualizer({ data }: { data: any }) {
+function JsonDataVisualizer({ data, columns }: { data: any, columns?: {key: string, label: string}[] }) {
     if (!data || (Array.isArray(data) && data.length === 0)) {
         return <p className="text-muted-foreground p-4 text-center">No data to visualize.</p>;
     }
 
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
-        // Array of objects -> render a table
-        const headers = Object.keys(data[0]);
+        const headers = columns ? columns.map(c => c.label) : Object.keys(data[0]);
+        const keys = columns ? columns.map(c => c.key) : headers;
+
         return (
             <div className="max-h-[600px] overflow-auto rounded-md border">
                 <Table>
                     <TableHeader className="sticky top-0 bg-secondary z-10">
                         <TableRow>
-                            {headers.map(header => <TableHead key={header} className="whitespace-nowrap">{header}</TableHead>)}
+                            {headers.map((header, idx) => <TableHead key={`${header}-${idx}`} className="whitespace-nowrap">{header}</TableHead>)}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {data.map((row, rowIndex) => (
                             <TableRow key={rowIndex} className="odd:bg-muted/50">
-                                {headers.map(header => (
-                                    <TableCell key={`${rowIndex}-${header}`} className="align-top text-sm">
-                                        {typeof row[header] === 'object' && row[header] !== null ? (
-                                            <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto"><code>{JSON.stringify(row[header], null, 2)}</code></pre>
+                                {keys.map((key, colIndex) => (
+                                    <TableCell key={`${rowIndex}-${colIndex}`} className="align-top text-sm">
+                                        {typeof row[key] === 'object' && row[key] !== null ? (
+                                            <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto"><code>{JSON.stringify(row[key], null, 2)}</code></pre>
                                         ) : (
-                                            String(row[header])
+                                            String(row[key] ?? '')
                                         )}
                                     </TableCell>
                                 ))}
@@ -112,7 +113,6 @@ function JsonDataVisualizer({ data }: { data: any }) {
     }
 
     if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-        // Single object -> render key-value list
         return (
              <div className="max-h-[600px] overflow-auto rounded-md border p-4 space-y-3 bg-secondary/30">
                 {Object.entries(data).map(([key, value]) => (
@@ -131,7 +131,6 @@ function JsonDataVisualizer({ data }: { data: any }) {
         );
     }
     
-    // Fallback for primitive types or other cases
     return <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm"><code>{JSON.stringify(data, null, 2)}</code></pre>;
 }
 
@@ -181,7 +180,6 @@ function ApiDataFetcher() {
                     }
                 }
 
-                // Handle Zoho-like specific error format in the body of a 200 OK response
                 if (pageData.code && pageData.code !== 3000 && pageData.result?.status === 'Failure') {
                     const errorMessage = pageData.result?.errors?.[0] || pageData.message || 'The API returned an error in the response body.';
                     throw new Error(`API Error: ${errorMessage}`);
@@ -192,15 +190,13 @@ function ApiDataFetcher() {
                 if (Array.isArray(items)) {
                     collectedData.push(...items);
                 } else if (isFirstRequest) {
-                    // Not an array of items, not a paginated object we recognize. Treat as single object response.
                     collectedData.push(pageData);
-                    nextUrl = null; // Stop after this
+                    nextUrl = null;
                     continue;
                 }
 
                 isFirstRequest = false;
 
-                // Pagination logic
                 let tempNextUrl = null;
                 const hasMoreZoho = pageData.more_records === true || pageData.more_records === 'true'; 
                 if (url.includes('zohoapis.com') && pageData.data && 'more_records' in pageData) {
@@ -209,7 +205,6 @@ function ApiDataFetcher() {
                         const currentPage = parseInt(currentUrl.searchParams.get('pageIndex') || '1', 10);
                         currentUrl.searchParams.set('pageIndex', (currentPage + 1).toString());
                         tempNextUrl = currentUrl.toString();
-                        // Safety break
                         if (currentPage >= 100) {
                             toast({ variant: 'default', title: 'Stopping fetch', description: 'Reached 100 page limit.' });
                             tempNextUrl = null;
@@ -218,7 +213,6 @@ function ApiDataFetcher() {
                         tempNextUrl = null;
                     }
                 } else {
-                    // Generic link-based pagination
                     tempNextUrl = pageData.next || pageData.links?.next || null;
                 }
                 nextUrl = tempNextUrl;
@@ -232,7 +226,7 @@ function ApiDataFetcher() {
             });
         } catch (e: any) {
             let errorMessage = e.message || 'Failed to fetch or parse data.';
-            if (e.message && e.message.includes('Failed to fetch')) { // Check generic error message from server action
+            if (e.message && e.message.includes('Failed to fetch')) {
                  errorMessage = 'A network error occurred. This is often due to a CORS policy or the URL is unreachable from the server.';
             }
             setError(errorMessage);
@@ -397,190 +391,158 @@ function ApiDataFetcher() {
     );
 }
 
-function DocumentExtractor() {
+function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
+    const [showUploader, setShowUploader] = useState(!vendorData.masterDataSet || vendorData.masterDataSet.length === 0);
     const [file, setFile] = useState<File | null>(null);
-    const [processed, setProcessed] = useState(false);
-    const [rowCount, setRowCount] = useState(0);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [analysis, setAnalysis] = useState<AnalyzeDocumentOutput | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isSavingToMaster, setIsSavingToMaster] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [instructions, setInstructions] = useState('Extract all data from the document. Present it as a list of JSON objects. Suggest appropriate column headers for a table view.');
+
     const { toast } = useToast();
+    const firestore = useFirestore();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
         setFile(selectedFile);
-        setProcessed(false);
-        setRowCount(0);
+        setAnalysis(null);
         setError(null);
     };
 
-    const robustCsvParser = (csvText: string): string[][] => {
-        const rows: string[][] = [];
-        let currentRow: string[] = [];
-        let currentField = '';
-        let inQuotes = false;
-
-        for (let i = 0; i < csvText.length; i++) {
-            const char = csvText[i];
-
-            if (inQuotes) {
-                if (char === '"') {
-                    if (i + 1 < csvText.length && csvText[i + 1] === '"') {
-                        // Escaped quote
-                        currentField += '"';
-                        i++; // Skip next quote
-                    } else {
-                        // End of quoted field
-                        inQuotes = false;
-                    }
-                } else {
-                    currentField += char;
-                }
-            } else {
-                if (char === '"') {
-                    inQuotes = true;
-                } else if (char === ',') {
-                    currentRow.push(currentField);
-                    currentField = '';
-                } else if (char === '\n' || char === '\r') {
-                    if(i > 0 && csvText[i-1] !== '\n' && csvText[i-1] !== '\r') {
-                      currentRow.push(currentField);
-                      rows.push(currentRow);
-                      currentRow = [];
-                      currentField = '';
-                    }
-                    if (char === '\r' && i + 1 < csvText.length && csvText[i+1] === '\n') {
-                        i++; // handle CRLF
-                    }
-                } else {
-                    currentField += char;
-                }
-            }
-        }
-        // Add the last field and row if the file doesn't end with a newline
-        if (currentField || currentRow.length > 0) {
-            currentRow.push(currentField);
-            rows.push(currentRow);
-        }
-        return rows;
-    };
-    
-    const handleProcessFile = async () => {
+    const handleAnalyzeData = async () => {
         if (!file) {
-            toast({ variant: 'destructive', title: 'No file selected', description: 'Please upload a CSV or XLSX file.' });
+            toast({ variant: 'destructive', title: 'No file selected', description: 'Please select a document to analyze.' });
             return;
         }
-        setIsProcessing(true);
+        setIsAnalyzing(true);
         setError(null);
-        
+        setAnalysis(null);
         try {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = e.target?.result;
-                    if (!data) throw new Error("Could not read file.");
-
-                    let jsonData: any[] = [];
-                    if (file.name.endsWith('.csv')) {
-                        const text = typeof data === 'string' ? data : new TextDecoder().decode(data as ArrayBuffer);
-                        const parsedRows = robustCsvParser(text);
-                        if(parsedRows.length < 2) {
-                            throw new Error("CSV must have at least a header row and one data row.");
-                        }
-                        const headers = parsedRows[0];
-                        const rows = parsedRows.slice(1);
-                        jsonData = rows.map(row => {
-                            const obj: { [key: string]: any } = {};
-                            headers.forEach((header, index) => {
-                                obj[header] = row[index];
-                            });
-                            return obj;
-                        });
-                    } else if (file.name.endsWith('.xlsx')) {
-                        const workbook = XLSX.read(data, { type: 'binary' });
-                        const sheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[sheetName];
-                        jsonData = XLSX.utils.sheet_to_json(worksheet);
-                    } else {
-                        throw new Error('Unsupported file type. Please upload a CSV or XLSX file.');
-                    }
-                    
-                    setRowCount(jsonData.length);
-                    setProcessed(true);
-                    toast({ title: "File Processed", description: `Found ${jsonData.length} rows.` });
-                } catch(err: any) {
-                    setError(err.message);
-                    toast({ variant: 'destructive', title: "Processing Failed", description: err.message });
-                } finally {
-                    setIsProcessing(false);
-                }
-            };
-            reader.onerror = () => {
-                setError("Failed to read file.");
-                setIsProcessing(false);
-            };
-
-            if(file.name.endsWith('.csv')) {
-              reader.readAsText(file);
-            } else {
-              reader.readAsBinaryString(file);
-            }
-
-        } catch (err: any) {
-            setError(err.message);
-            setIsProcessing(false);
+            const fileDataUri = await fileToDataUri(file);
+            const result = await analyzeDocument({ fileDataUri, analysisInstructions: instructions });
+            setAnalysis(result);
+            toast({ title: 'Analysis Complete', description: 'The document has been processed by the AI.' });
+        } catch (e: any) {
+            setError(e.message || 'An unexpected error occurred during analysis.');
+            toast({ variant: 'destructive', title: 'Analysis Failed', description: e.message });
+        } finally {
+            setIsAnalyzing(false);
         }
     };
-
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-                 <CardHeader>
-                    <CardTitle>Upload File</CardTitle>
-                    <CardDescription>Select a CSV or XLSX file to extract data from.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     <div className="space-y-2">
-                        <Label htmlFor="document-file">Data File</Label>
-                        <div className="flex items-center gap-2">
-                            <Input id="document-file" type="file" onChange={handleFileChange} accept=".csv,.xlsx" />
-                            <Button onClick={handleProcessFile} disabled={isProcessing || !file}>
-                                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                <span className="ml-2 hidden sm:inline">Process</span>
-                            </Button>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+    
+    const handleSaveToMaster = async () => {
+        if (!analysis || !analysis.extractedData || !file) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No data to save. Please analyze a document first.' });
+            return;
+        }
+        setIsSavingToMaster(true);
+        try {
+            const fileDataUri = await fileToDataUri(file);
+            const vendorDocRef = doc(firestore, 'data-warehouse', vendorData.id);
+            
+            await updateDoc(vendorDocRef, {
+                masterDataSet: analysis.extractedData,
+                attachmentUrl: fileDataUri,
+                attachmentName: file.name
+            });
+            
+            toast({ title: 'Success', description: 'Master data set has been updated from the document.' });
+            setShowUploader(false); // Switch back to the display view
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } finally {
+            setIsSavingToMaster(false);
+        }
+    };
+    
+    if (!showUploader) {
+        return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Processing Result</CardTitle>
-                    <CardDescription>Status of the file processing.</CardDescription>
+                    <CardTitle>Master Data Set</CardTitle>
+                    <CardDescription>
+                        This data was imported from: <strong>{vendorData.attachmentName || 'an uploaded document'}</strong>
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {isProcessing ? (
-                        <div className="flex items-center justify-center p-8">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            <p className="ml-4 text-muted-foreground">Processing file...</p>
-                        </div>
-                    ) : error ? (
-                        <div className="text-destructive p-4 bg-destructive/10 rounded-md">
-                            <p className="font-bold">Error:</p>
-                            <p>{error}</p>
-                        </div>
-                    ) : processed ? (
-                         <div className="text-center p-8">
-                            <p className="text-lg">File processed successfully.</p>
-                            <p className="text-4xl font-bold mt-2">{rowCount}</p>
-                            <p className="text-muted-foreground">rows found.</p>
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-center p-8">
-                            <p className="text-muted-foreground">Upload and process a file to see the results.</p>
-                        </div>
-                    )}
+                    <JsonDataVisualizer data={vendorData.masterDataSet} />
                 </CardContent>
+                <CardFooter>
+                    <Button variant="outline" onClick={() => setShowUploader(true)}>
+                        <Replace className="mr-2 h-4 w-4" />
+                        Upload New Document
+                    </Button>
+                </CardFooter>
             </Card>
-        </div>
+        );
+    }
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Document Data Extractor</CardTitle>
+                <CardDescription>Upload a document (CSV, XLSX, PDF) to extract a structured data set.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="space-y-2">
+                    <Label htmlFor="document-file">Data File</Label>
+                    <div className="flex items-center gap-2 p-4 border-2 border-dashed rounded-lg">
+                        <FileUp className="h-6 w-6 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground flex-1">
+                            {file ? `Selected: ${file.name}` : 'Select a file to begin...'}
+                        </span>
+                        <Button asChild variant="outline">
+                            <Label htmlFor="document-file" className="cursor-pointer">
+                                Choose File
+                            </Label>
+                        </Button>
+                        <Input id="document-file" type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/pdf" />
+                    </div>
+                </div>
+
+                {file && (
+                    <div className="space-y-4 pt-4 border-t">
+                        <div className="space-y-2">
+                            <Label htmlFor="ai-instructions-doc">AI Instructions</Label>
+                            <Textarea
+                                id="ai-instructions-doc"
+                                placeholder="e.g., Extract the name, part number, and price for each item."
+                                value={instructions}
+                                onChange={(e) => setInstructions(e.target.value)}
+                                rows={3}
+                            />
+                        </div>
+                        <Button onClick={handleAnalyzeData} disabled={isAnalyzing}>
+                            {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCog className="mr-2 h-4 w-4" />}
+                            Analyze with AI
+                        </Button>
+                    </div>
+                )}
+                
+                {isAnalyzing && (
+                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-4 text-muted-foreground">AI is analyzing document...</p>
+                    </div>
+                )}
+                {error && <p className="text-destructive text-sm">{error}</p>}
+
+                {analysis && (
+                    <div className="space-y-6 pt-6">
+                        <div className="space-y-2">
+                            <h3 className="text-lg font-semibold">Analysis Result</h3>
+                            <p className="text-sm text-muted-foreground">{analysis.summary}</p>
+                        </div>
+                        <JsonDataVisualizer data={analysis.extractedData} columns={analysis.suggestedColumns} />
+                        <Button onClick={handleSaveToMaster} disabled={isSavingToMaster}>
+                            {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Save to Master Data Set
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
@@ -752,7 +714,7 @@ export default function VendorDetailsPage() {
                     </TabsContent>
                     <TabsContent value="data-connection">
                          {vendor.dataSource === 'Direct API' && <ApiDataFetcher />}
-                         {vendor.dataSource === 'Document Upload' && <DocumentExtractor />}
+                         {vendor.dataSource === 'Document Upload' && <DocumentExtractor vendorData={vendor} />}
                          {vendor.dataSource !== 'Direct API' && vendor.dataSource !== 'Document Upload' && (
                             <Card>
                                 <CardHeader>
@@ -818,7 +780,7 @@ export default function VendorDetailsPage() {
                                                                     className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                                                                     onClick={() => {
                                                                         setLogoPreview(null);
-                                                                        form.setValue('logoUrl', ''); // Signal deletion
+                                                                        form.setValue('logoUrl', '');
                                                                         field.onChange(null);
                                                                     }}
                                                                 >
@@ -850,8 +812,8 @@ export default function VendorDetailsPage() {
                                                                     className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                                                     onClick={() => {
                                                                         setAttachmentPreview(null);
-                                                                        form.setValue('attachmentUrl', ''); // Signal deletion
-                                                                        form.setValue('attachmentName', ''); // Signal deletion
+                                                                        form.setValue('attachmentUrl', '');
+                                                                        form.setValue('attachmentName', '');
                                                                         field.onChange(null);
                                                                     }}
                                                                 >
