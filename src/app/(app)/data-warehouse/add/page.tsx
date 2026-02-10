@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -26,7 +26,7 @@ import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import AdminGuard from '@/components/admin-guard';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { fileToDataUri } from '@/firebase/storage-utils';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -56,6 +56,7 @@ export default function AddVendorPage() {
     const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
     const { toast } = useToast();
     const firestore = useFirestore();
+    const storage = useStorage();
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -78,6 +79,7 @@ export default function AddVendorPage() {
         try {
             const vendorsCollection = collection(firestore, 'data-warehouse');
             const newVendorRef = doc(vendorsCollection);
+            const vendorId = newVendorRef.id;
 
             const dataToCreate: { [key: string]: any } = {
                 name: values.name,
@@ -95,12 +97,16 @@ export default function AddVendorPage() {
             };
 
             if (values.logo instanceof File) {
-                dataToCreate.logoUrl = await fileToDataUri(values.logo);
+                const logoFile = values.logo;
+                const logoPath = `data-warehouse/${vendorId}/logos/${Date.now()}-${logoFile.name}`;
+                dataToCreate.logoUrl = await uploadFileToStorage(storage, logoFile, logoPath);
             }
 
             if (values.attachment instanceof File) {
-                dataToCreate.attachmentUrl = await fileToDataUri(values.attachment);
-                dataToCreate.attachmentName = values.attachment.name;
+                const attachmentFile = values.attachment;
+                const attachmentPath = `data-warehouse/${vendorId}/attachments/${Date.now()}-${attachmentFile.name}`;
+                dataToCreate.attachmentUrl = await uploadFileToStorage(storage, attachmentFile, attachmentPath);
+                dataToCreate.attachmentName = attachmentFile.name;
             }
 
             await setDoc(newVendorRef, dataToCreate).catch((serverError) => {
@@ -394,3 +400,5 @@ export default function AddVendorPage() {
         </AdminGuard>
     );
 }
+
+    

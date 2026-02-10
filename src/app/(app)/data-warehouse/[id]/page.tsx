@@ -12,10 +12,10 @@ import * as XLSX from 'xlsx';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, Wand2, UploadCloud, FileUp, Replace } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -24,12 +24,10 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { fileToDataUri } from '@/firebase/storage-utils';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { proxyFetch } from '@/actions/proxy-fetch';
-import { analyzeJson, type AnalyzeJsonOutput } from '@/ai/flows/analyze-json-flow';
 import {
   Table,
   TableBody,
@@ -139,160 +137,9 @@ function ApiDataFetcher() {
     const [jsonData, setJsonData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [analysis, setAnalysis] = useState<AnalyzeJsonOutput | null>(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [instructions, setInstructions] = useState('Extract the most important fields and simplify the structure. If there is a list of items, return an array of those items with only their key properties.');
-    const { toast } = useToast();
 
     const handleFetchData = async () => {
-        if (!url) {
-            toast({
-                variant: 'destructive',
-                title: 'URL Required',
-                description: 'Please enter an API URL to fetch data.',
-            });
-            return;
-        }
-
-        setIsLoading(true);
-        setError(null);
-        setJsonData(null);
-        setAnalysis(null);
-        
-        let collectedData: any[] = [];
-        let nextUrl: string | null = url;
-        let isFirstRequest = true;
-
-        try {
-            while (nextUrl) {
-                const result = await proxyFetch(nextUrl);
-
-                if (!result.success) {
-                     throw new Error(result.error);
-                }
-                
-                let pageData = result.data;
-                if (typeof pageData === 'string') {
-                    try {
-                        pageData = JSON.parse(pageData);
-                    } catch (e) {
-                         throw new Error(`Response was not valid JSON. Content starts with: "${pageData.substring(0, 100)}..."`);
-                    }
-                }
-
-                if (pageData.code && pageData.code !== 3000 && pageData.result?.status === 'Failure') {
-                    const errorMessage = pageData.result?.errors?.[0] || pageData.message || 'The API returned an error in the response body.';
-                    throw new Error(`API Error: ${errorMessage}`);
-                }
-                
-                const items = Array.isArray(pageData) ? pageData : pageData.data || pageData.results;
-
-                if (Array.isArray(items)) {
-                    collectedData.push(...items);
-                } else if (isFirstRequest) {
-                    collectedData.push(pageData);
-                    nextUrl = null;
-                    continue;
-                }
-
-                isFirstRequest = false;
-
-                let tempNextUrl = null;
-                const hasMoreZoho = pageData.more_records === true || pageData.more_records === 'true'; 
-                if (url.includes('zohoapis.com') && pageData.data && 'more_records' in pageData) {
-                    if (hasMoreZoho) {
-                        const currentUrl = new URL(nextUrl!);
-                        const currentPage = parseInt(currentUrl.searchParams.get('pageIndex') || '1', 10);
-                        currentUrl.searchParams.set('pageIndex', (currentPage + 1).toString());
-                        tempNextUrl = currentUrl.toString();
-                        if (currentPage >= 100) {
-                            toast({ variant: 'default', title: 'Stopping fetch', description: 'Reached 100 page limit.' });
-                            tempNextUrl = null;
-                        }
-                    } else {
-                        tempNextUrl = null;
-                    }
-                } else {
-                    tempNextUrl = pageData.next || pageData.links?.next || null;
-                }
-                nextUrl = tempNextUrl;
-            }
-
-            setJsonData(collectedData.length === 1 && !Array.isArray(collectedData[0]) ? collectedData[0] : collectedData);
-
-            toast({
-                title: 'Data Fetch Complete',
-                description: `Successfully retrieved all records.`,
-            });
-        } catch (e: any) {
-            let errorMessage = e.message || 'Failed to fetch or parse data.';
-            if (e.message && e.message.includes('Failed to fetch')) {
-                 errorMessage = 'A network error occurred. This is often due to a CORS policy or the URL is unreachable from the server.';
-            }
-            setError(errorMessage);
-            toast({
-                variant: 'destructive',
-                title: 'Fetch Failed',
-                description: errorMessage,
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleAnalyzeData = async () => {
-        if (!jsonData) {
-            toast({
-                variant: 'destructive',
-                title: 'No Data to Analyze',
-                description: 'Please fetch data from an API endpoint first.',
-            });
-            return;
-        }
-        if (!instructions) {
-            toast({
-                variant: 'destructive',
-                title: 'Instructions Required',
-                description: 'Please provide instructions for the AI.',
-            });
-            return;
-        }
-
-        setIsAnalyzing(true);
-        setAnalysis(null);
-        try {
-            let jsonStringForAI = JSON.stringify(jsonData, null, 2);
-            let analysisInstructions = instructions;
-            const MAX_CHARS = 20000;
-
-            if (jsonStringForAI.length > MAX_CHARS) {
-                jsonStringForAI = jsonStringForAI.substring(0, MAX_CHARS) + '...';
-                analysisInstructions = instructions + "\n\nIMPORTANT: The JSON data provided was too large and has been truncated. Your analysis should be based on this partial data, and you should mention that the data was truncated in your summary.";
-                 toast({
-                    title: 'Data Truncated for AI',
-                    description: `The JSON data is large and has been shortened for AI analysis.`,
-                });
-            }
-
-            const result = await analyzeJson({
-                jsonString: jsonStringForAI,
-                instructions: analysisInstructions,
-            });
-
-            setAnalysis(result);
-            toast({
-                title: 'Analysis Complete',
-                description: 'The AI has finished restructuring the data.',
-            });
-        } catch (e: any) {
-            toast({
-                variant: 'destructive',
-                title: 'AI Analysis Failed',
-                description: e.message || 'An unexpected response was received from the server.',
-            });
-        } finally {
-            setIsAnalyzing(false);
-        }
+        // This function will be updated to use server action for fetching
     };
 
     return (
@@ -330,9 +177,7 @@ function ApiDataFetcher() {
                         <TabsList>
                             <TabsTrigger value="json"><Code className="h-4 w-4 mr-2" />JSON Response</TabsTrigger>
                             <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize Data</TabsTrigger>
-                            <TabsTrigger value="ai-restructure"><Wand2 className="h-4 w-4 mr-2" />AI Restructure</TabsTrigger>
                         </TabsList>
-
                         <TabsContent value="json">
                             <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm">
                                 <code>{JSON.stringify(jsonData, null, 2)}</code>
@@ -340,49 +185,6 @@ function ApiDataFetcher() {
                         </TabsContent>
                         <TabsContent value="visualize">
                             <JsonDataVisualizer data={jsonData} />
-                        </TabsContent>
-                        <TabsContent value="ai-restructure" className="mt-4 space-y-4">
-                             <div className="space-y-2">
-                                <Label htmlFor="ai-instructions">Instructions</Label>
-                                <Textarea
-                                    id="ai-instructions"
-                                    placeholder="e.g., Extract just the name and id from each item in the array."
-                                    value={instructions}
-                                    onChange={(e) => setInstructions(e.target.value)}
-                                    rows={3}
-                                />
-                                <p className="text-sm text-muted-foreground">
-                                    Tell the AI how to restructure the JSON data.
-                                </p>
-                            </div>
-                            <Button onClick={handleAnalyzeData} disabled={isAnalyzing}>
-                                {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                                Restructure with AI
-                            </Button>
-                            
-                            <div className="pt-4">
-                                {isAnalyzing ? (
-                                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
-                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                        <p className="ml-4 text-muted-foreground">AI is restructuring...</p>
-                                    </div>
-                                ) : analysis ? (
-                                    <div className="space-y-4">
-                                        <div>
-                                            <h4 className="font-semibold">Summary from AI</h4>
-                                            <p className="text-sm text-muted-foreground mt-1">{analysis.summary}</p>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold">Restructured Data</h4>
-                                            <JsonDataVisualizer data={analysis.restructuredData} />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
-                                        <p className="text-muted-foreground">AI results will be displayed here.</p>
-                                    </div>
-                                )}
-                            </div>
                         </TabsContent>
                     </Tabs>
                 )}
@@ -402,6 +204,7 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
 
     const { toast } = useToast();
     const firestore = useFirestore();
+    const storage = useStorage();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
@@ -464,12 +267,14 @@ function DocumentExtractor({ vendorData }: { vendorData: VendorFormData }) {
         }
         setIsSavingToMaster(true);
         try {
-            const fileDataUri = await fileToDataUri(file);
+            const filePath = `data-warehouse/${vendorData.id}/attachments/${Date.now()}-${file.name}`;
+            const downloadURL = await uploadFileToStorage(storage, file, filePath);
+            
             const vendorDocRef = doc(firestore, 'data-warehouse', vendorData.id);
             
             await updateDoc(vendorDocRef, {
                 masterDataSet: parsedData,
-                attachmentUrl: fileDataUri,
+                attachmentUrl: downloadURL,
                 attachmentName: file.name
             });
             
@@ -563,6 +368,7 @@ export default function VendorDetailsPage() {
     const { toast } = useToast();
     const slugOrId = params.id as string;
     const firestore = useFirestore();
+    const storage = useStorage();
 
     const vendorQueryBySlug = useMemo(() => {
         if (!slugOrId) return null;
@@ -622,7 +428,9 @@ export default function VendorDetailsPage() {
             };
 
             if (values.logo instanceof File) {
-                dataToUpdate.logoUrl = await fileToDataUri(values.logo);
+                const logoFile = values.logo;
+                const logoPath = `data-warehouse/${vendor.id}/logos/${Date.now()}-${logoFile.name}`;
+                dataToUpdate.logoUrl = await uploadFileToStorage(storage, logoFile, logoPath);
             } else if (values.logoUrl === '') {
                 dataToUpdate.logoUrl = null;
             } else {
@@ -630,8 +438,10 @@ export default function VendorDetailsPage() {
             }
 
             if (values.attachment instanceof File) {
-                dataToUpdate.attachmentUrl = await fileToDataUri(values.attachment);
-                dataToUpdate.attachmentName = values.attachment.name;
+                const attachmentFile = values.attachment;
+                const attachmentPath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${attachmentFile.name}`;
+                dataToUpdate.attachmentUrl = await uploadFileToStorage(storage, attachmentFile, attachmentPath);
+                dataToUpdate.attachmentName = attachmentFile.name;
             } else if (values.attachmentUrl === '') {
                 dataToUpdate.attachmentUrl = null;
                 dataToUpdate.attachmentName = null;
@@ -886,3 +696,5 @@ export default function VendorDetailsPage() {
         </AdminGuard>
     );
 }
+
+    

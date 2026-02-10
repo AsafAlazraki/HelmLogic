@@ -187,7 +187,7 @@
         },
         "logoUrl": {
           "type": "string",
-          "description": "URL for the vendor logo."
+          "description": "URL for the vendor logo in Firebase Storage."
         },
         "notes": {
           "type": "string",
@@ -199,7 +199,15 @@
         },
         "attachmentUrl": {
           "type": "string",
-          "description": "The data URI of the uploaded file attachment."
+          "description": "URL of the uploaded file attachment in Firebase Storage."
+        },
+        "masterDataSet": {
+          "type": "array",
+          "description": "Structured data extracted from an uploaded document.",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
         }
       },
       "required": [
@@ -257,23 +265,23 @@
           "description": "URL for the boat's main cover image."
         },
         "galleryImageUrls": {
-          "type": "array",
-          "description": "A list of URLs for the model's image gallery.",
-          "items": {
-            "type": "string"
-          }
+            "type": "array",
+            "description": "A list of URLs for the model's image gallery.",
+            "items": {
+                "type": "string"
+            }
         },
         "cost": {
           "type": "number",
           "description": "Base cost of the model."
         },
         "sellPriceExclGst": {
-          "type": "number",
-          "description": "Base selling price, excluding GST."
+            "type": "number",
+            "description": "Base selling price, excluding GST."
         },
         "freightCostExclGst": {
-          "type": "number",
-          "description": "Freight cost, excluding GST."
+            "type": "number",
+            "description": "Freight cost, excluding GST."
         },
         "colors": {
           "type": "array",
@@ -497,3 +505,5 @@
     }
   }
 }
+
+    
