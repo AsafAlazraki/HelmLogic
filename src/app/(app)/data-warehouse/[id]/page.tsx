@@ -53,6 +53,7 @@ import {
 import { createSlug } from '@/lib/utils';
 import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
+import { StacerDataStructure } from '@/components/stacer-data-structure';
 
 const formSchema = z.object({
   id: z.string(),
@@ -729,6 +730,8 @@ export default function VendorDetailsPage() {
                             <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
                         ) : vendor.slug === 'jeanneau' ? (
                             <JeanneauDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
+                        ) : vendor.slug === 'stacer' ? (
+                            <StacerDataStructure vendorId={vendor.id} vendorSlugOrId={vendor.slug || vendor.id} />
                         ) : (
                             <Card>
                                 <CardHeader>
