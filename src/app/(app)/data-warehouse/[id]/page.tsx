@@ -208,6 +208,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     const [isParsing, setIsParsing] = useState(false);
     const [isSavingToMaster, setIsSavingToMaster] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+    const [statusText, setStatusText] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -277,33 +278,38 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
         }
         setIsSavingToMaster(true);
         setUploadProgress(0);
+        setStatusText('Uploading file...');
         try {
             const filePath = `data-warehouse/${vendor.id}/attachments/${Date.now()}-${file.name}`;
             const downloadURL = await uploadFileWithProgress(storage, file, filePath, (progress) => {
                 setUploadProgress(progress);
             });
             
+            setUploadProgress(null);
+            setStatusText('Clearing old data...');
             const subcollectionRef = collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
-            
-            // Delete existing data in batches
             const existingDocsSnapshot = await getDocs(subcollectionRef);
             const existingDocs = existingDocsSnapshot.docs;
-            for (let i = 0; i < existingDocs.length; i += 500) {
-                const batch = writeBatch(firestore);
-                const chunk = existingDocs.slice(i, i + 500);
-                chunk.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
+            if (existingDocs.length > 0) {
+                for (let i = 0; i < existingDocs.length; i += 500) {
+                    const batch = writeBatch(firestore);
+                    const chunk = existingDocs.slice(i, i + 500);
+                    chunk.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                }
             }
 
-            // Add new data in batches
-            for (let i = 0; i < parsedData.length; i += 500) {
-                const batch = writeBatch(firestore);
-                const chunk = parsedData.slice(i, i + 500);
-                chunk.forEach(row => {
-                    const newRowRef = doc(subcollectionRef);
-                    batch.set(newRowRef, row);
-                });
-                await batch.commit();
+            setStatusText('Saving new data...');
+            if (parsedData.length > 0) {
+                for (let i = 0; i < parsedData.length; i += 500) {
+                    const batch = writeBatch(firestore);
+                    const chunk = parsedData.slice(i, i + 500);
+                    chunk.forEach(row => {
+                        const newRowRef = doc(subcollectionRef);
+                        batch.set(newRowRef, row);
+                    });
+                    await batch.commit();
+                }
             }
 
             const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
@@ -322,6 +328,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
         } finally {
             setIsSavingToMaster(false);
             setUploadProgress(null);
+            setStatusText('');
         }
     };
     
@@ -401,7 +408,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                             <div className="flex flex-col items-start gap-4 w-full">
                                 <Button onClick={handleSaveToMaster} disabled={isSavingToMaster}>
                                     {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    {isSavingToMaster ? 'Saving...' : 'Save to Master Data Set'}
+                                    {isSavingToMaster ? statusText : 'Save to Master Data Set'}
                                 </Button>
                                 {isSavingToMaster && uploadProgress !== null && (
                                     <div className="w-full">
