@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal, Plus } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -444,16 +444,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     });
     
     const { formState, getValues, reset } = form;
-    const { isDirty } = formState;
 
     const saveChanges = useCallback((showToast: boolean) => {
-        if (!form.formState.isDirty || isSavingRef.current) {
-            if (showToast && !isSavingRef.current) {
-                toast({ title: "Saved", description: "Your changes have been saved." });
-            }
-            return;
-        }
-
         isSavingRef.current = true;
         const values = getValues();
         const modelDocRef = doc(firestore, docPath);
@@ -461,7 +453,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         updateDoc(modelDocRef, values)
             .then(() => {
                 if (showToast) {
-                    toast({ title: "Saved", description: "Your changes have been saved." });
+                    toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
                 reset(values, { keepDirty: false });
             })
@@ -478,14 +470,16 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, reset, toast, form.formState]);
+    }, [docPath, firestore, getValues, reset, toast]);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            saveChanges(false);
+            if (formState.isDirty) {
+                saveChanges(false);
+            }
         }, 1000);
         return () => clearInterval(interval);
-    }, [saveChanges]);
+    }, [formState.isDirty, saveChanges]);
 
     useEffect(() => {
         if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
@@ -678,7 +672,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </Card>
                                 </Collapsible>
                             )}
-
                         </div>
                         <div className={cn("space-y-8", packages.length > 0 ? 'hidden' : 'lg:col-span-3')}>
                              {(!packages || packages.length === 0) && (
@@ -786,7 +779,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                         </div>
-                        
                         {packages.length > 0 && (
                             <div className="lg:col-span-7">
                                 <Card>
