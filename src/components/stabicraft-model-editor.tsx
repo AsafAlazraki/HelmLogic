@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -390,7 +391,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         defaultValues: getSafeDefaultValues(model),
     });
     
-    const { getValues, reset } = form;
+    const { getValues, reset, formState: { isDirty } } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
         isSavingRef.current = true;
@@ -402,6 +403,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
+                reset(values, { keepDirty: false }); 
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
@@ -413,11 +415,11 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, toast]);
+    }, [docPath, firestore, getValues, reset, toast]);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            saveChanges(true); // Always save
+            saveChanges(false);
         }, 1000);
         return () => clearInterval(interval);
     }, [saveChanges]);
@@ -468,7 +470,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
 
     function onSubmit(values: ModelFormData) {
+        setIsSubmitting(true);
         saveChanges(true);
+        setIsSubmitting(false);
     }
     
     const handleBulkAddFeatures = () => {
@@ -520,7 +524,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end">
-                        <Button type="submit">
+                         <Button type="submit">
                             <Save className="mr-2 h-4 w-4" /> Save Changes
                         </Button>
                     </div>
@@ -578,7 +582,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            {packageLevelFields.length === 0 && (
+                             {packageLevelFields.length === 0 && (
                                 <Collapsible asChild defaultOpen>
                                     <Card>
                                         <CollapsibleCardHeader title="Optional Features">
@@ -755,7 +759,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             <Collapsible defaultOpen>
                                                 <div className="flex items-center justify-between border-b px-2 py-2">
                                                     <CollapsibleTrigger asChild>
-                                                        <div className="flex-1 text-left">
+                                                        <div className="flex-1 w-full text-left">
                                                             <h3 className="font-semibold">Uncategorized</h3>
                                                         </div>
                                                     </CollapsibleTrigger>
@@ -791,7 +795,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 <Collapsible key={name} defaultOpen>
                                                     <div className="flex items-center justify-between border-b px-2 py-2">
                                                         <CollapsibleTrigger asChild>
-                                                            <div className="flex-1 text-left">
+                                                           <div className="flex-1 w-full text-left">
                                                                 <h3 className="font-semibold">{name}</h3>
                                                             </div>
                                                         </CollapsibleTrigger>
