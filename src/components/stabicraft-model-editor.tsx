@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -139,7 +139,7 @@ function PackageLevelItem({ form, index, remove }: { form: any; index: number; r
                         <FormField control={form.control} name={`packageLevels.${index}.name`} render={({ field }) => ( 
                             <FormItem>
                                 <FormControl>
-                                    <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent" placeholder="Package Level Name" {...field} />
+                                    <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" placeholder="Package Level Name" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem> 
@@ -314,7 +314,7 @@ function OptionalFeatureDetailsCell({ form, index, categories, onCategoryChangeR
             </div>
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 self-start"><MoreHorizontal className="h-4 w-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 self-start"><MoreHorizontal className="h-4 w-4" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuSub>
@@ -388,6 +388,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
     const form = useForm<ModelFormData>({
         resolver: zodResolver(modelSchema),
+        defaultValues: getSafeDefaultValues(model),
     });
     
     const { getValues, reset } = form;
@@ -405,9 +406,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
-                if (showToast) {
-                    toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
-                }
                 const permissionError = new FirestorePermissionError({
                     path: modelDocRef.path, operation: 'update', requestResourceData: values,
                 });
@@ -447,7 +445,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const watchedPackageLevels = useWatch({ control: form.control, name: 'packageLevels' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
-    const { uncategorizedFeatures, categorizedFeatures } = useCallback(() => {
+    const { uncategorizedFeatures, categorizedFeatures } = useMemo(() => {
         const uncategorized: { field: any, index: number }[] = [];
         const categoryMap = new Map<string, { field: any, index: number }[]>();
     
@@ -467,13 +465,11 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         }));
     
         return { uncategorizedFeatures: uncategorized, categorizedFeatures: categorized };
-    }, [optionalFeatureFields, watchedOptionalFeatures, categories])();
+    }, [optionalFeatureFields, watchedOptionalFeatures, categories]);
 
 
     function onSubmit(values: ModelFormData) {
-        setIsSubmitting(true);
         saveChanges(true);
-        setIsSubmitting(false);
     }
     
     const handleBulkAddFeatures = () => {
@@ -532,7 +528,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                        <div className={cn("space-y-8", packageLevelFields.length > 0 ? 'lg:col-span-7' : 'lg:col-span-4')}>
+                        {/* --- LEFT COLUMN --- */}
+                        <div className="lg:col-span-4 space-y-8">
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">
@@ -549,8 +546,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                                 {specFields.map((field, index) => (
                                                     <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                         <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                     </div>
                                                 ))}
@@ -583,23 +580,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4">
-                                             {packageLevelFields.map((field, index) => (
-                                                <PackageLevelItem key={field.id} form={form} index={index} remove={removePackageLevel} />
-                                            ))}
-                                            {packageLevelFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No package levels added.</p>}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
                             
+                             {/* === CONDITIONAL: SIMPLE OPTIONAL FEATURES (NO PACKAGES) === */}
                             {packageLevelFields.length === 0 && (
                                 <Collapsible asChild defaultOpen>
                                     <Card>
@@ -618,7 +600,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Collapsible>
                             )}
                         </div>
-                        <div className={cn("space-y-8", packageLevelFields.length > 0 ? 'hidden' : 'lg:col-span-3')}>
+
+                        {/* --- RIGHT COLUMN --- */}
+                        <div className="lg:col-span-3 space-y-8">
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Pricing" />
@@ -738,8 +722,25 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                         </div>
+                        
+                        {/* --- FULL WIDTH PACKAGE SECTION (IF PACKAGES EXIST) --- */}
                         {packageLevelFields.length > 0 && (
-                            <div className="lg:col-span-7">
+                            <div className="lg:col-span-7 space-y-8">
+                                <Collapsible asChild defaultOpen>
+                                    <Card>
+                                        <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
+                                        </CollapsibleCardHeader>
+                                        <CollapsibleContent>
+                                            <CardContent className="space-y-4">
+                                                 {packageLevelFields.map((field, index) => (
+                                                    <PackageLevelItem key={field.id} form={form} index={index} remove={removePackageLevel} />
+                                                ))}
+                                                {packageLevelFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No package levels added.</p>}
+                                            </CardContent>
+                                        </CollapsibleContent>
+                                    </Card>
+                                </Collapsible>
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Optional Features & Packages</CardTitle>
@@ -755,8 +756,10 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                         <div className="space-y-4">
                                             <Collapsible defaultOpen>
                                                 <div className="flex items-center justify-between border-b px-2 py-2">
-                                                     <CollapsibleTrigger className="flex-1 text-left">
-                                                        <h3 className="font-semibold">Uncategorized</h3>
+                                                    <CollapsibleTrigger asChild>
+                                                        <div className="flex-1 text-left cursor-pointer">
+                                                            <h3 className="font-semibold">Uncategorized</h3>
+                                                        </div>
                                                     </CollapsibleTrigger>
                                                     <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
                                                 </div>
@@ -788,9 +791,11 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             
                                             {categorizedFeatures.map(({ name, items }) => (
                                                 <Collapsible key={name} defaultOpen>
-                                                     <div className="flex items-center justify-between border-b px-2 py-2">
-                                                        <CollapsibleTrigger className="flex-1 text-left">
-                                                            <h3 className="font-semibold">{name}</h3>
+                                                    <div className="flex items-center justify-between border-b px-2 py-2">
+                                                        <CollapsibleTrigger asChild>
+                                                            <div className="flex-1 text-left cursor-pointer">
+                                                                <h3 className="font-semibold">{name}</h3>
+                                                            </div>
                                                         </CollapsibleTrigger>
                                                         <div className='flex items-center'>
                                                             <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature(name)}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
