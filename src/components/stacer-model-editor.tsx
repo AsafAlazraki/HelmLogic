@@ -12,7 +12,7 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
@@ -259,17 +259,9 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         defaultValues: getSafeDefaultValues(model),
     });
     
-    const { formState, getValues, reset } = form;
-    const { isDirty } = formState;
+    const { getValues, reset } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
-        if (!form.formState.isDirty || isSavingRef.current) {
-            if (showToast && !isSavingRef.current) {
-                toast({ title: "Saved", description: "Your changes have been saved." });
-            }
-            return;
-        }
-
         isSavingRef.current = true;
         const values = getValues();
         const modelDocRef = doc(firestore, docPath);
@@ -277,15 +269,13 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         updateDoc(modelDocRef, values)
             .then(() => {
                 if (showToast) {
-                    toast({ title: "Saved", description: "Your changes have been saved." });
+                    toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
                 reset(values, { keepDirty: false });
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
-                if (showToast) {
-                    toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
-                }
+                toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
                 const permissionError = new FirestorePermissionError({
                     path: modelDocRef.path, operation: 'update', requestResourceData: values,
                 });
@@ -294,7 +284,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, reset, toast, form.formState]);
+    }, [docPath, firestore, getValues, reset, toast]);
 
     useEffect(() => {
         const interval = setInterval(() => {

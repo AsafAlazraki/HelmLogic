@@ -233,17 +233,9 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         resolver: zodResolver(highfieldModelSchema),
     });
     
-    const { formState, getValues, reset } = form;
-    const { isDirty } = formState;
+    const { getValues, reset } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
-        if (!form.formState.isDirty || isSavingRef.current) {
-            if (showToast && !isSavingRef.current) {
-                toast({ title: "Saved", description: "Your changes have been saved." });
-            }
-            return;
-        }
-
         isSavingRef.current = true;
         const values = getValues();
         const modelDocRef = doc(firestore, docPath);
@@ -251,15 +243,13 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         updateDoc(modelDocRef, values)
             .then(() => {
                 if (showToast) {
-                    toast({ title: "Saved", description: "Your changes have been saved." });
+                    toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
                 reset(values, { keepDirty: false });
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
-                if (showToast) {
-                    toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
-                }
+                toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
                 const permissionError = new FirestorePermissionError({
                     path: modelDocRef.path, operation: 'update', requestResourceData: values,
                 });
@@ -268,7 +258,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, reset, toast, form.formState]);
+    }, [docPath, firestore, getValues, reset, toast]);
 
     useEffect(() => {
         const interval = setInterval(() => {
