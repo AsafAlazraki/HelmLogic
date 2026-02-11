@@ -92,7 +92,7 @@ function PackageDialog({
     isOpen: boolean,
     setIsOpen: (isOpen: boolean) => void,
     onSave: (data: PackageFormData) => void,
-    editingPackage: { id: string, name: string } | null
+    editingPackage: { id: string; name: string } | null
 }) {
     const form = useForm<PackageFormData>({
         resolver: zodResolver(packageFormSchema),
@@ -285,17 +285,19 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                                 </Button>
                             </div>
                             {model.packages && model.packages.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap -m-1">
                                     {model.packages.map(pkg => (
-                                        <div key={pkg.id} className="group/pkg flex items-center">
-                                            <Badge variant="secondary">{pkg.name}</Badge>
-                                            <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
-                                                    <Pencil className="h-3 w-3" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
+                                        <div key={pkg.id} className="p-1 grow basis-[30%]">
+                                            <div className="group/pkg flex items-center justify-between rounded-full bg-secondary text-secondary-foreground px-3 py-1 text-sm font-semibold transition-colors hover:bg-secondary/80 w-full h-full">
+                                                <span className="truncate pr-2">{pkg.name}</span>
+                                                <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-1 shrink-0">
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
+                                                        <Pencil className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
