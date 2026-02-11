@@ -187,33 +187,23 @@
         },
         "logoUrl": {
           "type": "string",
-          "description": "URL for the vendor logo in Firebase Storage."
+          "description": "URL for the vendor logo."
         },
         "notes": {
           "type": "string",
           "description": "General notes about the vendor."
-        },
-        "attachmentName": {
-          "type": "string",
-          "description": "The name of the uploaded file attachment."
-        },
-        "attachmentUrl": {
-          "type": "string",
-          "description": "URL of the uploaded file attachment in Firebase Storage."
-        },
-        "masterDataSet": {
-          "type": "array",
-          "description": "Structured data extracted from an uploaded document.",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
         }
       },
       "required": [
         "name",
         "slug"
       ]
+    },
+    "MasterDataRow": {
+      "title": "Master Data Row",
+      "description": "Represents a single row of data from a vendor's master data set.",
+      "type": "object",
+      "additionalProperties": true
     },
     "Range": {
       "title": "Range",
@@ -355,6 +345,10 @@
               "name": {
                 "type": "string"
               },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional package."
+              },
               "imageUrl": {
                 "type": "string"
               },
@@ -362,9 +356,6 @@
                 "type": "number"
               },
               "sellPriceExclGst": {
-                "type": "number"
-              },
-              "freightCostExclGst": {
                 "type": "number"
               },
               "includedFeatures": {
@@ -491,6 +482,12 @@
       },
       "description": "Vendor documents for the data warehouse, keyed by a unique ID."
     },
+    "/data-warehouse/{vendorId}/masterDataSet/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's master data set."
+    },
     "/data-warehouse/{vendorId}/ranges/{rangeId}": {
       "schema": {
         "$ref": "#/backend/entities/Range"
@@ -505,5 +502,3 @@
     }
   }
 }
-
-    
