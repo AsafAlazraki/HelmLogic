@@ -54,6 +54,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { Badge } from '@/components/ui/badge';
 
 
 interface Model {
@@ -284,10 +285,10 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                                 </Button>
                             </div>
                             {model.packages && model.packages.length > 0 ? (
-                                <ul className="space-y-1">
+                                <div className="flex flex-wrap gap-2">
                                     {model.packages.map(pkg => (
-                                        <li key={pkg.id} className="flex items-center justify-between text-sm group/pkg">
-                                            <span className="truncate pr-2">{pkg.name}</span>
+                                        <div key={pkg.id} className="group/pkg flex items-center">
+                                            <Badge variant="secondary">{pkg.name}</Badge>
                                             <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity">
                                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
                                                     <Pencil className="h-3 w-3" />
@@ -296,9 +297,9 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                                                     <Trash2 className="h-3 w-3" />
                                                 </Button>
                                             </div>
-                                        </li>
+                                        </div>
                                     ))}
-                                </ul>
+                                </div>
                             ) : (
                                 <p className="text-xs text-muted-foreground text-center py-2">No packages</p>
                             )}
