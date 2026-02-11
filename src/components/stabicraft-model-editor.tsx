@@ -247,12 +247,9 @@ function SimpleOptionalFeatureItem({ form, index, remove }: { form: any; index: 
     const { control } = form;
 
     return (
-        <Card className="relative bg-muted/50 overflow-hidden p-4 group/item">
-            <div className="absolute top-2 right-2 z-10">
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
-            </div>
+        <Card className="bg-muted/50 overflow-hidden p-4">
             <div className="flex gap-4 items-start">
-                 <FormField
+                <FormField
                     control={control}
                     name={`optionalFeatures.${index}.imageUrl`}
                     render={({ field }) => (
@@ -295,6 +292,9 @@ function SimpleOptionalFeatureItem({ form, index, remove }: { form: any; index: 
                             <FormMessage />
                         </FormItem> 
                     )} />
+                </div>
+                 <div className="flex-shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
                 </div>
             </div>
         </Card>
@@ -550,44 +550,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         };
         appendOptionalFeature(newFeature);
     }
-
-    if (packages.length === 0) {
-        return (
-             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                     <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Save className="mr-2 h-4 w-4" /> Save Changes
-                        </Button>
-                    </div>
-                     <Card>
-                        <CardHeader><CardTitle>No Packages Found</CardTitle></CardHeader>
-                        <CardContent>
-                            <p>The advanced optional features editor is only available when packages are defined for this model. You can add packages on the "Models in Range" page.</p>
-                            <p className="mt-4 font-semibold">Fallback Editor:</p>
-                        </CardContent>
-                    </Card>
-                     <Collapsible asChild defaultOpen>
-                        <Card>
-                            <CollapsibleCardHeader title="Optional Features">
-                                <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                            </CollapsibleCardHeader>
-                            <CollapsibleContent>
-                                <CardContent className="space-y-4">
-                                    {optionalFeatureFields.map((field, index) => (
-                                        <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
-                                    ))}
-                                    {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
-                                </CardContent>
-                            </CollapsibleContent>
-                        </Card>
-                    </Collapsible>
-                </form>
-            </Form>
-        );
-    }
-
+    
     return (
          <>
             <Form {...form}>
@@ -651,6 +614,41 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+
+                            <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-4">
+                                             {packageLevelFields.map((field, index) => (
+                                                <PackageLevelItem key={field.id} form={form} index={index} remove={removePackageLevel} />
+                                            ))}
+                                            {packageLevelFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No package levels added.</p>}
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+
+                            {packages.length === 0 && (
+                                <Collapsible asChild defaultOpen>
+                                    <Card>
+                                        <CollapsibleCardHeader title="Optional Features">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                        </CollapsibleCardHeader>
+                                        <CollapsibleContent>
+                                            <CardContent className="space-y-4">
+                                                {optionalFeatureFields.map((field, index) => (
+                                                    <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                                ))}
+                                                {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                            </CardContent>
+                                        </CollapsibleContent>
+                                    </Card>
+                                </Collapsible>
+                            )}
+
                         </div>
                         <div className="lg:col-span-3 space-y-8">
                              {(!packages || packages.length === 0) && (
@@ -760,108 +758,96 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                         </div>
                     </div>
                     
-                    <Collapsible asChild defaultOpen>
-                        <Card>
-                            <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
-                                <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
-                            </CollapsibleCardHeader>
-                            <CollapsibleContent>
+                    {packages.length > 0 && (
+                        <div className="lg:col-span-7">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Optional Features & Packages</CardTitle>
+                                    <CardDescription>
+                                        Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
+                                    </CardDescription>
+                                </CardHeader>
                                 <CardContent className="space-y-4">
-                                     {packageLevelFields.map((field, index) => (
-                                        <PackageLevelItem key={field.id} form={form} index={index} remove={removePackageLevel} />
-                                    ))}
-                                    {packageLevelFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No package levels added.</p>}
-                                </CardContent>
-                            </CollapsibleContent>
-                        </Card>
-                    </Collapsible>
-
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Optional Features & Packages</CardTitle>
-                            <CardDescription>
-                                Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center gap-2">
-                                <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
-                                <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
-                            </div>
-                            <div className="space-y-4">
-                                <Collapsible defaultOpen>
-                                    <CollapsibleTrigger className="w-full text-left">
-                                        <div className="flex items-center justify-between border-b px-2 py-2">
-                                            <h3 className="font-semibold">Uncategorized</h3>
-                                            <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
-                                        </div>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="p-2">
-                                        {uncategorizedFeatures.length > 0 ? (
-                                            <div className="overflow-x-auto">
-                                                <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead>Optional Feature</TableHead>
-                                                            {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
-                                                            <TableHead className="text-right">Actions</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {uncategorizedFeatures.map(({ field, index }) => (
-                                                            <TableRow key={field.id}>
-                                                                <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
-                                                                {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
-                                                                <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
-                                        ) : <p className="text-sm text-muted-foreground text-center py-4">No uncategorized features.</p>}
-                                    </CollapsibleContent>
-                                </Collapsible>
-                                
-                                {categorizedFeatures.map(({ name, items }) => (
-                                    <Collapsible key={name} defaultOpen>
-                                        <CollapsibleTrigger className="w-full text-left">
-                                             <div className="flex items-center justify-between border-b px-2 py-2">
-                                                <h3 className="font-semibold">{name}</h3>
-                                                <div className='flex items-center'>
-                                                    <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(name); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
-                                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setCategoryToDelete(name); }}><Trash2 className="h-4 w-4"/></Button>
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
+                                        <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <Collapsible defaultOpen>
+                                            <CollapsibleTrigger className="w-full text-left">
+                                                <div className="flex items-center justify-between border-b px-2 py-2">
+                                                    <h3 className="font-semibold">Uncategorized</h3>
+                                                    <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
                                                 </div>
-                                            </div>
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent className="p-2">
-                                            {items.length > 0 ? (
-                                                <div className="overflow-x-auto">
-                                                     <Table>
-                                                        <TableHeader>
-                                                            <TableRow>
-                                                                <TableHead>Optional Feature</TableHead>
-                                                                {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
-                                                                <TableHead className="text-right">Actions</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {items.map(({ field, index }) => (
-                                                                <TableRow key={field.id}>
-                                                                    <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
-                                                                    {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
-                                                                    <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="p-2">
+                                                {uncategorizedFeatures.length > 0 ? (
+                                                    <div className="overflow-x-auto">
+                                                        <Table>
+                                                            <TableHeader>
+                                                                <TableRow>
+                                                                    <TableHead>Optional Feature</TableHead>
+                                                                    {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                    <TableHead className="text-right">Actions</TableHead>
                                                                 </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                            ) : <p className="text-sm text-muted-foreground text-center py-4">No features in this category.</p>}
-                                        </CollapsibleContent>
-                                    </Collapsible>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {uncategorizedFeatures.map(({ field, index }) => (
+                                                                    <TableRow key={field.id}>
+                                                                        <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
+                                                                        {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
+                                                                        <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
+                                                ) : <p className="text-sm text-muted-foreground text-center py-4">No uncategorized features.</p>}
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                        
+                                        {categorizedFeatures.map(({ name, items }) => (
+                                            <Collapsible key={name} defaultOpen>
+                                                <CollapsibleTrigger className="w-full text-left">
+                                                     <div className="flex items-center justify-between border-b px-2 py-2">
+                                                        <h3 className="font-semibold">{name}</h3>
+                                                        <div className='flex items-center'>
+                                                            <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(name); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setCategoryToDelete(name); }}><Trash2 className="h-4 w-4"/></Button>
+                                                        </div>
+                                                    </div>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent className="p-2">
+                                                    {items.length > 0 ? (
+                                                        <div className="overflow-x-auto">
+                                                             <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        <TableHead>Optional Feature</TableHead>
+                                                                        {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                        <TableHead className="text-right">Actions</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {items.map(({ field, index }) => (
+                                                                        <TableRow key={field.id}>
+                                                                            <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
+                                                                            {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
+                                                                            <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    ) : <p className="text-sm text-muted-foreground text-center py-4">No features in this category.</p>}
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </form>
             </Form>
             <Dialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
