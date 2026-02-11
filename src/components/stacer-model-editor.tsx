@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -220,6 +220,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     const loadedModelIdRef = useRef<string | null>(null);
+    const isSavingRef = useRef(false);
 
     const getSafeDefaultValues = (modelData: any): Partial<ModelFormData> => {
         const data = modelData || {};
@@ -258,6 +259,47 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         defaultValues: getSafeDefaultValues(model),
     });
     
+    const { formState, getValues, reset } = form;
+    const { isDirty } = formState;
+
+    const saveChanges = useCallback((showToast: boolean) => {
+        if (!form.formState.isDirty || isSavingRef.current) {
+            return;
+        }
+
+        isSavingRef.current = true;
+        const values = getValues();
+        const modelDocRef = doc(firestore, docPath);
+
+        updateDoc(modelDocRef, values)
+            .then(() => {
+                if (showToast) {
+                    toast({ title: "Saved", description: "Your changes have been saved." });
+                }
+                reset(values, { keepDirty: false });
+            })
+            .catch((e: any) => {
+                console.error("Save failed:", e);
+                if (showToast) {
+                    toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
+                }
+                const permissionError = new FirestorePermissionError({
+                    path: modelDocRef.path, operation: 'update', requestResourceData: values,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => {
+                isSavingRef.current = false;
+            });
+    }, [docPath, firestore, getValues, reset, toast, form.formState]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            saveChanges(false);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [saveChanges]);
+
     useEffect(() => {
         if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
             form.reset(getSafeDefaultValues(model));
@@ -310,7 +352,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                     <Button type="submit" disabled={isSubmitting}>
+                     <Button type="submit" disabled={isSubmitting || !isDirty}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <Save className="mr-2 h-4 w-4" /> Save Changes
                     </Button>

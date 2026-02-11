@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -391,6 +391,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     const loadedModelIdRef = useRef<string | null>(null);
+    const isSavingRef = useRef(false);
 
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -442,6 +443,47 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         resolver: zodResolver(modelSchema),
     });
     
+    const { formState, getValues, reset } = form;
+    const { isDirty } = formState;
+
+    const saveChanges = useCallback((showToast: boolean) => {
+        if (!form.formState.isDirty || isSavingRef.current) {
+            return;
+        }
+
+        isSavingRef.current = true;
+        const values = getValues();
+        const modelDocRef = doc(firestore, docPath);
+
+        updateDoc(modelDocRef, values)
+            .then(() => {
+                if (showToast) {
+                    toast({ title: "Saved", description: "Your changes have been saved." });
+                }
+                reset(values, { keepDirty: false });
+            })
+            .catch((e: any) => {
+                console.error("Save failed:", e);
+                if (showToast) {
+                    toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
+                }
+                const permissionError = new FirestorePermissionError({
+                    path: modelDocRef.path, operation: 'update', requestResourceData: values,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => {
+                isSavingRef.current = false;
+            });
+    }, [docPath, firestore, getValues, reset, toast, form.formState]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            saveChanges(false);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [saveChanges]);
+
     useEffect(() => {
         if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
             const defaultValues = getSafeDefaultValues(model);
@@ -494,6 +536,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         updateDoc(modelDocRef, values)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
+                form.reset(values, { keepDirty: false });
             })
             .catch((serverError) => {
                  const permissionError = new FirestorePermissionError({
@@ -556,14 +599,14 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting || !isDirty}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Save className="mr-2 h-4 w-4" /> Save Changes
                         </Button>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                        <div className="lg:col-span-4 space-y-8">
+                        <div className={cn("space-y-8", packages.length > 0 ? 'lg:col-span-7' : 'lg:col-span-4')}>
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">
@@ -650,7 +693,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                             )}
 
                         </div>
-                        <div className="lg:col-span-3 space-y-8">
+                        <div className={cn("space-y-8", packages.length > 0 ? 'hidden' : 'lg:col-span-3')}>
                              {(!packages || packages.length === 0) && (
                                 <Collapsible asChild defaultOpen>
                                     <Card>

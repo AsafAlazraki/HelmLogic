@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -227,10 +227,52 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     const loadedModelIdRef = useRef<string | null>(null);
+    const isSavingRef = useRef(false);
 
     const form = useForm<ModelFormData>({
         resolver: zodResolver(highfieldModelSchema),
     });
+    
+    const { formState, getValues, reset } = form;
+    const { isDirty } = formState;
+
+    const saveChanges = useCallback((showToast: boolean) => {
+        if (!form.formState.isDirty || isSavingRef.current) {
+            return;
+        }
+
+        isSavingRef.current = true;
+        const values = getValues();
+        const modelDocRef = doc(firestore, docPath);
+
+        updateDoc(modelDocRef, values)
+            .then(() => {
+                if (showToast) {
+                    toast({ title: "Saved", description: "Your changes have been saved." });
+                }
+                reset(values, { keepDirty: false });
+            })
+            .catch((e: any) => {
+                console.error("Save failed:", e);
+                if (showToast) {
+                    toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
+                }
+                const permissionError = new FirestorePermissionError({
+                    path: modelDocRef.path, operation: 'update', requestResourceData: values,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => {
+                isSavingRef.current = false;
+            });
+    }, [docPath, firestore, getValues, reset, toast, form.formState]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            saveChanges(false);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [saveChanges]);
     
     useEffect(() => {
         if (model?.id && model.id === loadedModelIdRef.current) {
@@ -310,7 +352,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         updateDoc(modelDocRef, values)
             .then(() => {
                 toast({ title: "Model Updated", description: "The model details have been saved successfully." });
-                form.reset(values, { keepValues: true });
+                form.reset(values, { keepValues: true, keepDirty: false });
             })
             .catch((serverError) => {
                  const permissionError = new FirestorePermissionError({
@@ -335,7 +377,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting || !isDirty}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>
