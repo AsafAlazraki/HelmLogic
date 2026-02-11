@@ -12,19 +12,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, FileUp, Save } from 'lucide-react';
 
-function DataUploader({ title, onDataParsed, disabled }: { title: string, onDataParsed: (data: any[]) => void, disabled: boolean }) {
+function DataUploader({ title, vendorId, collectionName }: { title: string, vendorId: string, collectionName: string }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { toast } = useToast();
+    const [parsedData, setParsedData] = useState<any[] | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
         setFile(selectedFile);
+        setParsedData(null); // Reset parsed data when file changes
         if (selectedFile) {
             handleParseData(selectedFile);
-        } else {
-            onDataParsed([]);
         }
     };
 
@@ -39,12 +41,12 @@ function DataUploader({ title, onDataParsed, disabled }: { title: string, onData
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet);
-                onDataParsed(json);
+                setParsedData(json);
                 toast({ title: 'Parsing Complete', description: `${fileToParse.name} has been parsed.` });
             } catch (e: any) {
                 setError(e.message || 'An unexpected error occurred.');
                 toast({ variant: 'destructive', title: 'Parsing Failed', description: e.message });
-                onDataParsed([]);
+                setParsedData(null);
             } finally {
                 setIsParsing(false);
             }
@@ -57,98 +59,103 @@ function DataUploader({ title, onDataParsed, disabled }: { title: string, onData
         reader.readAsBinaryString(fileToParse);
     };
 
-    return (
-        <Card className="bg-muted/50">
-            <CardHeader>
-                <CardTitle>{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-2">
-                    <Label htmlFor={`document-file-${title.replace(/\s+/g, '-')}`}>Data File</Label>
-                    <div className="flex items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-background">
-                        <FileUp className="h-6 w-6 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground flex-1">
-                            {file ? `Selected: ${file.name}` : 'Select a file...'}
-                        </span>
-                        <Button asChild variant="outline">
-                            <Label htmlFor={`document-file-${title.replace(/\s+/g, '-')}`} className="cursor-pointer">
-                                Choose File
-                            </Label>
-                        </Button>
-                        <Input id={`document-file-${title.replace(/\s+/g, '-')}`} type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" disabled={disabled || isParsing} />
-                    </div>
-                </div>
-                {isParsing && <Loader2 className="h-5 w-5 animate-spin mt-2" />}
-                {error && <p className="text-destructive text-sm mt-2">{error}</p>}
-            </CardContent>
-        </Card>
-    );
-}
-
-export function SamAllenUploader({ vendorId }: { vendorId: string }) {
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [masterPriceListData, setMasterPriceListData] = useState<any[] | null>(null);
-    const [bulkMasterPriceListData, setBulkMasterPriceListData] = useState<any[] | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
-
-    const saveDataSet = async (collectionName: string, data: any[]) => {
-        const subcollectionRef = collection(firestore, `data-warehouse/${vendorId}/${collectionName}`);
-        
-        // Clear existing data
-        const oldDocsSnapshot = await getDocs(query(subcollectionRef));
-        if (!oldDocsSnapshot.empty) {
-            const deleteBatch = writeBatch(firestore);
-            oldDocsSnapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
-            await deleteBatch.commit();
-        }
-
-        // Write new data
-        const writeBatchInstance = writeBatch(firestore);
-        data.forEach(row => {
-            const newRowRef = doc(subcollectionRef);
-            writeBatchInstance.set(newRowRef, row);
-        });
-        await writeBatchInstance.commit();
-    };
-
-    const handleSaveAll = async () => {
-        if (!masterPriceListData && !bulkMasterPriceListData) {
-            toast({ variant: 'destructive', title: 'No data to save', description: 'Please upload and parse at least one document.' });
+    const handleSave = async () => {
+        if (!parsedData) {
+            toast({ variant: 'destructive', title: 'No data to save', description: 'Please upload and parse a document.' });
             return;
         }
         setIsSaving(true);
         try {
-            if (masterPriceListData && masterPriceListData.length > 0) {
-                await saveDataSet('masterPriceList', masterPriceListData);
+            const subcollectionRef = collection(firestore, `data-warehouse/${vendorId}/${collectionName}`);
+            
+            // Batch delete old documents
+            const oldDocsSnapshot = await getDocs(query(subcollectionRef));
+            if (!oldDocsSnapshot.empty) {
+                const deleteBatchSize = 500;
+                for (let i = 0; i < oldDocsSnapshot.docs.length; i += deleteBatchSize) {
+                    const chunk = oldDocsSnapshot.docs.slice(i, i + deleteBatchSize);
+                    const deleteBatch = writeBatch(firestore);
+                    chunk.forEach(doc => deleteBatch.delete(doc.ref));
+                    await deleteBatch.commit();
+                }
             }
-            if (bulkMasterPriceListData && bulkMasterPriceListData.length > 0) {
-                await saveDataSet('bulkMasterPriceList', bulkMasterPriceListData);
+
+            // Batch write new documents
+            const writeBatchSize = 500;
+            for (let i = 0; i < parsedData.length; i += writeBatchSize) {
+                const chunk = parsedData.slice(i, i + writeBatchSize);
+                const writeBatchInstance = writeBatch(firestore);
+                chunk.forEach(row => {
+                    const newRowRef = doc(subcollectionRef);
+                    writeBatchInstance.set(newRowRef, row);
+                });
+                await writeBatchInstance.commit();
             }
-            toast({ title: 'Success', description: 'Data sets have been updated.' });
+
+            toast({ title: 'Success', description: `${title} has been updated.` });
+            setFile(null);
+            setParsedData(null);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message || 'An unexpected error occurred.' });
+            console.error(e);
         } finally {
             setIsSaving(false);
         }
     };
 
     return (
+        <Card className="bg-muted/50 flex flex-col">
+            <CardHeader>
+                <CardTitle>{title}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <div className="space-y-2">
+                    <Label htmlFor={`document-file-${collectionName}`}>Data File</Label>
+                    <div className="flex items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-background">
+                        <FileUp className="h-6 w-6 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground flex-1">
+                            {file ? `Selected: ${file.name}` : 'Select a file...'}
+                        </span>
+                        <Button asChild variant="outline">
+                            <Label htmlFor={`document-file-${collectionName}`} className="cursor-pointer">
+                                Choose File
+                            </Label>
+                        </Button>
+                        <Input id={`document-file-${collectionName}`} type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" disabled={isSaving || isParsing} />
+                    </div>
+                </div>
+                {isParsing && <Loader2 className="h-5 w-5 animate-spin mt-2" />}
+                {error && <p className="text-destructive text-sm mt-2">{error}</p>}
+            </CardContent>
+            <CardFooter>
+                 <Button onClick={handleSave} disabled={isSaving || !parsedData}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Save {title}
+                </Button>
+            </CardFooter>
+        </Card>
+    );
+}
+
+export function SamAllenUploader({ vendorId }: { vendorId: string }) {
+    return (
         <Card>
             <CardHeader>
                 <CardTitle>Sam Allen Data Upload</CardTitle>
-                <CardDescription>Upload the master and bulk price lists. Both will be saved when you click the save button.</CardDescription>
+                <CardDescription>Upload and save each price list individually. Each save action will overwrite the existing data for that list.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-                <DataUploader title="Master Price List" onDataParsed={setMasterPriceListData} disabled={isSaving} />
-                <DataUploader title="Bulk Master Price List" onDataParsed={setBulkMasterPriceListData} disabled={isSaving} />
+            <CardContent className="grid md:grid-cols-2 gap-4">
+                <DataUploader 
+                    title="Master Price List" 
+                    vendorId={vendorId} 
+                    collectionName="masterPriceList" 
+                />
+                <DataUploader 
+                    title="Bulk Master Price List" 
+                    vendorId={vendorId} 
+                    collectionName="bulkMasterPriceList"
+                />
             </CardContent>
-            <CardFooter>
-                <Button onClick={handleSaveAll} disabled={isSaving || (!masterPriceListData && !bulkMasterPriceListData)}>
-                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save Data Sets
-                </Button>
-            </CardFooter>
         </Card>
     );
 }
