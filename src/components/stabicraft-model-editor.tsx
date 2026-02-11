@@ -560,8 +560,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                      <div className="flex justify-end">
                         <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Save Changes
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Save className="mr-2 h-4 w-4" /> Save Changes
                         </Button>
                     </div>
                      <Card>
@@ -792,10 +792,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                             </Card>
                         </Collapsible>
                     </div>
-                </div>
-            </form>
-        </Form>
-         <Dialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+                </form>
+            </Form>
+            <Dialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Delete Category "{categoryToDelete}"?</DialogTitle>
