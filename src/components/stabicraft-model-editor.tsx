@@ -44,8 +44,6 @@ const packageLevelSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package level name is required'),
     description: z.string().optional(),
-    cost: z.coerce.number().nullable().optional(),
-    sellPriceExclGst: z.coerce.number().nullable().optional(),
 });
 
 const modelSchema = z.object({
@@ -275,11 +273,11 @@ function PackageStatusPill({ control, featureIndex, packageId }: { control: any,
     );
 }
 
-function OptionalFeatureDetailsCell({ form, index, categories, onCategoryChangeRequest }: { form: any, index: number, categories: string[], onCategoryChangeRequest: (featureIndex: number, category?: string) => void }) {
+function OptionalFeatureDetailsCell({ form, index, remove, categories, onCategoryChangeRequest }: { form: any; index: number; remove: (index: number) => void; categories: string[]; onCategoryChangeRequest: (featureIndex: number, category?: string) => void; }) {
     const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
 
     return (
-        <div className="flex gap-2 items-start min-w-[300px]">
+        <div className="flex gap-2 items-center min-w-[300px]">
             <FormField
                 control={form.control}
                 name={`optionalFeatures.${index}.imageUrl`}
@@ -304,7 +302,7 @@ function OptionalFeatureDetailsCell({ form, index, categories, onCategoryChangeR
                     </FormItem>
                 )}
             />
-            <div className="flex-1 space-y-2">
+            <div className="flex-1">
                 <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
                     <FormItem>
                         <FormControl><Input placeholder="Feature Name" {...field} /></FormControl>
@@ -327,6 +325,11 @@ function OptionalFeatureDetailsCell({ form, index, categories, onCategoryChangeR
                             ))}
                         </DropdownMenuSubContent>
                     </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive" onClick={() => remove(index)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -380,8 +383,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             packageLevels: (data.packageLevels || []).map((p: any) => ({
                 ...p,
                 description: p.description ?? '',
-                cost: p.cost ?? null,
-                sellPriceExclGst: p.sellPriceExclGst ?? null,
             })),
         };
     };
@@ -391,7 +392,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         defaultValues: getSafeDefaultValues(model),
     });
     
-    const { getValues, reset } = form;
+    const { getValues, reset, formState: { isDirty } } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
         isSavingRef.current = true;
@@ -424,16 +425,12 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     }, [saveChanges]);
 
     useEffect(() => {
-        if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
-            const defaultValues = getSafeDefaultValues(model);
-            form.reset(defaultValues);
-            const initialCategories = [...new Set((defaultValues.optionalFeatures || []).map(f => f.category).filter(Boolean) as string[])];
-            setCategories(initialCategories);
-            if (model?.id) {
-                loadedModelIdRef.current = model.id;
-            }
-        }
-    }, [model, form]);
+        const defaultValues = getSafeDefaultValues(model);
+        reset(defaultValues);
+        const initialCategories = [...new Set((defaultValues.optionalFeatures || []).map(f => f.category).filter(Boolean) as string[])];
+        setCategories(initialCategories);
+        loadedModelIdRef.current = model.id;
+    }, [model, reset]);
     
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
@@ -481,8 +478,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     };
 
     const handleAddCategory = () => {
-        if (newCategoryName && !categories.includes(newCategoryName)) {
-            setCategories(prev => [...prev, newCategoryName]);
+        if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
+            setCategories(prev => [...prev, newCategoryName.trim()]);
             setNewCategoryName('');
         }
     };
@@ -547,8 +544,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                                 {specFields.map((field, index) => (
                                                     <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                         <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                     </div>
                                                 ))}
@@ -566,7 +563,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                         <CardContent className="space-y-4 max-h-96 overflow-y-auto">
                                             {featureFields.map((field, index) => (
                                                  <div key={field.id} className="flex items-center gap-2">
-                                                    <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                 </div>
                                             ))}
@@ -581,18 +578,94 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                             {packageLevelFields.length === 0 && (
+                            
+                             {packageLevelFields.length > 0 && (
                                 <Collapsible asChild defaultOpen>
                                     <Card>
-                                        <CollapsibleCardHeader title="Optional Features">
-                                            <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                        </CollapsibleCardHeader>
+                                        <CollapsibleCardHeader title="Cover Image" />
                                         <CollapsibleContent>
-                                            <CardContent className="space-y-4">
-                                                {optionalFeatureFields.map((field, index) => (
-                                                    <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
-                                                ))}
-                                                {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                            <CardContent>
+                                                <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="sr-only">Cover Image</FormLabel>
+                                                        {coverImageUrl ? (
+                                                            <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                                    onClick={() => field.onChange(null)}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center justify-center w-full">
+                                                                <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                        <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                                    </div>
+                                                                    <FormControl>
+                                                                        <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) field.onChange(await fileToDataUri(file));
+                                                                        }} />
+                                                                    </FormControl>
+                                                                </label>
+                                                            </div> 
+                                                        )}
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                                <div className="pt-6">
+                                                    <Collapsible>
+                                                        <CollapsibleTrigger className="flex w-full items-center justify-between border-b border-t py-2 text-sm font-medium data-[state=open]:border-b-0">
+                                                            <span>Image Gallery ({galleryImageFields.length})</span>
+                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                        </CollapsibleTrigger>
+                                                        <CollapsibleContent className="border-b">
+                                                            <div className="p-4 bg-muted/20">
+                                                                <div className="grid grid-cols-3 gap-2">
+                                                                    {galleryImageFields.map((item, index) => (
+                                                                        <div key={item.id} className="group relative aspect-square">
+                                                                            <FormField
+                                                                                control={form.control}
+                                                                                name={`galleryImageUrls.${index}`}
+                                                                                render={({ field }) => (
+                                                                                    <>
+                                                                                        <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="rounded-md object-cover" />
+                                                                                        <Button
+                                                                                            type="button"
+                                                                                            variant="destructive"
+                                                                                            size="icon"
+                                                                                            className="absolute right-1 top-1 z-10 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                                                                                            onClick={() => removeGalleryImage(index)}
+                                                                                        >
+                                                                                            <Trash2 className="h-4 w-4" />
+                                                                                        </Button>
+                                                                                    </>
+                                                                                )}
+                                                                            />
+                                                                        </div>
+                                                                    ))}
+                                                                    <label htmlFor="gallery-image-upload" className={cn(
+                                                                        "flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed bg-background hover:bg-secondary"
+                                                                    )}>
+                                                                        <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                            const files = Array.from(e.target.files || []);
+                                                                            const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                            dataUris.forEach(uri => appendGalleryImage(uri));
+                                                                        }}/>
+                                                                        <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </CollapsibleContent>
+                                                    </Collapsible>
+                                                </div>
                                             </CardContent>
                                         </CollapsibleContent>
                                     </Card>
@@ -634,7 +707,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: ''})}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
                                         <CardContent className="space-y-4">
@@ -647,96 +720,116 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
 
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Cover Image" />
-                                    <CollapsibleContent>
-                                        <CardContent>
-                                            <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                               <FormItem>
-                                                   <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                    {coverImageUrl ? (
-                                                         <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                            <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="icon"
-                                                                className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                                                                onClick={() => field.onChange(null)}
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-center w-full">
-                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                    <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                                </div>
-                                                                 <FormControl>
-                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                        const file = e.target.files?.[0];
-                                                                        if (file) field.onChange(await fileToDataUri(file));
-                                                                    }} />
-                                                                </FormControl>
-                                                            </label>
-                                                        </div> 
-                                                    )}
-                                                   <FormMessage />
-                                               </FormItem>
-                                           )} />
-                                            <div className="pt-6">
-                                                <Collapsible>
-                                                    <CollapsibleTrigger className="flex w-full items-center justify-between border-b border-t py-2 text-sm font-medium data-[state=open]:border-b-0">
-                                                        <span>Image Gallery ({galleryImageFields.length})</span>
-                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
-                                                    </CollapsibleTrigger>
-                                                    <CollapsibleContent className="border-b">
-                                                        <div className="p-4 bg-muted/20">
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                {galleryImageFields.map((item, index) => (
-                                                                    <div key={item.id} className="group relative aspect-square">
-                                                                        <FormField
-                                                                            control={form.control}
-                                                                            name={`galleryImageUrls.${index}`}
-                                                                            render={({ field }) => (
-                                                                                <>
-                                                                                    <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="rounded-md object-cover" />
-                                                                                    <Button
-                                                                                        type="button"
-                                                                                        variant="destructive"
-                                                                                        size="icon"
-                                                                                        className="absolute right-1 top-1 z-10 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                                                                                        onClick={() => removeGalleryImage(index)}
-                                                                                    >
-                                                                                        <Trash2 className="h-4 w-4" />
-                                                                                    </Button>
-                                                                                </>
-                                                                            )}
-                                                                        />
-                                                                    </div>
-                                                                ))}
-                                                                <label htmlFor="gallery-image-upload" className={cn(
-                                                                    "flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed bg-background hover:bg-secondary"
-                                                                )}>
-                                                                     <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                        const files = Array.from(e.target.files || []);
-                                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                        dataUris.forEach(uri => appendGalleryImage(uri));
-                                                                     }}/>
-                                                                     <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                                </label>
+                            {packageLevelFields.length === 0 && (
+                                <Collapsible asChild defaultOpen>
+                                    <Card>
+                                        <CollapsibleCardHeader title="Cover Image" />
+                                        <CollapsibleContent>
+                                            <CardContent>
+                                                <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="sr-only">Cover Image</FormLabel>
+                                                        {coverImageUrl ? (
+                                                            <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                                    onClick={() => field.onChange(null)}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
                                                             </div>
-                                                        </div>
-                                                    </CollapsibleContent>
-                                                </Collapsible>
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
+                                                        ) : (
+                                                            <div className="flex items-center justify-center w-full">
+                                                                <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                        <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                                    </div>
+                                                                    <FormControl>
+                                                                        <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) field.onChange(await fileToDataUri(file));
+                                                                        }} />
+                                                                    </FormControl>
+                                                                </label>
+                                                            </div> 
+                                                        )}
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                                <div className="pt-6">
+                                                    <Collapsible>
+                                                        <CollapsibleTrigger className="flex w-full items-center justify-between border-b border-t py-2 text-sm font-medium data-[state=open]:border-b-0">
+                                                            <span>Image Gallery ({galleryImageFields.length})</span>
+                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                        </CollapsibleTrigger>
+                                                        <CollapsibleContent className="border-b">
+                                                            <div className="p-4 bg-muted/20">
+                                                                <div className="grid grid-cols-3 gap-2">
+                                                                    {galleryImageFields.map((item, index) => (
+                                                                        <div key={item.id} className="group relative aspect-square">
+                                                                            <FormField
+                                                                                control={form.control}
+                                                                                name={`galleryImageUrls.${index}`}
+                                                                                render={({ field }) => (
+                                                                                    <>
+                                                                                        <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="rounded-md object-cover" />
+                                                                                        <Button
+                                                                                            type="button"
+                                                                                            variant="destructive"
+                                                                                            size="icon"
+                                                                                            className="absolute right-1 top-1 z-10 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                                                                                            onClick={() => removeGalleryImage(index)}
+                                                                                        >
+                                                                                            <Trash2 className="h-4 w-4" />
+                                                                                        </Button>
+                                                                                    </>
+                                                                                )}
+                                                                            />
+                                                                        </div>
+                                                                    ))}
+                                                                    <label htmlFor="gallery-image-upload" className={cn(
+                                                                        "flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed bg-background hover:bg-secondary"
+                                                                    )}>
+                                                                        <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                            const files = Array.from(e.target.files || []);
+                                                                            const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                            dataUris.forEach(uri => appendGalleryImage(uri));
+                                                                        }}/>
+                                                                        <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </CollapsibleContent>
+                                                    </Collapsible>
+                                                </div>
+                                            </CardContent>
+                                        </CollapsibleContent>
+                                    </Card>
+                                </Collapsible>
+                            )}
+
+                             {packageLevelFields.length === 0 && (
+                                <Collapsible asChild defaultOpen>
+                                    <Card>
+                                        <CollapsibleCardHeader title="Optional Features">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                        </CollapsibleCardHeader>
+                                        <CollapsibleContent>
+                                            <CardContent className="space-y-4">
+                                                {optionalFeatureFields.map((field, index) => (
+                                                    <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                                ))}
+                                                {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                            </CardContent>
+                                        </CollapsibleContent>
+                                    </Card>
+                                </Collapsible>
+                            )}
                         </div>
                         
                         {/* --- FULL WIDTH PACKAGE SECTION --- */}
@@ -752,13 +845,13 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     <CardContent className="space-y-4">
                                         <div className="flex items-center gap-2">
                                             <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
-                                            <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
+                                            <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>Add Category</Button>
                                         </div>
                                         <div className="space-y-4">
                                             <Collapsible defaultOpen>
                                                 <div className="flex items-center justify-between border-b px-2 py-2">
                                                     <CollapsibleTrigger asChild>
-                                                        <div className="flex-1 w-full text-left">
+                                                        <div className="flex-1 w-full text-left cursor-pointer">
                                                             <h3 className="font-semibold">Uncategorized</h3>
                                                         </div>
                                                     </CollapsibleTrigger>
@@ -772,15 +865,15 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                     <TableRow>
                                                                         <TableHead>Optional Feature</TableHead>
                                                                         {packageLevelFields.map((pkg, i) => <TableHead key={pkg.id} className="text-center">{watchedPackageLevels?.[i]?.name || `Package ${i+1}`}</TableHead>)}
-                                                                        <TableHead className="text-right">Actions</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
                                                                     {uncategorizedFeatures.map(({ field, index }) => (
                                                                         <TableRow key={field.id}>
-                                                                            <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
+                                                                            <TableCell>
+                                                                                <OptionalFeatureDetailsCell form={form} index={index} remove={removeOptionalFeature} categories={categories} onCategoryChangeRequest={handleCategoryChange} />
+                                                                            </TableCell>
                                                                             {packageLevelFields.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
-                                                                            <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                                         </TableRow>
                                                                     ))}
                                                                 </TableBody>
@@ -792,9 +885,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             
                                             {categorizedFeatures.map(({ name, items }) => (
                                                 <Collapsible key={name} defaultOpen>
-                                                    <div className="flex items-center justify-between border-b px-2 py-2">
+                                                     <div className="flex items-center justify-between border-b px-2 py-2">
                                                         <CollapsibleTrigger asChild>
-                                                           <div className="flex-1 w-full text-left">
+                                                           <div className="flex-1 w-full text-left cursor-pointer">
                                                                 <h3 className="font-semibold">{name}</h3>
                                                             </div>
                                                         </CollapsibleTrigger>
@@ -811,15 +904,15 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                         <TableRow>
                                                                             <TableHead>Optional Feature</TableHead>
                                                                             {packageLevelFields.map((pkg: any, i) => <TableHead key={pkg.id} className="text-center">{watchedPackageLevels?.[i]?.name || `Package ${i+1}`}</TableHead>)}
-                                                                            <TableHead className="text-right">Actions</TableHead>
                                                                         </TableRow>
                                                                     </TableHeader>
                                                                     <TableBody>
                                                                         {items.map(({ field, index }) => (
                                                                             <TableRow key={field.id}>
-                                                                                <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
+                                                                                <TableCell>
+                                                                                    <OptionalFeatureDetailsCell form={form} index={index} remove={removeOptionalFeature} categories={categories} onCategoryChangeRequest={handleCategoryChange} />
+                                                                                </TableCell>
                                                                                 {packageLevelFields.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
-                                                                                <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                                             </TableRow>
                                                                         ))}
                                                                     </TableBody>
