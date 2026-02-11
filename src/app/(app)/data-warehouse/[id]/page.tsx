@@ -50,6 +50,8 @@ import { createSlug, cn } from '@/lib/utils';
 import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 import { StacerDataStructure } from '@/components/stacer-data-structure';
+import { SamAllenUploader } from '@/components/sam-allen-uploader';
+import { SamAllenDataViewer } from '@/components/sam-allen-data-viewer';
 
 const formSchema = z.object({
   id: z.string(),
@@ -706,7 +708,7 @@ export default function VendorDetailsPage() {
     };
     
     const isBoatBrand = vendor?.vendorType === 'Boat Brand';
-    const isBulkSupplier = vendor?.vendorType === 'Electronics Supplier' || vendor?.vendorType === 'Parts Wholesaler';
+    const isBulkSupplier = (vendor?.vendorType === 'Electronics Supplier' || vendor?.vendorType === 'Parts Wholesaler');
     const defaultTab = isBoatBrand ? "product-ranges" : isBulkSupplier ? "master-data" : "details";
     
     return (
@@ -748,14 +750,22 @@ export default function VendorDetailsPage() {
 
                     {isBulkSupplier && (
                         <TabsContent value="master-data">
-                            <MasterDataSetViewer vendor={vendor} />
+                            {vendor.slug === 'sam-allen' ? (
+                                <SamAllenDataViewer vendorId={vendor.id} />
+                            ) : (
+                                <MasterDataSetViewer vendor={vendor} />
+                            )}
                         </TabsContent>
                     )}
 
                     <TabsContent value="data-connection">
-                         {vendor.dataSource === 'Direct API' && <ApiDataFetcher />}
-                         {vendor.dataSource === 'Document Upload' && <DocumentExtractor vendor={vendor} />}
-                         {vendor.dataSource !== 'Direct API' && vendor.dataSource !== 'Document Upload' && (
+                         {vendor.slug === 'sam-allen' ? (
+                            <SamAllenUploader vendorId={vendor.id} />
+                         ) : vendor.dataSource === 'Direct API' ? (
+                            <ApiDataFetcher />
+                         ) : vendor.dataSource === 'Document Upload' ? (
+                            <DocumentExtractor vendor={vendor} />
+                         ) : (
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Vendor Data Connection</CardTitle>

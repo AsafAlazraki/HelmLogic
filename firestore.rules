@@ -63,6 +63,16 @@ service cloud.firestore {
       allow write: if isHelmLogicAdmin();
     }
 
+    match /data-warehouse/{vendorId}/masterPriceList/{rowId} {
+      allow read: if request.auth != null;
+      allow write: if isHelmLogicAdmin();
+    }
+
+    match /data-warehouse/{vendorId}/bulkMasterPriceList/{rowId} {
+      allow read: if request.auth != null;
+      allow write: if isHelmLogicAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

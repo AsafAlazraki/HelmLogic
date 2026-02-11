@@ -345,6 +345,10 @@
               "name": {
                 "type": "string"
               },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional package."
+              },
               "imageUrl": {
                 "type": "string"
               },
@@ -352,9 +356,6 @@
                 "type": "number"
               },
               "sellPriceExclGst": {
-                "type": "number"
-              },
-              "freightCostExclGst": {
                 "type": "number"
               },
               "includedFeatures": {
@@ -498,6 +499,18 @@
         "$ref": "#/backend/entities/Model"
       },
       "description": "Specific models within a product range."
+    },
+    "/data-warehouse/{vendorId}/masterPriceList/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's master price list."
+    },
+    "/data-warehouse/{vendorId}/bulkMasterPriceList/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's bulk master price list."
     }
   }
 }
