@@ -44,6 +44,8 @@ const packageLevelSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package level name is required'),
     description: z.string().optional(),
+    cost: z.coerce.number().nullable().optional(),
+    sellPriceExclGst: z.coerce.number().nullable().optional(),
 });
 
 const modelSchema = z.object({
@@ -305,7 +307,7 @@ function OptionalFeatureDetailsCell({ form, index, remove, categories, onCategor
             <div className="flex-1">
                 <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
                     <FormItem>
-                        <FormControl><Input placeholder="Feature Name" {...field} /></FormControl>
+                        <FormControl><Input placeholder="Feature Name" {...field} value={field.value ?? ''} /></FormControl>
                         <FormMessage />
                     </FormItem> 
                 )} />
@@ -383,6 +385,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             packageLevels: (data.packageLevels || []).map((p: any) => ({
                 ...p,
                 description: p.description ?? '',
+                cost: p.cost ?? null,
+                sellPriceExclGst: p.sellPriceExclGst ?? null,
             })),
         };
     };
@@ -554,6 +558,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+                            
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features">
@@ -578,53 +583,72 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            
-                             {packageLevelFields.length > 0 && (
+
+                            {packageLevelFields.length === 0 && (
+                                <Collapsible asChild defaultOpen>
+                                    <Card>
+                                        <CollapsibleCardHeader title="Optional Features">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                        </CollapsibleCardHeader>
+                                        <CollapsibleContent>
+                                            <CardContent className="space-y-4">
+                                                {optionalFeatureFields.map((field, index) => (
+                                                    <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                                ))}
+                                                {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                            </CardContent>
+                                        </CollapsibleContent>
+                                    </Card>
+                                </Collapsible>
+                            )}
+
+                            {packageLevelFields.length > 0 && (
                                 <Collapsible asChild defaultOpen>
                                     <Card>
                                         <CollapsibleCardHeader title="Cover Image" />
                                         <CollapsibleContent>
                                             <CardContent>
+                                                {/* Cover Image and Gallery FormField */}
                                                 <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                        {coverImageUrl ? (
-                                                            <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="icon"
-                                                                    className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                                                                    onClick={() => field.onChange(null)}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center justify-center w-full">
-                                                                <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                        <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                                    </div>
-                                                                    <FormControl>
-                                                                        <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file) field.onChange(await fileToDataUri(file));
-                                                                        }} />
-                                                                    </FormControl>
-                                                                </label>
-                                                            </div> 
-                                                        )}
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
+                                                    <FormItem>
+                                                        <FormLabel className="sr-only">Cover Image</FormLabel>
+                                                            {coverImageUrl ? (
+                                                                <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                                    <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="icon"
+                                                                        className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                                        onClick={() => field.onChange(null)}
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center justify-center w-full">
+                                                                    <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                            <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                                        </div>
+                                                                        <FormControl>
+                                                                            <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                                const file = e.target.files?.[0];
+                                                                                if (file) field.onChange(await fileToDataUri(file));
+                                                                            }} />
+                                                                        </FormControl>
+                                                                    </label>
+                                                                </div> 
+                                                            )}
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
                                                 <div className="pt-6">
                                                     <Collapsible>
                                                         <CollapsibleTrigger className="flex w-full items-center justify-between border-b border-t py-2 text-sm font-medium data-[state=open]:border-b-0">
                                                             <span>Image Gallery ({galleryImageFields.length})</span>
-                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                                         </CollapsibleTrigger>
                                                         <CollapsibleContent className="border-b">
                                                             <div className="p-4 bg-muted/20">
@@ -707,7 +731,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: ''})}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null})}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
                                         <CardContent className="space-y-4">
@@ -726,46 +750,47 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                         <CollapsibleCardHeader title="Cover Image" />
                                         <CollapsibleContent>
                                             <CardContent>
+                                                {/* Cover Image and Gallery FormField */}
                                                 <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                        {coverImageUrl ? (
-                                                            <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="icon"
-                                                                    className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                                                                    onClick={() => field.onChange(null)}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center justify-center w-full">
-                                                                <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                        <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                                    </div>
-                                                                    <FormControl>
-                                                                        <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file) field.onChange(await fileToDataUri(file));
-                                                                        }} />
-                                                                    </FormControl>
-                                                                </label>
-                                                            </div> 
-                                                        )}
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
+                                                    <FormItem>
+                                                        <FormLabel className="sr-only">Cover Image</FormLabel>
+                                                            {coverImageUrl ? (
+                                                                <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                                    <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="icon"
+                                                                        className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                                        onClick={() => field.onChange(null)}
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center justify-center w-full">
+                                                                    <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                            <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                                        </div>
+                                                                        <FormControl>
+                                                                            <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                                const file = e.target.files?.[0];
+                                                                                if (file) field.onChange(await fileToDataUri(file));
+                                                                            }} />
+                                                                        </FormControl>
+                                                                    </label>
+                                                                </div> 
+                                                            )}
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
                                                 <div className="pt-6">
                                                     <Collapsible>
                                                         <CollapsibleTrigger className="flex w-full items-center justify-between border-b border-t py-2 text-sm font-medium data-[state=open]:border-b-0">
                                                             <span>Image Gallery ({galleryImageFields.length})</span>
-                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                                         </CollapsibleTrigger>
                                                         <CollapsibleContent className="border-b">
                                                             <div className="p-4 bg-muted/20">
@@ -807,24 +832,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                         </CollapsibleContent>
                                                     </Collapsible>
                                                 </div>
-                                            </CardContent>
-                                        </CollapsibleContent>
-                                    </Card>
-                                </Collapsible>
-                            )}
-
-                             {packageLevelFields.length === 0 && (
-                                <Collapsible asChild defaultOpen>
-                                    <Card>
-                                        <CollapsibleCardHeader title="Optional Features">
-                                            <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                        </CollapsibleCardHeader>
-                                        <CollapsibleContent>
-                                            <CardContent className="space-y-4">
-                                                {optionalFeatureFields.map((field, index) => (
-                                                    <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
-                                                ))}
-                                                {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
                                             </CardContent>
                                         </CollapsibleContent>
                                     </Card>
@@ -885,11 +892,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             
                                             {categorizedFeatures.map(({ name, items }) => (
                                                 <Collapsible key={name} defaultOpen>
-                                                     <div className="flex items-center justify-between border-b px-2 py-2">
-                                                        <CollapsibleTrigger asChild>
-                                                           <div className="flex-1 w-full text-left cursor-pointer">
-                                                                <h3 className="font-semibold">{name}</h3>
-                                                            </div>
+                                                    <div className="flex items-center justify-between border-b px-2 py-2">
+                                                        <CollapsibleTrigger className="flex-1 w-full text-left cursor-pointer">
+                                                            <h3 className="font-semibold">{name}</h3>
                                                         </CollapsibleTrigger>
                                                         <div className='flex items-center'>
                                                             <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature(name)}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
