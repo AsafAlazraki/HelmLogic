@@ -13,6 +13,7 @@ import { HighfieldModelEditor } from '@/components/highfield-model-editor';
 import AdminGuard from '@/components/admin-guard';
 import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
 import { StacerModelEditor } from '@/components/stacer-model-editor';
+import { StabicraftModelEditor } from '@/components/stabicraft-model-editor';
 
 interface Model {
     id: string;
@@ -129,6 +130,8 @@ export default function ModelDetailsPage() {
                 <JeanneauModelEditor model={model} docPath={modelDocPath} />
             ) : vendor.slug === 'stacer' ? (
                 <StacerModelEditor model={model} docPath={modelDocPath} />
+            ) : vendor.slug === 'stabicraft' ? (
+                <StabicraftModelEditor model={model} docPath={modelDocPath} />
             ) : (
                 <Card>
                     <CardHeader>

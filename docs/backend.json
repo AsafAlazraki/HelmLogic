@@ -372,6 +372,38 @@
             ]
           }
         },
+        "packageLevels": {
+          "type": "array",
+          "description": "A list of tiered packages for a Stabicraft model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package level.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
         "specifications": {
           "type": "object",
           "properties": {

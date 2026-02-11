@@ -50,6 +50,7 @@ import { createSlug, cn } from '@/lib/utils';
 import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 import { StacerDataStructure } from '@/components/stacer-data-structure';
+import { StabicraftDataStructure } from '@/components/stabicraft-data-structure';
 import { SamAllenUploader } from '@/components/sam-allen-uploader';
 import { SamAllenDataViewer } from '@/components/sam-allen-data-viewer';
 
@@ -766,7 +767,8 @@ export default function VendorDetailsPage() {
                             {vendor.slug === 'highfield' && <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
                             {vendor.slug === 'jeanneau' && <JeanneauDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
                             {vendor.slug === 'stacer' && <StacerDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
-                            {vendor.slug !== 'highfield' && vendor.slug !== 'jeanneau' && vendor.slug !== 'stacer' && (
+                            {vendor.slug === 'stabicraft' && <StabicraftDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
+                            {vendor.slug !== 'highfield' && vendor.slug !== 'jeanneau' && vendor.slug !== 'stacer' && vendor.slug !== 'stabicraft' && (
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Product Ranges</CardTitle>
