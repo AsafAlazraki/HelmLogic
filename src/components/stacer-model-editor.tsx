@@ -271,7 +271,6 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
-                reset(values, { keepDirty: false });
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
@@ -284,7 +283,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, reset, toast]);
+    }, [docPath, firestore, getValues, toast]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -327,8 +326,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                     <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                     <Button type="submit">
                         <Save className="mr-2 h-4 w-4" /> Save Changes
                     </Button>
                 </div>

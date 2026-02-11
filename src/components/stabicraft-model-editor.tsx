@@ -160,7 +160,7 @@ function PackageLevelItem({ form, index, remove }: { form: any; index: number; r
                             <FormItem>
                                 <FormLabel>Description</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder="A brief description of this package level." {...field} value={field.value ?? ''} />
+                                    <Textarea placeholder="A brief description of this package level." {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem> 
@@ -391,7 +391,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         defaultValues: getSafeDefaultValues(model),
     });
     
-    const { getValues, reset, formState: { isDirty } } = form;
+    const { getValues, reset } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
         isSavingRef.current = true;
@@ -403,7 +403,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
-                reset(values, { keepDirty: false }); 
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
@@ -415,7 +414,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, reset, toast]);
+    }, [docPath, firestore, getValues, toast]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -548,8 +547,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                                 {specFields.map((field, index) => (
                                                     <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl><FormMessage /></FormItem> )} />
                                                         <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                     </div>
                                                 ))}

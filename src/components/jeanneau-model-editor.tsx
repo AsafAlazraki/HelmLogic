@@ -458,7 +458,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
-                reset(values, { keepDirty: false });
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
@@ -471,7 +470,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, reset, toast]);
+    }, [docPath, firestore, getValues, toast]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -582,8 +581,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button type="submit">
                             <Save className="mr-2 h-4 w-4" /> Save Changes
                         </Button>
                     </div>
@@ -806,9 +804,11 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                         )} />
                                         <div className="pt-6">
                                                 <Collapsible>
-                                                    <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
-                                                        <span>Image Gallery ({galleryImageFields.length})</span>
-                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                    <CollapsibleTrigger asChild>
+                                                        <Button type="button" variant="ghost" className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
+                                                            <span>Image Gallery ({galleryImageFields.length})</span>
+                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                                        </Button>
                                                     </CollapsibleTrigger>
                                                     <CollapsibleContent className="border-b">
                                                         <div className="p-4 bg-muted/20">
