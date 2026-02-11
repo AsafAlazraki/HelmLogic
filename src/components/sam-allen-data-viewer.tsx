@@ -10,7 +10,13 @@ function JsonDataViewer({ data }: { data: any[] | null }) {
     if (!data || data.length === 0) {
         return <p className="text-muted-foreground p-4 text-center h-48 flex items-center justify-center">No data found in this data set.</p>;
     }
-    const headers = Object.keys(data[0]);
+
+    const allHeaders = new Set<string>();
+    data.forEach(row => {
+        Object.keys(row).forEach(key => allHeaders.add(key));
+    });
+    const headers = Array.from(allHeaders);
+    
     return (
         <div className="overflow-auto max-h-[600px] border rounded-md">
             <Table>
@@ -21,7 +27,7 @@ function JsonDataViewer({ data }: { data: any[] | null }) {
                 </TableHeader>
                 <TableBody>
                     {data.map((row, rowIndex) => (
-                        <TableRow key={rowIndex}>
+                        <TableRow key={row.id || rowIndex}>
                             {headers.map((header) => (
                                 <TableCell key={header}>
                                     {String(row[header] ?? '')}
