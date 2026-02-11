@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -418,7 +417,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
     useEffect(() => {
         const interval = setInterval(() => {
-            saveChanges(false);
+            saveChanges(true); // Always save
         }, 1000);
         return () => clearInterval(interval);
     }, [saveChanges]);
@@ -445,7 +444,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const watchedPackageLevels = useWatch({ control: form.control, name: 'packageLevels' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
-    const { uncategorizedFeatures, categorizedFeatures } = useMemo(() => {
+    const { uncategorizedFeatures, categorizedFeatures } = React.useMemo(() => {
         const uncategorized: { field: any, index: number }[] = [];
         const categoryMap = new Map<string, { field: any, index: number }[]>();
     
@@ -579,6 +578,23 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+                            {packageLevelFields.length === 0 && (
+                                <Collapsible asChild defaultOpen>
+                                    <Card>
+                                        <CollapsibleCardHeader title="Optional Features">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                        </CollapsibleCardHeader>
+                                        <CollapsibleContent>
+                                            <CardContent className="space-y-4">
+                                                {optionalFeatureFields.map((field, index) => (
+                                                    <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                                ))}
+                                                {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                            </CardContent>
+                                        </CollapsibleContent>
+                                    </Card>
+                                </Collapsible>
+                            )}
                         </div>
 
                         {/* --- RIGHT COLUMN --- */}
@@ -721,8 +737,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                         </div>
                         
                         {/* --- FULL WIDTH PACKAGE SECTION --- */}
-                        <div className="lg:col-span-7 space-y-8">
-                             {packageLevelFields.length > 0 ? (
+                        {packageLevelFields.length > 0 && (
+                            <div className="lg:col-span-7 space-y-8">
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Optional Features & Packages</CardTitle>
@@ -739,9 +755,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             <Collapsible defaultOpen>
                                                 <div className="flex items-center justify-between border-b px-2 py-2">
                                                     <CollapsibleTrigger asChild>
-                                                         <button type="button" className="flex-1 text-left">
+                                                        <div className="flex-1 text-left">
                                                             <h3 className="font-semibold">Uncategorized</h3>
-                                                         </button>
+                                                        </div>
                                                     </CollapsibleTrigger>
                                                     <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
                                                 </div>
@@ -775,9 +791,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 <Collapsible key={name} defaultOpen>
                                                     <div className="flex items-center justify-between border-b px-2 py-2">
                                                         <CollapsibleTrigger asChild>
-                                                            <button type="button" className="flex-1 text-left">
+                                                            <div className="flex-1 text-left">
                                                                 <h3 className="font-semibold">{name}</h3>
-                                                            </button>
+                                                            </div>
                                                         </CollapsibleTrigger>
                                                         <div className='flex items-center'>
                                                             <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature(name)}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
@@ -813,24 +829,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                         </div>
                                     </CardContent>
                                 </Card>
-                            ) : (
-                                <Collapsible asChild defaultOpen>
-                                    <Card>
-                                        <CollapsibleCardHeader title="Optional Features">
-                                            <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                        </CollapsibleCardHeader>
-                                        <CollapsibleContent>
-                                            <CardContent className="space-y-4">
-                                                {optionalFeatureFields.map((field, index) => (
-                                                    <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
-                                                ))}
-                                                {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
-                                            </CardContent>
-                                        </CollapsibleContent>
-                                    </Card>
-                                </Collapsible>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </form>
             </Form>
