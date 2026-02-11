@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -18,8 +19,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -138,7 +139,7 @@ function PackageLevelItem({ form, index, remove }: { form: any; index: number; r
                         <FormField control={form.control} name={`packageLevels.${index}.name`} render={({ field }) => ( 
                             <FormItem>
                                 <FormControl>
-                                    <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" placeholder="Package Level Name" {...field} />
+                                    <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent" placeholder="Package Level Name" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem> 
@@ -401,7 +402,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
-                reset(values, { keepDirty: false });
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
@@ -416,7 +416,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, reset, toast]);
+    }, [docPath, firestore, getValues, toast]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -525,7 +525,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit">
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Save className="mr-2 h-4 w-4" /> Save Changes
                         </Button>
@@ -754,12 +754,12 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                         </div>
                                         <div className="space-y-4">
                                             <Collapsible defaultOpen>
-                                                <CollapsibleTrigger className="w-full text-left">
-                                                    <div className="flex items-center justify-between border-b px-2 py-2">
+                                                <div className="flex items-center justify-between border-b px-2 py-2">
+                                                     <CollapsibleTrigger className="flex-1 text-left">
                                                         <h3 className="font-semibold">Uncategorized</h3>
-                                                        <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
-                                                    </div>
-                                                </CollapsibleTrigger>
+                                                    </CollapsibleTrigger>
+                                                    <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                                </div>
                                                 <CollapsibleContent className="p-2">
                                                     {uncategorizedFeatures.length > 0 ? (
                                                         <div className="overflow-x-auto">
@@ -767,7 +767,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                 <TableHeader>
                                                                     <TableRow>
                                                                         <TableHead>Optional Feature</TableHead>
-                                                                        {packageLevelFields.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{watchedPackageLevels?.[pkg.i]?.name || `Package ${pkg.i+1}`}</TableHead>)}
+                                                                        {packageLevelFields.map((pkg, i) => <TableHead key={pkg.id} className="text-center">{watchedPackageLevels?.[i]?.name || `Package ${i+1}`}</TableHead>)}
                                                                         <TableHead className="text-right">Actions</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
@@ -788,15 +788,15 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             
                                             {categorizedFeatures.map(({ name, items }) => (
                                                 <Collapsible key={name} defaultOpen>
-                                                    <CollapsibleTrigger className="w-full text-left">
-                                                        <div className="flex items-center justify-between border-b px-2 py-2">
+                                                     <div className="flex items-center justify-between border-b px-2 py-2">
+                                                        <CollapsibleTrigger className="flex-1 text-left">
                                                             <h3 className="font-semibold">{name}</h3>
-                                                            <div className='flex items-center'>
-                                                                <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(name); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
-                                                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setCategoryToDelete(name); }}><Trash2 className="h-4 w-4"/></Button>
-                                                            </div>
+                                                        </CollapsibleTrigger>
+                                                        <div className='flex items-center'>
+                                                            <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature(name)}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCategoryToDelete(name)}><Trash2 className="h-4 w-4"/></Button>
                                                         </div>
-                                                    </CollapsibleTrigger>
+                                                    </div>
                                                     <CollapsibleContent className="p-2">
                                                         {items.length > 0 ? (
                                                             <div className="overflow-x-auto">
