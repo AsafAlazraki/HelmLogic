@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,6 +20,9 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -34,6 +37,8 @@ const optionalFeatureSchema = z.object({
     imageUrl: z.string().nullable().optional(),
     cost: z.coerce.number().nullable().optional(),
     sellPriceExclGst: z.coerce.number().nullable().optional(),
+    category: z.string().optional(),
+    packageStatus: z.record(z.string(), z.enum(['standard', 'optional'])).default({}),
 });
 
 const packageLevelSchema = z.object({
@@ -229,6 +234,157 @@ const CollapsibleCardHeader = ({ title, description, children }: { title: string
     </CardHeader>
 );
 
+function SimpleOptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
+    const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
+    const { control } = form;
+
+    return (
+        <Card className="relative bg-muted/50 overflow-hidden p-4 group/item">
+            <div className="absolute top-2 right-2 z-10">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
+            </div>
+            <div className="flex gap-4 items-start">
+                 <FormField
+                    control={control}
+                    name={`optionalFeatures.${index}.imageUrl`}
+                    render={({ field }) => (
+                        <FormItem className="w-32 flex-shrink-0">
+                            <FormLabel className="sr-only">Feature Image</FormLabel>
+                             {imageUrl ? (
+                                <div className="relative aspect-square w-full overflow-hidden rounded-md group">
+                                    <Image src={imageUrl} alt="Feature image" fill className="object-cover" />
+                                    <Button type="button" variant="outline" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive" onClick={() => field.onChange(null)}>
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center w-full">
+                                    <label htmlFor={`feature-upload-${index}`} className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                        <div className="flex flex-col items-center justify-center text-center p-2">
+                                            <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
+                                            <p className="text-xs text-muted-foreground">Upload</p>
+                                        </div>
+                                        <FormControl>
+                                            <Input id={`feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) field.onChange(await fileToDataUri(file));
+                                            }} />
+                                        </FormControl>
+                                    </label>
+                                </div> 
+                            )}
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <div className="flex-1 space-y-3">
+                     <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
+                        <FormItem>
+                            <FormLabel className="sr-only">Feature Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Feature Name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem> 
+                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function PackageStatusPill({ control, featureIndex, packageId }: { control: any, featureIndex: number, packageId: string }) {
+    const { field } = useController({
+        control,
+        name: `optionalFeatures.${featureIndex}.packageStatus.${packageId}`,
+        defaultValue: 'optional'
+    });
+
+    const isStandard = field.value === 'standard';
+
+    const toggleStatus = () => {
+        field.onChange(isStandard ? 'optional' : 'standard');
+    };
+
+    return (
+        <Button
+            type="button"
+            variant={isStandard ? 'default' : 'secondary'}
+            className={cn("w-28", isStandard && 'bg-blue-600 hover:bg-blue-700')}
+            size="sm"
+            onClick={toggleStatus}
+        >
+            {isStandard ? 'Standard' : 'Optional'}
+        </Button>
+    );
+}
+
+function OptionalFeatureDetailsCell({ form, index, categories, onCategoryChangeRequest }: { form: any, index: number, categories: string[], onCategoryChangeRequest: (featureIndex: number, category?: string) => void }) {
+    const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
+
+    return (
+        <div className="flex gap-2 items-start min-w-[500px]">
+            <FormField
+                control={form.control}
+                name={`optionalFeatures.${index}.imageUrl`}
+                render={({ field }) => (
+                    <FormItem className="w-20 flex-shrink-0">
+                        {imageUrl ? (
+                            <div className="relative aspect-square w-full overflow-hidden rounded-md group">
+                                <Image src={imageUrl} alt="Feature" fill className="object-cover" />
+                                <Button type="button" variant="outline" size="icon" className="absolute top-0.5 right-0.5 h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
+                            </div>
+                        ) : (
+                             <label htmlFor={`table-feature-upload-${index}`} className="flex aspect-square w-full items-center justify-center rounded-lg border-2 border-dashed cursor-pointer hover:bg-muted">
+                                <Upload className="w-5 h-5 text-muted-foreground" />
+                                <FormControl>
+                                    <Input id={`table-feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) field.onChange(await fileToDataUri(file));
+                                    }} />
+                                </FormControl>
+                            </label>
+                        )}
+                    </FormItem>
+                )}
+            />
+            <div className="flex-1 space-y-2">
+                <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
+                    <FormItem>
+                        <FormControl><Input placeholder="Feature Name" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem> 
+                )} />
+                 <div className="grid grid-cols-2 gap-4">
+                    <GstInputPair control={form.control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                    <GstInputPair control={form.control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
+                </div>
+            </div>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 self-start"><MoreHorizontal className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => onCategoryChangeRequest(index, undefined)}>Uncategorized</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {categories.map((cat) => (
+                                <DropdownMenuItem key={cat} onClick={() => onCategoryChangeRequest(index, cat)}>{cat}</DropdownMenuItem>
+                            ))}
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    );
+}
+
 export function StabicraftModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -236,9 +392,30 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const [bulkFeatures, setBulkFeatures] = useState('');
     const loadedModelIdRef = useRef<string | null>(null);
 
+    const [categories, setCategories] = useState<string[]>([]);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+
     const getSafeDefaultValues = (modelData: any): ModelFormData => {
         const data = modelData || {};
         const specs = data.specifications || {};
+        const packages = data.packages || [];
+
+        const optionalFeatures = (data.optionalFeatures || []).map((f: any) => {
+            const packageStatus = f.packageStatus || {};
+            packages.forEach((p: any) => {
+                if (!(p.id in packageStatus)) {
+                    packageStatus[p.id] = 'optional';
+                }
+            });
+            return {
+                ...f,
+                cost: f.cost ?? null,
+                sellPriceExclGst: f.sellPriceExclGst ?? null,
+                packageStatus,
+            };
+        });
+
         return {
             coverImageUrl: data.coverImageUrl ?? null,
             galleryImageUrls: data.galleryImageUrls ?? [],
@@ -252,11 +429,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
-            optionalFeatures: (data.optionalFeatures || []).map((f: any) => ({
-                ...f,
-                cost: f.cost ?? null,
-                sellPriceExclGst: f.sellPriceExclGst ?? null,
-            })),
+            optionalFeatures: optionalFeatures,
             packageLevels: (data.packageLevels || []).map((p: any) => ({
                 ...p,
                 cost: p.cost ?? null,
@@ -268,12 +441,14 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
     const form = useForm<ModelFormData>({
         resolver: zodResolver(modelSchema),
-        defaultValues: getSafeDefaultValues(model),
     });
     
     useEffect(() => {
         if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
-            form.reset(getSafeDefaultValues(model));
+            const defaultValues = getSafeDefaultValues(model);
+            form.reset(defaultValues);
+            const initialCategories = [...new Set((defaultValues.optionalFeatures || []).map(f => f.category).filter(Boolean) as string[])];
+            setCategories(initialCategories);
             if (model?.id) {
                 loadedModelIdRef.current = model.id;
             }
@@ -284,8 +459,34 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
     const { fields: packageLevelFields, append: appendPackageLevel, remove: removePackageLevel } = useFieldArray({ control: form.control, name: "packageLevels" });
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control: form.control, name: 'galleryImageUrls' });
+    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature, update: updateOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
     
+    const watchedOptionalFeatures = useWatch({ control: form.control, name: 'optionalFeatures' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
+    const packages = model.packages || [];
+
+    const { uncategorizedFeatures, categorizedFeatures } = useMemo(() => {
+        const uncategorized: { field: any, index: number }[] = [];
+        const categoryMap = new Map<string, { field: any, index: number }[]>();
+    
+        optionalFeatureFields.forEach((field, index) => {
+            const category = watchedOptionalFeatures?.[index]?.category;
+            if (category && categories.includes(category)) {
+                if (!categoryMap.has(category)) categoryMap.set(category, []);
+                categoryMap.get(category)!.push({ field, index });
+            } else {
+                uncategorized.push({ field, index });
+            }
+        });
+    
+        const categorized = categories.map(name => ({
+            name,
+            items: categoryMap.get(name) || []
+        }));
+    
+        return { uncategorizedFeatures: uncategorized, categorizedFeatures: categorized };
+    }, [optionalFeatureFields, watchedOptionalFeatures, categories]);
+
 
     function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
@@ -314,93 +515,181 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         setBulkFeatures('');
     };
 
+    const handleAddCategory = () => {
+        if (newCategoryName && !categories.includes(newCategoryName)) {
+            setCategories(prev => [...prev, newCategoryName]);
+            setNewCategoryName('');
+        }
+    };
+    
+    const handleConfirmDeleteCategory = () => {
+        if (!categoryToDelete) return;
+        watchedOptionalFeatures?.forEach((feature, index) => {
+            if (feature.category === categoryToDelete) {
+                updateOptionalFeature(index, { ...feature, category: undefined });
+            }
+        });
+        setCategories(prev => prev.filter(c => c !== categoryToDelete));
+        setCategoryToDelete(null);
+    };
+
+    const handleCategoryChange = (featureIndex: number, newCategory?: string) => {
+        const currentFeature = watchedOptionalFeatures[featureIndex];
+        updateOptionalFeature(featureIndex, { ...currentFeature, category: newCategory });
+    };
+
+    const handleAddNewFeature = (category?: string) => {
+        const newFeature = {
+            id: `feat-${Date.now()}`,
+            name: '',
+            cost: null,
+            sellPriceExclGst: null,
+            imageUrl: null,
+            category,
+            packageStatus: packages.reduce((acc: any, pkg: any) => {
+                acc[pkg.id] = 'optional';
+                return acc;
+            }, {}),
+        };
+        appendOptionalFeature(newFeature);
+    }
+
+    if (packages.length === 0) {
+        return (
+             <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                     <div className="flex justify-end">
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Save Changes
+                        </Button>
+                    </div>
+                     <Card>
+                        <CardHeader><CardTitle>No Packages Found</CardTitle></CardHeader>
+                        <CardContent>
+                            <p>The advanced optional features editor is only available when packages are defined for this model. You can add packages on the "Models in Range" page.</p>
+                            <p className="mt-4 font-semibold">Fallback Editor:</p>
+                        </CardContent>
+                    </Card>
+                     <Collapsible asChild defaultOpen>
+                        <Card>
+                            <CollapsibleCardHeader title="Optional Features">
+                                <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                            </CollapsibleCardHeader>
+                            <CollapsibleContent>
+                                <CardContent className="space-y-4">
+                                    {optionalFeatureFields.map((field, index) => (
+                                        <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                    ))}
+                                    {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
+                </form>
+            </Form>
+        );
+    }
+
     return (
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <Save className="mr-2 h-4 w-4" /> Save Changes
-                    </Button>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                    <div className="lg:col-span-4 space-y-8">
-                        {/* Specifications Card */}
-                        <Collapsible asChild defaultOpen>
-                            <Card>
-                                <CollapsibleCardHeader title="Specifications">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
-                                </CollapsibleCardHeader>
-                                <CollapsibleContent>
-                                    <CardContent className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                        </div>
-                                        <div className="space-y-4">
-                                            {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
-                                            {specFields.map((field, index) => (
-                                                <div key={field.id} className="flex items-end gap-2">
-                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
-                        
-                        {/* Standard Features Card */}
-                        <Collapsible asChild defaultOpen>
-                            <Card>
-                                <CollapsibleCardHeader title="Standard Features">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                </CollapsibleCardHeader>
-                                <CollapsibleContent>
-                                    <CardContent className="space-y-4 max-h-96 overflow-y-auto">
-                                        {featureFields.map((field, index) => (
-                                            <div key={field.id} className="flex items-center gap-2">
-                                                <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                            </div>
-                                        ))}
-                                    </CardContent>
-                                    <CardContent>
-                                        <div className="space-y-2">
-                                            <FormLabel>Bulk Add Features</FormLabel>
-                                            <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                            <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
-                                        </div>
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
-
-                        {/* Package Levels Card */}
-                         <Collapsible asChild defaultOpen>
-                            <Card>
-                                <CollapsibleCardHeader title="Package Levels">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: 'New Package Level', cost: null, sellPriceExclGst: null, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4"/> Add Package Level</Button>
-                                </CollapsibleCardHeader>
-                                <CollapsibleContent>
-                                    <CardContent className="space-y-4">
-                                        {packageLevelFields.map((field, index) => (
-                                            <PackageLevelItem key={field.id} form={form} index={index} remove={removePackageLevel} />
-                                        ))}
-                                        {packageLevelFields.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No package levels added.</p>}
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
-
+         <>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <div className="flex justify-end">
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Save className="mr-2 h-4 w-4" /> Save Changes
+                        </Button>
                     </div>
 
-                    <div className="lg:col-span-3 space-y-8">
-                        <Collapsible asChild defaultOpen>
+                    <div className="space-y-8">
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Optional Features & Packages</CardTitle>
+                                <CardDescription>
+                                    Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
+                                    <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
+                                </div>
+                                <div className="space-y-4">
+                                    <Collapsible defaultOpen>
+                                        <CollapsibleTrigger className="w-full text-left">
+                                            <div className="flex items-center justify-between border-b px-2 py-2">
+                                                <h3 className="font-semibold">Uncategorized</h3>
+                                                <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                            </div>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="p-2">
+                                            {uncategorizedFeatures.length > 0 ? (
+                                                <div className="overflow-x-auto">
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead>Optional Feature</TableHead>
+                                                                {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                <TableHead className="text-right">Actions</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {uncategorizedFeatures.map(({ field, index }) => (
+                                                                <TableRow key={field.id}>
+                                                                    <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
+                                                                    {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
+                                                                    <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            ) : <p className="text-sm text-muted-foreground text-center py-4">No uncategorized features.</p>}
+                                        </CollapsibleContent>
+                                    </Collapsible>
+                                    
+                                    {categorizedFeatures.map(({ name, items }) => (
+                                        <Collapsible key={name} defaultOpen>
+                                            <CollapsibleTrigger className="w-full text-left">
+                                                 <div className="flex items-center justify-between border-b px-2 py-2">
+                                                    <h3 className="font-semibold">{name}</h3>
+                                                    <div className='flex items-center'>
+                                                        <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(name); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setCategoryToDelete(name); }}><Trash2 className="h-4 w-4"/></Button>
+                                                    </div>
+                                                </div>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="p-2">
+                                                {items.length > 0 ? (
+                                                    <div className="overflow-x-auto">
+                                                         <Table>
+                                                            <TableHeader>
+                                                                <TableRow>
+                                                                    <TableHead>Optional Feature</TableHead>
+                                                                    {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                    <TableHead className="text-right">Actions</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {items.map(({ field, index }) => (
+                                                                    <TableRow key={field.id}>
+                                                                        <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
+                                                                        {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
+                                                                        <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
+                                                ) : <p className="text-sm text-muted-foreground text-center py-4">No features in this category.</p>}
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Collapsible asChild>
                              <Card>
                                 <CollapsibleCardHeader title="Pricing" />
                                 <CollapsibleContent>
@@ -412,7 +701,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
-                        <Collapsible asChild defaultOpen>
+                        <Collapsible asChild>
                             <Card>
                                 <CollapsibleCardHeader title="Cover Image" />
                                 <CollapsibleContent>
@@ -506,5 +795,20 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 </div>
             </form>
         </Form>
+         <Dialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Category "{categoryToDelete}"?</DialogTitle>
+                        <DialogDescription>
+                            This will remove the category. Any features inside it will become uncategorized. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setCategoryToDelete(null)}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleConfirmDeleteCategory}>Delete</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
