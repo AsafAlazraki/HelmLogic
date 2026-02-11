@@ -203,6 +203,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState('Save to Master Data Set');
+    const [isClearing, setIsClearing] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
@@ -307,12 +308,38 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             setSaveStatus('Save to Master Data Set');
         }
     };
+
+    const handleClearMaster = async () => {
+        if (!vendor) return;
+        setIsClearing(true);
+        try {
+            const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
+            const subcollectionRef = collection(firestore, masterDataSetPath);
+
+            const oldDocsSnapshot = await getDocs(query(subcollectionRef));
+            if (!oldDocsSnapshot.empty) {
+                const deleteBatchSize = 500;
+                for (let i = 0; i < oldDocsSnapshot.docs.length; i += deleteBatchSize) {
+                    const chunk = oldDocsSnapshot.docs.slice(i, i + deleteBatchSize);
+                    const deleteBatch = writeBatch(firestore);
+                    chunk.forEach(doc => deleteBatch.delete(doc.ref));
+                    await deleteBatch.commit();
+                }
+            }
+            toast({ title: 'Success', description: 'Master data set has been cleared.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Clear Failed', description: e.message });
+            console.error('Clear master data set failed:', e);
+        } finally {
+            setIsClearing(false);
+        }
+    };
     
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Document Data Extractor</CardTitle>
-                <CardDescription>Upload a document (CSV, XLSX) to extract a structured data set.</CardDescription>
+                <CardDescription>Upload a new file to replace the existing master data set. Each upload overwrites the previous data.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -327,7 +354,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                                 Choose File
                             </Label>
                         </Button>
-                        <Input id="document-file" type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+                        <Input id="document-file" type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" disabled={isSaving || isParsing || isClearing} />
                     </div>
                 </div>
                 
@@ -342,8 +369,8 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 {parsedData && (
                      <Card>
                         <CardHeader>
-                            <CardTitle>Parsed Data</CardTitle>
-                            <CardDescription>Review the data parsed from your file below.</CardDescription>
+                            <CardTitle>Parsed Data Preview</CardTitle>
+                            <CardDescription>Review the data parsed from your file below before saving.</CardDescription>
                         </CardHeader>
                         <CardContent>
                            <div className="max-h-[600px] overflow-auto rounded-md border">
@@ -351,16 +378,20 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                            </div>
                         </CardContent>
                         <CardFooter>
-                            <div className="flex flex-col items-start gap-4 w-full">
-                                <Button onClick={handleSaveToMaster} disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    {saveStatus}
-                                </Button>
-                            </div>
+                            <Button onClick={handleSaveToMaster} disabled={isSaving || isClearing}>
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                {saveStatus}
+                            </Button>
                         </CardFooter>
                     </Card>
                 )}
             </CardContent>
+            <CardFooter className="border-t pt-6 flex justify-end">
+                 <Button onClick={handleClearMaster} disabled={isClearing || isSaving} variant="destructive">
+                    {isClearing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                    Clear Master Data Set
+                </Button>
+            </CardFooter>
         </Card>
     );
 }

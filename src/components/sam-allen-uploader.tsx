@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, FileUp, Save } from 'lucide-react';
+import { Loader2, FileUp, Save, Trash2 } from 'lucide-react';
 
 function DataUploader({ title, vendorId, collectionName }: { title: string, vendorId: string, collectionName: string }) {
     const firestore = useFirestore();
@@ -20,6 +20,7 @@ function DataUploader({ title, vendorId, collectionName }: { title: string, vend
     const [error, setError] = useState<string | null>(null);
     const [parsedData, setParsedData] = useState<any[] | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isClearing, setIsClearing] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0] || null;
@@ -103,6 +104,30 @@ function DataUploader({ title, vendorId, collectionName }: { title: string, vend
         }
     };
 
+    const handleClear = async () => {
+        setIsClearing(true);
+        try {
+            const subcollectionRef = collection(firestore, `data-warehouse/${vendorId}/${collectionName}`);
+            
+            const oldDocsSnapshot = await getDocs(query(subcollectionRef));
+            if (!oldDocsSnapshot.empty) {
+                const deleteBatchSize = 500;
+                for (let i = 0; i < oldDocsSnapshot.docs.length; i += deleteBatchSize) {
+                    const chunk = oldDocsSnapshot.docs.slice(i, i + deleteBatchSize);
+                    const deleteBatch = writeBatch(firestore);
+                    chunk.forEach(doc => deleteBatch.delete(doc.ref));
+                    await deleteBatch.commit();
+                }
+            }
+            toast({ title: 'Success', description: `${title} has been cleared.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Clear Failed', description: e.message || 'An unexpected error occurred.' });
+            console.error(e);
+        } finally {
+            setIsClearing(false);
+        }
+    };
+
     return (
         <Card className="bg-muted/50 flex flex-col">
             <CardHeader>
@@ -121,16 +146,20 @@ function DataUploader({ title, vendorId, collectionName }: { title: string, vend
                                 Choose File
                             </Label>
                         </Button>
-                        <Input id={`document-file-${collectionName}`} type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" disabled={isSaving || isParsing} />
+                        <Input id={`document-file-${collectionName}`} type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" disabled={isSaving || isParsing || isClearing} />
                     </div>
                 </div>
                 {isParsing && <Loader2 className="h-5 w-5 animate-spin mt-2" />}
                 {error && <p className="text-destructive text-sm mt-2">{error}</p>}
             </CardContent>
-            <CardFooter>
-                 <Button onClick={handleSave} disabled={isSaving || !parsedData}>
+            <CardFooter className="gap-2">
+                 <Button onClick={handleSave} disabled={isSaving || !parsedData || isClearing}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     Save {title}
+                </Button>
+                <Button onClick={handleClear} disabled={isClearing || isSaving} variant="destructive">
+                    {isClearing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                    Clear
                 </Button>
             </CardFooter>
         </Card>
