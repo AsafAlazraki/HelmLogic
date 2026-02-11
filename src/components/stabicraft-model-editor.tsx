@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -45,7 +45,6 @@ const packageLevelSchema = z.object({
     description: z.string().optional(),
     cost: z.coerce.number().nullable().optional(),
     sellPriceExclGst: z.coerce.number().nullable().optional(),
-    includedFeatures: z.array(z.string()).default([]),
 });
 
 const modelSchema = z.object({
@@ -100,7 +99,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                 <FormItem>
                     <FormLabel className="text-xs font-normal text-muted-foreground">excl. GST</FormLabel>
                     <FormControl>
-                        <Input 
+                        <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
@@ -113,7 +112,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                 <FormItem>
                     <FormLabel className="text-xs font-normal text-muted-foreground">inc. GST</FormLabel>
                     <FormControl>
-                        <Input 
+                        <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
@@ -123,53 +122,6 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                     </FormControl>
                     <FormMessage />
                 </FormItem>
-            </div>
-        </div>
-    );
-}
-
-function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: `packageLevels.${packageIndex}.includedFeatures`
-    });
-    const [bulkAdd, setBulkAdd] = useState('');
-
-    const handleBulkAdd = () => {
-        const features = bulkAdd.split('\n').map(f => f.trim()).filter(Boolean);
-        features.forEach(feature => append(feature));
-        setBulkAdd('');
-    };
-
-    return (
-        <div className="space-y-2 pt-4 mt-4 border-t">
-            <div className="flex justify-between items-center">
-                <FormLabel className="text-xs text-muted-foreground">Included Features</FormLabel>
-                <Button type="button" variant="ghost" size="sm" onClick={() => append('')}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add
-                </Button>
-            </div>
-            {fields.map((field, index) => (
-                <div key={field.id} className="flex items-center gap-2">
-                    <FormField
-                        control={control}
-                        name={`packageLevels.${packageIndex}.includedFeatures.${index}`}
-                        render={({ field }) => (
-                            <FormItem className="flex-1">
-                                <FormControl><Input {...field} placeholder={`Feature ${index + 1}`} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                </div>
-            ))}
-             <div className="pt-2">
-                <Textarea placeholder="Or paste a list of features, one per line..." value={bulkAdd} onChange={e => setBulkAdd(e.target.value)} rows={3}/>
-                <Button type="button" size="sm" variant="secondary" className="mt-2" onClick={handleBulkAdd} disabled={!bulkAdd.trim()}>Add from Text</Button>
             </div>
         </div>
     );
@@ -212,11 +164,6 @@ function PackageLevelItem({ form, index, remove }: { form: any; index: number; r
                                 <FormMessage />
                             </FormItem> 
                         )} />
-                        <div className="grid grid-cols-2 gap-4">
-                            <GstInputPair control={control} name={`packageLevels.${index}.cost`} label="Cost" />
-                            <GstInputPair control={control} name={`packageLevels.${index}.sellPriceExclGst`} label="Sell Price" />
-                        </div>
-                        <IncludedFeatures packageIndex={index} />
                     </div>
                 </CollapsibleContent>
             </Card>
@@ -293,8 +240,8 @@ function SimpleOptionalFeatureItem({ form, index, remove }: { form: any; index: 
                         </FormItem> 
                     )} />
                 </div>
-                 <div className="flex-shrink-0 self-start">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
+                <div className="flex-shrink-0 self-start">
+                   <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
                 </div>
             </div>
         </Card>
@@ -400,11 +347,11 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const getSafeDefaultValues = (modelData: any): ModelFormData => {
         const data = modelData || {};
         const specs = data.specifications || {};
-        const packages = data.packages || [];
+        const packageLevels = data.packageLevels || [];
 
         const optionalFeatures = (data.optionalFeatures || []).map((f: any) => {
             const packageStatus = f.packageStatus || {};
-            packages.forEach((p: any) => {
+            packageLevels.forEach((p: any) => {
                 if (!(p.id in packageStatus)) {
                     packageStatus[p.id] = 'optional';
                 }
@@ -434,7 +381,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 description: p.description ?? '',
                 cost: p.cost ?? null,
                 sellPriceExclGst: p.sellPriceExclGst ?? null,
-                includedFeatures: p.includedFeatures ?? [],
             })),
         };
     };
@@ -443,7 +389,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         resolver: zodResolver(modelSchema),
     });
     
-    const { formState, getValues, reset } = form;
+    const { getValues, reset } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
         isSavingRef.current = true;
@@ -474,12 +420,10 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
     useEffect(() => {
         const interval = setInterval(() => {
-            if (formState.isDirty) {
-                saveChanges(false);
-            }
+            saveChanges(false);
         }, 1000);
         return () => clearInterval(interval);
-    }, [formState.isDirty, saveChanges]);
+    }, [saveChanges]);
 
     useEffect(() => {
         if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
@@ -500,10 +444,10 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature, update: updateOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
     
     const watchedOptionalFeatures = useWatch({ control: form.control, name: 'optionalFeatures' });
+    const watchedPackageLevels = useWatch({ control: form.control, name: 'packageLevels' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
-    const packages = model.packages || [];
 
-    const { uncategorizedFeatures, categorizedFeatures } = useMemo(() => {
+    const { uncategorizedFeatures, categorizedFeatures } = useCallback(() => {
         const uncategorized: { field: any, index: number }[] = [];
         const categoryMap = new Map<string, { field: any, index: number }[]>();
     
@@ -523,7 +467,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         }));
     
         return { uncategorizedFeatures: uncategorized, categorizedFeatures: categorized };
-    }, [optionalFeatureFields, watchedOptionalFeatures, categories]);
+    }, [optionalFeatureFields, watchedOptionalFeatures, categories])();
 
 
     function onSubmit(values: ModelFormData) {
@@ -562,12 +506,13 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     };
 
     const handleAddNewFeature = (category?: string) => {
+        const packageLevels = getValues('packageLevels') || [];
         const newFeature = {
             id: `feat-${Date.now()}`,
             name: '',
             imageUrl: null,
             category,
-            packageStatus: packages.reduce((acc: any, pkg: any) => {
+            packageStatus: packageLevels.reduce((acc: any, pkg: any) => {
                 acc[pkg.id] = 'optional';
                 return acc;
             }, {}),
@@ -587,7 +532,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                        <div className={cn("space-y-8", packages.length > 0 ? 'lg:col-span-7' : 'lg:col-span-4')}>
+                        <div className={cn("space-y-8", packageLevelFields.length > 0 ? 'lg:col-span-7' : 'lg:col-span-4')}>
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">
@@ -632,7 +577,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             <div className="space-y-2">
                                                 <FormLabel>Bulk Add Features</FormLabel>
                                                 <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures} disabled={!bulkFeatures.trim()}>Add from Text</Button>
                                             </div>
                                         </CardContent>
                                     </CollapsibleContent>
@@ -642,7 +587,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
                                         <CardContent className="space-y-4">
@@ -654,8 +599,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-
-                            {packages.length === 0 && (
+                            
+                            {packageLevelFields.length === 0 && (
                                 <Collapsible asChild defaultOpen>
                                     <Card>
                                         <CollapsibleCardHeader title="Optional Features">
@@ -673,21 +618,35 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Collapsible>
                             )}
                         </div>
-                        <div className={cn("space-y-8", packages.length > 0 ? 'hidden' : 'lg:col-span-3')}>
-                             {(!packages || packages.length === 0) && (
-                                <Collapsible asChild defaultOpen>
-                                    <Card>
-                                        <CollapsibleCardHeader title="Pricing" />
-                                        <CollapsibleContent>
-                                            <CardContent className="space-y-6">
-                                                <GstInputPair control={form.control} name="cost" label="Base Cost" />
-                                                <GstInputPair control={form.control} name="sellPriceExclGst" label="Base Sell" />
-                                                <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
-                                            </CardContent>
-                                        </CollapsibleContent>
-                                    </Card>
-                                </Collapsible>
-                             )}
+                        <div className={cn("space-y-8", packageLevelFields.length > 0 ? 'hidden' : 'lg:col-span-3')}>
+                            <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Pricing" />
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-6">
+                                            {packageLevelFields.length === 0 ? (
+                                                <>
+                                                    <GstInputPair control={form.control} name="cost" label="Base Cost" />
+                                                    <GstInputPair control={form.control} name="sellPriceExclGst" label="Base Sell" />
+                                                </>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {packageLevelFields.map((field, index) => (
+                                                        <div key={field.id} className="p-4 border rounded-md bg-muted/50">
+                                                            <h4 className="font-semibold mb-4">{watchedPackageLevels?.[index]?.name || `Package ${index + 1}`}</h4>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <GstInputPair control={form.control} name={`packageLevels.${index}.cost`} label="Cost" />
+                                                                <GstInputPair control={form.control} name={`packageLevels.${index}.sellPriceExclGst`} label="Sell Price" />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
@@ -779,7 +738,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                         </div>
-                        {packages.length > 0 && (
+                        {packageLevelFields.length > 0 && (
                             <div className="lg:col-span-7">
                                 <Card>
                                     <CardHeader>
@@ -808,7 +767,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                 <TableHeader>
                                                                     <TableRow>
                                                                         <TableHead>Optional Feature</TableHead>
-                                                                        {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                        {packageLevelFields.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{watchedPackageLevels?.[pkg.i]?.name || `Package ${pkg.i+1}`}</TableHead>)}
                                                                         <TableHead className="text-right">Actions</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
@@ -816,7 +775,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                     {uncategorizedFeatures.map(({ field, index }) => (
                                                                         <TableRow key={field.id}>
                                                                             <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
-                                                                            {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
+                                                                            {packageLevelFields.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
                                                                             <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                                         </TableRow>
                                                                     ))}
@@ -845,7 +804,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                     <TableHeader>
                                                                         <TableRow>
                                                                             <TableHead>Optional Feature</TableHead>
-                                                                            {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                            {packageLevelFields.map((pkg: any, i) => <TableHead key={pkg.id} className="text-center">{watchedPackageLevels?.[i]?.name || `Package ${i+1}`}</TableHead>)}
                                                                             <TableHead className="text-right">Actions</TableHead>
                                                                         </TableRow>
                                                                     </TableHeader>
@@ -853,7 +812,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                         {items.map(({ field, index }) => (
                                                                             <TableRow key={field.id}>
                                                                                 <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
-                                                                                {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
+                                                                                {packageLevelFields.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
                                                                                 <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                                             </TableRow>
                                                                         ))}
