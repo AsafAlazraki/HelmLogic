@@ -35,8 +35,6 @@ const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.coerce.number().nullable().optional(),
-    sellPriceExclGst: z.coerce.number().nullable().optional(),
     category: z.string().optional(),
     packageStatus: z.record(z.string(), z.enum(['standard', 'optional'])).default({}),
 });
@@ -44,6 +42,7 @@ const optionalFeatureSchema = z.object({
 const packageLevelSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package level name is required'),
+    description: z.string().optional(),
     cost: z.coerce.number().nullable().optional(),
     sellPriceExclGst: z.coerce.number().nullable().optional(),
     includedFeatures: z.array(z.string()).default([]),
@@ -204,6 +203,15 @@ function PackageLevelItem({ form, index, remove }: { form: any; index: number; r
                 </div>
                 <CollapsibleContent>
                     <div className="px-4 pb-4 space-y-4">
+                        <FormField control={control} name={`packageLevels.${index}.description`} render={({ field }) => ( 
+                            <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="A brief description of this package level." {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem> 
+                        )} />
                         <div className="grid grid-cols-2 gap-4">
                             <GstInputPair control={control} name={`packageLevels.${index}.cost`} label="Cost" />
                             <GstInputPair control={control} name={`packageLevels.${index}.sellPriceExclGst`} label="Sell Price" />
@@ -287,10 +295,6 @@ function SimpleOptionalFeatureItem({ form, index, remove }: { form: any; index: 
                             <FormMessage />
                         </FormItem> 
                     )} />
-                    <div className="grid grid-cols-2 gap-4">
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
-                    </div>
                 </div>
             </div>
         </Card>
@@ -327,7 +331,7 @@ function OptionalFeatureDetailsCell({ form, index, categories, onCategoryChangeR
     const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
 
     return (
-        <div className="flex gap-2 items-start min-w-[500px]">
+        <div className="flex gap-2 items-start min-w-[300px]">
             <FormField
                 control={form.control}
                 name={`optionalFeatures.${index}.imageUrl`}
@@ -359,10 +363,6 @@ function OptionalFeatureDetailsCell({ form, index, categories, onCategoryChangeR
                         <FormMessage />
                     </FormItem> 
                 )} />
-                 <div className="grid grid-cols-2 gap-4">
-                    <GstInputPair control={form.control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                    <GstInputPair control={form.control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
-                </div>
             </div>
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -410,8 +410,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             });
             return {
                 ...f,
-                cost: f.cost ?? null,
-                sellPriceExclGst: f.sellPriceExclGst ?? null,
                 packageStatus,
             };
         });
@@ -432,6 +430,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             optionalFeatures: optionalFeatures,
             packageLevels: (data.packageLevels || []).map((p: any) => ({
                 ...p,
+                description: p.description ?? '',
                 cost: p.cost ?? null,
                 sellPriceExclGst: p.sellPriceExclGst ?? null,
                 includedFeatures: p.includedFeatures ?? [],
@@ -542,8 +541,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         const newFeature = {
             id: `feat-${Date.now()}`,
             name: '',
-            cost: null,
-            sellPriceExclGst: null,
             imageUrl: null,
             category,
             packageStatus: packages.reduce((acc: any, pkg: any) => {
@@ -602,31 +599,244 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                         </Button>
                     </div>
 
-                    <div className="space-y-8">
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>Optional Features & Packages</CardTitle>
-                                <CardDescription>
-                                    Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
-                                    <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
-                                </div>
-                                <div className="space-y-4">
-                                    <Collapsible defaultOpen>
+                    <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
+                        <div className="lg:col-span-4 space-y-8">
+                            <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Specifications">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            </div>
+                                            <div className="space-y-4">
+                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
+                                                {specFields.map((field, index) => (
+                                                    <div key={field.id} className="flex items-end gap-2">
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                            <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Standard Features">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+                                            {featureFields.map((field, index) => (
+                                                 <div key={field.id} className="flex items-center gap-2">
+                                                    <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </div>
+                                            ))}
+                                        </CardContent>
+                                        <CardContent>
+                                            <div className="space-y-2">
+                                                <FormLabel>Bulk Add Features</FormLabel>
+                                                <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                        </div>
+                        <div className="lg:col-span-3 space-y-8">
+                             {(!packages || packages.length === 0) && (
+                                <Collapsible asChild defaultOpen>
+                                    <Card>
+                                        <CollapsibleCardHeader title="Pricing" />
+                                        <CollapsibleContent>
+                                            <CardContent className="space-y-6">
+                                                <GstInputPair control={form.control} name="cost" label="Base Cost" />
+                                                <GstInputPair control={form.control} name="sellPriceExclGst" label="Base Sell" />
+                                                <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
+                                            </CardContent>
+                                        </CollapsibleContent>
+                                    </Card>
+                                </Collapsible>
+                             )}
+                            <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Cover Image" />
+                                    <CollapsibleContent>
+                                        <CardContent>
+                                            <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
+                                               <FormItem>
+                                                   <FormLabel className="sr-only">Cover Image</FormLabel>
+                                                    {coverImageUrl ? (
+                                                         <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                            <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                onClick={() => field.onChange(null)}
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-center w-full">
+                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                    <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                                </div>
+                                                                 <FormControl>
+                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) field.onChange(await fileToDataUri(file));
+                                                                    }} />
+                                                                </FormControl>
+                                                            </label>
+                                                        </div> 
+                                                    )}
+                                                   <FormMessage />
+                                               </FormItem>
+                                           )} />
+                                            <div className="pt-6">
+                                                <Collapsible>
+                                                    <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
+                                                        <span>Image Gallery ({galleryImageFields.length})</span>
+                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                    </CollapsibleTrigger>
+                                                    <CollapsibleContent className="border-b">
+                                                        <div className="p-4 bg-muted/20">
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                {galleryImageFields.map((item, index) => (
+                                                                    <div key={item.id} className="relative aspect-square group">
+                                                                        <FormField
+                                                                            control={form.control}
+                                                                            name={`galleryImageUrls.${index}`}
+                                                                            render={({ field }) => (
+                                                                                <>
+                                                                                    <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
+                                                                                    <Button
+                                                                                        type="button"
+                                                                                        variant="destructive"
+                                                                                        size="icon"
+                                                                                        className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                        onClick={() => removeGalleryImage(index)}
+                                                                                    >
+                                                                                        <Trash2 className="h-4 w-4" />
+                                                                                    </Button>
+                                                                                </>
+                                                                            )}
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                                <label htmlFor="gallery-image-upload" className={cn(
+                                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
+                                                                )}>
+                                                                     <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                        const files = Array.from(e.target.files || []);
+                                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                        dataUris.forEach(uri => appendGalleryImage(uri));
+                                                                     }}/>
+                                                                     <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </CollapsibleContent>
+                                                </Collapsible>
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                        </div>
+                    </div>
+                    
+                    <Collapsible asChild defaultOpen>
+                        <Card>
+                            <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
+                                <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
+                            </CollapsibleCardHeader>
+                            <CollapsibleContent>
+                                <CardContent className="space-y-4">
+                                     {packageLevelFields.map((field, index) => (
+                                        <PackageLevelItem key={field.id} form={form} index={index} remove={removePackageLevel} />
+                                    ))}
+                                    {packageLevelFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No package levels added.</p>}
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
+
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Optional Features & Packages</CardTitle>
+                            <CardDescription>
+                                Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center gap-2">
+                                <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
+                                <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
+                            </div>
+                            <div className="space-y-4">
+                                <Collapsible defaultOpen>
+                                    <CollapsibleTrigger className="w-full text-left">
+                                        <div className="flex items-center justify-between border-b px-2 py-2">
+                                            <h3 className="font-semibold">Uncategorized</h3>
+                                            <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                        </div>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="p-2">
+                                        {uncategorizedFeatures.length > 0 ? (
+                                            <div className="overflow-x-auto">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Optional Feature</TableHead>
+                                                            {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                            <TableHead className="text-right">Actions</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {uncategorizedFeatures.map(({ field, index }) => (
+                                                            <TableRow key={field.id}>
+                                                                <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
+                                                                {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
+                                                                <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        ) : <p className="text-sm text-muted-foreground text-center py-4">No uncategorized features.</p>}
+                                    </CollapsibleContent>
+                                </Collapsible>
+                                
+                                {categorizedFeatures.map(({ name, items }) => (
+                                    <Collapsible key={name} defaultOpen>
                                         <CollapsibleTrigger className="w-full text-left">
-                                            <div className="flex items-center justify-between border-b px-2 py-2">
-                                                <h3 className="font-semibold">Uncategorized</h3>
-                                                <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                             <div className="flex items-center justify-between border-b px-2 py-2">
+                                                <h3 className="font-semibold">{name}</h3>
+                                                <div className='flex items-center'>
+                                                    <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(name); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setCategoryToDelete(name); }}><Trash2 className="h-4 w-4"/></Button>
+                                                </div>
                                             </div>
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="p-2">
-                                            {uncategorizedFeatures.length > 0 ? (
+                                            {items.length > 0 ? (
                                                 <div className="overflow-x-auto">
-                                                    <Table>
+                                                     <Table>
                                                         <TableHeader>
                                                             <TableRow>
                                                                 <TableHead>Optional Feature</TableHead>
@@ -635,7 +845,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {uncategorizedFeatures.map(({ field, index }) => (
+                                                            {items.map(({ field, index }) => (
                                                                 <TableRow key={field.id}>
                                                                     <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
                                                                     {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
@@ -645,153 +855,13 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                         </TableBody>
                                                     </Table>
                                                 </div>
-                                            ) : <p className="text-sm text-muted-foreground text-center py-4">No uncategorized features.</p>}
+                                            ) : <p className="text-sm text-muted-foreground text-center py-4">No features in this category.</p>}
                                         </CollapsibleContent>
                                     </Collapsible>
-                                    
-                                    {categorizedFeatures.map(({ name, items }) => (
-                                        <Collapsible key={name} defaultOpen>
-                                            <CollapsibleTrigger className="w-full text-left">
-                                                 <div className="flex items-center justify-between border-b px-2 py-2">
-                                                    <h3 className="font-semibold">{name}</h3>
-                                                    <div className='flex items-center'>
-                                                        <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAddNewFeature(name); }}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
-                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setCategoryToDelete(name); }}><Trash2 className="h-4 w-4"/></Button>
-                                                    </div>
-                                                </div>
-                                            </CollapsibleTrigger>
-                                            <CollapsibleContent className="p-2">
-                                                {items.length > 0 ? (
-                                                    <div className="overflow-x-auto">
-                                                         <Table>
-                                                            <TableHeader>
-                                                                <TableRow>
-                                                                    <TableHead>Optional Feature</TableHead>
-                                                                    {packages.map((pkg: any) => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
-                                                                    <TableHead className="text-right">Actions</TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {items.map(({ field, index }) => (
-                                                                    <TableRow key={field.id}>
-                                                                        <TableCell><OptionalFeatureDetailsCell form={form} index={index} categories={categories} onCategoryChangeRequest={handleCategoryChange} /></TableCell>
-                                                                        {packages.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
-                                                                        <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" onClick={() => removeOptionalFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </div>
-                                                ) : <p className="text-sm text-muted-foreground text-center py-4">No features in this category.</p>}
-                                            </CollapsibleContent>
-                                        </Collapsible>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Collapsible asChild>
-                             <Card>
-                                <CollapsibleCardHeader title="Pricing" />
-                                <CollapsibleContent>
-                                    <CardContent className="space-y-6">
-                                        <GstInputPair control={form.control} name="cost" label="Base Cost" />
-                                        <GstInputPair control={form.control} name="sellPriceExclGst" label="Base Sell" />
-                                        <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
-                        <Collapsible asChild>
-                            <Card>
-                                <CollapsibleCardHeader title="Cover Image" />
-                                <CollapsibleContent>
-                                    <CardContent>
-                                        <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                           <FormItem>
-                                               <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                {coverImageUrl ? (
-                                                     <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                        <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="icon"
-                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                            onClick={() => field.onChange(null)}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center justify-center w-full">
-                                                        <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                                <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                            </div>
-                                                             <FormControl>
-                                                                <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) field.onChange(await fileToDataUri(file));
-                                                                }} />
-                                                            </FormControl>
-                                                        </label>
-                                                    </div> 
-                                                )}
-                                               <FormMessage />
-                                           </FormItem>
-                                       )} />
-                                        <div className="pt-6">
-                                            <Collapsible>
-                                                <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
-                                                    <span>Image Gallery ({galleryImageFields.length})</span>
-                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
-                                                </CollapsibleTrigger>
-                                                <CollapsibleContent className="border-b">
-                                                    <div className="p-4 bg-muted/20">
-                                                        <div className="grid grid-cols-3 gap-2">
-                                                            {galleryImageFields.map((item, index) => (
-                                                                <div key={item.id} className="relative aspect-square group">
-                                                                    <FormField
-                                                                        control={form.control}
-                                                                        name={`galleryImageUrls.${index}`}
-                                                                        render={({ field }) => (
-                                                                            <>
-                                                                                <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
-                                                                                <Button
-                                                                                    type="button"
-                                                                                    variant="destructive"
-                                                                                    size="icon"
-                                                                                    className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                                    onClick={() => removeGalleryImage(index)}
-                                                                                >
-                                                                                    <Trash2 className="h-4 w-4" />
-                                                                                </Button>
-                                                                            </>
-                                                                        )}
-                                                                    />
-                                                                </div>
-                                                            ))}
-                                                            <label htmlFor="gallery-image-upload" className={cn(
-                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
-                                                            )}>
-                                                                 <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                    const files = Array.from(e.target.files || []);
-                                                                    const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                    dataUris.forEach(uri => appendGalleryImage(uri));
-                                                                 }}/>
-                                                                 <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </CollapsibleContent>
-                                            </Collapsible>
-                                        </div>
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
-                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </form>
             </Form>
             <Dialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>

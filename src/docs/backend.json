@@ -324,12 +324,6 @@
               "imageUrl": {
                 "type": "string"
               },
-              "cost": {
-                "type": "number"
-              },
-              "sellPriceExclGst": {
-                "type": "number"
-              },
               "packageStatus": {
                 "type": "object",
                 "description": "A map of package IDs to their status ('standard' or 'optional') for this feature.",
@@ -398,6 +392,10 @@
               },
               "name": {
                 "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "A description for the package level."
               },
               "cost": {
                 "type": "number"
