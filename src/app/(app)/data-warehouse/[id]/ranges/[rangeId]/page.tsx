@@ -10,7 +10,7 @@ import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight, PlusCircle } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import AdminGuard from '@/components/admin-guard';
 import {
@@ -50,12 +50,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createSlug } from '@/lib/utils';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+
 
 interface Model {
     id: string;
     name: string;
     slug?: string;
     coverImageUrl?: string;
+    packages?: { id: string; name: string }[];
 }
 
 interface Range {
@@ -71,6 +77,74 @@ interface Vendor {
     slug?: string;
 }
 
+const packageFormSchema = z.object({
+    name: z.string().min(1, { message: "Package name is required." }),
+});
+type PackageFormData = z.infer<typeof packageFormSchema>;
+
+function PackageDialog({
+    isOpen,
+    setIsOpen,
+    onSave,
+    editingPackage
+}: {
+    isOpen: boolean,
+    setIsOpen: (isOpen: boolean) => void,
+    onSave: (data: PackageFormData) => void,
+    editingPackage: { id: string, name: string } | null
+}) {
+    const form = useForm<PackageFormData>({
+        resolver: zodResolver(packageFormSchema),
+        defaultValues: { name: '' },
+    });
+    
+    useEffect(() => {
+        if (isOpen) {
+            form.reset({ name: editingPackage?.name || '' });
+        }
+    }, [isOpen, editingPackage, form]);
+
+    const handleSave = (data: PackageFormData) => {
+        onSave(data);
+        setIsOpen(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{editingPackage ? 'Edit Package' : 'Add New Package'}</DialogTitle>
+                </DialogHeader>
+                 <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleSave)}>
+                        <div className="grid gap-4 py-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <Label htmlFor="name">Package Name</Label>
+                                        <FormControl>
+                                            <Input id="name" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit">Save</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; model: Model; }) {
     const firestore = useFirestore();
     const router = useRouter();
@@ -81,6 +155,9 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
     const [isDeleting, setIsDeleting] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
 
+    const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
+    const [editingPackage, setEditingPackage] = useState<{ id: string; name: string } | null>(null);
+
     const modelPath = `/data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
 
     const handleDelete = async () => {
@@ -88,7 +165,7 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
         try {
             await deleteDoc(doc(firestore, modelPath));
             toast({ title: 'Model Deleted', description: `"${model.name}" has been deleted.` });
-            window.location.reload();
+            router.refresh();
         } catch (error) {
             console.error('Failed to delete model:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not delete model.' });
@@ -113,6 +190,49 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
             toast({ variant: 'destructive', title: 'Error', description: 'Could not rename model.' });
         } finally {
             setIsRenaming(false);
+        }
+    };
+
+    const handleOpenAddPackageDialog = (e: React.MouseEvent) => {
+        e.preventDefault();
+        setEditingPackage(null);
+        setIsPackageDialogOpen(true);
+    };
+
+    const handleOpenEditPackageDialog = (pkg: {id: string, name: string}, e: React.MouseEvent) => {
+        e.preventDefault();
+        setEditingPackage(pkg);
+        setIsPackageDialogOpen(true);
+    };
+
+    const handleSavePackage = async (data: PackageFormData) => {
+        let updatedPackages;
+        if (editingPackage) {
+            updatedPackages = model.packages?.map(p => p.id === editingPackage.id ? { ...p, name: data.name } : p) || [];
+        } else {
+            const newPackage = { id: `pkg-${Date.now()}`, name: data.name };
+            updatedPackages = [...(model.packages || []), newPackage];
+        }
+        try {
+            await updateDoc(doc(firestore, modelPath), { packages: updatedPackages });
+            toast({ title: editingPackage ? 'Package Updated' : 'Package Added' });
+            router.refresh();
+        } catch(error) {
+            console.error('Failed to save package:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save package.' });
+        }
+    };
+
+    const handleDeletePackage = async (packageId: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        const updatedPackages = model.packages?.filter(p => p.id !== packageId) || [];
+        try {
+            await updateDoc(doc(firestore, modelPath), { packages: updatedPackages });
+            toast({ title: 'Package Deleted' });
+            router.refresh();
+        } catch(error) {
+            console.error('Failed to delete package:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete package.' });
         }
     };
     
@@ -141,7 +261,7 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="flex flex-col h-full">
+                <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
                     <div className="h-40 bg-secondary flex items-center justify-center p-4 relative">
                          {model.coverImageUrl ? (
                             <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
@@ -149,10 +269,42 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                             <Sailboat className="h-12 w-12 text-muted-foreground" />
                         )}
                     </div>
-                    <CardContent className="p-3 mt-auto">
+                    <CardContent className="p-3">
                         <p className="font-semibold truncate text-center">{model.name}</p>
                     </CardContent>
                 </Link>
+
+                {vendor.slug === 'stabicraft' && (
+                    <div className="mt-auto p-3 border-t">
+                        <div className="space-y-2">
+                             <div className="flex justify-between items-center">
+                                <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenAddPackageDialog}>
+                                    <PlusCircle className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            {model.packages && model.packages.length > 0 ? (
+                                <ul className="space-y-1">
+                                    {model.packages.map(pkg => (
+                                        <li key={pkg.id} className="flex items-center justify-between text-sm group/pkg">
+                                            <span className="truncate pr-2">{pkg.name}</span>
+                                            <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
+                                                    <Pencil className="h-3 w-3" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-xs text-muted-foreground text-center py-2">No packages</p>
+                            )}
+                        </div>
+                    </div>
+                )}
             </Card>
 
             {/* Dialogs */}
@@ -196,6 +348,13 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <PackageDialog
+                isOpen={isPackageDialogOpen}
+                setIsOpen={setIsPackageDialogOpen}
+                onSave={handleSavePackage}
+                editingPackage={editingPackage}
+            />
         </>
     );
 }
