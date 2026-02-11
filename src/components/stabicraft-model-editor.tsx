@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -293,7 +293,7 @@ function SimpleOptionalFeatureItem({ form, index, remove }: { form: any; index: 
                         </FormItem> 
                     )} />
                 </div>
-                 <div className="flex-shrink-0">
+                 <div className="flex-shrink-0 self-start">
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
                 </div>
             </div>
@@ -448,6 +448,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
     const saveChanges = useCallback((showToast: boolean) => {
         if (!form.formState.isDirty || isSavingRef.current) {
+            if (showToast && !isSavingRef.current) {
+                toast({ title: "Saved", description: "Your changes have been saved." });
+            }
             return;
         }
 
@@ -531,24 +534,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
     function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
-        const modelDocRef = doc(firestore, docPath);
-
-        updateDoc(modelDocRef, values)
-            .then(() => {
-                toast({ title: "Model Updated", description: "The model details have been saved successfully." });
-                form.reset(values, { keepDirty: false });
-            })
-            .catch((serverError) => {
-                 const permissionError = new FirestorePermissionError({
-                    path: modelDocRef.path,
-                    operation: 'update',
-                    requestResourceData: values,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            })
-            .finally(() => {
-                setIsSubmitting(false);
-            });
+        saveChanges(true);
+        setIsSubmitting(false);
     }
     
     const handleBulkAddFeatures = () => {
@@ -599,7 +586,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmitting || !isDirty}>
+                        <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Save className="mr-2 h-4 w-4" /> Save Changes
                         </Button>

@@ -264,6 +264,9 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
 
     const saveChanges = useCallback((showToast: boolean) => {
         if (!form.formState.isDirty || isSavingRef.current) {
+            if (showToast && !isSavingRef.current) {
+                toast({ title: "Saved", description: "Your changes have been saved." });
+            }
             return;
         }
 
@@ -320,26 +323,8 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
 
     function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
-        const modelDocRef = doc(firestore, docPath);
-
-        updateDoc(modelDocRef, values)
-            .then(() => {
-                toast({ title: "Model Updated", description: "The model details have been saved successfully." });
-                if (loadedModelIdRef.current) {
-                    form.reset(getSafeDefaultValues(values), { keepValues: true, keepDirty: false });
-                }
-            })
-            .catch((serverError) => {
-                 const permissionError = new FirestorePermissionError({
-                    path: modelDocRef.path,
-                    operation: 'update',
-                    requestResourceData: values,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            })
-            .finally(() => {
-                setIsSubmitting(false);
-            });
+        saveChanges(true);
+        setIsSubmitting(false);
     }
     
     const handleBulkAddFeatures = () => {
@@ -352,7 +337,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end">
-                     <Button type="submit" disabled={isSubmitting || !isDirty}>
+                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <Save className="mr-2 h-4 w-4" /> Save Changes
                     </Button>
