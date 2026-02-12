@@ -80,6 +80,26 @@ type ModelFormData = z.infer<typeof modelSchema>;
 
 const GST_RATE = 0.10;
 
+function sanitizeDataForFirestore(data: any): any {
+  if (data === undefined) {
+    return null;
+  }
+  if (data === null || typeof data !== 'object') {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeDataForFirestore(item));
+  }
+  const sanitizedData: { [key: string]: any } = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      sanitizedData[key] = sanitizeDataForFirestore(value);
+    }
+  }
+  return sanitizedData;
+}
+
 function GstInputPair({ control, name, label }: { control: any, name: string, label: string }) {
     const { field } = useController({ control, name, defaultValue: null });
 
@@ -446,14 +466,15 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         defaultValues: getSafeDefaultValues(model),
     });
     
-    const { getValues, reset } = form;
+    const { getValues, reset, formState: { isDirty } } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
         isSavingRef.current = true;
         const values = getValues();
+        const sanitizedValues = sanitizeDataForFirestore(values);
         const modelDocRef = doc(firestore, docPath);
 
-        updateDoc(modelDocRef, values)
+        updateDoc(modelDocRef, sanitizedValues)
             .then(() => {
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
@@ -463,7 +484,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 console.error("Save failed:", e);
                 toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
                 const permissionError = new FirestorePermissionError({
-                    path: modelDocRef.path, operation: 'update', requestResourceData: values,
+                    path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
                 });
                 errorEmitter.emit('permission-error', permissionError);
             })
@@ -491,16 +512,16 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
     useEffect(() => {
-        if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
+        if (!isDirty) {
             const defaultValues = getSafeDefaultValues(model);
-            form.reset(defaultValues);
+            reset(defaultValues);
             const initialCategories = [...new Set((defaultValues.packages || []).map(p => p.category).filter(Boolean) as string[])];
             setCategories(initialCategories);
             if (model?.id) {
                 loadedModelIdRef.current = model.id;
             }
         }
-    }, [model, form]);
+    }, [model, reset, isDirty]);
     
     const { uncategorizedPackages, categorized, allCategories } = useMemo(() => {
         const uncategorized: { field: any, index: number }[] = [];

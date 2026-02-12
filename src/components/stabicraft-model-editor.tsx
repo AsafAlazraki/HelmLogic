@@ -69,6 +69,26 @@ type ModelFormData = z.infer<typeof modelSchema>;
 
 const GST_RATE = 0.10;
 
+function sanitizeDataForFirestore(data: any): any {
+  if (data === undefined) {
+    return null;
+  }
+  if (data === null || typeof data !== 'object') {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeDataForFirestore(item));
+  }
+  const sanitizedData: { [key: string]: any } = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      sanitizedData[key] = sanitizeDataForFirestore(value);
+    }
+  }
+  return sanitizedData;
+}
+
 function GstInputPair({ control, name, label }: { control: any, name: string, label: string }) {
     const { field } = useController({ control, name, defaultValue: null });
 
@@ -401,9 +421,10 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const saveChanges = useCallback((showToast: boolean) => {
         isSavingRef.current = true;
         const values = getValues();
+        const sanitizedValues = sanitizeDataForFirestore(values);
         const modelDocRef = doc(firestore, docPath);
 
-        updateDoc(modelDocRef, values)
+        updateDoc(modelDocRef, sanitizedValues)
             .then(() => {
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
@@ -412,7 +433,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             .catch((e: any) => {
                 console.error("Save failed:", e);
                 const permissionError = new FirestorePermissionError({
-                    path: modelDocRef.path, operation: 'update', requestResourceData: values,
+                    path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
                 });
                 errorEmitter.emit('permission-error', permissionError);
             })
@@ -429,12 +450,14 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     }, [saveChanges]);
 
     useEffect(() => {
-        const defaultValues = getSafeDefaultValues(model);
-        reset(defaultValues);
-        const initialCategories = [...new Set((defaultValues.optionalFeatures || []).map(f => f.category).filter(Boolean) as string[])];
-        setCategories(initialCategories);
-        loadedModelIdRef.current = model.id;
-    }, [model, reset]);
+        if (!isDirty) {
+            const defaultValues = getSafeDefaultValues(model);
+            reset(defaultValues);
+            const initialCategories = [...new Set((defaultValues.optionalFeatures || []).map(f => f.category).filter(Boolean) as string[])];
+            setCategories(initialCategories);
+            loadedModelIdRef.current = model.id;
+        }
+    }, [model, reset, isDirty]);
     
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
@@ -583,8 +606,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-
-                            {packageLevelFields.length === 0 && (
+                            
+                             {packageLevelFields.length === 0 ? (
                                 <Collapsible asChild defaultOpen>
                                     <Card>
                                         <CollapsibleCardHeader title="Optional Features">
@@ -600,9 +623,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                         </CollapsibleContent>
                                     </Card>
                                 </Collapsible>
-                            )}
-
-                            {packageLevelFields.length > 0 && (
+                             ) : (
                                 <Collapsible asChild defaultOpen>
                                     <Card>
                                         <CollapsibleCardHeader title="Cover Image" />
@@ -694,7 +715,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                         </CollapsibleContent>
                                     </Card>
                                 </Collapsible>
-                            )}
+                             )}
                         </div>
 
                         {/* --- RIGHT COLUMN --- */}
@@ -743,7 +764,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-
                             {packageLevelFields.length === 0 && (
                                 <Collapsible asChild defaultOpen>
                                     <Card>
@@ -858,7 +878,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             <Collapsible defaultOpen>
                                                 <div className="flex items-center justify-between border-b px-2 py-2">
                                                     <CollapsibleTrigger asChild>
-                                                        <div className="flex-1 w-full text-left cursor-pointer">
+                                                        <div className="w-full text-left cursor-pointer flex items-center">
+                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
                                                             <h3 className="font-semibold">Uncategorized</h3>
                                                         </div>
                                                     </CollapsibleTrigger>
@@ -893,7 +914,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             {categorizedFeatures.map(({ name, items }) => (
                                                 <Collapsible key={name} defaultOpen>
                                                     <div className="flex items-center justify-between border-b px-2 py-2">
-                                                        <CollapsibleTrigger className="flex-1 w-full text-left cursor-pointer">
+                                                        <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
+                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
                                                             <h3 className="font-semibold">{name}</h3>
                                                         </CollapsibleTrigger>
                                                         <div className='flex items-center'>

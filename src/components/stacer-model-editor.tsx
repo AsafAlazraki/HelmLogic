@@ -66,6 +66,26 @@ type ModelFormData = z.infer<typeof stacerModelSchema>;
 
 const GST_RATE = 0.10;
 
+function sanitizeDataForFirestore(data: any): any {
+  if (data === undefined) {
+    return null;
+  }
+  if (data === null || typeof data !== 'object') {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeDataForFirestore(item));
+  }
+  const sanitizedData: { [key: string]: any } = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      sanitizedData[key] = sanitizeDataForFirestore(value);
+    }
+  }
+  return sanitizedData;
+}
+
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field } = useController({ control, name, defaultValue: null });
 
@@ -259,14 +279,15 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         defaultValues: getSafeDefaultValues(model),
     });
     
-    const { getValues, reset } = form;
+    const { getValues, reset, formState: { isDirty } } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
         isSavingRef.current = true;
         const values = getValues();
+        const sanitizedValues = sanitizeDataForFirestore(values);
         const modelDocRef = doc(firestore, docPath);
 
-        updateDoc(modelDocRef, values)
+        updateDoc(modelDocRef, sanitizedValues)
             .then(() => {
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
@@ -276,7 +297,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                 console.error("Save failed:", e);
                 toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
                 const permissionError = new FirestorePermissionError({
-                    path: modelDocRef.path, operation: 'update', requestResourceData: values,
+                    path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
                 });
                 errorEmitter.emit('permission-error', permissionError);
             })
@@ -293,13 +314,13 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
     }, [saveChanges]);
 
     useEffect(() => {
-        if (!loadedModelIdRef.current || model?.id !== loadedModelIdRef.current) {
-            form.reset(getSafeDefaultValues(model));
+        if (!isDirty) {
+            reset(getSafeDefaultValues(model));
             if (model?.id) {
                 loadedModelIdRef.current = model.id;
             }
         }
-    }, [model, form]);
+    }, [model, reset, isDirty]);
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
