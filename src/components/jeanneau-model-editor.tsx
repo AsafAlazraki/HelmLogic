@@ -12,14 +12,14 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal, Plus } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -124,7 +124,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
         } else {
             const num = parseFloat(val);
             if (!isNaN(num)) {
-                field.onChange(num / (1 + GST_RATE));
+                field.onChange(parseFloat((num / (1 + GST_RATE)).toFixed(4)));
             }
         }
     };
@@ -585,7 +585,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                             </Collapsible>
 
                              {/* Packages Card */}
-                            <Card>
+                             <Card>
                                 <CardHeader>
                                     <CardTitle>Optional Packages</CardTitle>
                                     <CardDescription>Group optional features into packages.</CardDescription>
@@ -595,15 +595,15 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                         <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
                                         <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
                                     </div>
-                                    <div className="space-y-4 max-h-[700px] overflow-y-auto p-1">
+                                    <div className="p-4 border-2 border-dashed rounded-lg space-y-4 max-h-[700px] overflow-y-auto">
                                         {[
                                             { name: 'Uncategorized', items: uncategorizedPackages, isUncategorized: true },
                                             ...categorizedPackages
                                         ].map(({ name, items, isUncategorized }) => (
                                             <Collapsible key={name} defaultOpen>
-                                                <div className="flex items-center justify-between border-b pb-2 mb-2 pr-2">
-                                                    <CollapsibleTrigger asChild>
-                                                        <Button variant="ghost" className="p-1 h-auto text-left justify-start group flex-1">
+                                                <div className="flex items-center justify-between border-b pb-2 mb-2">
+                                                     <CollapsibleTrigger asChild>
+                                                        <Button variant="ghost" className="p-1 h-auto text-left justify-start group">
                                                             <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
                                                             <h3 className="font-semibold">{name} <span className="text-muted-foreground font-normal">({items.length})</span></h3>
                                                         </Button>
