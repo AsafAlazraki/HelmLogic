@@ -828,7 +828,9 @@ export default function VendorDetailsPage() {
                     )}
 
                     <TabsContent value="data-connection">
-                         {vendor.slug === 'sam-allen' ? (
+                         {vendor.slug === 'yamaha' ? (
+                            <ApiDataFetcher />
+                         ) : vendor.slug === 'sam-allen' ? (
                             <SamAllenUploader vendorId={vendor.id} />
                          ) : vendor.dataSource === 'Direct API' ? (
                             <ApiDataFetcher />
