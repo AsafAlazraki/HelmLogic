@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -13,14 +13,14 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormProvider } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal, Plus } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -166,8 +166,8 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
     );
 }
 
-function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
-    const { control } = useFormContext<ModelFormData>();
+function IncludedFeatures({ form, packageIndex }: { form: any; packageIndex: number }) {
+    const { control } = form;
     const { fields, append, remove } = useFieldArray({
         control,
         name: `packages.${packageIndex}.includedFeatures`
@@ -268,7 +268,7 @@ function PackageItem({
                             <GstInputPair control={control} name={`packages.${index}.cost`} label="Cost" />
                             <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Sell Price" />
                         </div>
-                        <IncludedFeatures packageIndex={index} />
+                        <IncludedFeatures form={form} packageIndex={index} />
                     </div>
                 </CollapsibleContent>
             </Card>
