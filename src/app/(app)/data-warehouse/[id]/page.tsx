@@ -470,20 +470,28 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             const allKeys = Object.keys(firstItem);
             
             if (vendor.slug === 'yamaha') {
-                const titleKey = allKeys.find(k => k.toLowerCase() === 'model name') || null;
-                const infoKeys = ['Product Group', 'Sub Catagory'].map(name => allKeys.find(k => k.toLowerCase() === name.toLowerCase())).filter(Boolean) as string[];
-                
-                let columnConfig = [
-                    { key: 'Model Name', label: 'Model Name' },
-                    { key: 'Product Group', label: 'Product Group' },
-                    { key: 'Sub Catagory', label: 'Sub Catagory' },
-                ]
-                .map(c => ({...c, key: allKeys.find(k => k.toLowerCase() === c.key.toLowerCase()) || c.key }))
-                .filter(c => allKeys.includes(c.key));
+                const normalize = (s: string) => s.toLowerCase().replace(/ /g, '');
 
-                // If no specific columns found, use some defaults
-                if(columnConfig.length === 0 && allKeys.length > 0) {
-                    columnConfig = allKeys.slice(0, 3).map(k => ({ key: k, label: k}));
+                const findKey = (name: string) => {
+                    const normalizedName = normalize(name);
+                    return allKeys.find(k => normalize(k) === normalizedName);
+                };
+
+                const modelNameKey = findKey('Model Name');
+                const productGroupKey = findKey('Product Group');
+                const subCategoryKey = findKey('Sub Catagory');
+
+                const titleKey = modelNameKey || null;
+                const infoKeys = [productGroupKey, subCategoryKey].filter(Boolean) as string[];
+                
+                let columnConfig: { key: string, label: string }[] = [];
+                
+                if (productGroupKey) columnConfig.push({ key: productGroupKey, label: 'Product Group' });
+                if (modelNameKey) columnConfig.push({ key: modelNameKey, label: 'Model Name' });
+                if (subCategoryKey) columnConfig.push({ key: subCategoryKey, label: 'Sub Catagory' });
+
+                if (columnConfig.length === 0 && allKeys.length > 0) {
+                    columnConfig = allKeys.slice(0, 3).map(k => ({ key: k, label: k }));
                 }
 
                 setDisplayConfig({ titleKey, infoKeys, columnConfig });
