@@ -110,7 +110,9 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
             return;
         }
         const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? null : numValue / (1 + GST_RATE));
+        if (isNaN(numValue)) return;
+        const exclValue = numValue / (1 + GST_RATE);
+        field.onChange(parseFloat(exclValue.toFixed(4)));
     };
 
     return (
