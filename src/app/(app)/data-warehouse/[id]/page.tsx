@@ -471,7 +471,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
 
             const findKey = (potentials: string[]) => allKeys.find(k => potentials.includes(k.toLowerCase()));
 
-            const titleKey = findKey(['name', 'item', 'description', 'part_description', 'title']) || allKeys.filter(k=>k!=='id')[0];
+            const titleKey = findKey(['name', 'productName', 'modelName', 'title', 'item', 'description', 'part_description']) || allKeys.filter(k=>k!=='id')[0];
 
             const infoKeys = allKeys.filter(k => 
                 k.toLowerCase() !== titleKey?.toLowerCase() && 
