@@ -176,7 +176,7 @@ function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
         <div className="space-y-2 pt-4 mt-4 border-t">
             <div className="flex justify-between items-center">
                 <FormLabel className="text-xs text-muted-foreground">Included Features</FormLabel>
-                <Button type="button" variant="ghost" size="sm" onClick={() => append('')}>
+                <Button type="button" variant="ghost" size="sm" onClick={() => append('', { shouldFocus: false })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add
                 </Button>
             </div>
@@ -421,7 +421,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         defaultValues: getSafeDefaultValues(model),
     });
     
-    const { control, getValues, reset, formState: { isDirty } } = form;
+    const { control, getValues, reset } = form;
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
@@ -435,7 +435,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const coverImageUrl = useWatch({ control, name: "coverImageUrl" });
 
     useEffect(() => {
-        if (model?.id !== loadedModelIdRef.current || !isDirty) {
+        if (model?.id !== loadedModelIdRef.current) {
             const defaultValues = getSafeDefaultValues(model);
             reset(defaultValues);
             const initialCategories = [...new Set((defaultValues.packages || []).map(p => p.category).filter(Boolean) as string[])];
@@ -444,7 +444,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 loadedModelIdRef.current = model.id;
             }
         }
-    }, [model, reset, getSafeDefaultValues, isDirty]);
+    }, [model, reset, getSafeDefaultValues]);
     
     const { uncategorizedPackages, categorizedPackages } = useMemo(() => {
         const uncategorized: { field: any, index: number }[] = [];
@@ -548,6 +548,58 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
+                            {/* Specifications Card */}
+                            <Collapsible asChild>
+                                <Card>
+                                    <CollapsibleCardHeader title="Specifications">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <FormField control={control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            </div>
+                                            <div className="space-y-4">
+                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
+                                                {specFields.map((field, index) => (
+                                                    <div key={field.id} className="flex items-end gap-2">
+                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                             {/* Standard Features Card */}
+                             <Collapsible asChild>
+                                <Card>
+                                    <CollapsibleCardHeader title="Standard Features">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+                                            {featureFields.map((field, index) => (
+                                                <div key={field.id} className="flex items-center gap-2">
+                                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </div>
+                                            ))}
+                                        </CardContent>
+                                        <CardContent>
+                                            <div className="space-y-2">
+                                                <FormLabel>Bulk Add Features</FormLabel>
+                                                <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Optional Packages</CardTitle>
@@ -617,58 +669,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </div>
                                 </CardContent>
                             </Card>
-                            {/* Standard Features Card */}
-                             <Collapsible asChild>
-                                <Card>
-                                    <CollapsibleCardHeader title="Standard Features">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
-                                            {featureFields.map((field, index) => (
-                                                <div key={field.id} className="flex items-center gap-2">
-                                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                </div>
-                                            ))}
-                                        </CardContent>
-                                        <CardContent>
-                                            <div className="space-y-2">
-                                                <FormLabel>Bulk Add Features</FormLabel>
-                                                <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                            {/* Specifications Card */}
-                            <Collapsible asChild>
-                                <Card>
-                                    <CollapsibleCardHeader title="Specifications">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                            </div>
-                                            <div className="space-y-4">
-                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
-                                                {specFields.map((field, index) => (
-                                                    <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
                             {/* Colors Card */}
                             <Collapsible asChild>
                                 <Card>
