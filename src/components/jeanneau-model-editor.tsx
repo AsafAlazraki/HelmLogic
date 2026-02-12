@@ -106,7 +106,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
     const { field } = useController({ control, name, defaultValue: null });
 
     const valueExcl = field.value;
-    const valueIncl = valueExcl !== null ? parseFloat((valueExcl * (1 + GST_RATE)).toFixed(2)) : null;
+    const valueIncl = valueExcl !== null && valueExcl !== undefined ? parseFloat((valueExcl * (1 + GST_RATE)).toFixed(2)) : null;
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -141,7 +141,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                             type="number"
                             step="any"
                             placeholder="0.00"
-                            value={valueExcl === null ? '' : String(valueExcl)}
+                            value={valueExcl === null || valueExcl === undefined ? '' : String(valueExcl)}
                             onChange={handleExclChange}
                         />
                     </FormControl>
@@ -154,7 +154,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                             type="number"
                             step="any"
                             placeholder="0.00"
-                            value={valueIncl === null ? '' : String(valueIncl)}
+                            value={valueIncl === null || valueIncl === undefined ? '' : String(valueIncl)}
                             onChange={handleInclChange}
                         />
                     </FormControl>
@@ -499,7 +499,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
     const handleAddCategory = () => {
         if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
-            setCategories(prev => [newCategoryName.trim(), ...prev].sort());
+            setCategories(prev => [newCategoryName.trim(), ...prev]);
             setNewCategoryName('');
         }
     };
