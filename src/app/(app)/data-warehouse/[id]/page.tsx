@@ -53,6 +53,7 @@ import { StacerDataStructure } from '@/components/stacer-data-structure';
 import { StabicraftDataStructure } from '@/components/stabicraft-data-structure';
 import { SamAllenUploader } from '@/components/sam-allen-uploader';
 import { SamAllenDataViewer } from '@/components/sam-allen-data-viewer';
+import { proxyFetch } from '@/actions/proxy-fetch';
 
 const formSchema = z.object({
   id: z.string(),
@@ -127,7 +128,7 @@ function JsonDataVisualizer({ data, columns, onRowClick }: { data: any, columns?
         );
     }
     
-    return <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm"><code>{JSON.stringify(data, null, 2)}</code></pre>;
+    return <pre className="mt-2 max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-sm"><code>{typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data)}</code></pre>;
 }
 
 function ApiDataFetcher() {
@@ -135,9 +136,44 @@ function ApiDataFetcher() {
     const [jsonData, setJsonData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { toast } = useToast();
 
     const handleFetchData = async () => {
-        // This function will be updated to use server action for fetching
+        if (!url) {
+            setError("Please enter a URL.");
+            return;
+        }
+        setIsLoading(true);
+        setError(null);
+        setJsonData(null);
+        try {
+            const result = await proxyFetch(url);
+
+            if (result.success) {
+                // Try parsing if it's a string, might be stringified JSON
+                if (typeof result.data === 'string') {
+                    try {
+                        const parsed = JSON.parse(result.data);
+                        setJsonData(parsed);
+                    } catch (e) {
+                        // Not a JSON string, just display as text
+                        setJsonData(result.data);
+                    }
+                } else {
+                    setJsonData(result.data);
+                }
+            } else {
+                const errorMessage = result.error || "An unknown error occurred.";
+                setError(errorMessage);
+                toast({ variant: 'destructive', title: 'Fetch Failed', description: errorMessage });
+            }
+        } catch (e: any) {
+            const errorMessage = e.message || 'An unexpected error occurred.';
+            setError(errorMessage);
+            toast({ variant: 'destructive', title: 'Fetch Failed', description: errorMessage });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
