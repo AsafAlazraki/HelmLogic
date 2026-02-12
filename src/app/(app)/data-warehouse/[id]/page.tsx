@@ -712,7 +712,8 @@ export default function VendorDetailsPage() {
     
     const isBoatBrand = vendor?.vendorType === 'Boat Brand';
     const isBulkSupplier = (vendor?.vendorType === 'Electronics Supplier' || vendor?.vendorType === 'Parts Wholesaler');
-    const defaultTab = isBoatBrand ? "product-ranges" : isBulkSupplier ? "master-data" : "details";
+    const isYamaha = vendor?.slug === 'yamaha';
+    const defaultTab = isBoatBrand ? "product-ranges" : (isBulkSupplier || isYamaha) ? "master-data" : "details";
     
     return (
         <AdminGuard>
@@ -728,7 +729,7 @@ export default function VendorDetailsPage() {
                     </div>
                     <TabsList>
                         {isBoatBrand && <TabsTrigger value="product-ranges">Product Ranges</TabsTrigger>}
-                        {isBulkSupplier && <TabsTrigger value="master-data">Master Data Set</TabsTrigger>}
+                        {(isBulkSupplier || isYamaha) && <TabsTrigger value="master-data">Master Data Set</TabsTrigger>}
                         <TabsTrigger value="data-connection">Data Connection</TabsTrigger>
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
@@ -752,7 +753,7 @@ export default function VendorDetailsPage() {
                         </TabsContent>
                     )}
 
-                    {isBulkSupplier && (
+                    {(isBulkSupplier || isYamaha) && (
                         <TabsContent value="master-data">
                             {vendor.slug === 'sam-allen' ? (
                                 <SamAllenDataViewer vendorId={vendor.id} />
@@ -764,7 +765,7 @@ export default function VendorDetailsPage() {
 
                     <TabsContent value="data-connection">
                          {vendor.slug === 'yamaha' ? (
-                            <YamahaApiFetcher />
+                            <YamahaApiFetcher vendorId={vendor.id} />
                          ) : vendor.slug === 'sam-allen' ? (
                             <SamAllenUploader vendorId={vendor.id} />
                          ) : vendor.dataSource === 'Direct API' ? (
