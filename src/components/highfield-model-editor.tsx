@@ -87,11 +87,14 @@ function sanitizeDataForFirestore(data: any): any {
   for (const key in data) {
     if (Object.prototype.hasOwnProperty.call(data, key)) {
       const value = data[key];
-      sanitizedData[key] = sanitizeDataForFirestore(value);
+      if (value !== undefined) {
+          sanitizedData[key] = sanitizeDataForFirestore(value);
+      }
     }
   }
   return sanitizedData;
 }
+
 
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field } = useController({ control, name });
@@ -226,7 +229,7 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
                         <FormItem>
                             <FormLabel className="sr-only">Feature Name</FormLabel>
                             <FormControl>
-                                <Input placeholder="Feature Name" {...field} />
+                                <Input placeholder="Feature Name" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                         </FormItem> 
@@ -256,8 +259,10 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const { getValues, reset, formState: { isDirty } } = form;
 
     const saveChanges = useCallback((showToast: boolean) => {
-        isSavingRef.current = true;
         const values = getValues();
+        if (isSavingRef.current) return;
+        isSavingRef.current = true;
+        
         const sanitizedValues = sanitizeDataForFirestore(values);
         const modelDocRef = doc(firestore, docPath);
 
@@ -266,6 +271,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 if (showToast) {
                     toast({ title: "Model Updated", description: "Your changes have been saved." });
                 }
+                reset(values); // This marks the form as no longer dirty
             })
             .catch((e: any) => {
                 console.error("Save failed:", e);
@@ -278,21 +284,20 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             .finally(() => {
                 isSavingRef.current = false;
             });
-    }, [docPath, firestore, getValues, toast]);
+    }, [docPath, firestore, getValues, toast, reset]);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            saveChanges(false);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [saveChanges]);
-    
-    useEffect(() => {
-        if (model?.id && model.id === loadedModelIdRef.current) {
-            return;
+        let interval: NodeJS.Timeout;
+        if (isDirty) {
+            interval = setInterval(() => {
+                saveChanges(false);
+            }, 1000);
         }
-
-        const safeModel = model || {};
+        return () => clearInterval(interval);
+    }, [saveChanges, isDirty]);
+    
+    const getSafeDefaultValues = useCallback((modelData: any): Partial<ModelFormData> => {
+        const safeModel = modelData || {};
         const defaultValues: Partial<ModelFormData> = {
             coverImageUrl: safeModel.coverImageUrl ?? null,
             galleryImageUrls: safeModel.galleryImageUrls ?? [],
@@ -308,13 +313,13 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             variantPricing: [],
             material: safeModel.material,
         };
-    
+
         const variants: z.infer<typeof variantPricingSchema>[] = [];
         const materials = ['HYP', 'PVC'];
         const existingPricing = new Map(
             (safeModel.variantPricing || []).map((p: any) => [`${p.colorId}-${p.material}`, p])
         );
-    
+
         (defaultValues.colors || []).forEach(color => {
             materials.forEach(material => {
                 const key = `${color.id}-${material}`;
@@ -342,11 +347,18 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         variants.sort((a, b) => a.colorName.localeCompare(b.colorName) || a.material.localeCompare(b.material));
         defaultValues.variantPricing = variants;
 
-        reset(defaultValues);
-        if (model?.id) {
-            loadedModelIdRef.current = model.id;
+        return defaultValues;
+    }, []);
+
+    useEffect(() => {
+        if (model?.id !== loadedModelIdRef.current) {
+            const defaultValues = getSafeDefaultValues(model);
+            reset(defaultValues);
+            if (model?.id) {
+                loadedModelIdRef.current = model.id;
+            }
         }
-    }, [model, reset]);
+    }, [model, reset, getSafeDefaultValues]);
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
@@ -391,16 +403,16 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 <CollapsibleContent>
                                     <CardContent className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                         </div>
                                         <div className="space-y-4">
                                             {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                             {specFields.map((field, index) => (
                                                 <div key={field.id} className="flex items-end gap-2">
-                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                 </div>
                                             ))}
@@ -420,7 +432,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                     <CardContent className="space-y-4 max-h-96 overflow-y-auto">
                                         {featureFields.map((field, index) => (
                                              <div key={field.id} className="flex items-center gap-2">
-                                                <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                             </div>
                                         ))}
@@ -447,7 +459,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                         {colorFields.map((field, index) => (
                                             <Card key={field.id} className="p-4 bg-muted/50">
                                                 <div className="flex justify-between items-center mb-4">
-                                                    <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                     <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
                                                 </div>
                                                 <div className="space-y-2">
