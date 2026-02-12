@@ -468,34 +468,54 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         if (masterDataSet && masterDataSet.length > 0) {
             const firstItem = masterDataSet[0];
             const allKeys = Object.keys(firstItem);
-
-            const findKey = (potentials: string[]) => allKeys.find(k => potentials.includes(k.toLowerCase()));
-
-            const titleKey = findKey(['name', 'productName', 'modelName', 'title', 'item', 'description', 'part_description']) || allKeys.filter(k=>k!=='id')[0];
-
-            const infoKeys = allKeys.filter(k => 
-                k.toLowerCase() !== titleKey?.toLowerCase() && 
-                ['part_number', 'sku', 'model', 'price', 'cost', 'rrp', 'sellpriceexclgst'].includes(k.toLowerCase())
-            ).slice(0, 3);
             
-            const columnKeys = [
-                titleKey,
-                ...infoKeys,
-                ...allKeys.filter(k => 
-                    !k.toLowerCase().includes('url') && 
-                    !k.toLowerCase().includes('id') && 
-                    ![titleKey, ...infoKeys].includes(k)
-                )
-            ].filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 5) as string[];
+            if (vendor.slug === 'yamaha') {
+                const titleKey = allKeys.find(k => k.toLowerCase() === 'model name') || null;
+                const infoKeys = ['Product Group', 'Sub Catagory'].map(name => allKeys.find(k => k.toLowerCase() === name.toLowerCase())).filter(Boolean) as string[];
+                
+                let columnConfig = [
+                    { key: 'Model Name', label: 'Model Name' },
+                    { key: 'Product Group', label: 'Product Group' },
+                    { key: 'Sub Catagory', label: 'Sub Catagory' },
+                ]
+                .map(c => ({...c, key: allKeys.find(k => k.toLowerCase() === c.key.toLowerCase()) || c.key }))
+                .filter(c => allKeys.includes(c.key));
 
-            const columnConfig = columnKeys.map(key => ({
-                key,
-                label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-            }));
+                // If no specific columns found, use some defaults
+                if(columnConfig.length === 0 && allKeys.length > 0) {
+                    columnConfig = allKeys.slice(0, 3).map(k => ({ key: k, label: k}));
+                }
 
-            setDisplayConfig({ titleKey, infoKeys, columnConfig });
+                setDisplayConfig({ titleKey, infoKeys, columnConfig });
+            } else {
+                const findKey = (potentials: string[]) => allKeys.find(k => potentials.includes(k.toLowerCase()));
+
+                const titleKey = findKey(['name', 'productName', 'modelName', 'title', 'item', 'description', 'part_description']) || allKeys.filter(k=>k!=='id')[0];
+
+                const infoKeys = allKeys.filter(k => 
+                    k.toLowerCase() !== titleKey?.toLowerCase() && 
+                    ['part_number', 'sku', 'model', 'price', 'cost', 'rrp', 'sellpriceexclgst'].includes(k.toLowerCase())
+                ).slice(0, 3);
+                
+                const columnKeys = [
+                    titleKey,
+                    ...infoKeys,
+                    ...allKeys.filter(k => 
+                        !k.toLowerCase().includes('url') && 
+                        !k.toLowerCase().includes('id') && 
+                        ![titleKey, ...infoKeys].includes(k)
+                    )
+                ].filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 5) as string[];
+
+                const columnConfig = columnKeys.map(key => ({
+                    key,
+                    label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                }));
+
+                setDisplayConfig({ titleKey, infoKeys, columnConfig });
+            }
         }
-    }, [masterDataSet]);
+    }, [masterDataSet, vendor.slug]);
 
 
     const filteredData = useMemo(() => {
