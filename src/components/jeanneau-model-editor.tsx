@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -114,7 +114,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
             field.onChange(null);
         } else {
             const num = parseFloat(val);
-            field.onChange(isNaN(num) ? null : num);
+            field.onChange(isNaN(num) ? null : parseFloat(num.toFixed(2)));
         }
     };
 
@@ -219,7 +219,7 @@ function PackageItem({
     const { control } = form;
     
     return (
-        <Collapsible asChild>
+        <Collapsible asChild defaultOpen>
             <Card className="overflow-hidden">
                 <div className="p-4 flex justify-between items-start">
                     <div className="flex-1 pr-4">
@@ -438,7 +438,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         if (model?.id !== loadedModelIdRef.current) {
             const defaultValues = getSafeDefaultValues(model);
             reset(defaultValues);
-            const initialCategories = [...new Set((defaultValues.packages || []).map(p => p.category).filter(Boolean) as string[])].sort();
+            const initialCategories = [...new Set((defaultValues.packages || []).map(p => p.category).filter(Boolean) as string[])];
             setCategories(initialCategories);
             if (model?.id) {
                 loadedModelIdRef.current = model.id;
@@ -462,13 +462,13 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             }
         });
     
-        const categorized = categories.map(name => ({
+        const categorized = allCategories.map(name => ({
             name,
             items: categoryMap.get(name) || []
         }));
     
-        return { uncategorizedPackages: uncategorized, categorizedPackages: categorized, allCategories: categories };
-    }, [packageFields, watchedPackages, categories]);
+        return { uncategorizedPackages: uncategorized, categorizedPackages: categorized, allCategories };
+    }, [packageFields, watchedPackages, allCategories]);
 
     async function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
@@ -597,7 +597,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                             </button>
                                                         </CollapsibleTrigger>
                                                         <div className="flex items-center gap-2">
-                                                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: name })}>
+                                                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: name }, { shouldFocus: false })}>
                                                                 <PlusCircle className="mr-2 h-4 w-4"/> Add Package
                                                             </Button>
                                                             <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
@@ -605,11 +605,13 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                             </Button>
                                                         </div>
                                                     </div>
-                                                    <CollapsibleContent className={cn("space-y-4", items.length > 0 && "pt-4 border-t border-dashed")}>
-                                                        {items.map(({field, index}) => (
-                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
-                                                        ))}
-                                                        {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
+                                                    <CollapsibleContent>
+                                                        <div className="space-y-4 pt-4 border-t border-dashed">
+                                                            {items.map(({field, index}) => (
+                                                                <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                            ))}
+                                                            {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
+                                                        </div>
                                                     </CollapsibleContent>
                                                 </div>
                                             </Collapsible>
@@ -624,15 +626,17 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                             <span className="text-muted-foreground font-normal ml-2">({uncategorizedPackages.length})</span>
                                                         </button>
                                                     </CollapsibleTrigger>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: undefined })}>
+                                                     <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: undefined }, { shouldFocus: false })}>
                                                         <PlusCircle className="mr-2 h-4 w-4"/> Add Package
                                                     </Button>
                                                 </div>
-                                                <CollapsibleContent className={cn("space-y-4", uncategorizedPackages.length > 0 && "pt-4 border-t border-dashed")}>
-                                                    {uncategorizedPackages.map(({field, index}) => (
-                                                        <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
-                                                    ))}
-                                                    {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
+                                                <CollapsibleContent>
+                                                    <div className="space-y-4 pt-4 border-t border-dashed">
+                                                        {uncategorizedPackages.map(({field, index}) => (
+                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                        ))}
+                                                        {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
+                                                    </div>
                                                 </CollapsibleContent>
                                             </div>
                                         </Collapsible>
@@ -876,4 +880,3 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         </>
     );
 }
-
