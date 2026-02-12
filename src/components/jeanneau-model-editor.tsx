@@ -446,13 +446,13 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         }
     }, [model, reset, getSafeDefaultValues]);
     
-    const { uncategorizedPackages, categorizedPackages, allCategories } = useMemo(() => {
+    const { uncategorizedPackages, categorizedPackages } = useMemo(() => {
         const uncategorized: { field: any, index: number }[] = [];
         const categoryMap = new Map<string, { field: any, index: number }[]>();
     
         packageFields.forEach((field, index) => {
             const category = watchedPackages?.[index]?.category;
-            if (category) {
+            if (category && categories.includes(category)) {
                 if (!categoryMap.has(category)) {
                     categoryMap.set(category, []);
                 }
@@ -462,13 +462,13 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             }
         });
     
-        const categorized = allCategories.map(name => ({
+        const categorized = categories.map(name => ({
             name,
             items: categoryMap.get(name) || []
         }));
     
-        return { uncategorizedPackages: uncategorized, categorizedPackages: categorized, allCategories };
-    }, [packageFields, watchedPackages, allCategories]);
+        return { uncategorizedPackages: uncategorized, categorizedPackages: categorized };
+    }, [packageFields, watchedPackages, categories]);
 
     async function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
@@ -608,7 +608,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                     <CollapsibleContent>
                                                         <div className="space-y-4 pt-4 border-t border-dashed">
                                                             {items.map(({field, index}) => (
-                                                                <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                                <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={categories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
                                                             ))}
                                                             {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
                                                         </div>
@@ -633,7 +633,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                 <CollapsibleContent>
                                                     <div className="space-y-4 pt-4 border-t border-dashed">
                                                         {uncategorizedPackages.map(({field, index}) => (
-                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={categories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
                                                         ))}
                                                         {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
                                                     </div>
