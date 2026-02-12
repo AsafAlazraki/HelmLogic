@@ -16,11 +16,11 @@ import { collection, doc, getDocs, query, writeBatch } from 'firebase/firestore'
 
 export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
     const [masterUrl, setMasterUrl] = useState('');
-    const [detailUrlPrefix, setDetailUrlPrefix] = useState('');
-    const [pricingUrl, setPricingUrl] = useState('');
+    const [detailUrlPrefix1, setDetailUrlPrefix1] = useState('');
+    const [detailUrlPrefix2, setDetailUrlPrefix2] = useState('');
     const [masterData, setMasterData] = useState<any[] | null>(null);
-    const [detailedData, setDetailedData] = useState<any[] | null>(null);
-    const [pricingData, setPricingData] = useState<any[] | null>(null);
+    const [detailedData1, setDetailedData1] = useState<any[] | null>(null);
+    const [detailedData2, setDetailedData2] = useState<any[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -29,15 +29,15 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
     const firestore = useFirestore();
 
     const handleFetchData = async () => {
-        if (!masterUrl || !detailUrlPrefix || !pricingUrl) {
+        if (!masterUrl || !detailUrlPrefix1 || !detailUrlPrefix2) {
             setError("Please enter all three API URLs.");
             return;
         }
         setIsLoading(true);
         setError(null);
         setMasterData(null);
-        setDetailedData(null);
-        setPricingData(null);
+        setDetailedData1(null);
+        setDetailedData2(null);
         setProgress(0);
 
         try {
@@ -47,11 +47,12 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
                 throw new Error(masterResult.error || 'Failed to fetch master list or data is not an array.');
             }
             setMasterData(masterResult.data);
+            setProgress(10); // Initial progress
 
             const totalItems = masterResult.data.length;
 
-            // Step 2: Fetch details for each item
-            const details: any[] = [];
+            // Step 2: Fetch details for each item from API 1
+            const details1: any[] = [];
             for (let i = 0; i < totalItems; i++) {
                 const item = masterResult.data[i];
                 const itemId = item.id || item.ID; // Guess the ID field
@@ -61,37 +62,37 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
                     continue; // Skip if no ID
                 }
 
-                const detailUrl = `${detailUrlPrefix}${itemId}`;
+                const detailUrl = `${detailUrlPrefix1}${itemId}`;
                 const detailResult = await proxyFetch(detailUrl);
                 
                 if (detailResult.success) {
-                    details.push(detailResult.data);
+                    details1.push(detailResult.data);
                 } else {
-                    console.warn(`Failed to fetch details for ID ${itemId}: ${detailResult.error}`);
+                    console.warn(`Failed to fetch details from API 1 for ID ${itemId}: ${detailResult.error}`);
                 }
-                setProgress(((i + 1) / totalItems) * 50);
+                setProgress(10 + ((i + 1) / totalItems) * 45); // Progress from 10% to 55%
             }
-            setDetailedData(details);
+            setDetailedData1(details1);
 
-            // Step 3: Fetch pricing for each item
-            const pricing: any[] = [];
+            // Step 3: Fetch details for each item from API 2
+            const details2: any[] = [];
             for (let i = 0; i < totalItems; i++) {
                 const item = masterResult.data[i];
                 const itemId = item.id || item.ID; // Guess the ID field
 
                 if (!itemId) continue;
 
-                const priceUrl = `${pricingUrl}${itemId}`;
-                const priceResult = await proxyFetch(priceUrl);
+                const detailUrl = `${detailUrlPrefix2}${itemId}`;
+                const detailResult = await proxyFetch(detailUrl);
 
-                if (priceResult.success) {
-                    pricing.push(priceResult.data);
+                if (detailResult.success) {
+                    details2.push(detailResult.data);
                 } else {
-                    console.warn(`Failed to fetch pricing for ID ${itemId}: ${priceResult.error}`);
+                    console.warn(`Failed to fetch details from API 2 for ID ${itemId}: ${detailResult.error}`);
                 }
-                setProgress(50 + ((i + 1) / totalItems) * 50);
+                setProgress(55 + ((i + 1) / totalItems) * 45); // Progress from 55% to 100%
             }
-            setPricingData(pricing);
+            setDetailedData2(details2);
 
             toast({ title: 'Success', description: 'All data fetched successfully.' });
 
@@ -105,7 +106,7 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
     };
     
     const handleMergeAndSave = async () => {
-        if (!masterData || !detailedData || !pricingData) {
+        if (!masterData || !detailedData1 || !detailedData2) {
             toast({
                 variant: 'destructive',
                 title: 'Missing Data',
@@ -118,21 +119,20 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
         try {
             const getItemId = (item: any): string | number | null => item?.id || item?.ID || item?.Id || null;
 
-            const detailsMap = new Map(detailedData.map(item => [getItemId(item), item]));
-            const pricingMap = new Map(pricingData.map(item => [getItemId(item), item]));
+            const details1Map = new Map(detailedData1.map(item => [getItemId(item), item]));
+            const details2Map = new Map(detailedData2.map(item => [getItemId(item), item]));
 
             const mergedData = masterData.map(masterItem => {
                 const id = getItemId(masterItem);
                 if (id === null) return { ...masterItem, merge_error: 'Missing ID' };
 
-                const detailItem = detailsMap.get(id) || {};
-                const pricingItem = pricingMap.get(id) || {};
+                const detailItem1 = details1Map.get(id) || {};
+                const detailItem2 = details2Map.get(id) || {};
 
-                // Make sure not to spread the id from detail/pricing over master's
-                const { id: detailId, ID: detailID, Id: detail_Id, ...restOfDetail } = detailItem;
-                const { id: pricingId, ID: pricingID, Id: pricing_Id, ...restOfPricing } = pricingItem;
+                const { id: detail1Id, ID: detail1ID, Id: detail1_Id, ...restOfDetail1 } = detailItem1;
+                const { id: detail2Id, ID: detail2ID, Id: detail2_Id, ...restOfDetail2 } = detailItem2;
                 
-                return { ...masterItem, ...restOfDetail, ...restOfPricing };
+                return { ...masterItem, ...restOfDetail1, ...restOfDetail2 };
             });
 
             const masterDataSetPath = `data-warehouse/${vendorId}/masterDataSet`;
@@ -167,7 +167,7 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
             <CardHeader>
                 <CardTitle>Yamaha API Data Fetcher</CardTitle>
                 <CardDescription>
-                    Enter the master, detail, and pricing API endpoints to fetch and merge product data.
+                    Enter the master and detail API endpoints to fetch and merge product data.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -183,22 +183,22 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
                         />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="detail-url">2. Detail API Prefix</Label>
+                        <Label htmlFor="detail-url-1">2. Detail API 1 Prefix</Label>
                         <Input
-                            id="detail-url"
-                            placeholder="e.g., https://api.yamaha.com/products/"
-                            value={detailUrlPrefix}
-                            onChange={(e) => setDetailUrlPrefix(e.target.value)}
+                            id="detail-url-1"
+                            placeholder="e.g., https://api.yamaha.com/details1/"
+                            value={detailUrlPrefix1}
+                            onChange={(e) => setDetailUrlPrefix1(e.target.value)}
                             disabled={isLoading}
                         />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="pricing-url">3. Pricing API Prefix</Label>
+                        <Label htmlFor="detail-url-2">3. Detail API 2 Prefix</Label>
                         <Input
-                            id="pricing-url"
-                            placeholder="e.g., https://api.yamaha.com/pricing/"
-                            value={pricingUrl}
-                            onChange={(e) => setPricingUrl(e.target.value)}
+                            id="detail-url-2"
+                            placeholder="e.g., https://api.yamaha.com/details2/"
+                            value={detailUrlPrefix2}
+                            onChange={(e) => setDetailUrlPrefix2(e.target.value)}
                             disabled={isLoading}
                         />
                     </div>
@@ -220,26 +220,26 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
                         <p>{error}</p>
                     </div>
                 )}
-                {(masterData || detailedData || pricingData) && (
+                {(masterData || detailedData1 || detailedData2) && (
                     <Tabs defaultValue="master" className="pt-4">
                         <TabsList>
                             <TabsTrigger value="master">Master List</TabsTrigger>
-                            <TabsTrigger value="detailed">Detailed Data</TabsTrigger>
-                            <TabsTrigger value="pricing">Pricing Data</TabsTrigger>
+                            <TabsTrigger value="detailed1">Detailed Data 1</TabsTrigger>
+                            <TabsTrigger value="detailed2">Detailed Data 2</TabsTrigger>
                         </TabsList>
                         <TabsContent value="master">
                            <div className="max-h-[600px] overflow-auto rounded-md border">
                              <JsonDataVisualizer data={masterData} />
                            </div>
                         </TabsContent>
-                        <TabsContent value="detailed">
+                        <TabsContent value="detailed1">
                             <div className="max-h-[600px] overflow-auto rounded-md border">
-                             <JsonDataVisualizer data={detailedData} />
+                             <JsonDataVisualizer data={detailedData1} />
                            </div>
                         </TabsContent>
-                         <TabsContent value="pricing">
+                         <TabsContent value="detailed2">
                             <div className="max-h-[600px] overflow-auto rounded-md border">
-                             <JsonDataVisualizer data={pricingData} />
+                             <JsonDataVisualizer data={detailedData2} />
                            </div>
                         </TabsContent>
                     </Tabs>
@@ -248,7 +248,7 @@ export function YamahaApiFetcher({ vendorId }: { vendorId: string }) {
             <CardFooter>
                  <Button 
                     onClick={handleMergeAndSave} 
-                    disabled={!masterData || !detailedData || !pricingData || isLoading || isSaving}
+                    disabled={!masterData || !detailedData1 || !detailedData2 || isLoading || isSaving}
                 >
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     <span className="ml-2">Merge & Save to Master Data Set</span>
