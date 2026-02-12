@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -437,7 +438,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         if (model?.id !== loadedModelIdRef.current) {
             const defaultValues = getSafeDefaultValues(model);
             reset(defaultValues);
-            const initialCategories = [...new Set((defaultValues.packages || []).map(p => p.category).filter(Boolean) as string[])];
+            const initialCategories = [...new Set((defaultValues.packages || []).map(p => p.category).filter(Boolean) as string[])].sort();
             setCategories(initialCategories);
             if (model?.id) {
                 loadedModelIdRef.current = model.id;
@@ -498,7 +499,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
     const handleAddCategory = () => {
         if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
-            setCategories(prev => [newCategoryName.trim(), ...prev]);
+            setCategories(prev => [newCategoryName.trim(), ...prev].sort());
             setNewCategoryName('');
         }
     };
@@ -525,7 +526,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         if (newCatNameForMove && pkgIndexForNewCat !== null) {
             handleCategoryChange(pkgIndexForNewCat, newCatNameForMove);
             if (!categories.includes(newCatNameForMove)) {
-                setCategories(prev => [newCatNameForMove, ...prev]);
+                setCategories(prev => [newCatNameForMove, ...prev].sort());
             }
         }
         setIsNewCatDialogOpen(false);
@@ -536,7 +537,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
     return (
         <>
-            <FormProvider {...form}>
+            <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end">
                         <Button type="submit" disabled={isSubmitting}>
@@ -547,6 +548,97 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
+                             {/* Standard Features Card */}
+                             <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Standard Features">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+                                            {featureFields.map((field, index) => (
+                                                <div key={field.id} className="flex items-center gap-2">
+                                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </div>
+                                            ))}
+                                        </CardContent>
+                                        <CardContent>
+                                            <div className="space-y-2">
+                                                <FormLabel>Bulk Add Features</FormLabel>
+                                                <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                            {/* Optional Packages */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Optional Packages</CardTitle>
+                                    <CardDescription>Group optional features into packages.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex gap-2 items-center">
+                                        <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
+                                        <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
+                                    </div>
+                                    <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
+                                        {categorizedPackages.map(({ name, items }) => (
+                                            <Collapsible key={name} asChild defaultOpen>
+                                                <div className="p-4 border-2 border-dashed rounded-lg">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <CollapsibleTrigger asChild>
+                                                            <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
+                                                                <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-0 group-data-[state=closed]:-rotate-90" />
+                                                                <h3 className="font-semibold text-lg">{name}</h3>
+                                                                <span className="text-muted-foreground font-normal ml-2">({items.length})</span>
+                                                            </button>
+                                                        </CollapsibleTrigger>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: name })}>
+                                                                <PlusCircle className="mr-2 h-4 w-4"/> Add Package
+                                                            </Button>
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    <CollapsibleContent className={cn("space-y-4", items.length > 0 && "pt-4 border-t border-dashed")}>
+                                                        {items.map(({field, index}) => (
+                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                        ))}
+                                                        {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
+                                                    </CollapsibleContent>
+                                                </div>
+                                            </Collapsible>
+                                        ))}
+                                        <Collapsible asChild defaultOpen>
+                                            <div className="p-4 border-2 border-dashed rounded-lg">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <CollapsibleTrigger asChild>
+                                                        <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
+                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-0 group-data-[state=closed]:-rotate-90" />
+                                                            <h3 className="font-semibold text-lg">Uncategorized</h3>
+                                                            <span className="text-muted-foreground font-normal ml-2">({uncategorizedPackages.length})</span>
+                                                        </button>
+                                                    </CollapsibleTrigger>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: undefined })}>
+                                                        <PlusCircle className="mr-2 h-4 w-4"/> Add Package
+                                                    </Button>
+                                                </div>
+                                                <CollapsibleContent className={cn("space-y-4", uncategorizedPackages.length > 0 && "pt-4 border-t border-dashed")}>
+                                                    {uncategorizedPackages.map(({field, index}) => (
+                                                        <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                    ))}
+                                                    {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
+                                                </CollapsibleContent>
+                                            </div>
+                                        </Collapsible>
+                                    </div>
+                                </CardContent>
+                            </Card>
                             {/* Specifications Card */}
                             <Collapsible asChild defaultOpen>
                                 <Card>
@@ -574,84 +666,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            
-                            {/* Standard Features Card */}
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Standard Features">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
-                                            {featureFields.map((field, index) => (
-                                                <div key={field.id} className="flex items-center gap-2">
-                                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                </div>
-                                            ))}
-                                        </CardContent>
-                                        <CardContent>
-                                            <div className="space-y-2">
-                                                <FormLabel>Bulk Add Features</FormLabel>
-                                                <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                            
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Optional Packages</CardTitle>
-                                    <CardDescription>Group optional features into packages.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="flex gap-2 items-center">
-                                        <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
-                                        <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
-                                    </div>
-
-                                    <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
-                                        {[
-                                            { name: 'Uncategorized', items: uncategorizedPackages, isUncategorized: true },
-                                            ...categorizedPackages
-                                        ].map(({ name, items, isUncategorized }) => (
-                                            <Collapsible key={name} asChild defaultOpen>
-                                                <div className="p-4 border-2 border-dashed rounded-lg">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <CollapsibleTrigger asChild>
-                                                            <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
-                                                                <h3 className="font-semibold text-lg">{name}</h3>
-                                                                <span className="text-muted-foreground font-normal ml-2">({items.length})</span>
-                                                                <ChevronDown className="h-4 w-4 ml-2 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                                            </button>
-                                                        </CollapsibleTrigger>
-                                                        <div className="flex items-center gap-2">
-                                                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: isUncategorized ? undefined : name })}>
-                                                                <PlusCircle className="mr-2 h-4 w-4"/> Add Package
-                                                            </Button>
-                                                            {!isUncategorized && (
-                                                                <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    <CollapsibleContent className={cn("space-y-4", items.length > 0 && "pt-4 border-t border-dashed")}>
-                                                        {items.map(({field, index}) => (
-                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
-                                                        ))}
-                                                        {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
-                                                    </CollapsibleContent>
-                                                </div>
-                                            </Collapsible>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
                             {/* Colors Card */}
                             <Collapsible asChild defaultOpen>
                                 <Card>
@@ -839,7 +853,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         </div>
                     </div>
                 </form>
-            </FormProvider>
+            </Form>
             <Dialog open={isNewCatDialogOpen} onOpenChange={setIsNewCatDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -862,3 +876,4 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         </>
     );
 }
+
