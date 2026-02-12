@@ -125,7 +125,8 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
         } else {
             const num = parseFloat(val);
             if (!isNaN(num)) {
-                field.onChange(parseFloat((num / (1 + GST_RATE)).toFixed(4)));
+                const excl = num / (1 + GST_RATE);
+                field.onChange(Math.round(excl * 100) / 100);
             }
         }
     };
@@ -368,8 +369,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
-    const loadedModelIdRef = useRef<string | null>(null);
-
+    
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
 
@@ -423,6 +423,13 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     
     const { control, getValues, reset } = form;
 
+    useEffect(() => {
+        const defaultValues = getSafeDefaultValues(model);
+        reset(defaultValues);
+        const initialCategories = [...new Set((defaultValues.packages || []).map(p => p.category).filter(Boolean) as string[])];
+        setCategories(initialCategories);
+    }, [model, reset, getSafeDefaultValues]);
+
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
     const { fields: packageFields, append: appendPackage, remove: removePackage, update: updatePackage } = useFieldArray({ control, name: "packages" });
@@ -434,18 +441,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const watchedColors = useWatch({ control, name: 'colors' });
     const coverImageUrl = useWatch({ control, name: "coverImageUrl" });
 
-    useEffect(() => {
-        if (model?.id !== loadedModelIdRef.current) {
-            const defaultValues = getSafeDefaultValues(model);
-            reset(defaultValues);
-            const initialCategories = [...new Set((defaultValues.packages || []).map(p => p.category).filter(Boolean) as string[])];
-            setCategories(initialCategories);
-            if (model?.id) {
-                loadedModelIdRef.current = model.id;
-            }
-        }
-    }, [model, reset, getSafeDefaultValues]);
-    
     const { uncategorizedPackages, categorizedPackages } = useMemo(() => {
         const uncategorized: { field: any, index: number }[] = [];
         const categoryMap = new Map<string, { field: any, index: number }[]>();
@@ -549,7 +544,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
                              {/* Standard Features Card */}
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('', { shouldFocus: false })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -585,7 +580,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </div>
                                     <div className="space-y-4">
                                         {categorizedPackages.map(({ name, items }) => (
-                                            <Collapsible key={name} asChild defaultOpen>
+                                            <Collapsible key={name} asChild>
                                                 <div className="p-4 border rounded-lg">
                                                     <div className="flex items-center justify-between mb-2">
                                                         <CollapsibleTrigger asChild>
@@ -615,7 +610,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                 </div>
                                             </Collapsible>
                                         ))}
-                                        <Collapsible asChild defaultOpen>
+                                        <Collapsible asChild>
                                             <div className="p-4 border rounded-lg">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <CollapsibleTrigger asChild>
@@ -733,7 +728,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         </div>
 
                         <div className="lg:col-span-3 space-y-8">
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Pricing" />
                                     <CollapsibleContent>
@@ -746,7 +741,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                 </Card>
                             </Collapsible>
                             
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>

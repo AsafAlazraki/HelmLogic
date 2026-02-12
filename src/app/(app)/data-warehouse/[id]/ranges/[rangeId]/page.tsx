@@ -265,7 +265,7 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                 <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
                     <div className="h-40 bg-secondary flex items-center justify-center p-4 relative">
                          {model.coverImageUrl ? (
-                            <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
+                            <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-contain p-2" />
                         ) : (
                             <Sailboat className="h-12 w-12 text-muted-foreground" />
                         )}
