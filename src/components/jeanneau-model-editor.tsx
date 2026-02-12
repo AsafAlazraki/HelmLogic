@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -19,11 +19,9 @@ import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Chevr
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-
 
 // Schemas for validation
 const specSchema = z.object({
@@ -36,16 +34,16 @@ const colorVariantSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Color name is required'),
     imageUrls: z.array(z.string()).default([]),
-    cost: z.number().nullable().optional(),
-    sellPriceExclGst: z.number().nullable().optional(),
+    cost: z.coerce.number().nullable().optional(),
+    sellPriceExclGst: z.coerce.number().nullable().optional(),
 });
 
 const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
     imageUrl: z.string().nullable().optional(),
-    cost: z.number().nullable().optional(),
-    sellPriceExclGst: z.number().nullable().optional(),
+    cost: z.coerce.number().nullable().optional(),
+    sellPriceExclGst: z.coerce.number().nullable().optional(),
 });
 
 const packageSchema = z.object({
@@ -53,21 +51,21 @@ const packageSchema = z.object({
     name: z.string().min(1, 'Package name is required'),
     category: z.string().optional(),
     imageUrl: z.string().nullable().optional(),
-    cost: z.number().nullable().optional(),
-    sellPriceExclGst: z.number().nullable().optional(),
+    cost: z.coerce.number().nullable().optional(),
+    sellPriceExclGst: z.coerce.number().nullable().optional(),
     includedFeatures: z.array(z.string()).default([]),
 });
 
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
-    cost: z.number().nullable().optional(),
-    sellPriceExclGst: z.number().nullable().optional(),
-    freightCostExclGst: z.number().nullable().optional(),
+    cost: z.coerce.number().nullable().optional(),
+    sellPriceExclGst: z.coerce.number().nullable().optional(),
+    freightCostExclGst: z.coerce.number().nullable().optional(),
     specifications: z.object({
-        minHp: z.number().min(0).default(0),
-        maxHp: z.number().min(0).default(0),
-        recommendedHp: z.number().min(0).default(0),
+        minHp: z.coerce.number().min(0).default(0),
+        maxHp: z.coerce.number().min(0).default(0),
+        recommendedHp: z.coerce.number().min(0).default(0),
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
@@ -107,26 +105,28 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
     const { field } = useController({ control, name, defaultValue: null });
 
     const valueExcl = field.value;
-    const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
+    const valueIncl = valueExcl !== null ? valueExcl * (1 + GST_RATE) : null;
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value === '') {
+        const val = e.target.value;
+        if (val === '') {
             field.onChange(null);
-            return;
+        } else {
+            const num = parseFloat(val);
+            field.onChange(isNaN(num) ? null : num);
         }
-        const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? null : numValue);
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value === '') {
+        const val = e.target.value;
+        if (val === '') {
             field.onChange(null);
-            return;
+        } else {
+            const num = parseFloat(val);
+            if (!isNaN(num)) {
+                field.onChange(num / (1 + GST_RATE));
+            }
         }
-        const numValue = parseFloat(e.target.value);
-        if (isNaN(numValue)) return;
-        const exclValue = numValue / (1 + GST_RATE);
-        field.onChange(parseFloat(exclValue.toFixed(4)));
     };
 
     return (
@@ -138,9 +138,9 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                     <FormControl>
                         <Input 
                             type="number"
-                            step="0.01"
+                            step="any"
                             placeholder="0.00"
-                            value={valueExcl ?? ''}
+                            value={valueExcl === null ? '' : valueExcl}
                             onChange={handleExclChange}
                         />
                     </FormControl>
@@ -151,9 +151,9 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                     <FormControl>
                         <Input 
                             type="number"
-                            step="0.01"
+                            step="any"
                             placeholder="0.00"
-                            value={valueIncl === 0 ? '' : valueIncl.toFixed(2)}
+                            value={valueIncl === null ? '' : valueIncl.toFixed(2)}
                             onChange={handleInclChange}
                         />
                     </FormControl>
@@ -165,7 +165,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
 }
 
 function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
-    const { control } = useFormContext<ModelFormData>();
+    const { control } = useForm<ModelFormData>();
     const { fields, append, remove } = useFieldArray({
         control,
         name: `packages.${packageIndex}.includedFeatures`
@@ -215,112 +215,46 @@ function PackageItem({
     onCategoryChange: (packageIndex: number, newCategory: string | undefined) => void;
     onNewCategoryRequest: (packageIndex: number) => void;
 }) {
-    const imageUrl = useWatch({ control: form.control, name: `packages.${index}.imageUrl` });
-    const {control} = form;
-
+    const { control } = form;
+    
     return (
-        <Collapsible asChild>
-            <Card key={index} className="bg-muted/50 overflow-hidden">
-                <div className="p-4 flex justify-between items-start">
-                    <div className="flex-1 pr-4">
-                        <FormField control={form.control} name={`packages.${index}.name`} render={({ field }) => ( 
-                            <FormItem>
-                                <FormControl>
-                                    <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" placeholder="Package Name" {...field} value={field.value ?? ''} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem> 
-                        )} />
-                    </div>
-                    <div className="flex items-center">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuSub>
-                                    <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
-                                    <DropdownMenuSubContent>
-                                        <DropdownMenuItem onClick={() => onCategoryChange(index, undefined)}>Uncategorized</DropdownMenuItem>
-                                        <DropdownMenuSeparator/>
-                                        {allCategories.map((cat) => (
-                                            <DropdownMenuItem key={cat} onClick={() => onCategoryChange(index, cat)}>{cat}</DropdownMenuItem>
-                                        ))}
-                                        <DropdownMenuSeparator/>
-                                        <DropdownMenuItem onClick={() => onNewCategoryRequest(index)}>New Category...</DropdownMenuItem>
-                                    </DropdownMenuSubContent>
-                                </DropdownMenuSub>
-                                <DropdownMenuSeparator/>
-                                <DropdownMenuItem onClick={() => remove(index)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </Button>
-                        </CollapsibleTrigger>
-                    </div>
+        <Card className="overflow-hidden">
+            <div className="p-4 flex justify-between items-start">
+                 <div className="flex-1 pr-4">
+                    <FormField control={control} name={`packages.${index}.name`} render={({ field }) => ( 
+                        <FormItem>
+                            <FormControl>
+                                <Input className="text-lg font-semibold border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" placeholder="Package Name" {...field} value={field.value ?? ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem> 
+                    )} />
                 </div>
-                <CollapsibleContent>
-                    <div className="px-4 pb-4 space-y-4">
-                        <FormField
-                            control={control}
-                            name={`packages.${index}.imageUrl`}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="sr-only">Package Image</FormLabel>
-                                    {imageUrl ? (
-                                        <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                            <Image src={imageUrl} alt="Package image" fill className="object-cover" />
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="icon"
-                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                onClick={() => field.onChange(null)}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center justify-center w-full">
-                                            <label htmlFor={`package-upload-${index}`} className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                    <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
-                                                </div>
-                                                <FormControl>
-                                                    <Input id={`package-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) field.onChange(await fileToDataUri(file));
-                                                    }} />
-                                                </FormControl>
-                                            </label>
-                                        </div> 
-                                    )}
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        
-                        <Collapsible>
-                            <CollapsibleTrigger asChild>
-                                <Button type="button" variant="ghost" className="w-full justify-between px-0 hover:bg-transparent -mb-2">
-                                    <span className="text-xs text-muted-foreground font-semibold">PRICING</span>
-                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="space-y-4 pt-2">
-                                <GstInputPair control={control} name={`packages.${index}.cost`} label="Cost" />
-                                <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Sell Price" />
-                            </CollapsibleContent>
-                        </Collapsible>
-                        
-                        <IncludedFeatures packageIndex={index} />
-                    </div>
-                </CollapsibleContent>
-            </Card>
-        </Collapsible>
+                <div className="flex items-center">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                    <DropdownMenuItem onClick={() => onCategoryChange(index, undefined)}>Uncategorized</DropdownMenuItem>
+                                    <DropdownMenuSeparator/>
+                                    {allCategories.map((cat) => (
+                                        <DropdownMenuItem key={cat} onClick={() => onCategoryChange(index, cat)}>{cat}</DropdownMenuItem>
+                                    ))}
+                                    <DropdownMenuSeparator/>
+                                    <DropdownMenuItem onClick={() => onNewCategoryRequest(index)}>New Category...</DropdownMenuItem>
+                                </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator/>
+                            <DropdownMenuItem onClick={() => remove(index)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+        </Card>
     );
 }
 
@@ -418,7 +352,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     const loadedModelIdRef = useRef<string | null>(null);
-    const isSavingRef = useRef(false);
 
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -470,54 +403,18 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         resolver: zodResolver(modelSchema),
     });
     
-    const { getValues, reset, formState: { isDirty } } = form;
+    const { control, getValues, reset } = form;
 
-    const saveChanges = useCallback((showToast: boolean) => {
-        const values = getValues();
-        if (isSavingRef.current) return;
-        isSavingRef.current = true;
-
-        const sanitizedValues = sanitizeDataForFirestore(values);
-        const modelDocRef = doc(firestore, docPath);
-
-        updateDoc(modelDocRef, sanitizedValues)
-            .then(() => {
-                if (showToast) {
-                    toast({ title: "Model Updated", description: "Your changes have been saved." });
-                }
-                reset(values);
-            })
-            .catch((e: any) => {
-                console.error("Save failed:", e);
-                toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
-                const permissionError = new FirestorePermissionError({
-                    path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            })
-            .finally(() => {
-                isSavingRef.current = false;
-            });
-    }, [docPath, firestore, getValues, toast, reset]);
-
-    useEffect(() => {
-        if (!isDirty) return;
-        const handler = setTimeout(() => {
-            saveChanges(false);
-        }, 1000);
-        return () => clearTimeout(handler);
-    }, [isDirty, saveChanges]);
+    const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
+    const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
+    const { fields: packageFields, append: appendPackage, remove: removePackage, update: updatePackage } = useFieldArray({ control, name: "packages" });
+    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
+    const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control, name: "colors" });
+    const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
     
-    const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
-    const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
-    const { fields: packageFields, append: appendPackage, remove: removePackage, update: updatePackage } = useFieldArray({ control: form.control, name: "packages" });
-    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
-    const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
-    const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control: form.control, name: 'galleryImageUrls' });
-    
-    const watchedPackages = useWatch({ control: form.control, name: 'packages' });
-    const watchedColors = useWatch({ control: form.control, name: 'colors' });
-    const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
+    const watchedPackages = useWatch({ control, name: 'packages' });
+    const watchedColors = useWatch({ control, name: 'colors' });
+    const coverImageUrl = useWatch({ control, name: "coverImageUrl" });
 
     useEffect(() => {
         if (model?.id !== loadedModelIdRef.current) {
@@ -531,7 +428,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         }
     }, [model, reset, getSafeDefaultValues]);
     
-    const { uncategorizedPackages, categorized, allCategories } = useMemo(() => {
+    const { uncategorizedPackages, categorizedPackages, allCategories } = useMemo(() => {
         const uncategorized: { field: any, index: number }[] = [];
         const categoryMap = new Map<string, { field: any, index: number }[]>();
     
@@ -552,13 +449,28 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             items: categoryMap.get(name) || []
         }));
     
-        return { uncategorizedPackages: uncategorized, categorized, allCategories: categories };
+        return { uncategorizedPackages: uncategorized, categorizedPackages: categorized, allCategories: categories };
     }, [packageFields, watchedPackages, categories]);
 
-    function onSubmit(values: ModelFormData) {
+    async function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
-        saveChanges(true);
-        setIsSubmitting(false);
+        const sanitizedValues = sanitizeDataForFirestore(values);
+        const modelDocRef = doc(firestore, docPath);
+
+        try {
+            await updateDoc(modelDocRef, sanitizedValues);
+            toast({ title: "Model Updated", description: "Your changes have been saved." });
+            reset(values);
+        } catch (e: any) {
+            console.error("Save failed:", e);
+            toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
+            const permissionError = new FirestorePermissionError({
+                path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } finally {
+            setIsSubmitting(false);
+        }
     }
     
     const handleBulkAddFeatures = () => {
@@ -610,76 +522,14 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end">
-                        <Button type="submit">
-                            <Save className="mr-2 h-4 w-4" /> Save Changes
+                        <Button type="submit" disabled={isSubmitting}>
+                           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Changes
                         </Button>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                             {/* Packages Card */}
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Optional Packages">
-                                        <div className="flex gap-2 items-center">
-                                            <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
-                                            <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
-                                        </div>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                         <CardContent className="space-y-4 max-h-[700px] overflow-y-auto p-4 pr-2">
-                                            {/* Uncategorized Section */}
-                                            <Collapsible defaultOpen>
-                                                <div className="flex items-center justify-between border-b pb-2 mb-2">
-                                                    <CollapsibleTrigger asChild>
-                                                        <Button variant="ghost" className="p-1 h-auto text-left justify-start group">
-                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
-                                                            <h3 className="font-semibold">Uncategorized <span className="text-muted-foreground font-normal">({uncategorizedPackages.length})</span></h3>
-                                                        </Button>
-                                                    </CollapsibleTrigger>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [] })}>
-                                                        <PlusCircle className="mr-2 h-4 w-4"/> Add Package
-                                                    </Button>
-                                                </div>
-                                                <CollapsibleContent className="space-y-4 pt-2">
-                                                    {uncategorizedPackages.map(({field, index}) => (
-                                                        <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
-                                                    ))}
-                                                    {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
-                                                </CollapsibleContent>
-                                            </Collapsible>
-
-                                            {/* Categorized Sections */}
-                                            {categorized.map(({ name, items }) => (
-                                                <Collapsible key={name} defaultOpen>
-                                                    <div className="flex items-center justify-between border-b pb-2 mb-2">
-                                                        <CollapsibleTrigger asChild>
-                                                            <Button variant="ghost" className="p-1 h-auto text-left justify-start group">
-                                                                <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
-                                                                <h3 className="font-semibold">{name} <span className="text-muted-foreground font-normal">({items.length})</span></h3>
-                                                            </Button>
-                                                        </CollapsibleTrigger>
-                                                        <div className="flex items-center gap-2">
-                                                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: name })}>
-                                                                <PlusCircle className="mr-2 h-4 w-4"/>Add Package
-                                                            </Button>
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                    <CollapsibleContent className="space-y-4 pt-2">
-                                                        {items.map(({ field, index }) => (
-                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
-                                                        ))}
-                                                        {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
-                                                    </CollapsibleContent>
-                                                </Collapsible>
-                                            ))}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
                             {/* Specifications Card */}
                             <Collapsible asChild defaultOpen>
                                 <Card>
@@ -689,16 +539,16 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     <CollapsibleContent>
                                         <CardContent className="space-y-6">
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                             </div>
                                             <div className="space-y-4">
                                                 {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                                 {specFields.map((field, index) => (
                                                     <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                         <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                     </div>
                                                 ))}
@@ -718,7 +568,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                         <CardContent className="space-y-4 max-h-96 overflow-y-auto">
                                             {featureFields.map((field, index) => (
                                                 <div key={field.id} className="flex items-center gap-2">
-                                                    <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                 </div>
                                             ))}
@@ -733,6 +583,54 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+
+                             {/* Packages Card */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Optional Packages</CardTitle>
+                                    <CardDescription>Group optional features into packages.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                     <div className="flex gap-2 items-center">
+                                        <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
+                                        <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
+                                    </div>
+                                    <div className="space-y-4 max-h-[700px] overflow-y-auto p-1">
+                                        {[
+                                            { name: 'Uncategorized', items: uncategorizedPackages, isUncategorized: true },
+                                            ...categorizedPackages
+                                        ].map(({ name, items, isUncategorized }) => (
+                                            <Collapsible key={name} defaultOpen>
+                                                <div className="flex items-center justify-between border-b pb-2 mb-2 pr-2">
+                                                    <CollapsibleTrigger asChild>
+                                                        <Button variant="ghost" className="p-1 h-auto text-left justify-start group flex-1">
+                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                                                            <h3 className="font-semibold">{name} <span className="text-muted-foreground font-normal">({items.length})</span></h3>
+                                                        </Button>
+                                                    </CollapsibleTrigger>
+                                                    <div className="flex items-center gap-2">
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: isUncategorized ? undefined : name })}>
+                                                            <PlusCircle className="mr-2 h-4 w-4"/> Add Package
+                                                        </Button>
+                                                        {!isUncategorized && (
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <CollapsibleContent className="space-y-4 pt-2">
+                                                    {items.map(({field, index}) => (
+                                                        <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                    ))}
+                                                    {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             {/* Colors Card */}
                             <Collapsible asChild defaultOpen>
                                 <Card>
@@ -744,7 +642,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                             {colorFields.map((field, index) => (
                                                 <Card key={field.id} className="p-4 bg-muted/50">
                                                     <div className="flex justify-between items-center mb-4">
-                                                        <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                                                         <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
                                                     </div>
                                                     <div className="space-y-4">
@@ -783,8 +681,8 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                             </div>
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                                                            <GstInputPair control={form.control} name={`colors.${index}.cost`} label="Additional Cost" />
-                                                            <GstInputPair control={form.control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
+                                                            <GstInputPair control={control} name={`colors.${index}.cost`} label="Additional Cost" />
+                                                            <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
                                                         </div>
                                                     </div>
                                                 </Card>
@@ -802,9 +700,9 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     <CollapsibleCardHeader title="Pricing" />
                                     <CollapsibleContent>
                                         <CardContent className="space-y-6">
-                                            <GstInputPair control={form.control} name="cost" label="Base Cost" />
-                                            <GstInputPair control={form.control} name="sellPriceExclGst" label="Base Sell" />
-                                            <GstInputPair control={form.control} name="freightCostExclGst" label="Freight Cost" />
+                                            <GstInputPair control={control} name="cost" label="Base Cost" />
+                                            <GstInputPair control={control} name="sellPriceExclGst" label="Base Sell" />
+                                            <GstInputPair control={control} name="freightCostExclGst" label="Freight Cost" />
                                         </CardContent>
                                     </CollapsibleContent>
                                 </Card>
@@ -815,7 +713,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>
                                         <CardContent>
-                                            <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
+                                            <FormField control={control} name="coverImageUrl" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel className="sr-only">Cover Image</FormLabel>
                                                     {coverImageUrl ? (
@@ -864,7 +762,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                 {galleryImageFields.map((item, index) => (
                                                                     <div key={item.id} className="relative aspect-square group">
                                                                         <FormField
-                                                                            control={form.control}
+                                                                            control={control}
                                                                             name={`galleryImageUrls.${index}`}
                                                                             render={({ field }) => (
                                                                                 <>
