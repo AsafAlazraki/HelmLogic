@@ -499,14 +499,12 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     }, [docPath, firestore, getValues, toast, reset]);
 
     useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (isDirty) {
-            interval = setInterval(() => {
-                saveChanges(false);
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [saveChanges, isDirty]);
+        if (!isDirty) return;
+        const handler = setTimeout(() => {
+            saveChanges(false);
+        }, 1000);
+        return () => clearTimeout(handler);
+    }, [isDirty, saveChanges]);
     
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
@@ -617,6 +615,69 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
+                             {/* Packages Card */}
+                            <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Optional Packages">
+                                        <div className="flex gap-2 items-center">
+                                            <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
+                                            <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
+                                        </div>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                         <CardContent className="space-y-4 max-h-[700px] overflow-y-auto p-4 pr-2">
+                                            {/* Uncategorized Section */}
+                                            <Collapsible defaultOpen>
+                                                <div className="flex items-center justify-between border-b pb-2 mb-2">
+                                                    <CollapsibleTrigger asChild>
+                                                        <Button variant="ghost" className="p-1 h-auto text-left justify-start group">
+                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                                                            <h3 className="font-semibold">Uncategorized <span className="text-muted-foreground font-normal">({uncategorizedPackages.length})</span></h3>
+                                                        </Button>
+                                                    </CollapsibleTrigger>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [] })}>
+                                                        <PlusCircle className="mr-2 h-4 w-4"/> Add Package
+                                                    </Button>
+                                                </div>
+                                                <CollapsibleContent className="space-y-4 pt-2">
+                                                    {uncategorizedPackages.map(({field, index}) => (
+                                                        <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                    ))}
+                                                    {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
+                                                </CollapsibleContent>
+                                            </Collapsible>
+
+                                            {/* Categorized Sections */}
+                                            {categorized.map(({ name, items }) => (
+                                                <Collapsible key={name} defaultOpen>
+                                                    <div className="flex items-center justify-between border-b pb-2 mb-2">
+                                                        <CollapsibleTrigger asChild>
+                                                            <Button variant="ghost" className="p-1 h-auto text-left justify-start group">
+                                                                <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                                                                <h3 className="font-semibold">{name} <span className="text-muted-foreground font-normal">({items.length})</span></h3>
+                                                            </Button>
+                                                        </CollapsibleTrigger>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: name })}>
+                                                                <PlusCircle className="mr-2 h-4 w-4"/>Add Package
+                                                            </Button>
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    <CollapsibleContent className="space-y-4 pt-2">
+                                                        {items.map(({ field, index }) => (
+                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                        ))}
+                                                        {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
+                                                    </CollapsibleContent>
+                                                </Collapsible>
+                                            ))}
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
                             {/* Specifications Card */}
                             <Collapsible asChild defaultOpen>
                                 <Card>
@@ -666,50 +727,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                 <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
                                                 <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
                                             </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-
-                            {/* Packages Card */}
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Optional Packages">
-                                        <div className="flex gap-2 items-center">
-                                            <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
-                                            <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
-                                        </div>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-6">
-                                            <div className="p-4 border-2 border-dashed rounded-lg space-y-4">
-                                                <div className="flex justify-between items-center -mb-2">
-                                                    <h3 className="text-lg font-semibold">Uncategorized</h3>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [] })}><PlusCircle className="mr-2 h-4 w-4"/> Add Package</Button>
-                                                </div>
-                                                {uncategorizedPackages.map(({field, index}) => (
-                                                    <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
-                                                ))}
-                                                {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
-                                            </div>
-
-                                            {categorized.map(({ name, items }) => (
-                                                <Card key={name} className="overflow-hidden">
-                                                    <CardHeader className="flex-row justify-between items-center bg-muted/50 p-4">
-                                                        <CardTitle className="text-lg">{name}</CardTitle>
-                                                        <div className="flex items-center gap-2">
-                                                            <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: name })}><PlusCircle className="mr-2 h-4 w-4"/>Add Package</Button>
-                                                            <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9"><Trash2 className="h-4 w-4" /></Button>
-                                                        </div>
-                                                    </CardHeader>
-                                                    <CardContent className="p-4 space-y-4">
-                                                        {items.map(({ field, index }) => (
-                                                            <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
-                                                        ))}
-                                                        {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
                                         </CardContent>
                                     </CollapsibleContent>
                                 </Card>
