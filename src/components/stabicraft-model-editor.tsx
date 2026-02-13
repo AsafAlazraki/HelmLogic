@@ -27,12 +27,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from './ui/checkbox';
 
 // Schemas for validation
 const specSchema = z.object({
     id: z.string(),
     label: z.string().min(1, 'Label is required'),
     value: z.string().min(1, 'Value is required'),
+});
+
+const motorConfigSchema = z.object({
+    type: z.enum(["Single", "Twin", "Triple", "SingleWithAux"]),
+    minHp: z.coerce.number().min(0).default(0),
+    maxHp: z.coerce.number().min(0).default(0),
+    recommendedHp: z.coerce.number().min(0).default(0),
 });
 
 const optionalFeatureSchema = z.object({
@@ -58,9 +66,7 @@ const modelSchema = z.object({
     sellPriceExclGst: z.coerce.number().nullable().optional(),
     freightCostExclGst: z.coerce.number().nullable().optional(),
     specifications: z.object({
-        minHp: z.coerce.number().min(0).default(0),
-        maxHp: z.coerce.number().min(0).default(0),
-        recommendedHp: z.coerce.number().min(0).default(0),
+        motorConfigurations: z.array(motorConfigSchema).default([]),
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
@@ -102,26 +108,29 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
     const { field } = useController({ control, name, defaultValue: null });
 
     const valueExcl = field.value;
-    const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
+    const valueIncl = valueExcl !== null && valueExcl !== undefined ? Math.round((valueExcl * (1 + GST_RATE)) * 100) / 100 : null;
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value === '') {
+        const val = e.target.value;
+        if (val === '') {
             field.onChange(null);
-            return;
+        } else {
+            const num = parseFloat(val);
+            field.onChange(isNaN(num) ? null : num);
         }
-        const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? null : numValue);
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value === '') {
+        const val = e.target.value;
+        if (val === '') {
             field.onChange(null);
-            return;
+        } else {
+            const num = parseFloat(val);
+            if (!isNaN(num)) {
+                const excl = num / (1 + GST_RATE);
+                field.onChange(Math.round(excl * 10000) / 10000);
+            }
         }
-        const numValue = parseFloat(e.target.value);
-        if (isNaN(numValue)) return;
-        const exclValue = numValue / (1 + GST_RATE);
-        field.onChange(parseFloat(exclValue.toFixed(4)));
     };
 
     return (
@@ -148,7 +157,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
                             type="number"
                             step="0.01"
                             placeholder="0.00"
-                            value={valueIncl === 0 ? '' : valueIncl.toFixed(2)}
+                            value={valueIncl === null || valueIncl === undefined ? '' : String(valueIncl)}
                             onChange={handleInclChange}
                         />
                     </FormControl>
@@ -369,6 +378,111 @@ function OptionalFeatureDetailsCell({ form, index, remove, categories, onCategor
     );
 }
 
+function MotorConfigurationsCard({ control }: { control: any }) {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "specifications.motorConfigurations",
+    });
+
+    const motorConfigOptions = [
+        { id: 'Single', label: 'Single Engine' },
+        { id: 'Twin', label: 'Twin Engines' },
+        { id: 'Triple', label: 'Triple Engines' },
+        { id: 'SingleWithAux', label: 'Single with Aux' },
+    ];
+
+    const handleConfigChange = (checked: boolean, type: 'Single' | 'Twin' | 'Triple' | 'SingleWithAux') => {
+        if (checked) {
+            append({ type: type, minHp: 0, maxHp: 0, recommendedHp: 0 });
+        } else {
+            const index = fields.findIndex((field: any) => field.type === type);
+            if (index > -1) {
+                remove(index);
+            }
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Motor Configurations</CardTitle>
+                <CardDescription>Define supported engine configurations and HP ratings.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {motorConfigOptions.map((option) => {
+                    const fieldIndex = fields.findIndex((field: any) => field.type === option.id);
+                    const isChecked = fieldIndex !== -1;
+
+                    return (
+                        <Collapsible key={option.id} asChild>
+                            <div className="p-4 border rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <Checkbox
+                                            checked={isChecked}
+                                            onCheckedChange={(checked) => handleConfigChange(!!checked, option.id as any)}
+                                            id={`config-${option.id}`}
+                                        />
+                                        <label htmlFor={`config-${option.id}`} className="text-sm font-medium leading-none">
+                                            {option.label}
+                                        </label>
+                                    </div>
+                                    {isChecked && (
+                                        <CollapsibleTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                            </Button>
+                                        </CollapsibleTrigger>
+                                    )}
+                                </div>
+                                <CollapsibleContent className="pt-4 mt-4 border-t">
+                                    {isChecked && (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.minHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Min HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.maxHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Max HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.recommendedHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Recommended HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+                                </CollapsibleContent>
+                            </div>
+                        </Collapsible>
+                    );
+                })}
+            </CardContent>
+        </Card>
+    );
+}
+
 export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; docPath: string, vendor: any }) {
     const firestore = useFirestore();
     const router = useRouter();
@@ -413,9 +527,7 @@ export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; 
             sellPriceExclGst: data.sellPriceExclGst ?? null,
             freightCostExclGst: data.freightCostExclGst ?? null,
             specifications: {
-                minHp: specs.minHp ?? 0,
-                maxHp: specs.maxHp ?? 0,
-                recommendedHp: specs.recommendedHp ?? 0,
+                motorConfigurations: specs.motorConfigurations ?? [],
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
@@ -613,6 +725,7 @@ export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         {/* --- LEFT COLUMN --- */}
                         <div className="lg:col-span-4 space-y-8">
+                            <MotorConfigurationsCard control={form.control} />
                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">
@@ -620,11 +733,6 @@ export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; 
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
                                         <CardContent className="space-y-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            </div>
                                             <div className="space-y-4">
                                                 {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                                 {specFields.map((field, index) => (

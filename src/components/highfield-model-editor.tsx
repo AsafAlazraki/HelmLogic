@@ -26,12 +26,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from './ui/checkbox';
 
 // Schemas for validation
 const specSchema = z.object({
     id: z.string(),
     label: z.string().min(1, 'Label is required'),
     value: z.string().min(1, 'Value is required'),
+});
+
+const motorConfigSchema = z.object({
+    type: z.enum(["Single", "Twin", "Triple", "SingleWithAux"]),
+    minHp: z.coerce.number().min(0).default(0),
+    maxHp: z.coerce.number().min(0).default(0),
+    recommendedHp: z.coerce.number().min(0).default(0),
 });
 
 const colorVariantSchema = z.object({
@@ -61,9 +69,7 @@ const highfieldModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     specifications: z.object({
-        minHp: z.coerce.number().min(0).default(0),
-        maxHp: z.coerce.number().min(0).default(0),
-        recommendedHp: z.coerce.number().min(0).default(0),
+        motorConfigurations: z.array(motorConfigSchema).default([]),
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
@@ -262,6 +268,111 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
     );
 }
 
+function MotorConfigurationsCard({ control }: { control: any }) {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "specifications.motorConfigurations",
+    });
+
+    const motorConfigOptions = [
+        { id: 'Single', label: 'Single Engine' },
+        { id: 'Twin', label: 'Twin Engines' },
+        { id: 'Triple', label: 'Triple Engines' },
+        { id: 'SingleWithAux', label: 'Single with Aux' },
+    ];
+
+    const handleConfigChange = (checked: boolean, type: 'Single' | 'Twin' | 'Triple' | 'SingleWithAux') => {
+        if (checked) {
+            append({ type: type, minHp: 0, maxHp: 0, recommendedHp: 0 });
+        } else {
+            const index = fields.findIndex((field: any) => field.type === type);
+            if (index > -1) {
+                remove(index);
+            }
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Motor Configurations</CardTitle>
+                <CardDescription>Define supported engine configurations and HP ratings.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {motorConfigOptions.map((option) => {
+                    const fieldIndex = fields.findIndex((field: any) => field.type === option.id);
+                    const isChecked = fieldIndex !== -1;
+
+                    return (
+                        <Collapsible key={option.id} asChild>
+                            <div className="p-4 border rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <Checkbox
+                                            checked={isChecked}
+                                            onCheckedChange={(checked) => handleConfigChange(!!checked, option.id as any)}
+                                            id={`config-${option.id}`}
+                                        />
+                                        <label htmlFor={`config-${option.id}`} className="text-sm font-medium leading-none">
+                                            {option.label}
+                                        </label>
+                                    </div>
+                                    {isChecked && (
+                                        <CollapsibleTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                            </Button>
+                                        </CollapsibleTrigger>
+                                    )}
+                                </div>
+                                <CollapsibleContent className="pt-4 mt-4 border-t">
+                                    {isChecked && (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.minHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Min HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.maxHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Max HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.recommendedHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Recommended HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+                                </CollapsibleContent>
+                            </div>
+                        </Collapsible>
+                    );
+                })}
+            </CardContent>
+        </Card>
+    );
+}
+
 export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; docPath: string, vendor: any }) {
     const firestore = useFirestore();
     const router = useRouter();
@@ -327,9 +438,7 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
             coverImageUrl: safeModel.coverImageUrl ?? null,
             galleryImageUrls: safeModel.galleryImageUrls ?? [],
             specifications: {
-                minHp: safeModel.specifications?.minHp ?? 0,
-                maxHp: safeModel.specifications?.maxHp ?? 0,
-                recommendedHp: safeModel.specifications?.recommendedHp ?? 0,
+                motorConfigurations: safeModel.specifications?.motorConfigurations ?? [],
                 otherSpecs: safeModel.specifications?.otherSpecs ?? [],
             },
             standardFeatures: safeModel.standardFeatures ?? [],
@@ -460,6 +569,7 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
+                            <MotorConfigurationsCard control={form.control} />
                             {/* Specifications Card */}
                             <Collapsible asChild defaultOpen className="group">
                                 <Card>
@@ -468,11 +578,6 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
                                         <CardContent className="space-y-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                            </div>
                                             <div className="space-y-4">
                                                 {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                                 {specFields.map((field, index) => (

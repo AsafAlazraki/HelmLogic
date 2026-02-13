@@ -424,14 +424,35 @@
         "specifications": {
           "type": "object",
           "properties": {
-            "minHp": {
-              "type": "number"
-            },
-            "maxHp": {
-              "type": "number"
-            },
-            "recommendedHp": {
-              "type": "number"
+            "motorConfigurations": {
+              "type": "array",
+              "description": "Defines the supported engine configurations and their respective horsepower ratings.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Single",
+                      "Twin",
+                      "Triple",
+                      "SingleWithAux"
+                    ]
+                  },
+                  "minHp": {
+                    "type": "number"
+                  },
+                  "maxHp": {
+                    "type": "number"
+                  },
+                  "recommendedHp": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
             },
             "otherSpecs": {
               "type": "array",
@@ -456,12 +477,7 @@
                 ]
               }
             }
-          },
-          "required": [
-            "minHp",
-            "maxHp",
-            "recommendedHp"
-          ]
+          }
         },
         "variantPricing": {
           "type": "array",

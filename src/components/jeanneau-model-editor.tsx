@@ -21,12 +21,20 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from './ui/checkbox';
 
 // Schemas for validation
 const specSchema = z.object({
     id: z.string(),
     label: z.string().min(1, 'Label is required'),
     value: z.string().min(1, 'Value is required'),
+});
+
+const motorConfigSchema = z.object({
+    type: z.enum(["Single", "Twin", "Triple", "SingleWithAux"]),
+    minHp: z.coerce.number().min(0).default(0),
+    maxHp: z.coerce.number().min(0).default(0),
+    recommendedHp: z.coerce.number().min(0).default(0),
 });
 
 const colorVariantSchema = z.object({
@@ -54,9 +62,7 @@ const modelSchema = z.object({
     sellPriceExclGst: z.coerce.number().nullable().optional(),
     freightCostExclGst: z.coerce.number().nullable().optional(),
     specifications: z.object({
-        minHp: z.coerce.number().min(0).default(0),
-        maxHp: z.coerce.number().min(0).default(0),
-        recommendedHp: z.coerce.number().min(0).default(0),
+        motorConfigurations: z.array(motorConfigSchema).default([]),
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
@@ -235,7 +241,7 @@ function PackageItem({
                     </div>
                     <div className="flex items-center">
                          {formattedPrice && (
-                            <span className="text-sm font-normal text-muted-foreground mr-4">{formattedPrice}</span>
+                            <span className="text-sm text-muted-foreground mr-4 font-normal">{formattedPrice}</span>
                         )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -299,6 +305,111 @@ const CollapsibleCardHeader = ({ title, description, children, count }: { title:
     </CardHeader>
 );
 
+function MotorConfigurationsCard({ control }: { control: any }) {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "specifications.motorConfigurations",
+    });
+
+    const motorConfigOptions = [
+        { id: 'Single', label: 'Single Engine' },
+        { id: 'Twin', label: 'Twin Engines' },
+        { id: 'Triple', label: 'Triple Engines' },
+        { id: 'SingleWithAux', label: 'Single with Aux' },
+    ];
+
+    const handleConfigChange = (checked: boolean, type: 'Single' | 'Twin' | 'Triple' | 'SingleWithAux') => {
+        if (checked) {
+            append({ type: type, minHp: 0, maxHp: 0, recommendedHp: 0 });
+        } else {
+            const index = fields.findIndex((field: any) => field.type === type);
+            if (index > -1) {
+                remove(index);
+            }
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Motor Configurations</CardTitle>
+                <CardDescription>Define supported engine configurations and HP ratings.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {motorConfigOptions.map((option) => {
+                    const fieldIndex = fields.findIndex((field: any) => field.type === option.id);
+                    const isChecked = fieldIndex !== -1;
+
+                    return (
+                        <Collapsible key={option.id} asChild>
+                            <div className="p-4 border rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <Checkbox
+                                            checked={isChecked}
+                                            onCheckedChange={(checked) => handleConfigChange(!!checked, option.id as any)}
+                                            id={`config-${option.id}`}
+                                        />
+                                        <label htmlFor={`config-${option.id}`} className="text-sm font-medium leading-none">
+                                            {option.label}
+                                        </label>
+                                    </div>
+                                    {isChecked && (
+                                        <CollapsibleTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                            </Button>
+                                        </CollapsibleTrigger>
+                                    )}
+                                </div>
+                                <CollapsibleContent className="pt-4 mt-4 border-t">
+                                    {isChecked && (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.minHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Min HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.maxHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Max HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={control}
+                                                name={`specifications.motorConfigurations.${fieldIndex}.recommendedHp`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Recommended HP</FormLabel>
+                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+                                </CollapsibleContent>
+                            </div>
+                        </Collapsible>
+                    );
+                })}
+            </CardContent>
+        </Card>
+    );
+}
+
 export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -321,9 +432,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             sellPriceExclGst: data.sellPriceExclGst ?? null,
             freightCostExclGst: data.freightCostExclGst ?? null,
             specifications: {
-                minHp: specs.minHp ?? 0,
-                maxHp: specs.maxHp ?? 0,
-                recommendedHp: specs.recommendedHp ?? 0,
+                motorConfigurations: specs.motorConfigurations ?? [],
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
@@ -461,7 +570,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
 
     return (
-        <>
+        <FormProvider {...form}>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end">
@@ -473,7 +582,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild defaultOpen className="group">
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features" count={featureFields.length} >
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('', { shouldFocus: false })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -497,7 +606,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                           <Collapsible asChild defaultOpen>
+                           <Collapsible asChild defaultOpen className="group">
                                 <Card>
                                     <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages." count={packageFields.length} />
                                     <CollapsibleContent>
@@ -567,6 +676,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+                             <MotorConfigurationsCard control={form.control} />
                         </div>
 
                         <div className="lg:col-span-3 space-y-8">
@@ -682,11 +792,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
                                         <CardContent className="space-y-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                            </div>
                                             <div className="space-y-4">
                                                 {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
                                                 {specFields.map((field, index) => (
@@ -782,6 +887,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </>
+        </FormProvider>
     );
 }
