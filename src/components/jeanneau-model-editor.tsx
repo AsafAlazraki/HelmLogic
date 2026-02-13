@@ -21,7 +21,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -222,7 +221,7 @@ function PackageItem({
     return (
         <Collapsible>
             <Card className="overflow-hidden">
-                <div className="p-4 flex justify-between items-start">
+                <div className="p-4 flex justify-between items-center">
                     <div className="flex-1 pr-4">
                         <FormField control={control} name={`packages.${index}.name`} render={({ field }) => ( 
                             <FormItem>
@@ -235,7 +234,7 @@ function PackageItem({
                     </div>
                     <div className="flex items-center">
                          {formattedPrice && (
-                            <span className="text-base font-semibold text-muted-foreground mr-2">{formattedPrice}</span>
+                            <span className="text-sm font-semibold text-muted-foreground mr-2">{formattedPrice}</span>
                         )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -421,8 +420,8 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const handleAddCategory = () => {
         if (newCategoryName.trim() && !allCategories.includes(newCategoryName.trim())) {
              const newPackages = [
-                ...getValues('packages') || [],
-                { id: `pkg-cat-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: newCategoryName.trim() }
+                { id: `pkg-cat-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: newCategoryName.trim() },
+                ...getValues('packages') || []
             ];
             form.setValue('packages', newPackages, { shouldDirty: true });
             setNewCategoryName('');
@@ -469,10 +468,10 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('', { shouldFocus: false })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
                                         <CardContent className="space-y-4 max-h-96 overflow-y-auto">
@@ -493,7 +492,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                           <Collapsible asChild defaultOpen>
+                           <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages."/>
                                     <CollapsibleContent>
@@ -652,9 +651,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                         />
                                                                     </div>
                                                                 ))}
-                                                                <label htmlFor="gallery-image-upload" className={cn(
-                                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
-                                                                )}>
+                                                                <label htmlFor="gallery-image-upload" className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
                                                                     <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
                                                                         const files = Array.from(e.target.files || []);
                                                                         const dataUris = await Promise.all(files.map(fileToDataUri));
@@ -732,10 +729,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                         </Button>
                                                                     </div>
                                                                 ))}
-                                                                <label htmlFor={`color-image-upload-${index}`} className={cn(
-                                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
-                                                                    (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
-                                                                )}>
+                                                                <label htmlFor={`color-image-upload-${index}`} className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
                                                                     <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
                                                                         const files = Array.from(e.target.files || []);
                                                                         const dataUris = await Promise.all(files.map(fileToDataUri));
