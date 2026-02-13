@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,14 +38,6 @@ const colorVariantSchema = z.object({
     sellPriceExclGst: z.coerce.number().nullable().optional(),
 });
 
-const optionalFeatureSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, 'Feature name is required'),
-    imageUrl: z.string().nullable().optional(),
-    cost: z.coerce.number().nullable().optional(),
-    sellPriceExclGst: z.coerce.number().nullable().optional(),
-});
-
 const packageSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package name is required'),
@@ -69,7 +61,6 @@ const modelSchema = z.object({
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
-    optionalFeatures: z.array(optionalFeatureSchema).default([]),
     packages: z.array(packageSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
 });
@@ -231,7 +222,7 @@ function PackageItem({
     const formattedPrice = formatCurrency(sellPrice);
     
     return (
-        <Collapsible asChild defaultOpen={false}>
+        <Collapsible asChild>
             <Card className="overflow-hidden">
                 <div className="p-4 flex justify-between items-start">
                     <div className="flex-1 pr-4">
@@ -307,77 +298,6 @@ const CollapsibleCardHeader = ({ title, description, children }: { title: string
     </CardHeader>
 );
 
-function OptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
-    const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
-    const { control } = form;
-
-    return (
-        <Card key={index} className="relative bg-muted/50 overflow-hidden p-4 group/item">
-            <div className="absolute top-2 right-2 z-10">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/item:opacity-100 transition-opacity"><MoreHorizontal className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => remove(index)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-            
-            <div className="flex gap-4 items-start">
-                 <FormField
-                    control={control}
-                    name={`optionalFeatures.${index}.imageUrl`}
-                    render={({ field }) => (
-                        <FormItem className="w-32 flex-shrink-0">
-                            <FormLabel className="sr-only">Feature Image</FormLabel>
-                             {imageUrl ? (
-                                <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                                    <Image src={imageUrl} alt="Feature image" fill className="object-cover" />
-                                    <Button type="button" variant="outline" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive" onClick={() => field.onChange(null)}>
-                                        <X className="h-3 w-3" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-center w-full">
-                                    <label htmlFor={`feature-upload-${index}`} className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                        <div className="flex flex-col items-center justify-center text-center p-2">
-                                            <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
-                                            <p className="text-xs text-muted-foreground">Upload</p>
-                                        </div>
-                                        <FormControl>
-                                            <Input id={`feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) field.onChange(await fileToDataUri(file));
-                                            }} />
-                                        </FormControl>
-                                    </label>
-                                </div> 
-                            )}
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <div className="flex-1 space-y-3">
-                     <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
-                        <FormItem>
-                            <FormLabel className="sr-only">Feature Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Feature Name" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem> 
-                    )} />
-                    <div className="grid grid-cols-2 gap-4">
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
-                    </div>
-                </div>
-            </div>
-        </Card>
-    );
-}
-
 export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -406,11 +326,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 otherSpecs: specs.otherSpecs ?? [],
             },
             standardFeatures: data.standardFeatures ?? [],
-            optionalFeatures: (data.optionalFeatures || []).map((f: any) => ({
-                ...f,
-                cost: f.cost ?? null,
-                sellPriceExclGst: f.sellPriceExclGst ?? null,
-            })),
             packages: (data.packages || []).map((p: any) => ({ 
                 ...p, 
                 category: p.category || undefined,
@@ -444,7 +359,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
     const { fields: packageFields, append: appendPackage, remove: removePackage, update: updatePackage } = useFieldArray({ control, name: "packages" });
-    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
     const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control, name: "colors" });
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
     
@@ -470,9 +384,9 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             }
         });
     
-        const categorized = categories.map(name => ({
+        const categorized = Array.from(categoryMap.entries()).map(([name, items]) => ({
             name,
-            items: categoryMap.get(name) || []
+            items,
         }));
     
         return { uncategorizedPackages: uncategorized, categorizedPackages: categorized, allCategories: categories };
@@ -508,10 +422,9 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const handleAddCategory = () => {
         if (newCategoryName.trim() && !allCategories.includes(newCategoryName.trim())) {
             const currentPackages = getValues('packages') || [];
-            const newPackages = [...currentPackages];
-            newPackages.unshift({
+            const newPackages = [{
                 id: `pkg-cat-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: newCategoryName.trim()
-            });
+            },...currentPackages];
             form.setValue('packages', newPackages, {shouldDirty:true});
             setNewCategoryName('');
         }
@@ -594,7 +507,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                     <div className="flex items-center justify-between p-4">
                                                         <CollapsibleTrigger asChild>
                                                             <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
-                                                                <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
+                                                                <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
                                                                 <h3 className="font-semibold text-lg">{name}</h3>
                                                                 <span className="text-muted-foreground font-normal ml-2">({items.length})</span>
                                                             </button>
@@ -624,7 +537,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                 <div className="flex items-center justify-between p-4">
                                                     <CollapsibleTrigger asChild>
                                                         <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
-                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
+                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
                                                             <h3 className="font-semibold text-lg">Uncategorized</h3>
                                                             <span className="text-muted-foreground font-normal ml-2">({uncategorizedPackages.length})</span>
                                                         </button>
@@ -646,95 +559,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </div>
                                 </CardContent>
                             </Card>
-                            {/* Specifications Card */}
-                            
-                            <Collapsible asChild>
-                                <Card>
-                                    <CollapsibleCardHeader title="Specifications">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                            </div>
-                                            <div className="space-y-4">
-                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
-                                                {specFields.map((field, index) => (
-                                                    <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                            {/* Colors Card */}
-                            <Collapsible asChild>
-                                <Card>
-                                    <CollapsibleCardHeader title="Color Variants">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [], cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4">
-                                            {colorFields.map((field, index) => (
-                                                <Card key={field.id} className="p-4 bg-muted/50">
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
-                                                    </div>
-                                                    <div className="space-y-4">
-                                                        <div className="space-y-2">
-                                                            <FormLabel>Images</FormLabel>
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
-                                                                    <div key={imgIndex} className="relative aspect-square group">
-                                                                        <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="icon"
-                                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                            onClick={() => {
-                                                                                const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
-                                                                                updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
-                                                                            }}
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </div>
-                                                                ))}
-                                                                <label htmlFor={`color-image-upload-${index}`} className={cn(
-                                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
-                                                                    (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
-                                                                )}>
-                                                                    <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                        const files = Array.from(e.target.files || []);
-                                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                        const currentUrls = watchedColors[index].imageUrls || [];
-                                                                        updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
-                                                                    }}/>
-                                                                    <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                                                            <GstInputPair control={control} name={`colors.${index}.cost`} label="Additional Cost" />
-                                                            <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
-                                                        </div>
-                                                    </div>
-                                                </Card>
-                                            ))}
-                                            {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
                         </div>
 
                         <div className="lg:col-span-3 space-y-8">
@@ -845,15 +669,87 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                             </Collapsible>
                             <Collapsible asChild>
                                 <Card>
-                                    <CollapsibleCardHeader title="Optional Features">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                    <CollapsibleCardHeader title="Specifications">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <FormField control={control} name="specifications.minHp" render={({ field }) => ( <FormItem><FormLabel>Min HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={control} name="specifications.maxHp" render={({ field }) => ( <FormItem><FormLabel>Max HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={control} name="specifications.recommendedHp" render={({ field }) => ( <FormItem><FormLabel>Recommended HP</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                            </div>
+                                            <div className="space-y-4">
+                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
+                                                {specFields.map((field, index) => (
+                                                    <div key={field.id} className="flex items-end gap-2">
+                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                            {/* Colors Card */}
+                            <Collapsible asChild>
+                                <Card>
+                                    <CollapsibleCardHeader title="Color Variants">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [], cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
                                         <CardContent className="space-y-4">
-                                            {optionalFeatureFields.map((field, index) => (
-                                                <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                            {colorFields.map((field, index) => (
+                                                <Card key={field.id} className="p-4 bg-muted/50">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        <div className="space-y-2">
+                                                            <FormLabel>Images</FormLabel>
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
+                                                                    <div key={imgIndex} className="relative aspect-square group">
+                                                                        <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="icon"
+                                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                            onClick={() => {
+                                                                                const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
+                                                                                updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
+                                                                            }}
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                ))}
+                                                                <label htmlFor={`color-image-upload-${index}`} className={cn(
+                                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
+                                                                    (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
+                                                                )}>
+                                                                    <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                        const files = Array.from(e.target.files || []);
+                                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                        const currentUrls = watchedColors[index].imageUrls || [];
+                                                                        updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
+                                                                    }}/>
+                                                                    <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                                                            <GstInputPair control={control} name={`colors.${index}.cost`} label="Additional Cost" />
+                                                            <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
+                                                        </div>
+                                                    </div>
+                                                </Card>
                                             ))}
-                                            {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                            {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
                                         </CardContent>
                                     </CollapsibleContent>
                                 </Card>
