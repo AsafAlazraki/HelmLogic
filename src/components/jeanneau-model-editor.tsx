@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, useFormContext, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -81,7 +81,7 @@ const formatCurrency = (value: number | null | undefined): string | null => {
     return new Intl.NumberFormat('en-AU', {
         style: 'currency',
         currency: 'AUD',
-    }).format(value);
+    }).format(value * (1 + GST_RATE));
 };
 
 function sanitizeDataForFirestore(data: any): any {
@@ -131,7 +131,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 const excl = num / (1 + GST_RATE);
-                field.onChange(Math.round(excl * 10000) / 10000);
+                field.onChange(Math.round(excl * 100) / 100);
             }
         }
     };
@@ -222,8 +222,7 @@ function PackageItem({
 }) {
     const { control } = useFormContext<ModelFormData>();
     const sellPrice = useWatch({ control, name: `packages.${index}.sellPriceExclGst` });
-    const priceInclGst = sellPrice ? sellPrice * (1 + GST_RATE) : null;
-    const formattedPrice = formatCurrency(priceInclGst);
+    const formattedPrice = formatCurrency(sellPrice);
     
     return (
         <Collapsible>
