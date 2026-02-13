@@ -228,7 +228,7 @@ function PackageItem({
     return (
         <Collapsible>
             <Card className="overflow-hidden">
-                <div className="p-4 flex justify-between items-center">
+                <div className="p-4 flex items-center">
                     <div className="flex-1 pr-4">
                         <FormField control={control} name={`packages.${index}.name`} render={({ field }) => ( 
                             <FormItem>
@@ -241,7 +241,7 @@ function PackageItem({
                     </div>
                     <div className="flex items-center">
                          {formattedPrice && (
-                            <span className="text-sm text-muted-foreground mr-4 font-normal">{formattedPrice}</span>
+                            <span className="text-sm font-normal text-muted-foreground mr-4">{formattedPrice}</span>
                         )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -619,8 +619,8 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                 </div>
                                                 <div className="space-y-4">
                                                     {categorizedPackages.map(({ name, items }) => (
-                                                        <div key={name} className="border rounded-lg">
-                                                            <Collapsible defaultOpen>
+                                                        <Collapsible key={name} asChild defaultOpen>
+                                                            <div className="border rounded-lg">
                                                                 <div className="flex items-center justify-between p-4">
                                                                     <CollapsibleTrigger asChild>
                                                                         <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
@@ -646,12 +646,12 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                         {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
                                                                     </div>
                                                                 </CollapsibleContent>
-                                                            </Collapsible>
-                                                        </div>
+                                                            </div>
+                                                        </Collapsible>
                                                     ))}
-                                                    <div className="border rounded-lg">
-                                                         <Collapsible>
-                                                            <div className="flex items-center justify-between p-4">
+                                                    <Collapsible asChild>
+                                                        <div className="border rounded-lg">
+                                                             <div className="flex items-center justify-between p-4">
                                                                 <CollapsibleTrigger asChild>
                                                                     <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
                                                                         <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
@@ -671,8 +671,8 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                     {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
                                                                 </div>
                                                             </CollapsibleContent>
-                                                        </Collapsible>
-                                                    </div>
+                                                        </div>
+                                                    </Collapsible>
                                                 </div>
                                             </CardContent>
                                             <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[hsl(var(--card))] to-transparent z-10 pointer-events-none" />
@@ -695,7 +695,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                     {coverImageUrl ? (
                                                         <div className="relative aspect-video w-full overflow-hidden rounded-md group">
                                                             <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                            <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-card/80 to-transparent" />
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
@@ -887,10 +886,12 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsNewCatDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleConfirmNewCat}>Create & Move</Button>
+                        <Button onClick={handleConfirmNewCat}>Create &amp; Move</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </FormProvider>
     );
 }
+
+    

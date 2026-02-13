@@ -672,7 +672,6 @@ export function StacerModelEditor({ model, docPath, vendor }: { model: any; docP
                                                 {coverImageUrl ? (
                                                      <div className="relative aspect-video w-full overflow-hidden rounded-md group">
                                                         <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                        <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-card/80 to-transparent" />
                                                         <Button
                                                             type="button"
                                                             variant="outline"
@@ -809,3 +808,5 @@ export function StacerModelEditor({ model, docPath, vendor }: { model: any; docP
         </>
     );
 }
+
+    

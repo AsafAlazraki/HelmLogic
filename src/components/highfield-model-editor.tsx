@@ -643,7 +643,7 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                                                                         type="button"
                                                                         variant="outline"
                                                                         size="icon"
-                                                                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                                                                         onClick={() => {
                                                                             const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
                                                                             updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
@@ -654,7 +654,7 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                                                                 </div>
                                                             ))}
                                                             <label htmlFor={`color-image-upload-${index}`} className={cn(
-                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary",
+                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
                                                                 (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
                                                             )}>
                                                                 <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
@@ -701,7 +701,6 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                                                     {coverImageUrl ? (
                                                         <div className="relative aspect-video w-full overflow-hidden rounded-md group">
                                                             <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                            <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-card/80 to-transparent" />
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
@@ -877,3 +876,5 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
         </>
     );
 }
+
+    
