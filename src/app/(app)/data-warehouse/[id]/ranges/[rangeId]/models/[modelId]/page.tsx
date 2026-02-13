@@ -125,13 +125,13 @@ export default function ModelDetailsPage() {
             </div>
             
             {vendor.slug === 'highfield' ? (
-                <HighfieldModelEditor model={model} docPath={modelDocPath} />
+                <HighfieldModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'jeanneau' ? (
-                <JeanneauModelEditor model={model} docPath={modelDocPath} />
+                <JeanneauModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'stacer' ? (
-                <StacerModelEditor model={model} docPath={modelDocPath} />
+                <StacerModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'stabicraft' ? (
-                <StabicraftModelEditor model={model} docPath={modelDocPath} />
+                <StabicraftModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : (
                 <Card>
                     <CardHeader>

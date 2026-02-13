@@ -221,6 +221,10 @@
         "vendorId": {
           "type": "string",
           "description": "The ID of the vendor this range belongs to."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL for the range's image."
         }
       },
       "required": [
@@ -317,14 +321,23 @@
               "name": {
                 "type": "string"
               },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional feature."
+              },
               "imageUrl": {
                 "type": "string"
               },
-              "cost": {
-                "type": "number"
-              },
-              "sellPriceExclGst": {
-                "type": "number"
+              "packageStatus": {
+                "type": "object",
+                "description": "A map of package IDs to their status ('standard' or 'optional') for this feature.",
+                "additionalProperties": {
+                  "type": "string",
+                  "enum": [
+                    "standard",
+                    "optional"
+                  ]
+                }
               }
             },
             "required": [
@@ -383,6 +396,10 @@
               },
               "name": {
                 "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "A description for the package level."
               },
               "cost": {
                 "type": "number"

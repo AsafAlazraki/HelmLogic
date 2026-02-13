@@ -5,8 +5,9 @@ import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, getDoc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { fileToDataUri } from '@/firebase/storage-utils';
 
@@ -15,12 +16,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal, Move } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -63,6 +67,12 @@ const stacerModelSchema = z.object({
 });
 
 type ModelFormData = z.infer<typeof stacerModelSchema>;
+
+interface Range {
+  id: string;
+  name: string;
+  slug?: string;
+}
 
 const GST_RATE = 0.10;
 
@@ -238,14 +248,21 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
     );
 }
 
-export function StacerModelEditor({ model, docPath }: { model: any; docPath: string }) {
+export function StacerModelEditor({ model, docPath, vendor }: { model: any; docPath: string, vendor: any }) {
     const firestore = useFirestore();
+    const router = useRouter();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     const loadedModelIdRef = useRef<string | null>(null);
     const isSavingRef = useRef(false);
 
+    const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+    const [targetRangeId, setTargetRangeId] = useState('');
+    const [isMoving, setIsMoving] = useState(false);
+    
+    const { data: allRanges, loading: rangesLoading } = useCollection<Range>(vendor ? `data-warehouse/${vendor.id}/ranges` : null);
+    
     const getSafeDefaultValues = useCallback((modelData: any): Partial<ModelFormData> => {
         const data = modelData || {};
         const specs = data.specifications || {};
@@ -351,11 +368,52 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         setBulkFeatures('');
     };
 
+    const handleMoveModel = async () => {
+        if (!targetRangeId) {
+            toast({ variant: 'destructive', title: 'No destination range selected.' });
+            return;
+        }
+        setIsMoving(true);
+        try {
+            const oldDocRef = doc(firestore, docPath);
+            const currentModelData = await getDoc(oldDocRef);
+
+            if (!currentModelData.exists()) {
+                throw new Error("Original model document not found.");
+            }
+            
+            const modelData = currentModelData.data();
+            modelData.rangeId = targetRangeId; // Update rangeId
+
+            const newDocRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${targetRangeId}/models`, model.id);
+            
+            const batch = writeBatch(firestore);
+            batch.set(newDocRef, modelData);
+            batch.delete(oldDocRef);
+            
+            await batch.commit();
+
+            toast({ title: 'Model Moved', description: `Successfully moved to new range.` });
+            const targetRange = allRanges?.find(r => r.id === targetRangeId);
+            const newPath = `/data-warehouse/${vendor.slug || vendor.id}/ranges/${targetRange?.slug || targetRangeId}/models/${model.slug || model.id}`;
+            router.push(newPath);
+
+        } catch (error: any) {
+            console.error("Failed to move model:", error);
+            toast({ variant: 'destructive', title: 'Move Failed', description: error.message });
+        } finally {
+            setIsMoving(false);
+            setIsMoveDialogOpen(false);
+        }
+    };
+
     return (
+        <>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="flex justify-end">
-                     <Button type="submit">
+                <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsMoveDialogOpen(true)}><Move className="mr-2 h-4 w-4"/>Move Model</Button>
+                    <Button type="submit">
                         <Save className="mr-2 h-4 w-4" /> Save Changes
                     </Button>
                 </div>
@@ -601,5 +659,41 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                 </div>
             </form>
         </Form>
+        <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Move Model</DialogTitle>
+                    <DialogDescription>
+                        Select a new range to move this model to. This action is permanent.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Select onValueChange={setTargetRangeId} defaultValue={targetRangeId}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a destination range..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {rangesLoading ? (
+                                <div className="flex items-center justify-center p-4">
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                </div>
+                            ) : (
+                                allRanges?.filter(r => r.id !== model.rangeId).map(range => (
+                                    <SelectItem key={range.id} value={range.id}>{range.name}</SelectItem>
+                                ))
+                            )}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                    <Button onClick={handleMoveModel} disabled={!targetRangeId || isMoving}>
+                        {isMoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm Move
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
