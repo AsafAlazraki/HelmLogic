@@ -105,7 +105,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
     const { field } = useController({ control, name, defaultValue: null });
 
     const valueExcl = field.value;
-    const valueIncl = valueExcl !== null && valueExcl !== undefined ? parseFloat((valueExcl * (1 + GST_RATE)).toFixed(2)) : null;
+    const valueIncl = valueExcl !== null && valueExcl !== undefined ? Math.round((valueExcl * (1 + GST_RATE)) * 100) / 100 : null;
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -125,7 +125,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 const excl = num / (1 + GST_RATE);
-                field.onChange(Math.round(excl * 100) / 100);
+                field.onChange(Math.round(excl * 10000) / 10000);
             }
         }
     };
@@ -235,7 +235,7 @@ function PackageItem({
                     </div>
                     <div className="flex items-center">
                          {formattedPrice && (
-                            <span className="text-sm text-muted-foreground mr-4">{formattedPrice}</span>
+                            <span className="text-sm font-normal text-muted-foreground mr-4">{formattedPrice}</span>
                         )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -473,7 +473,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                            <Collapsible asChild>
+                            <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features" count={featureFields.length} >
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('', { shouldFocus: false })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -497,7 +497,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                           <Collapsible asChild>
+                           <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages." count={packageFields.length} />
                                     <CollapsibleContent>
@@ -509,7 +509,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                             <div className="space-y-4">
                                                 {categorizedPackages.map(({ name, items }) => (
                                                     <div key={name} className="border rounded-lg">
-                                                        <Collapsible>
+                                                        <Collapsible defaultOpen>
                                                             <div className="flex items-center justify-between p-4">
                                                                 <CollapsibleTrigger asChild>
                                                                     <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">

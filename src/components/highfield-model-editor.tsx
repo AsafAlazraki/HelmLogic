@@ -110,7 +110,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     const { field } = useController({ control, name, defaultValue: null });
 
     const valueExcl = field.value;
-    const valueIncl = valueExcl !== null && valueExcl !== undefined ? parseFloat((valueExcl * (1 + GST_RATE)).toFixed(2)) : null;
+    const valueIncl = valueExcl !== null && valueExcl !== undefined ? Math.round((valueExcl * (1 + GST_RATE)) * 100) / 100 : null;
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -130,7 +130,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 const excl = num / (1 + GST_RATE);
-                field.onChange(parseFloat(excl.toFixed(4)));
+                field.onChange(Math.round(excl * 10000) / 10000);
             }
         }
     };
@@ -144,9 +144,9 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                     <FormControl>
                         <Input
                             type="number"
-                            step="0.01"
+                            step="any"
                             placeholder="0.00"
-                            value={valueExcl ?? ''}
+                            value={valueExcl === null || valueExcl === undefined ? '' : String(valueExcl)}
                             onChange={handleExclChange}
                         />
                     </FormControl>
@@ -157,7 +157,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                     <FormControl>
                         <Input
                             type="number"
-                            step="0.01"
+                            step="any"
                             placeholder="0.00"
                             value={valueIncl === null || valueIncl === undefined ? '' : String(valueIncl)}
                             onChange={handleInclChange}
