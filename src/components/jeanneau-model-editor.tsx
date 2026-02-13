@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useForm, useFieldArray, useWatch, useController, FormProvider } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -167,7 +167,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
 }
 
 function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
-    const { control } = useForm<ModelFormData>();
+    const { control } = useFormContext<ModelFormData>();
     const { fields, append, remove } = useFieldArray({
         control,
         name: `packages.${packageIndex}.includedFeatures`
@@ -203,26 +203,24 @@ function IncludedFeatures({ packageIndex }: { packageIndex: number }) {
 }
 
 function PackageItem({ 
-    form, 
     index, 
     remove,
     allCategories,
     onCategoryChange,
     onNewCategoryRequest
 }: { 
-    form: any; 
     index: number; 
     remove: (index: number) => void;
     allCategories: string[];
     onCategoryChange: (packageIndex: number, newCategory: string | undefined) => void;
     onNewCategoryRequest: (packageIndex: number) => void;
 }) {
-    const { control } = useForm<ModelFormData>();
+    const { control } = useFormContext<ModelFormData>();
     const sellPrice = useWatch({ control, name: `packages.${index}.sellPriceExclGst` });
     const formattedPrice = formatCurrency(sellPrice);
     
     return (
-        <Collapsible asChild>
+        <Collapsible>
             <Card className="overflow-hidden">
                 <div className="p-4 flex justify-between items-start">
                     <div className="flex-1 pr-4">
@@ -368,7 +366,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
     const { uncategorizedPackages, categorizedPackages, allCategories } = useMemo(() => {
         const currentPackages = watchedPackages || [];
-        const categories = [...new Set(currentPackages.map(p => p.category).filter(Boolean) as string[])].sort();
+        const categories = [...new Set(currentPackages.map(p => p.category).filter(Boolean) as string[])];
 
         const uncategorized: { field: any, index: number }[] = [];
         const categoryMap = new Map<string, { field: any, index: number }[]>();
@@ -402,7 +400,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             await updateDoc(modelDocRef, sanitizedValues);
             toast({ title: "Model Updated", description: "Your changes have been saved." });
             reset(values);
-        } catch (e) {
+        } catch (e: any) {
             console.error("Save failed:", e);
             toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
             const permissionError = new FirestorePermissionError({
@@ -423,8 +421,8 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const handleAddCategory = () => {
         if (newCategoryName.trim() && !allCategories.includes(newCategoryName.trim())) {
              const newPackages = [
-                { id: `pkg-cat-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: newCategoryName.trim() },
-                ...(getValues('packages') || [])
+                ...getValues('packages') || [],
+                { id: `pkg-cat-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: newCategoryName.trim() }
             ];
             form.setValue('packages', newPackages, { shouldDirty: true });
             setNewCategoryName('');
@@ -471,7 +469,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                            <Collapsible asChild defaultOpen>
+                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -495,7 +493,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            <Collapsible asChild defaultOpen>
+                           <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages."/>
                                     <CollapsibleContent>
@@ -528,7 +526,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                             <CollapsibleContent>
                                                                 <div className="space-y-4 p-4 border-t">
                                                                     {items.map(({field, index}) => (
-                                                                        <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                                        <PackageItem key={field.id} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
                                                                     ))}
                                                                     {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
                                                                 </div>
@@ -553,7 +551,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                         <CollapsibleContent>
                                                             <div className="space-y-4 p-4 border-t">
                                                                 {uncategorizedPackages.map(({field, index}) => (
-                                                                    <PackageItem key={field.id} form={form} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                                    <PackageItem key={field.id} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
                                                                 ))}
                                                                 {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
                                                             </div>
@@ -673,7 +671,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            <Collapsible asChild defaultOpen>
+                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
