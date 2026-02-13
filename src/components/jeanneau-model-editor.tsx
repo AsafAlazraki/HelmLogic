@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -244,9 +244,9 @@ function PackageItem({
                             </FormItem> 
                         )} />
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center">
                          {formattedPrice && (
-                            <span className="text-base font-semibold text-muted-foreground whitespace-nowrap">{formattedPrice}</span>
+                            <span className="text-base font-semibold text-muted-foreground mr-2">{formattedPrice}</span>
                         )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -557,31 +557,26 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                             {/* Standard Features Card */}
-                             <Collapsible asChild>
-                                <Card>
-                                    <CollapsibleCardHeader title="Standard Features">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('', { shouldFocus: false })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
-                                            {featureFields.map((field, index) => (
-                                                <div key={field.id} className="flex items-center gap-2">
-                                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                </div>
-                                            ))}
-                                        </CardContent>
-                                        <CardContent>
-                                            <div className="space-y-2">
-                                                <FormLabel>Bulk Add Features</FormLabel>
-                                                <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Standard Features</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+                                        {featureFields.map((field, index) => (
+                                             <div key={field.id} className="flex items-center gap-2">
+                                                <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                             </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
+                                        ))}
+                                    </CardContent>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            <FormLabel>Bulk Add Features</FormLabel>
+                                            <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                                            <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                        </div>
+                                    </CardContent>
+                            </Card>
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Optional Packages</CardTitle>
@@ -885,6 +880,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         <Button onClick={handleConfirmNewCat}>Create & Move</Button>
                     </DialogFooter>
                 </DialogContent>
-            </>
+            </Dialog>
+        </>
     );
 }
