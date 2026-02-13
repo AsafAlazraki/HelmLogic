@@ -35,6 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Range {
     id: string;
@@ -68,6 +69,8 @@ export function StabicraftDataStructure({ vendorId, vendorSlugOrId }: { vendorId
     
     const [rangeToDelete, setRangeToDelete] = useState<Range | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+    const [isAddingOpen, setIsAddingOpen] = useState(false);
 
     const editForm = useForm<RangeFormData>({
       resolver: zodResolver(rangeFormSchema),
@@ -124,6 +127,7 @@ export function StabicraftDataStructure({ vendorId, vendorSlugOrId }: { vendorId
             setNewRangeName('');
             setAddRangeImage(null);
             setAddRangeImagePreview(null);
+            setIsAddingOpen(false);
             toast({ title: 'Range Added', description: `${newRangeName} was added successfully.` });
         } catch (error) {
             console.error('Error adding range:', error);
@@ -176,53 +180,62 @@ export function StabicraftDataStructure({ vendorId, vendorSlugOrId }: { vendorId
 
     return (
         <>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Stabicraft Product Ranges</CardTitle>
-                    <CardDescription>Manage product ranges and models for Stabicraft boats.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {ranges && ranges.length > 0 ? (
-                        <div className="space-y-6">
-                            <Card className="p-4 bg-muted/50">
-                                <Label>Add New Range</Label>
-                                <div className="flex items-end gap-2 mt-2">
-                                     <div className="w-32 flex-shrink-0">
-                                        {addRangeImagePreview ? (
-                                            <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                                                <Image src={addRangeImagePreview} alt="New Range Preview" fill className="object-cover" />
-                                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => { setAddRangeImage(null); setAddRangeImagePreview(null); }}>
-                                                    <X className="h-4 w-4" />
-                                                </Button>
+            <Collapsible asChild open={isAddingOpen} onOpenChange={setIsAddingOpen}>
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>Stabicraft Product Ranges</CardTitle>
+                                <CardDescription>Manage product ranges and models for Stabicraft boats.</CardDescription>
+                            </div>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Range
+                                </Button>
+                            </CollapsibleTrigger>
+                        </div>
+                    </CardHeader>
+                    <CollapsibleContent className="px-6 pb-6 border-b">
+                        <div className="p-4 border rounded-lg bg-muted/50">
+                             <div className="flex items-end gap-2">
+                                <div className="w-32 flex-shrink-0">
+                                    {addRangeImagePreview ? (
+                                        <div className="relative aspect-square w-full overflow-hidden rounded-md group">
+                                            <Image src={addRangeImagePreview} alt="New Range Preview" fill className="object-cover" />
+                                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => { setAddRangeImage(null); setAddRangeImagePreview(null); }}>
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Label htmlFor="add-range-image" className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
+                                            <div className="flex flex-col items-center justify-center text-center p-2 text-xs text-muted-foreground">
+                                                <Sailboat className="w-6 h-6 mb-1" />
+                                                <span>Upload Render</span>
                                             </div>
-                                        ) : (
-                                            <label htmlFor="add-range-image" className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
-                                                <div className="flex flex-col items-center justify-center text-center p-2 text-xs text-muted-foreground">
-                                                    <Sailboat className="w-6 h-6 mb-1" />
-                                                    <span>Upload Render</span>
-                                                </div>
-                                                <Input id="add-range-image" type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    setAddRangeImage(file || null);
-                                                    setAddRangeImagePreview(file ? URL.createObjectURL(file) : null);
-                                                }} />
-                                            </label>
-                                        )}
-                                    </div>
-                                    <Input
-                                        placeholder="New range name..."
-                                        value={newRangeName}
-                                        onChange={(e) => setNewRangeName(e.target.value)}
-                                        disabled={isAdding}
-                                        className="self-center"
-                                    />
-                                    <Button onClick={handleAddRange} disabled={isAdding || !newRangeName.trim()} className="self-center">
-                                        {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <PlusCircle className="mr-2 h-4 w-4" />}
-                                        Add
-                                    </Button>
+                                            <Input id="add-range-image" type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                setAddRangeImage(file || null);
+                                                setAddRangeImagePreview(file ? URL.createObjectURL(file) : null);
+                                            }} />
+                                        </Label>
+                                    )}
                                 </div>
-                            </Card>
-
+                                <Input
+                                    placeholder="New range name..."
+                                    value={newRangeName}
+                                    onChange={(e) => setNewRangeName(e.target.value)}
+                                    disabled={isAdding}
+                                    className="self-center"
+                                />
+                                <Button onClick={handleAddRange} disabled={isAdding || !newRangeName.trim()} className="self-center">
+                                    {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                    Add
+                                </Button>
+                            </div>
+                        </div>
+                    </CollapsibleContent>
+                    <CardContent className="pt-6">
+                        {ranges && ranges.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {ranges.map(range => (
                                     <Card key={range.id} className="group relative overflow-hidden flex flex-col">
@@ -259,18 +272,18 @@ export function StabicraftDataStructure({ vendorId, vendorSlugOrId }: { vendorId
                                     </Card>
                                 ))}
                             </div>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                            <p className="text-muted-foreground">No data structure found for Stabicraft.</p>
-                            <Button onClick={handleSeedData} disabled={isSeeding} className="mt-4">
-                                {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                                Build Initial Data Structure
-                            </Button>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg">
+                                <p className="text-muted-foreground">No data structure found for Stabicraft.</p>
+                                <Button onClick={handleSeedData} disabled={isSeeding} className="mt-4">
+                                    {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                    Build Initial Data Structure
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </Collapsible>
 
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -281,10 +294,10 @@ export function StabicraftDataStructure({ vendorId, vendorSlugOrId }: { vendorId
                     <Form {...editForm}>
                         <form onSubmit={editForm.handleSubmit(handleUpdateRange)} className="space-y-4">
                             <FormField control={editForm.control} name="name" render={({ field }) => (
-                                <FormItem><FormLabel>Range Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><Label>Range Name</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={editForm.control} name="image" render={({ field }) => (
-                                <FormItem><FormLabel>Range Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormDescription>Upload a new image to replace the existing one.</FormDescription><FormMessage /></FormItem>
+                                <FormItem><Label>Range Image</Label><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormDescription>Upload a new image to replace the existing one.</FormDescription><FormMessage /></FormItem>
                             )} />
                             <DialogFooter>
                                 <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
