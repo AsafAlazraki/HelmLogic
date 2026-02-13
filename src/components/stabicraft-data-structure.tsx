@@ -18,10 +18,11 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Loader2, PlusCircle, Trash2, Sailboat, MoreHorizontal, Pencil, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -184,7 +185,7 @@ export function StabicraftDataStructure({ vendorId, vendorSlugOrId }: { vendorId
                     {ranges && ranges.length > 0 ? (
                         <div className="space-y-6">
                             <Card className="p-4 bg-muted/50">
-                                <FormLabel>Add New Range</FormLabel>
+                                <Label>Add New Range</Label>
                                 <div className="flex items-end gap-2 mt-2">
                                      <div className="w-32 flex-shrink-0">
                                         {addRangeImagePreview ? (
