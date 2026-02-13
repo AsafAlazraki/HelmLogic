@@ -216,7 +216,8 @@ function PackageItem({
 }) {
     const { control } = useFormContext<ModelFormData>();
     const sellPrice = useWatch({ control, name: `packages.${index}.sellPriceExclGst` });
-    const formattedPrice = formatCurrency(sellPrice);
+    const priceInclGst = sellPrice ? sellPrice * (1 + GST_RATE) : null;
+    const formattedPrice = formatCurrency(priceInclGst);
     
     return (
         <Collapsible>
@@ -234,7 +235,7 @@ function PackageItem({
                     </div>
                     <div className="flex items-center">
                          {formattedPrice && (
-                            <span className="text-sm font-semibold text-muted-foreground mr-2">{formattedPrice}</span>
+                            <span className="text-sm text-muted-foreground mr-4">{formattedPrice}</span>
                         )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -278,10 +279,13 @@ function PackageItem({
     );
 }
 
-const CollapsibleCardHeader = ({ title, description, children }: { title: string, description?: string, children?: React.ReactNode }) => (
+const CollapsibleCardHeader = ({ title, description, children, count }: { title: string, description?: string, children?: React.ReactNode, count?: number }) => (
     <CardHeader className="flex flex-row items-start justify-between">
-        <div className="flex-1 space-y-1">
-            <CardTitle>{title}</CardTitle>
+        <div className="flex-1 space-y-1.5">
+            <div className="flex items-center gap-2">
+                <CardTitle>{title}</CardTitle>
+                {count !== undefined && <span className="text-sm font-normal text-muted-foreground group-data-[state=closed]:inline hidden">({count} features)</span>}
+            </div>
             {description && <CardDescription>{description}</CardDescription>}
         </div>
         <div className="flex items-center gap-2">
@@ -399,8 +403,9 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
             await updateDoc(modelDocRef, sanitizedValues);
             toast({ title: "Model Updated", description: "Your changes have been saved." });
             reset(values);
-        } catch (e: any) {
-            console.error("Save failed:", e);
+        } catch (e) {
+            const error = e as any;
+            console.error("Save failed:", error);
             toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
             const permissionError = new FirestorePermissionError({
                 path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
@@ -468,9 +473,9 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                             <Collapsible asChild>
+                            <Collapsible asChild>
                                 <Card>
-                                    <CollapsibleCardHeader title="Standard Features">
+                                    <CollapsibleCardHeader title="Standard Features" count={featureFields.length} >
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('', { shouldFocus: false })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
@@ -494,7 +499,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                             </Collapsible>
                            <Collapsible asChild>
                                 <Card>
-                                    <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages."/>
+                                    <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages." count={packageFields.length} />
                                     <CollapsibleContent>
                                         <CardContent className="space-y-4 max-h-[700px] overflow-y-auto">
                                             <div className="flex gap-2 items-center">
@@ -565,20 +570,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         </div>
 
                         <div className="lg:col-span-3 space-y-8">
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Pricing" />
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-6">
-                                            <GstInputPair control={control} name="cost" label="Base Cost" />
-                                            <GstInputPair control={control} name="sellPriceExclGst" label="Base Sell" />
-                                            <GstInputPair control={control} name="freightCostExclGst" label="Freight Cost" />
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                            
-                            <Collapsible asChild defaultOpen>
+                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>
@@ -589,6 +581,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                     {coverImageUrl ? (
                                                         <div className="relative aspect-video w-full overflow-hidden rounded-md group">
                                                             <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                            <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-card/80 to-transparent" />
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
@@ -668,6 +661,20 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+
+                            <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Pricing" />
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-6">
+                                            <GstInputPair control={control} name="cost" label="Base Cost" />
+                                            <GstInputPair control={control} name="sellPriceExclGst" label="Base Sell" />
+                                            <GstInputPair control={control} name="freightCostExclGst" label="Freight Cost" />
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                            
                              <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">

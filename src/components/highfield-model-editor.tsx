@@ -13,7 +13,7 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal, Move } from 'lucide-react';
@@ -107,29 +107,32 @@ function sanitizeDataForFirestore(data: any): any {
 
 
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
-    const { field } = useController({ control, name });
+    const { field } = useController({ control, name, defaultValue: null });
 
-    const valueExcl = field.value; // Can be a number or null
-    const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
+    const valueExcl = field.value;
+    const valueIncl = valueExcl !== null && valueExcl !== undefined ? parseFloat((valueExcl * (1 + GST_RATE)).toFixed(2)) : null;
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value === '') {
+        const val = e.target.value;
+        if (val === '') {
             field.onChange(null);
-            return;
+        } else {
+            const num = parseFloat(val);
+            field.onChange(isNaN(num) ? null : num);
         }
-        const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? null : numValue);
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value === '') {
+        const val = e.target.value;
+        if (val === '') {
             field.onChange(null);
-            return;
+        } else {
+            const num = parseFloat(val);
+            if (!isNaN(num)) {
+                const excl = num / (1 + GST_RATE);
+                field.onChange(parseFloat(excl.toFixed(4)));
+            }
         }
-        const numValue = parseFloat(e.target.value);
-        if (isNaN(numValue)) return;
-        const exclValue = numValue / (1 + GST_RATE);
-        field.onChange(parseFloat(exclValue.toFixed(4)));
     };
 
     return (
@@ -156,7 +159,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                             type="number"
                             step="0.01"
                             placeholder="0.00"
-                            value={valueIncl === 0 ? '' : valueIncl.toFixed(2)}
+                            value={valueIncl === null || valueIncl === undefined ? '' : String(valueIncl)}
                             onChange={handleInclChange}
                         />
                     </FormControl>
@@ -593,6 +596,7 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                                                     {coverImageUrl ? (
                                                         <div className="relative aspect-video w-full overflow-hidden rounded-md group">
                                                             <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                            <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-card/80 to-transparent" />
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
@@ -626,7 +630,7 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                                                 <Collapsible>
                                                     <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
                                                         <span>Image Gallery ({galleryImageFields.length})</span>
-                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                                     </CollapsibleTrigger>
                                                     <CollapsibleContent className="border-b">
                                                         <div className="p-4 bg-muted/20">
@@ -674,7 +678,7 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                             </Collapsible>
                             <Collapsible asChild defaultOpen>
                                 <Card>
-                                    <CollapsibleCardHeader title="Optional Features">
+                                    <CollapsibleCardHeader title="Optional Features" count={optionalFeatureFields.length}>
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>

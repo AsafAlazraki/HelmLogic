@@ -102,26 +102,29 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     const { field } = useController({ control, name, defaultValue: null });
 
     const valueExcl = field.value;
-    const valueIncl = (valueExcl ?? 0) * (1 + GST_RATE);
+    const valueIncl = valueExcl !== null && valueExcl !== undefined ? parseFloat((valueExcl * (1 + GST_RATE)).toFixed(2)) : null;
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value === '') {
+        const val = e.target.value;
+        if (val === '') {
             field.onChange(null);
-            return;
+        } else {
+            const num = parseFloat(val);
+            field.onChange(isNaN(num) ? null : num);
         }
-        const numValue = parseFloat(e.target.value);
-        field.onChange(isNaN(numValue) ? null : numValue);
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value === '') {
+        const val = e.target.value;
+        if (val === '') {
             field.onChange(null);
-            return;
+        } else {
+            const num = parseFloat(val);
+            if (!isNaN(num)) {
+                const excl = num / (1 + GST_RATE);
+                field.onChange(parseFloat(excl.toFixed(4)));
+            }
         }
-        const numValue = parseFloat(e.target.value);
-        if (isNaN(numValue)) return;
-        const exclValue = numValue / (1 + GST_RATE);
-        field.onChange(parseFloat(exclValue.toFixed(4)));
     };
 
     return (
@@ -148,7 +151,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                             type="number"
                             step="0.01"
                             placeholder="0.00"
-                            value={valueIncl === 0 ? '' : valueIncl.toFixed(2)}
+                            value={valueIncl === null || valueIncl === undefined ? '' : String(valueIncl)}
                             onChange={handleInclChange}
                         />
                     </FormControl>
@@ -564,6 +567,7 @@ export function StacerModelEditor({ model, docPath, vendor }: { model: any; docP
                                                 {coverImageUrl ? (
                                                      <div className="relative aspect-video w-full overflow-hidden rounded-md group">
                                                         <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                        <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-card/80 to-transparent" />
                                                         <Button
                                                             type="button"
                                                             variant="outline"
@@ -597,7 +601,7 @@ export function StacerModelEditor({ model, docPath, vendor }: { model: any; docP
                                             <Collapsible>
                                                 <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
                                                     <span>Image Gallery ({galleryImageFields.length})</span>
-                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                                 </CollapsibleTrigger>
                                                 <CollapsibleContent className="border-b">
                                                     <div className="p-4 bg-muted/20">
@@ -645,7 +649,7 @@ export function StacerModelEditor({ model, docPath, vendor }: { model: any; docP
                         </Collapsible>
                         <Collapsible asChild defaultOpen>
                             <Card>
-                                <CollapsibleCardHeader title="Optional Features">
+                                <CollapsibleCardHeader title="Optional Features" count={optionalFeatureFields.length}>
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                 </CollapsibleCardHeader>
                                 <CollapsibleContent>
