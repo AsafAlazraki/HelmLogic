@@ -167,10 +167,13 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     );
 }
 
-const CollapsibleCardHeader = ({ title, description, children }: { title: string, description?: string, children?: React.ReactNode }) => (
+const CollapsibleCardHeader = ({ title, description, children, count }: { title: string, description?: string, children?: React.ReactNode, count?: number }) => (
     <CardHeader className="flex flex-row items-start justify-between">
-        <div className="flex-1 space-y-1">
-            <CardTitle>{title}</CardTitle>
+        <div className="flex-1 space-y-1.5">
+            <div className="flex items-center gap-2">
+                <CardTitle>{title}</CardTitle>
+                {count !== undefined && <span className="text-sm font-normal text-muted-foreground group-data-[state=closed]:inline hidden">({count} features)</span>}
+            </div>
             {description && <CardDescription>{description}</CardDescription>}
         </div>
         <div className="flex items-center gap-2">
@@ -455,9 +458,9 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
                             {/* Specifications Card */}
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild defaultOpen className="group">
                                 <Card>
-                                    <CollapsibleCardHeader title="Specifications">
+                                    <CollapsibleCardHeader title="Specifications" count={specFields.length}>
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
@@ -483,9 +486,9 @@ export function HighfieldModelEditor({ model, docPath, vendor }: { model: any; d
                             </Collapsible>
                             
                             {/* Standard Features Card */}
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild defaultOpen className="group">
                                 <Card>
-                                    <CollapsibleCardHeader title="Standard Features">
+                                    <CollapsibleCardHeader title="Standard Features" count={featureFields.length}>
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
                                     </CollapsibleCardHeader>
                                     <CollapsibleContent>
