@@ -238,7 +238,7 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                         {ranges && ranges.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {ranges.map(range => (
-                                    <Card key={range.id} className="group relative overflow-hidden flex flex-col">
+                                    <Card key={range.id} className="group relative overflow-hidden flex flex-col h-full transition-all duration-300 ease-in-out hover:border-primary hover:shadow-xl">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-primary/10 hover:text-primary">
@@ -258,7 +258,7 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                                         <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${range.slug || range.id}`} className="block h-full">
                                             <div className="h-40 bg-secondary relative p-4">
                                                 {range.imageUrl ? (
-                                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-contain" />
+                                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-contain p-2" />
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center">
                                                         <Sailboat className="h-12 w-12 text-muted-foreground" />
