@@ -8,7 +8,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight, PlusCircle } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight, PlusCircle, X } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -263,9 +263,12 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                 </DropdownMenu>
 
                 <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
-                    <div className="h-40 bg-secondary relative p-4">
+                    <div className="h-40 bg-secondary relative">
                          {model.coverImageUrl ? (
-                            <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-contain" />
+                            <>
+                                <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
+                                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-card to-transparent" />
+                            </>
                         ) : (
                             <div className="flex h-full w-full items-center justify-center">
                                 <Sailboat className="h-12 w-12 text-muted-foreground" />
@@ -567,3 +570,5 @@ export default function RangeDetailsPage() {
         </AdminGuard>
     );
 }
+
+    
