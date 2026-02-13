@@ -256,9 +256,9 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                                         </DropdownMenu>
 
                                         <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${range.slug || range.id}`} className="block h-full">
-                                            <div className="h-40 bg-secondary relative">
+                                            <div className="h-40 bg-secondary relative p-4">
                                                 {range.imageUrl ? (
-                                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover" />
+                                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-contain" />
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center">
                                                         <Sailboat className="h-12 w-12 text-muted-foreground" />
