@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -289,7 +290,7 @@ const CollapsibleCardHeader = ({ title, description, children, count }: { title:
         <div className="flex-1 space-y-1.5">
             <div className="flex items-center gap-2">
                 <CardTitle>{title}</CardTitle>
-                {count !== undefined && <span className="text-sm font-normal text-muted-foreground group-data-[state=closed]:inline hidden">({count} features)</span>}
+                {count !== undefined && <span className="text-sm font-normal text-muted-foreground group-data-[state=closed]:inline hidden">({count} items)</span>}
             </div>
             {description && <CardDescription>{description}</CardDescription>}
         </div>
@@ -609,69 +610,73 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                 <Card>
                                     <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages." count={packageFields.length} />
                                     <CollapsibleContent>
-                                        <CardContent className="space-y-4 max-h-[700px] overflow-y-auto">
-                                            <div className="flex gap-2 items-center">
-                                                <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
-                                                <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
-                                            </div>
-                                            <div className="space-y-4">
-                                                {categorizedPackages.map(({ name, items }) => (
-                                                    <div key={name} className="border rounded-lg">
-                                                        <Collapsible defaultOpen>
+                                        <div className="relative">
+                                            <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[hsl(var(--card))] to-transparent z-10 pointer-events-none" />
+                                            <CardContent className="space-y-4 max-h-[700px] overflow-y-auto">
+                                                <div className="flex gap-2 items-center">
+                                                    <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
+                                                    <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    {categorizedPackages.map(({ name, items }) => (
+                                                        <div key={name} className="border rounded-lg">
+                                                            <Collapsible defaultOpen>
+                                                                <div className="flex items-center justify-between p-4">
+                                                                    <CollapsibleTrigger asChild>
+                                                                        <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
+                                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                                            <h3 className="font-semibold text-lg">{name}</h3>
+                                                                            <span className="text-muted-foreground font-normal ml-2">({items.length})</span>
+                                                                        </button>
+                                                                    </CollapsibleTrigger>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: name }, { shouldFocus: false })}>
+                                                                            <PlusCircle className="mr-2 h-4 w-4"/> Add Package
+                                                                        </Button>
+                                                                        <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                                <CollapsibleContent>
+                                                                    <div className="space-y-4 p-4 border-t">
+                                                                        {items.map(({field, index}) => (
+                                                                            <PackageItem key={field.id} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
+                                                                        ))}
+                                                                        {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
+                                                                    </div>
+                                                                </CollapsibleContent>
+                                                            </Collapsible>
+                                                        </div>
+                                                    ))}
+                                                    <div className="border rounded-lg">
+                                                         <Collapsible>
                                                             <div className="flex items-center justify-between p-4">
                                                                 <CollapsibleTrigger asChild>
                                                                     <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
                                                                         <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
-                                                                        <h3 className="font-semibold text-lg">{name}</h3>
-                                                                        <span className="text-muted-foreground font-normal ml-2">({items.length})</span>
+                                                                        <h3 className="font-semibold text-lg">Uncategorized</h3>
+                                                                        <span className="text-muted-foreground font-normal ml-2">({uncategorizedPackages.length})</span>
                                                                     </button>
                                                                 </CollapsibleTrigger>
-                                                                <div className="flex items-center gap-2">
-                                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: name }, { shouldFocus: false })}>
-                                                                        <PlusCircle className="mr-2 h-4 w-4"/> Add Package
-                                                                    </Button>
-                                                                    <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteCategory(name)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
+                                                                 <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: undefined }, { shouldFocus: false })}>
+                                                                    <PlusCircle className="mr-2 h-4 w-4"/> Add Package
+                                                                </Button>
                                                             </div>
                                                             <CollapsibleContent>
                                                                 <div className="space-y-4 p-4 border-t">
-                                                                    {items.map(({field, index}) => (
+                                                                    {uncategorizedPackages.map(({field, index}) => (
                                                                         <PackageItem key={field.id} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
                                                                     ))}
-                                                                    {items.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No packages in this category.</p>}
+                                                                    {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
                                                                 </div>
                                                             </CollapsibleContent>
                                                         </Collapsible>
                                                     </div>
-                                                ))}
-                                                <div className="border rounded-lg">
-                                                     <Collapsible>
-                                                        <div className="flex items-center justify-between p-4">
-                                                            <CollapsibleTrigger asChild>
-                                                                <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
-                                                                    <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
-                                                                    <h3 className="font-semibold text-lg">Uncategorized</h3>
-                                                                    <span className="text-muted-foreground font-normal ml-2">({uncategorizedPackages.length})</span>
-                                                                </button>
-                                                            </CollapsibleTrigger>
-                                                             <Button type="button" variant="outline" size="sm" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: 'New Package', imageUrl: '', cost: null, sellPriceExclGst: null, includedFeatures: [], category: undefined }, { shouldFocus: false })}>
-                                                                <PlusCircle className="mr-2 h-4 w-4"/> Add Package
-                                                            </Button>
-                                                        </div>
-                                                        <CollapsibleContent>
-                                                            <div className="space-y-4 p-4 border-t">
-                                                                {uncategorizedPackages.map(({field, index}) => (
-                                                                    <PackageItem key={field.id} index={index} remove={removePackage} allCategories={allCategories} onCategoryChange={handleCategoryChange} onNewCategoryRequest={handleOpenNewCatDialog} />
-                                                                ))}
-                                                                {uncategorizedPackages.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No uncategorized packages.</p>}
-                                                            </div>
-                                                        </CollapsibleContent>
-                                                    </Collapsible>
                                                 </div>
-                                            </div>
-                                        </CardContent>
+                                            </CardContent>
+                                            <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[hsl(var(--card))] to-transparent z-10 pointer-events-none" />
+                                        </div>
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
