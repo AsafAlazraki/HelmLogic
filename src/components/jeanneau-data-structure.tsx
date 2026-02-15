@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, PlusCircle, Trash2, Sailboat, MoreHorizontal, Pencil, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage, FormDescription } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -256,9 +256,9 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                                         </DropdownMenu>
 
                                         <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${range.slug || range.id}`} className="block h-full">
-                                            <div className="h-40 bg-secondary relative p-4">
+                                            <div className="h-40 bg-secondary relative">
                                                 {range.imageUrl ? (
-                                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-contain p-2" />
+                                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" />
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center">
                                                         <Sailboat className="h-12 w-12 text-muted-foreground" />
