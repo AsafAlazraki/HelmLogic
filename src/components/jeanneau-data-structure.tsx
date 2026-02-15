@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore } from '@/firebase/provider';
 import { collection, writeBatch, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -55,6 +56,7 @@ const initialRanges = ['Merry Fisher', 'Cap Camarat', 'DB', 'TH'];
 
 export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: string, vendorSlugOrId: string }) {
     const firestore = useFirestore();
+    const router = useRouter();
     const { data: ranges, loading: rangesLoading, error } = useCollection<Range>(`data-warehouse/${vendorId}/ranges`);
     const { toast } = useToast();
 
@@ -146,12 +148,19 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                 slug: createSlug(values.name),
             };
 
+            let imageWasUpdated = false;
             if (values.image instanceof File) {
                 dataToUpdate.imageUrl = await fileToDataUri(values.image);
+                imageWasUpdated = true;
             }
             
             await updateDoc(rangeDocRef, dataToUpdate);
             toast({ title: 'Range Updated' });
+
+            if (imageWasUpdated) {
+                router.refresh();
+            }
+
             setIsEditDialogOpen(false);
             setEditingRange(null);
         } catch (error) {
