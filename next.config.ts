@@ -28,6 +28,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.yamaha-motor.com.au',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   webpack: (config) => {
