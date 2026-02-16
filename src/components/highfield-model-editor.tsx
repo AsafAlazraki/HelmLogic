@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,16 +15,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from './ui/checkbox';
 
-// Schemas for validation
+const priceSchema = z.object({
+    cost: z.coerce.number().nullable().optional(),
+    sellPriceExclGst: z.coerce.number().nullable().optional(),
+    freightCostExclGst: z.coerce.number().nullable().optional(),
+});
+
+const colorVariantFormSchema = z.object({
+    id: z.string(),
+    name: z.string().min(1, 'Color name is required'),
+    imageUrl: z.string().nullable().optional(),
+    pricing: z.object({
+        HYP: priceSchema.default({}),
+        PVC: priceSchema.default({}),
+    }),
+});
+
 const specSchema = z.object({
     id: z.string(),
     label: z.string().min(1, 'Label is required'),
@@ -41,27 +54,12 @@ const motorConfigSchema = z.object({
     })),
 });
 
-const colorVariantSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, 'Color name is required'),
-    imageUrls: z.array(z.string()).default([]),
-});
-
 const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
     imageUrl: z.string().nullable().optional(),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
-});
-
-const variantPricingSchema = z.object({
-    colorId: z.string(),
-    colorName: z.string(),
-    material: z.string(),
-    cost: z.coerce.number().optional().nullable(),
-    sellPriceExclGst: z.coerce.number().optional().nullable(),
-    freightCostExclGst: z.coerce.number().optional().nullable(),
 });
 
 const highfieldModelSchema = z.object({
@@ -73,8 +71,7 @@ const highfieldModelSchema = z.object({
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
-    colors: z.array(colorVariantSchema).default([]),
-    variantPricing: z.array(variantPricingSchema).default([]),
+    colors: z.array(colorVariantFormSchema).default([]),
     material: z.string().optional(),
 });
 
@@ -135,10 +132,10 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     };
 
     return (
-        <div>
+        <FormItem>
             <FormLabel>{label}</FormLabel>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-                <FormItem>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+                <FormItem className="space-y-1">
                     <FormLabel className="text-xs font-normal text-muted-foreground">excl. GST</FormLabel>
                     <FormControl>
                         <Input
@@ -149,9 +146,8 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                             onChange={handleExclChange}
                         />
                     </FormControl>
-                    <FormMessage />
                 </FormItem>
-                <FormItem>
+                <FormItem className="space-y-1">
                     <FormLabel className="text-xs font-normal text-muted-foreground">inc. GST</FormLabel>
                     <FormControl>
                         <Input
@@ -162,10 +158,10 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                             onChange={handleInclChange}
                         />
                     </FormControl>
-                    <FormMessage />
                 </FormItem>
             </div>
-        </div>
+             <FormMessage className="col-span-2" />
+        </FormItem>
     );
 }
 
@@ -197,14 +193,7 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
     return (
         <Card key={index} className="relative bg-muted/50 overflow-hidden p-4 group/item">
             <div className="absolute top-2 right-2 z-10">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/item:opacity-100 transition-opacity"><MoreHorizontal className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => remove(index)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
             </div>
             
             <div className="flex gap-4 items-start">
@@ -381,20 +370,124 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     );
 }
 
+function ColorVariantItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+  const { control } = useFormContext<ModelFormData>();
+  const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
+
+  return (
+    <Card className="bg-muted/50 overflow-hidden">
+      <div className="p-4 flex flex-col sm:flex-row gap-4 items-start">
+        <FormField
+          control={control}
+          name={`colors.${index}.imageUrl`}
+          render={({ field }) => (
+            <FormItem className="w-32 flex-shrink-0">
+              <FormLabel className="sr-only">Color Image</FormLabel>
+              {imageUrl ? (
+                <div className="relative aspect-square w-full overflow-hidden rounded-md group">
+                  <Image src={imageUrl} alt="Color variant" fill className="object-cover" />
+                  <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => field.onChange(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-full">
+                  <label htmlFor={`color-upload-${index}`} className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                    <div className="flex flex-col items-center justify-center text-center p-2">
+                      <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">Upload</p>
+                    </div>
+                    <FormControl>
+                      <Input id={`color-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) field.onChange(await fileToDataUri(file));
+                      }} />
+                    </FormControl>
+                  </label>
+                </div>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex-1 space-y-4 w-full">
+          <div className="flex items-center gap-2">
+            <FormField
+              control={control}
+              name={`colors.${index}.name`}
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel className="sr-only">Color Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Color Name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => remove(index)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-4">
+            <div className="p-3 border rounded-md bg-background space-y-2">
+              <h4 className="font-medium text-sm">HYP Pricing</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" />
+                <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" />
+                <GstInputPair control={control} name={`colors.${index}.pricing.HYP.freightCostExclGst`} label="Freight" />
+              </div>
+            </div>
+            <div className="p-3 border rounded-md bg-background space-y-2">
+              <h4 className="font-medium text-sm">PVC Pricing</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" />
+                <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" />
+                <GstInputPair control={control} name={`colors.${index}.pricing.PVC.freightCostExclGst`} label="Freight" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+
 export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     
-    const form = useForm<ModelFormData>({
-        resolver: zodResolver(highfieldModelSchema),
-    });
-    
-    const { reset, control, getValues, watch, setValue } = form;
-
     const getSafeDefaultValues = useCallback((modelData: any): Partial<ModelFormData> => {
         const safeModel = modelData || {};
+        const modelColors = safeModel.colors || [];
+        const modelPricing = safeModel.variantPricing || [];
+
+        const unifiedColors = modelColors.map((color: any) => {
+            const hypPrice = modelPricing.find((p: any) => p.colorId === color.id && p.material === 'HYP') || {};
+            const pvcPrice = modelPricing.find((p: any) => p.colorId === color.id && p.material === 'PVC') || {};
+            
+            return {
+                id: color.id,
+                name: color.name,
+                imageUrl: color.imageUrl ?? color.imageUrls?.[0] ?? null,
+                pricing: {
+                    HYP: {
+                        cost: hypPrice.cost ?? null,
+                        sellPriceExclGst: hypPrice.sellPriceExclGst ?? null,
+                        freightCostExclGst: hypPrice.freightCostExclGst ?? null,
+                    },
+                    PVC: {
+                        cost: pvcPrice.cost ?? null,
+                        sellPriceExclGst: pvcPrice.sellPriceExclGst ?? null,
+                        freightCostExclGst: pvcPrice.freightCostExclGst ?? null,
+                    },
+                }
+            };
+        });
+        
         return {
             coverImageUrl: safeModel.coverImageUrl ?? null,
             galleryImageUrls: safeModel.galleryImageUrls ?? [],
@@ -404,11 +497,16 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             },
             standardFeatures: safeModel.standardFeatures ?? [],
             optionalFeatures: safeModel.optionalFeatures ?? [],
-            colors: safeModel.colors ?? [],
-            variantPricing: safeModel.variantPricing ?? [],
+            colors: unifiedColors,
             material: safeModel.material,
         };
     }, []);
+    
+    const form = useForm<ModelFormData>({
+        resolver: zodResolver(highfieldModelSchema),
+    });
+    
+    const { reset, control, getValues, setValue } = form;
 
     useEffect(() => {
         if (model) {
@@ -419,56 +517,51 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
-    const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control, name: "colors" });
+    const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
-    const { fields: variantPricingFields, replace: replaceVariantPricing } = useFieldArray({ control, name: 'variantPricing' });
     
-    const watchedColors = watch('colors');
-
-    useEffect(() => {
-        if (!watchedColors) return;
-
-        const currentPricing = getValues('variantPricing') || [];
-        const newVariants: z.infer<typeof variantPricingSchema>[] = [];
-        const materials = ['HYP', 'PVC'];
-        
-        watchedColors.forEach(color => {
-            if (!color.id) return;
-            materials.forEach(material => {
-                // Find if pricing already exists for this combo
-                const existing = currentPricing.find((p: any) => p.colorId === color.id && p.material === material);
-                newVariants.push({
-                    colorId: color.id,
-                    colorName: color.name,
-                    material: material,
-                    cost: existing?.cost ?? null,
-                    sellPriceExclGst: existing?.sellPriceExclGst ?? null,
-                    freightCostExclGst: existing?.freightCostExclGst ?? null,
-                });
-            });
-        });
-        
-        newVariants.sort((a, b) => (a.colorName || '').localeCompare(b.colorName || '') || a.material.localeCompare(b.material));
-        
-        const currentVariantsJSON = JSON.stringify(currentPricing.map(({...rest}) => rest).sort((a, b) => (a.colorName || '').localeCompare(b.colorName || '') || a.material.localeCompare(b.material)));
-        const newVariantsJSON = JSON.stringify(newVariants.map(({...rest}) => rest));
-
-        if (newVariantsJSON !== currentVariantsJSON) {
-          setValue('variantPricing', newVariants, { shouldDirty: true });
-        }
-    }, [watchedColors, getValues, setValue]);
-
+    const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
     async function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
-        const sanitizedValues = sanitizeDataForFirestore(values);
+
+        const colorsForDb = values.colors.map(color => ({
+            id: color.id,
+            name: color.name,
+            imageUrl: color.imageUrl,
+        }));
+        
+        const variantPricingForDb: any[] = [];
+        values.colors.forEach(color => {
+            variantPricingForDb.push({
+                colorId: color.id,
+                colorName: color.name,
+                material: 'HYP',
+                ...color.pricing.HYP
+            });
+            variantPricingForDb.push({
+                colorId: color.id,
+                colorName: color.name,
+                material: 'PVC',
+                ...color.pricing.PVC
+            });
+        });
+
+        const finalValues = {
+            ...values,
+            colors: colorsForDb,
+            variantPricing: variantPricingForDb
+        };
+
+        const sanitizedValues = sanitizeDataForFirestore(finalValues);
         const modelDocRef = doc(firestore, docPath);
 
         try {
             await updateDoc(modelDocRef, sanitizedValues);
             toast({ title: "Model Updated", description: "Your changes have been saved." });
-            reset(values); // Re-sync form state with saved values
+            // Re-run the transformation to keep form state in sync
+            reset(getSafeDefaultValues({ ...model, ...finalValues }));
         } catch (e) {
             const error = e as any;
             console.error("Save failed:", error);
@@ -488,6 +581,18 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         setBulkFeatures('');
     };
 
+    const handleAddColor = () => {
+        appendColor({
+            id: `color-${Date.now()}`,
+            name: '',
+            imageUrl: null,
+            pricing: {
+                HYP: { cost: null, sellPriceExclGst: null, freightCostExclGst: null },
+                PVC: { cost: null, sellPriceExclGst: null, freightCostExclGst: null },
+            }
+        });
+    };
+
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -502,7 +607,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                     <div className="lg:col-span-4 space-y-8">
                         <MotorConfigurationsCard control={form.control} />
-                        {/* Specifications Card */}
                         <Collapsible asChild defaultOpen className="group">
                             <Card>
                                 <CollapsibleCardHeader title="Specifications" count={specFields.length}>
@@ -525,7 +629,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </Card>
                         </Collapsible>
                         
-                        {/* Standard Features Card */}
                         <Collapsible asChild defaultOpen className="group">
                             <Card>
                                 <CollapsibleCardHeader title="Standard Features" count={featureFields.length}>
@@ -551,58 +654,17 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </Card>
                         </Collapsible>
                         
-                        {/* Colors Card */}
                         <Collapsible asChild defaultOpen>
                             <Card>
-                                <CollapsibleCardHeader title="Color Variants" />
+                                <CollapsibleCardHeader title="Color Variants">
+                                    <Button type="button" variant="outline" size="sm" onClick={handleAddColor}><PlusCircle className="mr-2 h-4 w-4" />Add Color Variant</Button>
+                                </CollapsibleCardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
-                                        <div className='flex flex-col gap-2'>
                                         {colorFields.map((field, index) => (
-                                            <div key={field.id} className="flex items-center gap-2 rounded-lg border bg-muted/50 p-2">
-                                                <div className="grid grid-cols-3 gap-2 flex-grow">
-                                                <FormField
-                                                    control={form.control}
-                                                    name={`colors.${index}.name`}
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex-1">
-                                                            <FormControl>
-                                                                <Input placeholder="Color Name" {...field} value={field.value ?? ''} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                    <label htmlFor={`color-image-upload-${index}`} className={cn(
-                                                        "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
-                                                        (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
-                                                    )}>
-                                                        <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                            const files = Array.from(e.target.files || []);
-                                                            const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                            const currentUrls = watchedColors[index].imageUrls || [];
-                                                            updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
-                                                        }}/>
-                                                        <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                    </label>
-                                                </div>
-                                                <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeColor(index)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                            <ColorVariantItem key={field.id} index={index} remove={removeColor} />
                                         ))}
-                                        </div>
                                         {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
-                                        <div className="pt-4">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [] })}
-                                            >
-                                                <PlusCircle className="mr-2 h-4 w-4" /> Add Color Variant
-                                            </Button>
-                                        </div>
                                     </CardContent>
                                 </CollapsibleContent>
                             </Card>
@@ -625,92 +687,92 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
 
                         <Collapsible asChild defaultOpen>
                             <Card>
-                                <CardHeader>
-                                    <CardTitle>Cover Image</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="sr-only">Cover Image</FormLabel>
-                                            {field.value ? (
-                                                <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                    <Image src={field.value} alt="Cover image" fill className="object-cover" />
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="icon"
-                                                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                        onClick={() => field.onChange(null)}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center justify-center w-full">
-                                                    <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                            <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                        </div>
-                                                        <FormControl>
-                                                            <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) field.onChange(await fileToDataUri(file));
-                                                            }} />
-                                                        </FormControl>
-                                                    </label>
-                                                </div> 
-                                            )}
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                    <div className="pt-6">
-                                        <Collapsible>
-                                            <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
-                                                <span>Image Gallery ({galleryImageFields.length})</span>
-                                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                            </CollapsibleTrigger>
-                                            <CollapsibleContent className="border-b">
-                                                <div className="p-4 bg-muted/20">
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        {galleryImageFields.map((item, index) => (
-                                                            <div key={item.id} className="relative aspect-square group">
-                                                                <FormField
-                                                                    control={form.control}
-                                                                    name={`galleryImageUrls.${index}`}
-                                                                    render={({ field }) => (
-                                                                        <>
-                                                                            <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
-                                                                            <Button
-                                                                                type="button"
-                                                                                variant="destructive"
-                                                                                size="icon"
-                                                                                className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                                onClick={() => removeGalleryImage(index)}
-                                                                            >
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </>
-                                                                    )}
-                                                                />
-                                                            </div>
-                                                        ))}
-                                                        <label htmlFor="gallery-image-upload" className={cn(
-                                                            "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
-                                                        )}>
-                                                            <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                const files = Array.from(e.target.files || []);
-                                                                const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                dataUris.forEach(uri => appendGalleryImage(uri));
-                                                            }}/>
-                                                            <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                        </label>
+                                <CollapsibleCardHeader title="Cover Image" />
+                                <CollapsibleContent>
+                                    <CardContent>
+                                        <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="sr-only">Cover Image</FormLabel>
+                                                {field.value ? (
+                                                    <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                        <Image src={field.value} alt="Cover image" fill className="object-cover" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                            onClick={() => field.onChange(null)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
-                                                </div>
-                                            </CollapsibleContent>
-                                        </Collapsible>
-                                    </div>
-                                </CardContent>
+                                                ) : (
+                                                    <div className="flex items-center justify-center w-full">
+                                                        <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                                <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                            </div>
+                                                            <FormControl>
+                                                                <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) field.onChange(await fileToDataUri(file));
+                                                                }} />
+                                                            </FormControl>
+                                                        </label>
+                                                    </div> 
+                                                )}
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                        <div className="pt-6">
+                                            <Collapsible>
+                                                <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
+                                                    <span>Image Gallery ({galleryImageFields.length})</span>
+                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent className="border-b">
+                                                    <div className="p-4 bg-muted/20">
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            {galleryImageFields.map((item, index) => (
+                                                                <div key={item.id} className="relative aspect-square group">
+                                                                    <FormField
+                                                                        control={form.control}
+                                                                        name={`galleryImageUrls.${index}`}
+                                                                        render={({ field }) => (
+                                                                            <>
+                                                                                <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="destructive"
+                                                                                    size="icon"
+                                                                                    className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                    onClick={() => removeGalleryImage(index)}
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </>
+                                                                        )}
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                            <label htmlFor="gallery-image-upload" className={cn(
+                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
+                                                            )}>
+                                                                <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                    const files = Array.from(e.target.files || []);
+                                                                    const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                    dataUris.forEach(uri => appendGalleryImage(uri));
+                                                                }}/>
+                                                                <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
                             </Card>
                         </Collapsible>
                         <Collapsible asChild defaultOpen>
@@ -731,43 +793,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                     </div>
                 </div>
 
-                <Collapsible asChild defaultOpen>
-                    <Card>
-                        <CollapsibleCardHeader title="Variant Costing" description="Define pricing for each model variant based on color and material." />
-                        <CollapsibleContent>
-                            <CardContent>
-                                <div className="rounded-md border">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Variant (Color / Material)</TableHead>
-                                                <TableHead>Base Cost</TableHead>
-                                                <TableHead>Base Sell</TableHead>
-                                                <TableHead>Freight Cost</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {variantPricingFields.length > 0 ? variantPricingFields.map((field, index) => (
-                                                <TableRow key={field.id}>
-                                                    <TableCell className="font-medium">{field.colorName} / {field.material}</TableCell>
-                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.cost`} label="" /></TableCell>
-                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.sellPriceExclGst`} label="" /></TableCell>
-                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.freightCostExclGst`} label="" /></TableCell>
-                                                </TableRow>
-                                            )) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
-                                                        No variants to price. Add some color options to get started.
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </CardContent>
-                        </CollapsibleContent>
-                    </Card>
-                </Collapsible>
             </form>
         </Form>
     );
