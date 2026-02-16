@@ -391,11 +391,11 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         resolver: zodResolver(highfieldModelSchema),
     });
     
-    const { reset } = form;
+    const { reset, control, getValues, watch } = form;
 
     const getSafeDefaultValues = useCallback((modelData: any): Partial<ModelFormData> => {
         const safeModel = modelData || {};
-        const defaultValues: Partial<ModelFormData> = {
+        return {
             coverImageUrl: safeModel.coverImageUrl ?? null,
             galleryImageUrls: safeModel.galleryImageUrls ?? [],
             specifications: {
@@ -405,44 +405,9 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             standardFeatures: safeModel.standardFeatures ?? [],
             optionalFeatures: safeModel.optionalFeatures ?? [],
             colors: safeModel.colors ?? [],
-            variantPricing: [],
+            variantPricing: safeModel.variantPricing ?? [],
             material: safeModel.material,
         };
-
-        const variants: z.infer<typeof variantPricingSchema>[] = [];
-        const materials = ['HYP', 'PVC'];
-        const existingPricing = new Map(
-            (safeModel.variantPricing || []).map((p: any) => [`${p.colorId}-${p.material}`, p])
-        );
-
-        (defaultValues.colors || []).forEach(color => {
-            materials.forEach(material => {
-                const key = `${color.id}-${material}`;
-                const existing = existingPricing.get(key);
-                if (existing) {
-                    variants.push({
-                        ...existing,
-                        cost: existing.cost ?? null,
-                        sellPriceExclGst: existing.sellPriceExclGst ?? null,
-                        freightCostExclGst: existing.freightCostExclGst ?? null,
-                    });
-                } else {
-                    variants.push({
-                        colorId: color.id,
-                        colorName: color.name,
-                        material: material,
-                        cost: null,
-                        sellPriceExclGst: null,
-                        freightCostExclGst: null,
-                    });
-                }
-            });
-        });
-
-        variants.sort((a, b) => a.colorName.localeCompare(b.colorName) || a.material.localeCompare(b.material));
-        defaultValues.variantPricing = variants;
-
-        return defaultValues;
     }, []);
 
     useEffect(() => {
@@ -452,15 +417,49 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         }
     }, [model, reset, getSafeDefaultValues]);
 
-    const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
-    const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
-    const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control: form.control, name: "colors" });
-    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control: form.control, name: "optionalFeatures" });
-    const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control: form.control, name: 'galleryImageUrls' });
-    const { fields: variantPricingFields } = useFieldArray({ control: form.control, name: 'variantPricing' });
+    const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
+    const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
+    const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control, name: "colors" });
+    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
+    const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
+    const { fields: variantPricingFields, replace: replaceVariantPricing } = useFieldArray({ control, name: 'variantPricing' });
     
-    const watchedColors = useWatch({ control: form.control, name: 'colors' });
-    const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
+    const watchedColors = watch('colors');
+    const coverImageUrl = watch({ control, name: "coverImageUrl" });
+
+    useEffect(() => {
+        if (!watchedColors) return;
+
+        const currentPricing = getValues('variantPricing') || [];
+        const newVariants: z.infer<typeof variantPricingSchema>[] = [];
+        const materials = ['HYP', 'PVC'];
+        const existingPricingMap = new Map(
+            currentPricing.map((p: any) => [`${p.colorId}-${p.material}`, p])
+        );
+
+        watchedColors.forEach(color => {
+            if (!color.id) return; // Don't process if color doesn't have an ID yet
+            materials.forEach(material => {
+                const key = `${color.id}-${material}`;
+                const existing = existingPricingMap.get(key);
+                newVariants.push({
+                    colorId: color.id,
+                    colorName: color.name,
+                    material: material,
+                    cost: existing?.cost ?? null,
+                    sellPriceExclGst: existing?.sellPriceExclGst ?? null,
+                    freightCostExclGst: existing?.freightCostExclGst ?? null,
+                });
+            });
+        });
+        
+        newVariants.sort((a, b) => (a.colorName || '').localeCompare(b.colorName || '') || a.material.localeCompare(b.material));
+        
+        if (JSON.stringify(newVariants) !== JSON.stringify(currentPricing)) {
+          replaceVariantPricing(newVariants);
+        }
+    }, [watchedColors, getValues, replaceVariantPricing]);
+
 
     async function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
@@ -470,7 +469,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         try {
             await updateDoc(modelDocRef, sanitizedValues);
             toast({ title: "Model Updated", description: "Your changes have been saved." });
-            reset(values);
+            reset(values); // Re-sync form state with saved values
         } catch (e) {
             const error = e as any;
             console.error("Save failed:", error);
@@ -556,54 +555,72 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         {/* Colors Card */}
                         <Collapsible asChild defaultOpen>
                             <Card>
-                                <CollapsibleCardHeader title="Color Variants">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
-                                </CollapsibleCardHeader>
+                                <CollapsibleCardHeader title="Color Variants" />
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
                                         {colorFields.map((field, index) => (
-                                            <Card key={field.id} className="p-4 bg-muted/50">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
+                                            <div key={field.id} className="space-y-3 rounded-lg border bg-muted/50 p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`colors.${index}.name`}
+                                                        render={({ field }) => (
+                                                            <FormItem className="flex-1">
+                                                                <FormControl>
+                                                                    <Input placeholder="Color Name" {...field} value={field.value ?? ''} />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeColor(index)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <FormLabel>Images</FormLabel>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
-                                                            <div key={imgIndex} className="relative aspect-square group">
-                                                                <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="icon"
-                                                                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                    onClick={() => {
-                                                                        const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
-                                                                        updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
-                                                                    }}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        ))}
-                                                        <label htmlFor={`color-image-upload-${index}`} className={cn(
-                                                            "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
-                                                            (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
-                                                        )}>
-                                                            <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                const files = Array.from(e.target.files || []);
-                                                                const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                const currentUrls = watchedColors[index].imageUrls || [];
-                                                                updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
-                                                            }}/>
-                                                            <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                        </label>
-                                                    </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
+                                                        <div key={imgIndex} className="relative aspect-square group">
+                                                            <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                onClick={() => {
+                                                                    const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
+                                                                    updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
+                                                                }}
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                    <label htmlFor={`color-image-upload-${index}`} className={cn(
+                                                        "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
+                                                        (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
+                                                    )}>
+                                                        <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                            const files = Array.from(e.target.files || []);
+                                                            const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                            const currentUrls = watchedColors[index].imageUrls || [];
+                                                            updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
+                                                        }}/>
+                                                        <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                    </label>
                                                 </div>
-                                            </Card>
+                                            </div>
                                         ))}
                                         {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
+                                        <div className="pt-4">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [] })}
+                                            >
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Add Color Variant
+                                            </Button>
+                                        </div>
                                     </CardContent>
                                 </CollapsibleContent>
                             </Card>
