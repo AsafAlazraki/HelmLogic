@@ -479,33 +479,44 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             const allKeys = Object.keys(firstItem);
             
             if (vendor.slug === 'yamaha') {
-                const normalize = (s: string) => s.toLowerCase().replace(/ /g, '');
+                const normalize = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
 
-                const findKey = (name: string) => {
-                    const normalizedName = normalize(name);
-                    return allKeys.find(k => normalize(k) === normalizedName);
+                const findKey = (potentials: string[]) => {
+                    const normalizedPotentials = potentials.map(normalize);
+                    for (const key of allKeys) {
+                        if (normalizedPotentials.includes(normalize(key))) {
+                            return key;
+                        }
+                    }
+                    return undefined;
                 };
 
-                const modelNameKey = findKey('Model Name');
-                const productGroupKey = findKey('Product Group');
-                const subCategoryKey = findKey('Sub Catagory');
-                const imageUrlKey = findKey('Primary Image URL') || findKey('image_url') || findKey('imageUrl');
-                const colorsKey = findKey('colors') || findKey('available_colors') || findKey('availableColors');
+                const modelNameKey = findKey(['Model Name', 'ModelName', 'name']);
+                const productGroupKey = findKey(['Product Group', 'ProductGroup']);
+                const subCategoryKey = findKey(['Sub Catagory', 'SubCategory', 'category']);
+                
+                const imageUrlKey = findKey([
+                    'Primary Image URL', 'imageUrl', 'image_url', 'image',
+                    'Logo URL', 'logoUrl', 'logo_url', 'logo'
+                ]);
+                
+                const colorsKey = findKey(['colors', 'available_colors', 'availableColors']);
 
                 const titleKey = modelNameKey || null;
                 const infoKeys = [productGroupKey, subCategoryKey].filter(Boolean) as string[];
                 
-                let columnConfig: { key: string, label: string }[] = [];
+                let columnConfig: { key: string; label: string }[] = [];
                 
                 if (productGroupKey) columnConfig.push({ key: productGroupKey, label: 'Product Group' });
                 if (modelNameKey) columnConfig.push({ key: modelNameKey, label: 'Model Name' });
-                if (subCategoryKey) columnConfig.push({ key: subCategoryKey, label: 'Sub Catagory' });
+                if (subCategoryKey) columnConfig.push({ key: subCategoryKey, label: 'Sub Category' });
+
 
                 if (columnConfig.length === 0 && allKeys.length > 0) {
-                    columnConfig = allKeys.slice(0, 3).map(k => ({ key: k, label: k }));
+                    columnConfig = allKeys.filter(k => k !== 'id').slice(0, 3).map(k => ({ key: k, label: k }));
                 }
 
-                setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey, colorsKey });
+                setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey: imageUrlKey ?? null, colorsKey: colorsKey ?? null });
             } else {
                 const findKey = (potentials: string[]) => allKeys.find(k => potentials.includes(k.toLowerCase()));
 
