@@ -444,21 +444,39 @@
                       "Single",
                       "Twin",
                       "Triple",
+                      "Quad",
                       "SingleWithAux"
                     ]
                   },
-                  "minHp": {
-                    "type": "number"
-                  },
-                  "maxHp": {
-                    "type": "number"
-                  },
-                  "recommendedHp": {
-                    "type": "number"
+                  "engines": {
+                    "type": "array",
+                    "description": "An array of engine specifications for this configuration.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "description": "A label for the engine (e.g., 'Main Engine', 'Engine 1')."
+                        },
+                        "minHp": {
+                          "type": "number"
+                        },
+                        "maxHp": {
+                          "type": "number"
+                        },
+                        "recommendedHp": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "label"
+                      ]
+                    }
                   }
                 },
                 "required": [
-                  "type"
+                  "type",
+                  "engines"
                 ]
               }
             },

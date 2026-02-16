@@ -32,10 +32,13 @@ const specSchema = z.object({
 });
 
 const motorConfigSchema = z.object({
-    type: z.enum(["Single", "Twin", "Triple", "SingleWithAux"]),
-    minHp: z.coerce.number().min(0).default(0),
-    maxHp: z.coerce.number().min(0).default(0),
-    recommendedHp: z.coerce.number().min(0).default(0),
+    type: z.enum(["Single", "Twin", "Triple", "Quad", "SingleWithAux"]),
+    engines: z.array(z.object({
+        label: z.string(),
+        minHp: z.coerce.number().min(0).default(0),
+        maxHp: z.coerce.number().min(0).default(0),
+        recommendedHp: z.coerce.number().min(0).default(0),
+    })),
 });
 
 const colorVariantSchema = z.object({
@@ -265,17 +268,24 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     });
 
     const motorConfigOptions = [
-        { id: 'Single', label: 'Single Engine' },
-        { id: 'Twin', label: 'Twin Engines' },
-        { id: 'Triple', label: 'Triple Engines' },
-        { id: 'SingleWithAux', label: 'Single with Aux' },
+        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
+        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
+        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
+        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
+        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
     ];
 
-    const handleConfigChange = (checked: boolean, type: 'Single' | 'Twin' | 'Triple' | 'SingleWithAux') => {
+    const handleConfigChange = (checked: boolean, option: typeof motorConfigOptions[0]) => {
         if (checked) {
-            append({ type: type, minHp: 0, maxHp: 0, recommendedHp: 0 });
+            const newEngines = Array.from({ length: option.engineCount }, (_, i) => ({
+                label: option.engineLabels[i],
+                minHp: 0,
+                maxHp: 0,
+                recommendedHp: 0
+            }));
+            append({ type: option.id, engines: newEngines });
         } else {
-            const index = fields.findIndex((field: any) => field.type === type);
+            const index = fields.findIndex((field: any) => field.type === option.id);
             if (index > -1) {
                 remove(index);
             }
@@ -292,6 +302,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                 {motorConfigOptions.map((option) => {
                     const fieldIndex = fields.findIndex((field: any) => field.type === option.id);
                     const isChecked = fieldIndex !== -1;
+                    const currentConfig = isChecked ? fields[fieldIndex] as any : null;
 
                     return (
                         <Collapsible key={option.id} asChild>
@@ -300,7 +311,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                                     <div className="flex items-center space-x-3">
                                         <Checkbox
                                             checked={isChecked}
-                                            onCheckedChange={(checked) => handleConfigChange(!!checked, option.id as any)}
+                                            onCheckedChange={(checked) => handleConfigChange(!!checked, option)}
                                             id={`config-${option.id}`}
                                         />
                                         <label htmlFor={`config-${option.id}`} className="text-sm font-medium leading-none">
@@ -316,41 +327,48 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                                     )}
                                 </div>
                                 <CollapsibleContent className="pt-4 mt-4 border-t">
-                                    {isChecked && (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <FormField
-                                                control={control}
-                                                name={`specifications.motorConfigurations.${fieldIndex}.minHp`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Min HP</FormLabel>
-                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={control}
-                                                name={`specifications.motorConfigurations.${fieldIndex}.maxHp`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Max HP</FormLabel>
-                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={control}
-                                                name={`specifications.motorConfigurations.${fieldIndex}.recommendedHp`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Recommended HP</FormLabel>
-                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                     {isChecked && currentConfig && (
+                                        <div className="space-y-4">
+                                            {(currentConfig.engines || []).map((engine: any, engineIndex: number) => (
+                                                <div key={engineIndex} className="space-y-2 rounded-md border p-4">
+                                                     <p className="text-sm font-medium text-muted-foreground">{engine.label}</p>
+                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <FormField
+                                                            control={control}
+                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.minHp`}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Min HP</FormLabel>
+                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={control}
+                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.maxHp`}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Max HP</FormLabel>
+                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={control}
+                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.recommendedHp`}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Recommended HP</FormLabel>
+                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </CollapsibleContent>
@@ -473,287 +491,285 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     };
 
     return (
-        <>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="flex justify-end gap-2">
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Changes
-                        </Button>
-                    </div>
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="flex justify-end gap-2">
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Changes
+                    </Button>
+                </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                        <div className="lg:col-span-4 space-y-8">
-                            <MotorConfigurationsCard control={form.control} />
-                            {/* Specifications Card */}
-                            <Collapsible asChild defaultOpen className="group">
-                                <Card>
-                                    <CollapsibleCardHeader title="Specifications" count={specFields.length}>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-6">
-                                            <div className="space-y-4">
-                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
-                                                {specFields.map((field, index) => (
-                                                    <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                            
-                            {/* Standard Features Card */}
-                            <Collapsible asChild defaultOpen className="group">
-                                <Card>
-                                    <CollapsibleCardHeader title="Standard Features" count={featureFields.length}>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
-                                            {featureFields.map((field, index) => (
-                                                <div key={field.id} className="flex items-center gap-2">
-                                                    <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
+                    <div className="lg:col-span-4 space-y-8">
+                        <MotorConfigurationsCard control={form.control} />
+                        {/* Specifications Card */}
+                        <Collapsible asChild defaultOpen className="group">
+                            <Card>
+                                <CollapsibleCardHeader title="Specifications" count={specFields.length}>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-6">
+                                        <div className="space-y-4">
+                                            {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
+                                            {specFields.map((field, index) => (
+                                                <div key={field.id} className="flex items-end gap-2">
+                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                 </div>
                                             ))}
-                                        </CardContent>
-                                        <CardContent>
-                                            <div className="space-y-2">
-                                                <FormLabel>Bulk Add Features</FormLabel>
-                                                <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
+                        
+                        {/* Standard Features Card */}
+                        <Collapsible asChild defaultOpen className="group">
+                            <Card>
+                                <CollapsibleCardHeader title="Standard Features" count={featureFields.length}>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+                                        {featureFields.map((field, index) => (
+                                            <div key={field.id} className="flex items-center gap-2">
+                                                <FormField control={form.control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                             </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                            
-                            {/* Colors Card */}
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Color Variants">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4">
-                                            {colorFields.map((field, index) => (
-                                                <Card key={field.id} className="p-4 bg-muted/50">
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
+                                        ))}
+                                    </CardContent>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            <FormLabel>Bulk Add Features</FormLabel>
+                                            <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                                            <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures}>Add from Text</Button>
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
+                        
+                        {/* Colors Card */}
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Color Variants">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [] })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4">
+                                        {colorFields.map((field, index) => (
+                                            <Card key={field.id} className="p-4 bg-muted/50">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <FormField control={form.control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                    <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <FormLabel>Images</FormLabel>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
+                                                            <div key={imgIndex} className="relative aspect-square group">
+                                                                <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                    onClick={() => {
+                                                                        const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
+                                                                        updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
+                                                                    }}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                        <label htmlFor={`color-image-upload-${index}`} className={cn(
+                                                            "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
+                                                            (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
+                                                        )}>
+                                                            <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                const files = Array.from(e.target.files || []);
+                                                                const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                const currentUrls = watchedColors[index].imageUrls || [];
+                                                                updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
+                                                            }}/>
+                                                            <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                        </label>
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <FormLabel>Images</FormLabel>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                        {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
+                    </div>
+
+                    <div className="lg:col-span-3 space-y-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Material</CardTitle>
+                                <CardDescription>The hull material options for this model.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm font-medium text-popover-foreground whitespace-nowrap">HYP (Hypalon)</div>
+                                    <div className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm font-medium text-popover-foreground whitespace-nowrap">PVC (Polyvinyl Chloride)</div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Cover Image" />
+                                <CollapsibleContent>
+                                    <CardContent>
+                                        <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="sr-only">Cover Image</FormLabel>
+                                                {coverImageUrl ? (
+                                                    <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                        <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                            onClick={() => field.onChange(null)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center justify-center w-full">
+                                                        <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                                <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
+                                                            </div>
+                                                            <FormControl>
+                                                                <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) field.onChange(await fileToDataUri(file));
+                                                                }} />
+                                                            </FormControl>
+                                                        </label>
+                                                    </div> 
+                                                )}
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                        <div className="pt-6">
+                                            <Collapsible>
+                                                <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
+                                                    <span>Image Gallery ({galleryImageFields.length})</span>
+                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent className="border-b">
+                                                    <div className="p-4 bg-muted/20">
                                                         <div className="grid grid-cols-3 gap-2">
-                                                            {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
-                                                                <div key={imgIndex} className="relative aspect-square group">
-                                                                    <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="icon"
-                                                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                        onClick={() => {
-                                                                            const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
-                                                                            updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
-                                                                        }}
-                                                                    >
-                                                                        <X className="h-4 w-4" />
-                                                                    </Button>
+                                                            {galleryImageFields.map((item, index) => (
+                                                                <div key={item.id} className="relative aspect-square group">
+                                                                    <FormField
+                                                                        control={form.control}
+                                                                        name={`galleryImageUrls.${index}`}
+                                                                        render={({ field }) => (
+                                                                            <>
+                                                                                <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="destructive"
+                                                                                    size="icon"
+                                                                                    className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                    onClick={() => removeGalleryImage(index)}
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </>
+                                                                        )}
+                                                                    />
                                                                 </div>
                                                             ))}
-                                                            <label htmlFor={`color-image-upload-${index}`} className={cn(
-                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
-                                                                (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
+                                                            <label htmlFor="gallery-image-upload" className={cn(
+                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
                                                             )}>
-                                                                <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
                                                                     const files = Array.from(e.target.files || []);
                                                                     const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                    const currentUrls = watchedColors[index].imageUrls || [];
-                                                                    updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
+                                                                    dataUris.forEach(uri => appendGalleryImage(uri));
                                                                 }}/>
                                                                 <Plus className="h-6 w-6 text-muted-foreground"/>
                                                             </label>
                                                         </div>
                                                     </div>
-                                                </Card>
-                                            ))}
-                                            {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                        </div>
-
-                        <div className="lg:col-span-3 space-y-8">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Material</CardTitle>
-                                    <CardDescription>The hull material options for this model.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm font-medium text-popover-foreground whitespace-nowrap">HYP (Hypalon)</div>
-                                        <div className="flex h-full flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 text-sm font-medium text-popover-foreground whitespace-nowrap">PVC (Polyvinyl Chloride)</div>
-                                    </div>
-                                </CardContent>
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
                             </Card>
-
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Cover Image" />
-                                    <CollapsibleContent>
-                                        <CardContent>
-                                            <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                    {coverImageUrl ? (
-                                                        <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                            <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="icon"
-                                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                onClick={() => field.onChange(null)}
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-center w-full">
-                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                    <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                                </div>
-                                                                <FormControl>
-                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                        const file = e.target.files?.[0];
-                                                                        if (file) field.onChange(await fileToDataUri(file));
-                                                                    }} />
-                                                                </FormControl>
-                                                            </label>
-                                                        </div> 
-                                                    )}
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-                                            <div className="pt-6">
-                                                <Collapsible>
-                                                    <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
-                                                        <span>Image Gallery ({galleryImageFields.length})</span>
-                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                                    </CollapsibleTrigger>
-                                                    <CollapsibleContent className="border-b">
-                                                        <div className="p-4 bg-muted/20">
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                {galleryImageFields.map((item, index) => (
-                                                                    <div key={item.id} className="relative aspect-square group">
-                                                                        <FormField
-                                                                            control={form.control}
-                                                                            name={`galleryImageUrls.${index}`}
-                                                                            render={({ field }) => (
-                                                                                <>
-                                                                                    <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
-                                                                                    <Button
-                                                                                        type="button"
-                                                                                        variant="destructive"
-                                                                                        size="icon"
-                                                                                        className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                                        onClick={() => removeGalleryImage(index)}
-                                                                                    >
-                                                                                        <Trash2 className="h-4 w-4" />
-                                                                                    </Button>
-                                                                                </>
-                                                                            )}
-                                                                        />
-                                                                    </div>
-                                                                ))}
-                                                                <label htmlFor="gallery-image-upload" className={cn(
-                                                                    "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
-                                                                )}>
-                                                                    <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                        const files = Array.from(e.target.files || []);
-                                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                        dataUris.forEach(uri => appendGalleryImage(uri));
-                                                                    }}/>
-                                                                    <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    </CollapsibleContent>
-                                                </Collapsible>
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Optional Features" count={optionalFeatureFields.length}>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4">
-                                            {optionalFeatureFields.map((field, index) => (
-                                                <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
-                                            ))}
-                                            {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                        </div>
+                        </Collapsible>
+                        <Collapsible asChild defaultOpen>
+                            <Card>
+                                <CollapsibleCardHeader title="Optional Features" count={optionalFeatureFields.length}>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                                </CollapsibleCardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4">
+                                        {optionalFeatureFields.map((field, index) => (
+                                            <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                        ))}
+                                        {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
                     </div>
+                </div>
 
-                    <Collapsible asChild defaultOpen>
-                        <Card>
-                            <CollapsibleCardHeader title="Variant Costing" description="Define pricing for each model variant based on color and material." />
-                            <CollapsibleContent>
-                                <CardContent>
-                                    <div className="rounded-md border">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Variant (Color / Material)</TableHead>
-                                                    <TableHead>Base Cost</TableHead>
-                                                    <TableHead>Base Sell</TableHead>
-                                                    <TableHead>Freight Cost</TableHead>
+                <Collapsible asChild defaultOpen>
+                    <Card>
+                        <CollapsibleCardHeader title="Variant Costing" description="Define pricing for each model variant based on color and material." />
+                        <CollapsibleContent>
+                            <CardContent>
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Variant (Color / Material)</TableHead>
+                                                <TableHead>Base Cost</TableHead>
+                                                <TableHead>Base Sell</TableHead>
+                                                <TableHead>Freight Cost</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {variantPricingFields.length > 0 ? variantPricingFields.map((field, index) => (
+                                                <TableRow key={field.id}>
+                                                    <TableCell className="font-medium">{field.colorName} / {field.material}</TableCell>
+                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.cost`} label="" /></TableCell>
+                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.sellPriceExclGst`} label="" /></TableCell>
+                                                    <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.freightCostExclGst`} label="" /></TableCell>
                                                 </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {variantPricingFields.length > 0 ? variantPricingFields.map((field, index) => (
-                                                    <TableRow key={field.id}>
-                                                        <TableCell className="font-medium">{field.colorName} / {field.material}</TableCell>
-                                                        <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.cost`} label="" /></TableCell>
-                                                        <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.sellPriceExclGst`} label="" /></TableCell>
-                                                        <TableCell><GstInputPair control={form.control} name={`variantPricing.${index}.freightCostExclGst`} label="" /></TableCell>
-                                                    </TableRow>
-                                                )) : (
-                                                    <TableRow>
-                                                        <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
-                                                            No variants to price. Add some color options to get started.
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </CardContent>
-                            </CollapsibleContent>
-                        </Card>
-                    </Collapsible>
-                </form>
-            </Form>
-        </>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                                                        No variants to price. Add some color options to get started.
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </CollapsibleContent>
+                    </Card>
+                </Collapsible>
+            </form>
+        </Form>
     );
 }

@@ -34,10 +34,13 @@ const specSchema = z.object({
 });
 
 const motorConfigSchema = z.object({
-    type: z.enum(["Single", "Twin", "Triple", "SingleWithAux"]),
-    minHp: z.coerce.number().min(0).default(0),
-    maxHp: z.coerce.number().min(0).default(0),
-    recommendedHp: z.coerce.number().min(0).default(0),
+    type: z.enum(["Single", "Twin", "Triple", "Quad", "SingleWithAux"]),
+    engines: z.array(z.object({
+        label: z.string(),
+        minHp: z.coerce.number().min(0).default(0),
+        maxHp: z.coerce.number().min(0).default(0),
+        recommendedHp: z.coerce.number().min(0).default(0),
+    })),
 });
 
 const optionalFeatureSchema = z.object({
@@ -376,17 +379,24 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     });
 
     const motorConfigOptions = [
-        { id: 'Single', label: 'Single Engine' },
-        { id: 'Twin', label: 'Twin Engines' },
-        { id: 'Triple', label: 'Triple Engines' },
-        { id: 'SingleWithAux', label: 'Single with Aux' },
+        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
+        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
+        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
+        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
+        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
     ];
 
-    const handleConfigChange = (checked: boolean, type: 'Single' | 'Twin' | 'Triple' | 'SingleWithAux') => {
+    const handleConfigChange = (checked: boolean, option: typeof motorConfigOptions[0]) => {
         if (checked) {
-            append({ type: type, minHp: 0, maxHp: 0, recommendedHp: 0 });
+            const newEngines = Array.from({ length: option.engineCount }, (_, i) => ({
+                label: option.engineLabels[i],
+                minHp: 0,
+                maxHp: 0,
+                recommendedHp: 0
+            }));
+            append({ type: option.id, engines: newEngines });
         } else {
-            const index = fields.findIndex((field: any) => field.type === type);
+            const index = fields.findIndex((field: any) => field.type === option.id);
             if (index > -1) {
                 remove(index);
             }
@@ -403,6 +413,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                 {motorConfigOptions.map((option) => {
                     const fieldIndex = fields.findIndex((field: any) => field.type === option.id);
                     const isChecked = fieldIndex !== -1;
+                    const currentConfig = isChecked ? fields[fieldIndex] as any : null;
 
                     return (
                         <Collapsible key={option.id} asChild>
@@ -411,7 +422,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                                     <div className="flex items-center space-x-3">
                                         <Checkbox
                                             checked={isChecked}
-                                            onCheckedChange={(checked) => handleConfigChange(!!checked, option.id as any)}
+                                            onCheckedChange={(checked) => handleConfigChange(!!checked, option)}
                                             id={`config-${option.id}`}
                                         />
                                         <label htmlFor={`config-${option.id}`} className="text-sm font-medium leading-none">
@@ -427,41 +438,48 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                                     )}
                                 </div>
                                 <CollapsibleContent className="pt-4 mt-4 border-t">
-                                    {isChecked && (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <FormField
-                                                control={control}
-                                                name={`specifications.motorConfigurations.${fieldIndex}.minHp`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Min HP</FormLabel>
-                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={control}
-                                                name={`specifications.motorConfigurations.${fieldIndex}.maxHp`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Max HP</FormLabel>
-                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={control}
-                                                name={`specifications.motorConfigurations.${fieldIndex}.recommendedHp`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Recommended HP</FormLabel>
-                                                        <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                     {isChecked && currentConfig && (
+                                        <div className="space-y-4">
+                                            {(currentConfig.engines || []).map((engine: any, engineIndex: number) => (
+                                                <div key={engineIndex} className="space-y-2 rounded-md border p-4">
+                                                     <p className="text-sm font-medium text-muted-foreground">{engine.label}</p>
+                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <FormField
+                                                            control={control}
+                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.minHp`}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Min HP</FormLabel>
+                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={control}
+                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.maxHp`}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Max HP</FormLabel>
+                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={control}
+                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.recommendedHp`}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Recommended HP</FormLabel>
+                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </CollapsibleContent>
