@@ -225,6 +225,10 @@
         "imageUrl": {
           "type": "string",
           "description": "URL for the range's image."
+        },
+        "order": {
+          "type": "number",
+          "description": "The display order of the range."
         }
       },
       "required": [
@@ -253,6 +257,10 @@
         "vendorId": {
           "type": "string",
           "description": "The ID of the vendor this model belongs to."
+        },
+        "order": {
+          "type": "number",
+          "description": "The display order of the model."
         },
         "coverImageUrl": {
           "type": "string",

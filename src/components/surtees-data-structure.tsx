@@ -4,13 +4,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore } from '@/firebase/provider';
-import { collection, writeBatch, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, writeBatch, doc, setDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,12 +20,12 @@ import { fileToDataUri } from '@/firebase/storage-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, PlusCircle, Trash2, Sailboat, MoreHorizontal, Pencil, X } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Sailboat, MoreHorizontal, Pencil, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage, FormDescription } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +44,7 @@ interface Range {
     slug?: string;
     vendorId: string;
     imageUrl?: string;
+    order?: number;
 }
 
 const rangeFormSchema = z.object({
@@ -57,8 +58,13 @@ const initialRanges = ['Workmate', 'Workmate Hardtop', 'Game Fisher', 'Pro Fishe
 export function SurteesDataStructure({ vendorId, vendorSlugOrId }: { vendorId: string, vendorSlugOrId: string }) {
     const firestore = useFirestore();
     const router = useRouter();
-    const { data: ranges, loading: rangesLoading, error } = useCollection<Range>(`data-warehouse/${vendorId}/ranges`);
     const { toast } = useToast();
+
+    const rangesQuery = useMemo(() => {
+        if (!vendorId) return null;
+        return query(collection(firestore, `data-warehouse/${vendorId}/ranges`), orderBy('order', 'asc'));
+    }, [firestore, vendorId]);
+    const { data: rawRanges, loading: rangesLoading, error } = useCollection<Range>(rangesQuery);
 
     const [isSeeding, setIsSeeding] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -78,6 +84,22 @@ export function SurteesDataStructure({ vendorId, vendorSlugOrId }: { vendorId: s
       resolver: zodResolver(rangeFormSchema),
     });
 
+    const ranges = useMemo(() => {
+        if (!rawRanges) return [];
+        return rawRanges.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+    }, [rawRanges]);
+
+    useEffect(() => {
+        if (rawRanges && rawRanges.length > 0 && rawRanges.some(r => r.order === undefined)) {
+            const batch = writeBatch(firestore);
+            rawRanges.forEach((range, index) => {
+                const rangeRef = doc(firestore, `data-warehouse/${vendorId}/ranges`, range.id);
+                batch.update(rangeRef, { order: index });
+            });
+            batch.commit().catch(err => console.error("Failed to update order", err));
+        }
+    }, [rawRanges, firestore, vendorId]);
+
     useEffect(() => {
         if (editingRange) {
             editForm.reset({ name: editingRange.name });
@@ -91,12 +113,13 @@ export function SurteesDataStructure({ vendorId, vendorSlugOrId }: { vendorId: s
             const batch = writeBatch(firestore);
             const rangesCollection = collection(firestore, `data-warehouse/${vendorId}/ranges`);
 
-            initialRanges.forEach(rangeName => {
+            initialRanges.forEach((rangeName, index) => {
                 const newRangeRef = doc(rangesCollection);
                 batch.set(newRangeRef, {
                     name: rangeName,
                     slug: createSlug(rangeName),
                     vendorId: vendorId,
+                    order: index
                 });
             });
 
@@ -120,6 +143,7 @@ export function SurteesDataStructure({ vendorId, vendorSlugOrId }: { vendorId: s
                 name: newRangeName,
                 slug: createSlug(newRangeName),
                 vendorId: vendorId,
+                order: ranges.length
             };
             if (addRangeImage) {
                 data.imageUrl = await fileToDataUri(addRangeImage);
@@ -180,6 +204,32 @@ export function SurteesDataStructure({ vendorId, vendorSlugOrId }: { vendorId: s
         } finally {
             setIsDeleteDialogOpen(false);
             setRangeToDelete(null);
+        }
+    };
+
+    const handleMoveRange = async (index: number, direction: 'up' | 'down') => {
+        if (!ranges) return;
+
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= ranges.length) return;
+
+        const item1 = ranges[index];
+        const item2 = ranges[newIndex];
+
+        const batch = writeBatch(firestore);
+        
+        const item1Ref = doc(firestore, `data-warehouse/${vendorId}/ranges`, item1.id);
+        batch.update(item1Ref, { order: item2.order });
+
+        const item2Ref = doc(firestore, `data-warehouse/${vendorId}/ranges`, item2.id);
+        batch.update(item2Ref, { order: item1.order });
+
+        try {
+            await batch.commit();
+            toast({ title: 'Order updated' });
+        } catch (error) {
+            console.error("Failed to update order:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update order.' });
         }
     };
 
@@ -246,7 +296,7 @@ export function SurteesDataStructure({ vendorId, vendorSlugOrId }: { vendorId: s
                     <CardContent className="pt-6">
                         {ranges && ranges.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {ranges.map(range => (
+                                {ranges.map((range, index) => (
                                     <Card key={range.id} className="group relative overflow-hidden flex flex-col h-full transition-all duration-300 ease-in-out hover:border-primary hover:shadow-xl hover:-translate-y-1">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -255,6 +305,13 @@ export function SurteesDataStructure({ vendorId, vendorSlugOrId }: { vendorId: s
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleMoveRange(index, 'up'); }} disabled={index === 0}>
+                                                    <ArrowUp className="mr-2 h-4 w-4" /> Move Up
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleMoveRange(index, 'down'); }} disabled={index === ranges.length - 1}>
+                                                    <ArrowDown className="mr-2 h-4 w-4" /> Move Down
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
                                                 <DropdownMenuItem onClick={() => { setEditingRange(range); setIsEditDialogOpen(true); }}>
                                                     <Pencil className="mr-2 h-4 w-4" /> Rename
                                                 </DropdownMenuItem>

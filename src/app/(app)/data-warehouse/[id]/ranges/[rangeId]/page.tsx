@@ -5,10 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, orderBy, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight, PlusCircle, X } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight, PlusCircle, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -63,6 +64,7 @@ interface Model {
     slug?: string;
     coverImageUrl?: string;
     packages?: { id: string; name: string }[];
+    order?: number;
 }
 
 interface Range {
@@ -146,7 +148,7 @@ function PackageDialog({
     );
 }
 
-function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; model: Model; }) {
+function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendor: Vendor; range: Range; model: Model; index: number; totalModels: number; onMove: (index: number, direction: 'up' | 'down') => void; }) {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
@@ -251,6 +253,13 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()}>
+                        <DropdownMenuItem onClick={() => onMove(index, 'up')} disabled={index === 0}>
+                            <ArrowUp className="mr-2 h-4 w-4" /> Move Up
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
+                            <ArrowDown className="mr-2 h-4 w-4" /> Move Down
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => { setNewModelName(model.name); setIsRenameDialogOpen(true); }}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Rename
@@ -370,6 +379,7 @@ function ModelCard({ vendor, range, model }: { vendor: Vendor; range: Range; mod
 
 export default function RangeDetailsPage() {
     const params = useParams();
+    const router = useRouter();
     const vendorSlugOrId = params?.id as string | undefined;
     const rangeSlugOrId = params?.rangeId as string | undefined;
     const firestore = useFirestore();
@@ -405,10 +415,33 @@ export default function RangeDetailsPage() {
         return `/data-warehouse/${vendor.id}/ranges/${range.id}/models`;
     }, [vendor, range]);
 
-    const { data: fetchedModels, loading: modelsLoading } = useCollection<Model>(modelsCollectionPath);
+    const modelsQuery = useMemo(() => {
+        if (!modelsCollectionPath) return null;
+        return query(collection(firestore, modelsCollectionPath), orderBy('order', 'asc'));
+    }, [firestore, modelsCollectionPath]);
+
+    const { data: rawModels, loading: modelsLoading } = useCollection<Model>(modelsQuery);
+
+    const sortedModels = useMemo(() => {
+        if (!rawModels) return [];
+        return rawModels.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+    }, [rawModels]);
+
+    useEffect(() => {
+        if (rawModels && rawModels.length > 0 && rawModels.some(m => m.order === undefined)) {
+            const batch = writeBatch(firestore);
+            rawModels.forEach((model, index) => {
+                if (model.order === undefined) {
+                    const modelRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, model.id);
+                    batch.update(modelRef, { order: index });
+                }
+            });
+            batch.commit().catch(err => console.error("Failed to update model order", err));
+        }
+    }, [rawModels, firestore, vendor, range]);
 
     const handleAddModel = async () => {
-        if (!newModelName.trim() || !vendor || !range) return;
+        if (!newModelName.trim() || !vendor || !range || !sortedModels) return;
         setIsAddingModel(true);
         try {
             const modelsCollectionRef = collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`);
@@ -417,6 +450,7 @@ export default function RangeDetailsPage() {
                 slug: createSlug(newModelName),
                 rangeId: range.id,
                 vendorId: vendor.id,
+                order: sortedModels.length,
             });
             toast({ title: 'Model Added', description: `${newModelName} was added successfully.` });
             setNewModelName('');
@@ -426,6 +460,32 @@ export default function RangeDetailsPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not add model.' });
         } finally {
             setIsAddingModel(false);
+        }
+    };
+
+    const handleMoveModel = async (index: number, direction: 'up' | 'down') => {
+        if (!sortedModels || !vendor || !range) return;
+
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= sortedModels.length) return;
+
+        const item1 = sortedModels[index];
+        const item2 = sortedModels[newIndex];
+
+        const batch = writeBatch(firestore);
+        
+        const item1Ref = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, item1.id);
+        batch.update(item1Ref, { order: item2.order });
+
+        const item2Ref = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, item2.id);
+        batch.update(item2Ref, { order: item1.order });
+
+        try {
+            await batch.commit();
+            toast({ title: 'Order updated' });
+        } catch(error) {
+            console.error("Failed to update order:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update order.' });
         }
     };
     
@@ -495,12 +555,12 @@ export default function RangeDetailsPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                         {fetchedModels && fetchedModels.length > 0 ? (
+                         {sortedModels && sortedModels.length > 0 ? (
                             <>
                                 {viewMode === 'card' ? (
                                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                        {fetchedModels.map((model) => (
-                                            <ModelCard key={model.id} vendor={vendor} range={range} model={model} />
+                                        {sortedModels.map((model, index) => (
+                                            <ModelCard key={model.id} vendor={vendor} range={range} model={model} index={index} totalModels={sortedModels.length} onMove={handleMoveModel}/>
                                         ))}
                                     </div>
                                 ) : (
@@ -512,16 +572,27 @@ export default function RangeDetailsPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {fetchedModels.map((model) => (
+                                            {sortedModels.map((model, index) => (
                                                 <TableRow key={model.id}>
                                                     <TableCell className="font-medium">{model.name}</TableCell>
                                                     <TableCell className="text-right">
-                                                        <Button asChild variant="ghost" size="sm">
-                                                            <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`}>
-                                                                View Details
-                                                                <ArrowRight className="ml-2 h-4 w-4" />
-                                                            </Link>
-                                                        </Button>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                 <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent>
+                                                                <DropdownMenuItem onClick={() => router.push(`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`)}>
+                                                                    <Pencil className="mr-2 h-4 w-4" /> View Details
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
+                                                                    <ArrowUp className="mr-2 h-4 w-4" /> Move Up
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
+                                                                    <ArrowDown className="mr-2 h-4 w-4" /> Move Down
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -570,5 +641,3 @@ export default function RangeDetailsPage() {
         </AdminGuard>
     );
 }
-
-    
