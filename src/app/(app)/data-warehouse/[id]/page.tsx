@@ -497,7 +497,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 
                 const imageUrlKey = findKey([
                     'Primary Image URL', 'imageUrl', 'image_url', 'image',
-                    'Logo URL', 'logoUrl', 'logo_url', 'logo'
+                    'Logo URL', 'logoUrl', 'logo_url', 'logo', 'SummaryImage'
                 ]);
                 
                 const colorsKey = findKey(['colors', 'available_colors', 'availableColors']);
