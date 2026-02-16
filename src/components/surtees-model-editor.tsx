@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -22,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from './ui/checkbox';
+import { Separator } from './ui/separator';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -634,6 +636,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                                     <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
                                                     <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
                                                 </div>
+                                                <Separator />
                                                 <div className="space-y-4">
                                                     {categorizedPackages.map(({ name, items }) => (
                                                         <Collapsible key={name} asChild defaultOpen>

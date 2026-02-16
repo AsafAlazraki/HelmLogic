@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController, useFormContext, FormProvider } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -23,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Checkbox } from './ui/checkbox';
+import { Separator } from './ui/separator';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -374,7 +375,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                                     )}
                                 </div>
                                 <CollapsibleContent className="pt-4 mt-4 border-t">
-                                    {isChecked && currentConfig && (
+                                     {isChecked && currentConfig && (
                                         <div className="space-y-4">
                                             {(currentConfig.engines || []).map((engine: any, engineIndex: number) => (
                                                 <div key={engineIndex} className="space-y-2 rounded-md border p-4">
@@ -634,6 +635,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                     <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
                                                     <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
                                                 </div>
+                                                <Separator />
                                                 <div className="space-y-4">
                                                     {categorizedPackages.map(({ name, items }) => (
                                                         <Collapsible key={name} asChild defaultOpen>
