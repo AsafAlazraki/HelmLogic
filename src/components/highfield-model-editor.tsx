@@ -391,7 +391,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         resolver: zodResolver(highfieldModelSchema),
     });
     
-    const { reset, control, getValues, watch } = form;
+    const { reset, control, getValues, watch, setValue } = form;
 
     const getSafeDefaultValues = useCallback((modelData: any): Partial<ModelFormData> => {
         const safeModel = modelData || {};
@@ -425,7 +425,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const { fields: variantPricingFields, replace: replaceVariantPricing } = useFieldArray({ control, name: 'variantPricing' });
     
     const watchedColors = watch('colors');
-    const coverImageUrl = watch({ control, name: "coverImageUrl" });
 
     useEffect(() => {
         if (!watchedColors) return;
@@ -433,15 +432,12 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         const currentPricing = getValues('variantPricing') || [];
         const newVariants: z.infer<typeof variantPricingSchema>[] = [];
         const materials = ['HYP', 'PVC'];
-        const existingPricingMap = new Map(
-            currentPricing.map((p: any) => [`${p.colorId}-${p.material}`, p])
-        );
-
+        
         watchedColors.forEach(color => {
-            if (!color.id) return; // Don't process if color doesn't have an ID yet
+            if (!color.id) return;
             materials.forEach(material => {
-                const key = `${color.id}-${material}`;
-                const existing = existingPricingMap.get(key);
+                // Find if pricing already exists for this combo
+                const existing = currentPricing.find((p: any) => p.colorId === color.id && p.material === material);
                 newVariants.push({
                     colorId: color.id,
                     colorName: color.name,
@@ -455,10 +451,13 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         
         newVariants.sort((a, b) => (a.colorName || '').localeCompare(b.colorName || '') || a.material.localeCompare(b.material));
         
-        if (JSON.stringify(newVariants) !== JSON.stringify(currentPricing)) {
-          replaceVariantPricing(newVariants);
+        const currentVariantsJSON = JSON.stringify(currentPricing.map(({...rest}) => rest).sort((a, b) => (a.colorName || '').localeCompare(b.colorName || '') || a.material.localeCompare(b.material)));
+        const newVariantsJSON = JSON.stringify(newVariants.map(({...rest}) => rest));
+
+        if (newVariantsJSON !== currentVariantsJSON) {
+          setValue('variantPricing', newVariants, { shouldDirty: true });
         }
-    }, [watchedColors, getValues, replaceVariantPricing]);
+    }, [watchedColors, getValues, setValue]);
 
 
     async function onSubmit(values: ModelFormData) {
@@ -558,43 +557,22 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 <CollapsibleCardHeader title="Color Variants" />
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
+                                        <div className='flex flex-col gap-2'>
                                         {colorFields.map((field, index) => (
-                                            <div key={field.id} className="space-y-3 rounded-lg border bg-muted/50 p-4">
-                                                <div className="flex items-center gap-2">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name={`colors.${index}.name`}
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex-1">
-                                                                <FormControl>
-                                                                    <Input placeholder="Color Name" {...field} value={field.value ?? ''} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeColor(index)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
-                                                        <div key={imgIndex} className="relative aspect-square group">
-                                                            <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="icon"
-                                                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                onClick={() => {
-                                                                    const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
-                                                                    updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
-                                                                }}
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ))}
+                                            <div key={field.id} className="flex items-center gap-2 rounded-lg border bg-muted/50 p-2">
+                                                <div className="grid grid-cols-3 gap-2 flex-grow">
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`colors.${index}.name`}
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex-1">
+                                                            <FormControl>
+                                                                <Input placeholder="Color Name" {...field} value={field.value ?? ''} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
                                                     <label htmlFor={`color-image-upload-${index}`} className={cn(
                                                         "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted",
                                                         (watchedColors?.[index]?.imageUrls.length || 0) >= 6 && 'hidden'
@@ -608,8 +586,12 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                         <Plus className="h-6 w-6 text-muted-foreground"/>
                                                     </label>
                                                 </div>
+                                                <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeColor(index)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         ))}
+                                        </div>
                                         {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
                                         <div className="pt-4">
                                             <Button
@@ -643,92 +625,92 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
 
                         <Collapsible asChild defaultOpen>
                             <Card>
-                                <CollapsibleCardHeader title="Cover Image" />
-                                <CollapsibleContent>
-                                    <CardContent>
-                                        <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                {coverImageUrl ? (
-                                                    <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                        <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="icon"
-                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                            onClick={() => field.onChange(null)}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center justify-center w-full">
-                                                        <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                                <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                            </div>
-                                                            <FormControl>
-                                                                <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) field.onChange(await fileToDataUri(file));
-                                                                }} />
-                                                            </FormControl>
-                                                        </label>
-                                                    </div> 
-                                                )}
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                        <div className="pt-6">
-                                            <Collapsible>
-                                                <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
-                                                    <span>Image Gallery ({galleryImageFields.length})</span>
-                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                                </CollapsibleTrigger>
-                                                <CollapsibleContent className="border-b">
-                                                    <div className="p-4 bg-muted/20">
-                                                        <div className="grid grid-cols-3 gap-2">
-                                                            {galleryImageFields.map((item, index) => (
-                                                                <div key={item.id} className="relative aspect-square group">
-                                                                    <FormField
-                                                                        control={form.control}
-                                                                        name={`galleryImageUrls.${index}`}
-                                                                        render={({ field }) => (
-                                                                            <>
-                                                                                <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
-                                                                                <Button
-                                                                                    type="button"
-                                                                                    variant="destructive"
-                                                                                    size="icon"
-                                                                                    className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                                    onClick={() => removeGalleryImage(index)}
-                                                                                >
-                                                                                    <Trash2 className="h-4 w-4" />
-                                                                                </Button>
-                                                                            </>
-                                                                        )}
-                                                                    />
-                                                                </div>
-                                                            ))}
-                                                            <label htmlFor="gallery-image-upload" className={cn(
-                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
-                                                            )}>
-                                                                <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                    const files = Array.from(e.target.files || []);
-                                                                    const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                    dataUris.forEach(uri => appendGalleryImage(uri));
-                                                                }}/>
-                                                                <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                            </label>
+                                <CardHeader>
+                                    <CardTitle>Cover Image</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="sr-only">Cover Image</FormLabel>
+                                            {field.value ? (
+                                                <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                    <Image src={field.value} alt="Cover image" fill className="object-cover" />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="icon"
+                                                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                        onClick={() => field.onChange(null)}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-center w-full">
+                                                    <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                            <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
                                                         </div>
+                                                        <FormControl>
+                                                            <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) field.onChange(await fileToDataUri(file));
+                                                            }} />
+                                                        </FormControl>
+                                                    </label>
+                                                </div> 
+                                            )}
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                    <div className="pt-6">
+                                        <Collapsible>
+                                            <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
+                                                <span>Image Gallery ({galleryImageFields.length})</span>
+                                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="border-b">
+                                                <div className="p-4 bg-muted/20">
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {galleryImageFields.map((item, index) => (
+                                                            <div key={item.id} className="relative aspect-square group">
+                                                                <FormField
+                                                                    control={form.control}
+                                                                    name={`galleryImageUrls.${index}`}
+                                                                    render={({ field }) => (
+                                                                        <>
+                                                                            <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="destructive"
+                                                                                size="icon"
+                                                                                className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                onClick={() => removeGalleryImage(index)}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </>
+                                                                    )}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                        <label htmlFor="gallery-image-upload" className={cn(
+                                                            "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
+                                                        )}>
+                                                            <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                const files = Array.from(e.target.files || []);
+                                                                const dataUris = await Promise.all(files.map(fileToDataUri));
+                                                                dataUris.forEach(uri => appendGalleryImage(uri));
+                                                            }}/>
+                                                            <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                        </label>
                                                     </div>
-                                                </CollapsibleContent>
-                                            </Collapsible>
-                                        </div>
-                                    </CardContent>
-                                </CollapsibleContent>
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    </div>
+                                </CardContent>
                             </Card>
                         </Collapsible>
                         <Collapsible asChild defaultOpen>
