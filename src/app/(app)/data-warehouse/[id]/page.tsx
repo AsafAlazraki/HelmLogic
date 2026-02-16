@@ -496,8 +496,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 const subCategoryKey = findKey(['Sub Catagory', 'SubCategory', 'category']);
                 
                 const imageUrlKey = findKey([
-                    'Primary Image URL', 'imageUrl', 'image_url', 'image',
-                    'Logo URL', 'logoUrl', 'logo_url', 'logo', 'SummaryImage'
+                    'SummaryImage', 'Primary Image URL', 'imageUrl', 'image_url', 'image',
+                    'Logo URL', 'logoUrl', 'logo_url', 'logo'
                 ]);
                 
                 const colorsKey = findKey(['colors', 'available_colors', 'availableColors']);
@@ -605,7 +605,10 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                 <div className="max-h-[600px] overflow-auto">
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
                                         {filteredData.map((item) => {
-                                            const itemImageUrl = imageUrlKey && item[imageUrlKey] ? item[imageUrlKey] : null;
+                                            let itemImageUrl = imageUrlKey && item[imageUrlKey] ? item[imageUrlKey] : null;
+                                            if (vendor.slug === 'yamaha' && itemImageUrl && !itemImageUrl.startsWith('http')) {
+                                                itemImageUrl = `https://www.yamaha-motor.com.au${itemImageUrl}`;
+                                            }
                                             const itemColors = colorsKey && Array.isArray(item[colorsKey]) ? item[colorsKey] : [];
                                             
                                             return (
