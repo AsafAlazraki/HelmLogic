@@ -15,7 +15,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -459,10 +459,18 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
 
-    const [displayConfig, setDisplayConfig] = useState<{titleKey: string | null, infoKeys: string[], columnConfig: {key: string, label: string}[]}>({
+    const [displayConfig, setDisplayConfig] = useState<{
+        titleKey: string | null;
+        infoKeys: string[];
+        columnConfig: { key: string; label: string }[];
+        imageUrlKey?: string | null;
+        colorsKey?: string | null;
+    }>({
         titleKey: null,
         infoKeys: [],
-        columnConfig: []
+        columnConfig: [],
+        imageUrlKey: null,
+        colorsKey: null,
     });
 
     useEffect(() => {
@@ -481,6 +489,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 const modelNameKey = findKey('Model Name');
                 const productGroupKey = findKey('Product Group');
                 const subCategoryKey = findKey('Sub Catagory');
+                const imageUrlKey = findKey('Primary Image URL') || findKey('image_url') || findKey('imageUrl');
+                const colorsKey = findKey('colors') || findKey('available_colors') || findKey('availableColors');
 
                 const titleKey = modelNameKey || null;
                 const infoKeys = [productGroupKey, subCategoryKey].filter(Boolean) as string[];
@@ -495,7 +505,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     columnConfig = allKeys.slice(0, 3).map(k => ({ key: k, label: k }));
                 }
 
-                setDisplayConfig({ titleKey, infoKeys, columnConfig });
+                setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey, colorsKey });
             } else {
                 const findKey = (potentials: string[]) => allKeys.find(k => potentials.includes(k.toLowerCase()));
 
@@ -521,7 +531,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                 }));
 
-                setDisplayConfig({ titleKey, infoKeys, columnConfig });
+                setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey: null, colorsKey: null });
             }
         }
     }, [masterDataSet, vendor.slug]);
@@ -544,7 +554,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         setIsEditorOpen(true);
     };
     
-    const { titleKey, infoKeys, columnConfig } = displayConfig;
+    const { titleKey, infoKeys, columnConfig, imageUrlKey, colorsKey } = displayConfig;
 
     return (
         <>
@@ -583,23 +593,47 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                            viewMode === 'card' ? (
                                 <div className="max-h-[600px] overflow-auto">
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
-                                        {filteredData.map((item) => (
-                                            <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleEditItem(item)}>
-                                                <CardHeader>
-                                                    <CardTitle className="truncate text-base">{titleKey ? String(item[titleKey] || 'Unnamed Item') : 'Unnamed Item'}</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    <div className="space-y-1 text-sm text-muted-foreground">
-                                                        {infoKeys.map((key) => (
-                                                            <div key={key} className="flex justify-between items-start gap-2">
-                                                                <span className="font-medium capitalize truncate text-xs">{key.replace(/_/g, ' ')}:</span>
-                                                                <span className="truncate text-right text-xs text-foreground">{String(item[key])}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
+                                        {filteredData.map((item) => {
+                                            const itemImageUrl = imageUrlKey && item[imageUrlKey] ? item[imageUrlKey] : null;
+                                            const itemColors = colorsKey && Array.isArray(item[colorsKey]) ? item[colorsKey] : [];
+                                            
+                                            return (
+                                                <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors flex flex-col" onClick={() => handleEditItem(item)}>
+                                                    {itemImageUrl ? (
+                                                        <div className="relative h-40 w-full bg-secondary">
+                                                            <Image src={itemImageUrl} alt={titleKey ? String(item[titleKey]) : 'Product image'} fill className="object-contain p-4"/>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="relative h-40 w-full bg-secondary flex items-center justify-center">
+                                                            <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                    <CardHeader className="pt-4">
+                                                        <CardTitle className="truncate text-base">{titleKey ? String(item[titleKey] || 'Unnamed Item') : 'Unnamed Item'}</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="flex-grow">
+                                                        <div className="space-y-1 text-sm text-muted-foreground">
+                                                            {infoKeys.map((key) => (
+                                                                <div key={key} className="flex justify-between items-start gap-2">
+                                                                    <span className="font-medium capitalize truncate text-xs">{key.replace(/_/g, ' ')}:</span>
+                                                                    <span className="truncate text-right text-xs text-foreground">{String(item[key])}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </CardContent>
+                                                    {itemColors.length > 0 && (
+                                                        <CardFooter className="pt-0 mt-auto flex flex-wrap gap-2">
+                                                            {itemColors.map((color: any, index: number) => (
+                                                                <div key={index} className="flex items-center gap-1.5 text-xs">
+                                                                    <div className="h-3 w-3 rounded-full border" style={{ backgroundColor: typeof color === 'string' ? color.toLowerCase().replace(/ /g, '') : color.hex || 'transparent' }}></div>
+                                                                    <span className="text-muted-foreground">{typeof color === 'string' ? color : color.name}</span>
+                                                                </div>
+                                                            ))}
+                                                        </CardFooter>
+                                                    )}
+                                                </Card>
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             ) : (

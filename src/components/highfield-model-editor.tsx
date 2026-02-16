@@ -23,9 +23,18 @@ import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from './ui/checkbox';
 
+const looseNumber = z.preprocess(
+  (val) => {
+    if (val === '' || val === null || val === undefined) return null;
+    const n = Number(val);
+    return isNaN(n) ? null : n;
+  },
+  z.number().nullable().optional()
+);
+
 const priceSchema = z.object({
-    cost: z.number().nullable().optional(),
-    sellPriceExclGst: z.number().nullable().optional(),
+    cost: looseNumber,
+    sellPriceExclGst: looseNumber,
 });
 
 const colorVariantFormSchema = z.object({
@@ -78,6 +87,14 @@ type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
 const GST_RATE = 0.10;
 
+const motorConfigOptions = [
+    { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
+    { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
+    { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
+    { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
+    { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
+];
+
 // This helper function ensures that any 'undefined' values from react-hook-form
 // are converted to 'null', which is a valid Firestore type.
 function sanitizeDataForFirestore(data: any): any {
@@ -105,19 +122,24 @@ function sanitizeDataForFirestore(data: any): any {
 // A reusable component to handle paired GST-inclusive and GST-exclusive price inputs.
 // It automatically calculates one value when the other is changed.
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
-    const { field } = useController({ control, name, defaultValue: null });
+    const { field, fieldState } = useController({ control, name, defaultValue: null });
 
     const valueExcl = field.value;
-    const valueIncl = valueExcl !== null && valueExcl !== undefined ? Math.round((valueExcl * (1 + GST_RATE)) * 100) / 100 : null;
+
+    const calculateIncl = (val: string | number | null) => {
+        if (val === '' || val === null || val === undefined) return '';
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        if (isNaN(num)) return '';
+        // Round to 2 decimals for display
+        return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
+    };
+
+    const valueInclDisplay = calculateIncl(valueExcl);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        if (val === '') {
-            field.onChange(null);
-        } else {
-            const num = parseFloat(val);
-            field.onChange(isNaN(num) ? null : num);
-        }
+        // Pass string directly to allow typing decimals (e.g. "10.")
+        field.onChange(val === '' ? null : val);
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,6 +150,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 const excl = num / (1 + GST_RATE);
+                // Round to 2 decimals
                 field.onChange(Math.round(excl * 100) / 100);
             }
         }
@@ -135,7 +158,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
 
     return (
         <FormItem>
-            <FormLabel>{label}</FormLabel>
+            <FormLabel className={cn(fieldState.error && "text-destructive")}>{label}</FormLabel>
             <div className="grid grid-cols-2 gap-2 mt-1">
                 <FormItem className="space-y-1">
                     <FormLabel className="text-xs font-normal text-muted-foreground">excl. GST</FormLabel>
@@ -144,7 +167,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                             type="number"
                             step="any"
                             placeholder="0.00"
-                            value={valueExcl === null || valueExcl === undefined ? '' : String(valueExcl)}
+                            value={valueExcl ?? ''}
                             onChange={handleExclChange}
                         />
                     </FormControl>
@@ -156,13 +179,15 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                             type="number"
                             step="any"
                             placeholder="0.00"
-                            value={valueIncl === null || valueIncl === undefined ? '' : String(valueIncl)}
+                            value={valueInclDisplay}
                             onChange={handleInclChange}
                         />
                     </FormControl>
                 </FormItem>
             </div>
-             <FormMessage className="col-span-2" />
+             <FormMessage>
+                {fieldState.error && String(fieldState.error.message)}
+             </FormMessage>
         </FormItem>
     );
 }
@@ -257,14 +282,6 @@ function MotorConfigurationsCard({ control }: { control: any }) {
         control,
         name: "specifications.motorConfigurations",
     });
-
-    const motorConfigOptions = [
-        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
-        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
-        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
-        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
-        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
-    ];
 
     const handleConfigChange = (checked: boolean, option: typeof motorConfigOptions[0]) => {
         if (checked) {
@@ -421,7 +438,7 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
                 <FormItem className="flex-1">
                   <FormLabel className="sr-only">Color Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Color Name" {...field} />
+                    <Input placeholder="Color Name" {...field} value={field.value ?? ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -492,11 +509,29 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             };
         });
 
+        const motorConfigs = (safeModel.specifications?.motorConfigurations ?? []).map((config: any) => {
+            if (config.engines && Array.isArray(config.engines) && config.engines.length > 0) {
+                return config;
+            }
+            // Populate default engines based on config type if missing
+            const option = motorConfigOptions.find(o => o.id === config.type);
+            if (option) {
+                 const engines = Array.from({ length: option.engineCount }, (_, i) => ({
+                    label: option.engineLabels[i],
+                    minHp: config.minHp ?? 0, // Attempt to migrate old single hp values if they existed
+                    maxHp: config.maxHp ?? 0,
+                    recommendedHp: config.recommendedHp ?? 0
+                }));
+                return { ...config, engines };
+            }
+            return config;
+        });
+
         return {
             coverImageUrl: safeModel.coverImageUrl ?? null,
             galleryImageUrls: safeModel.galleryImageUrls ?? [],
             specifications: {
-                motorConfigurations: safeModel.specifications?.motorConfigurations ?? [],
+                motorConfigurations: motorConfigs,
                 otherSpecs: safeModel.specifications?.otherSpecs ?? [],
             },
             standardFeatures: safeModel.standardFeatures ?? [],
@@ -595,7 +630,10 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     return (
         <FormProvider {...form}>
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.error("Form errors", errors);
+                toast({ variant: "destructive", title: "Validation Error", description: "Please check the form for errors." });
+            })} className="space-y-6">
                 <div className="flex justify-end gap-2">
                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -791,6 +829,15 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         </CollapsibleContent>
                     </Card>
                 </Collapsible>
+                
+                {Object.keys(form.formState.errors).length > 0 && (
+                    <div className="p-4 border border-destructive/50 rounded-lg bg-destructive/10 text-destructive text-sm">
+                        <p className="font-semibold">Form Errors:</p>
+                        <pre className="mt-2 whitespace-pre-wrap">
+                            {JSON.stringify(form.formState.errors, null, 2)}
+                        </pre>
+                    </div>
+                )}
             </form>
         </Form>
         </FormProvider>
