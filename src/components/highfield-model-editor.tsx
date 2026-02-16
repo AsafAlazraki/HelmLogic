@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -536,11 +537,12 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         
         const variantPricingForDb: any[] = [];
         values.colors.forEach(color => {
-            if (color.pricing.HYP) {
-                variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...color.pricing.HYP });
+            const { HYP, PVC } = color.pricing;
+            if (HYP && (HYP.cost != null || HYP.sellPriceExclGst != null)) {
+                variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...HYP });
             }
-            if (color.pricing.PVC) {
-                variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...color.pricing.PVC });
+            if (PVC && (PVC.cost != null || PVC.sellPriceExclGst != null)) {
+                variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...PVC });
             }
         });
 
@@ -675,9 +677,9 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                         <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                {field.value ? (
+                                                {coverImageUrl ? (
                                                     <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                        <Image src={field.value} alt="Cover image" fill className="object-cover" />
+                                                        <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
                                                         <Button
                                                             type="button"
                                                             variant="outline"
