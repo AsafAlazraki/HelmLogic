@@ -6,9 +6,8 @@ import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc, collection, getDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { fileToDataUri } from '@/firebase/storage-utils';
 
@@ -17,16 +16,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal, Move } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from './ui/checkbox';
 
 // Schemas for validation
@@ -75,12 +72,6 @@ const modelSchema = z.object({
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
-
-interface Range {
-  id: string;
-  name: string;
-  slug?: string;
-}
 
 const GST_RATE = 0.10;
 
@@ -483,24 +474,15 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     );
 }
 
-export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; docPath: string, vendor: any }) {
+export function StabicraftModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
-    const router = useRouter();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
-    const loadedModelIdRef = useRef<string | null>(null);
-    const isSavingRef = useRef(false);
 
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
-
-    const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
-    const [targetRangeId, setTargetRangeId] = useState('');
-    const [isMoving, setIsMoving] = useState(false);
-    
-    const { data: allRanges, loading: rangesLoading } = useCollection<Range>(vendor ? `data-warehouse/${vendor.id}/ranges` : null);
 
     const getSafeDefaultValues = (modelData: any): ModelFormData => {
         const data = modelData || {};
@@ -546,48 +528,16 @@ export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; 
         defaultValues: getSafeDefaultValues(model),
     });
     
-    const { getValues, reset, formState: { isDirty } } = form;
-
-    const saveChanges = useCallback((showToast: boolean) => {
-        isSavingRef.current = true;
-        const values = getValues();
-        const sanitizedValues = sanitizeDataForFirestore(values);
-        const modelDocRef = doc(firestore, docPath);
-
-        updateDoc(modelDocRef, sanitizedValues)
-            .then(() => {
-                if (showToast) {
-                    toast({ title: "Model Updated", description: "Your changes have been saved." });
-                }
-            })
-            .catch((e: any) => {
-                console.error("Save failed:", e);
-                const permissionError = new FirestorePermissionError({
-                    path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            })
-            .finally(() => {
-                isSavingRef.current = false;
-            });
-    }, [docPath, firestore, getValues, toast]);
+    const { reset, getValues } = form;
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            saveChanges(false);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [saveChanges]);
-
-    useEffect(() => {
-        if (!isDirty) {
+        if (model) {
             const defaultValues = getSafeDefaultValues(model);
             reset(defaultValues);
             const initialCategories = [...new Set((defaultValues.optionalFeatures || []).map(f => f.category).filter(Boolean) as string[])];
             setCategories(initialCategories);
-            loadedModelIdRef.current = model.id;
         }
-    }, [model, reset, isDirty]);
+    }, [model, reset]);
     
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control: form.control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control: form.control, name: "standardFeatures" });
@@ -622,10 +572,26 @@ export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; 
     }, [optionalFeatureFields, watchedOptionalFeatures, categories]);
 
 
-    function onSubmit(values: ModelFormData) {
+    async function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
-        saveChanges(true);
-        setIsSubmitting(false);
+        const sanitizedValues = sanitizeDataForFirestore(values);
+        const modelDocRef = doc(firestore, docPath);
+
+        try {
+            await updateDoc(modelDocRef, sanitizedValues);
+            toast({ title: "Model Updated", description: "Your changes have been saved." });
+            reset(values);
+        } catch (e) {
+            const error = e as any;
+            console.error("Save failed:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
+            const permissionError = new FirestorePermissionError({
+                path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } finally {
+            setIsSubmitting(false);
+        }
     }
     
     const handleBulkAddFeatures = () => {
@@ -671,54 +637,16 @@ export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; 
         };
         appendOptionalFeature(newFeature);
     }
-
-    const handleMoveModel = async () => {
-        if (!targetRangeId) {
-            toast({ variant: 'destructive', title: 'No destination range selected.' });
-            return;
-        }
-        setIsMoving(true);
-        try {
-            const oldDocRef = doc(firestore, docPath);
-            const currentModelData = await getDoc(oldDocRef);
-
-            if (!currentModelData.exists()) {
-                throw new Error("Original model document not found.");
-            }
-            
-            const modelData = currentModelData.data();
-            modelData.rangeId = targetRangeId; // Update rangeId
-
-            const newDocRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${targetRangeId}/models`, model.id);
-            
-            const batch = writeBatch(firestore);
-            batch.set(newDocRef, modelData);
-            batch.delete(oldDocRef);
-            
-            await batch.commit();
-
-            toast({ title: 'Model Moved', description: `Successfully moved to new range.` });
-            const targetRange = allRanges?.find(r => r.id === targetRangeId);
-            const newPath = `/data-warehouse/${vendor.slug || vendor.id}/ranges/${targetRange?.slug || targetRangeId}/models/${model.slug || model.id}`;
-            router.push(newPath);
-
-        } catch (error: any) {
-            console.error("Failed to move model:", error);
-            toast({ variant: 'destructive', title: 'Move Failed', description: error.message });
-        } finally {
-            setIsMoving(false);
-            setIsMoveDialogOpen(false);
-        }
-    };
     
     return (
          <>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => setIsMoveDialogOpen(true)}><Move className="mr-2 h-4 w-4"/>Move Model</Button>
-                         <Button type="submit">
-                            <Save className="mr-2 h-4 w-4" /> Save Changes
+                         <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
                         </Button>
                     </div>
 
@@ -1134,42 +1062,6 @@ export function StabicraftModelEditor({ model, docPath, vendor }: { model: any; 
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setCategoryToDelete(null)}>Cancel</Button>
                         <Button variant="destructive" onClick={handleConfirmDeleteCategory}>Delete</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Move Model</DialogTitle>
-                        <DialogDescription>
-                            Select a new range to move this model to. This action is permanent.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <Select onValueChange={setTargetRangeId} defaultValue={targetRangeId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a destination range..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {rangesLoading ? (
-                                    <div className="flex items-center justify-center p-4">
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                    </div>
-                                ) : (
-                                    allRanges?.filter(r => r.id !== model.rangeId).map(range => (
-                                        <SelectItem key={range.id} value={range.id}>{range.name}</SelectItem>
-                                    ))
-                                )}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                        <Button onClick={handleMoveModel} disabled={!targetRangeId || isMoving}>
-                            {isMoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirm Move
-                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

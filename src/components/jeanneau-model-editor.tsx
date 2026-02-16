@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController, useFormContext, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useFirestore } from '@/firebase/provider';
-import { doc, getDoc, updateDoc, writeBatch, collection } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { fileToDataUri } from '@/firebase/storage-utils';
 
@@ -16,16 +16,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal, Plus, Move } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal, Plus } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Checkbox } from './ui/checkbox';
-import { useRouter } from 'next/navigation';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -75,12 +72,6 @@ const modelSchema = z.object({
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
-
-interface Range {
-  id: string;
-  name: string;
-  slug?: string;
-}
 
 const GST_RATE = 0.10;
 
@@ -419,10 +410,9 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     );
 }
 
-export function JeanneauModelEditor({ model, docPath, vendor }: { model: any; docPath: string; vendor: any; }) {
+export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     
@@ -431,12 +421,6 @@ export function JeanneauModelEditor({ model, docPath, vendor }: { model: any; do
     const [isNewCatDialogOpen, setIsNewCatDialogOpen] = useState(false);
     const [pkgIndexForNewCat, setPkgIndexForNewCat] = useState<number | null>(null);
     const [newCatNameForMove, setNewCatNameForMove] = useState('');
-    
-    const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
-    const [targetRangeId, setTargetRangeId] = useState('');
-    const [isMoving, setIsMoving] = useState(false);
-
-    const { data: allRanges, loading: rangesLoading } = useCollection<Range>(vendor ? `data-warehouse/${vendor.id}/ranges` : null);
 
     const getSafeDefaultValues = useCallback((modelData: any): ModelFormData => {
         const data = modelData || {};
@@ -584,52 +568,11 @@ export function JeanneauModelEditor({ model, docPath, vendor }: { model: any; do
         setPkgIndexForNewCat(null);
     };
 
-    const handleMoveModel = async () => {
-        if (!targetRangeId) {
-            toast({ variant: 'destructive', title: 'No destination range selected.' });
-            return;
-        }
-        setIsMoving(true);
-        try {
-            const oldDocRef = doc(firestore, docPath);
-            const currentModelData = await getDoc(oldDocRef);
-
-            if (!currentModelData.exists()) {
-                throw new Error("Original model document not found.");
-            }
-            
-            const modelData = currentModelData.data();
-            modelData.rangeId = targetRangeId; // Update rangeId
-
-            const newDocRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${targetRangeId}/models`, model.id);
-            
-            const batch = writeBatch(firestore);
-            batch.set(newDocRef, modelData);
-            batch.delete(oldDocRef);
-            
-            await batch.commit();
-
-            toast({ title: 'Model Moved', description: `Successfully moved to new range.` });
-            const targetRange = allRanges?.find(r => r.id === targetRangeId);
-            const newPath = `/data-warehouse/${vendor.slug || vendor.id}/ranges/${targetRange?.slug || targetRangeId}/models/${model.slug || model.id}`;
-            router.push(newPath);
-
-        } catch (error: any) {
-            console.error("Failed to move model:", error);
-            toast({ variant: 'destructive', title: 'Move Failed', description: error.message });
-        } finally {
-            setIsMoving(false);
-            setIsMoveDialogOpen(false);
-        }
-    };
-
-
     return (
         <FormProvider {...form}>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => setIsMoveDialogOpen(true)}><Move className="mr-2 h-4 w-4"/>Move Model</Button>
+                    <div className="flex justify-end">
                         <Button type="submit" disabled={isSubmitting}>
                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Save Changes
@@ -744,7 +687,7 @@ export function JeanneauModelEditor({ model, docPath, vendor }: { model: any; do
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>
-                                        <CardContent className="space-y-6">
+                                        <CardContent>
                                             <FormField control={control} name="coverImageUrl" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel className="sr-only">Cover Image</FormLabel>
@@ -946,42 +889,6 @@ export function JeanneauModelEditor({ model, docPath, vendor }: { model: any; do
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Move Model</DialogTitle>
-                        <DialogDescription>
-                            Select a new range to move this model to. This action is permanent.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <Select onValueChange={setTargetRangeId} defaultValue={targetRangeId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a destination range..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {rangesLoading ? (
-                                    <div className="flex items-center justify-center p-4">
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                    </div>
-                                ) : (
-                                    allRanges?.filter(r => r.id !== model.rangeId).map(range => (
-                                        <SelectItem key={range.id} value={range.id}>{range.name}</SelectItem>
-                                    ))
-                                )}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                        <Button onClick={handleMoveModel} disabled={!targetRangeId || isMoving}>
-                            {isMoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirm Move
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </FormProvider>
     );
 }
-
