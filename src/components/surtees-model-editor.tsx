@@ -42,14 +42,6 @@ const motorConfigSchema = z.object({
     })),
 });
 
-const colorVariantSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, 'Color name is required'),
-    imageUrls: z.array(z.string()).default([]),
-    cost: z.coerce.number().nullable().optional(),
-    sellPriceExclGst: z.coerce.number().nullable().optional(),
-});
-
 const packageSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Package name is required'),
@@ -72,7 +64,6 @@ const modelSchema = z.object({
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
     packages: z.array(packageSchema).default([]),
-    colors: z.array(colorVariantSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
@@ -462,14 +453,6 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                 cost: p.cost ?? null,
                 sellPriceExclGst: p.sellPriceExclGst ?? null,
             })),
-            colors: (data.colors || []).map((c: any) => ({
-                ...c,
-                id: c.id,
-                name: c.name,
-                imageUrls: c.imageUrls || [],
-                cost: c.cost ?? null,
-                sellPriceExclGst: c.sellPriceExclGst ?? null,
-            })),
         };
     }, []);
 
@@ -488,11 +471,9 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
     const { fields: packageFields, append: appendPackage, remove: removePackage, update: updatePackage } = useFieldArray({ control, name: "packages" });
-    const { fields: colorFields, append: appendColor, remove: removeColor, update: updateColor } = useFieldArray({ control, name: "colors" });
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
     
     const watchedPackages = useWatch({ control, name: 'packages' });
-    const watchedColors = useWatch({ control, name: 'colors' });
     const coverImageUrl = useWatch({ control, name: "coverImageUrl" });
 
     const { uncategorizedPackages, categorizedPackages, allCategories } = useMemo(() => {
@@ -632,11 +613,11 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                         <div className="relative">
                                             <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[hsl(var(--card))] to-transparent z-10 pointer-events-none" />
                                             <CardContent className="space-y-4 max-h-[700px] overflow-y-auto">
-                                                <div className="flex gap-2 items-center">
+                                                <div className="flex gap-2 items-center pt-2">
                                                     <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
                                                     <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
                                                 </div>
-                                                <Separator />
+                                                <Separator className="my-4" />
                                                 <div className="space-y-4">
                                                     {categorizedPackages.map(({ name, items }) => (
                                                         <Collapsible key={name} asChild defaultOpen>
@@ -829,64 +810,6 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            {/* Colors Card */}
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Color Variants">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [], cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4">
-                                            {colorFields.map((field, index) => (
-                                                <Card key={field.id} className="p-4 bg-muted/50">
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
-                                                    </div>
-                                                    <div className="space-y-4">
-                                                        <div className="space-y-2">
-                                                            <FormLabel>Images</FormLabel>
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
-                                                                    <div key={imgIndex} className="relative aspect-square group">
-                                                                        <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="icon"
-                                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                            onClick={() => {
-                                                                                const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
-                                                                                updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
-                                                                            }}
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </div>
-                                                                ))}
-                                                                <label htmlFor={`color-image-upload-${index}`} className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
-                                                                    <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                        const files = Array.from(e.target.files || []);
-                                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                        const currentUrls = watchedColors[index].imageUrls || [];
-                                                                        updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
-                                                                    }}/>
-                                                                    <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                                                            <GstInputPair control={control} name={`colors.${index}.cost`} label="Additional Cost" />
-                                                            <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
-                                                        </div>
-                                                    </div>
-                                                </Card>
-                                            ))}
-                                            {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
                         </div>
                     </div>
                 </form>
@@ -913,3 +836,5 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
         </FormProvider>
     );
 }
+
+    
