@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -23,9 +23,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Checkbox } from './ui/checkbox';
 
 const priceSchema = z.object({
-    cost: z.coerce.number().nullable().optional(),
-    sellPriceExclGst: z.coerce.number().nullable().optional(),
-    freightCostExclGst: z.coerce.number().nullable().optional(),
+    cost: z.number().nullable().optional(),
+    sellPriceExclGst: z.number().nullable().optional(),
 });
 
 const colorVariantFormSchema = z.object({
@@ -434,18 +433,16 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
           <div className="space-y-4">
             <div className="p-3 border rounded-md bg-background space-y-2">
               <h4 className="font-medium text-sm">HYP Pricing</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" />
                 <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" />
-                <GstInputPair control={control} name={`colors.${index}.pricing.HYP.freightCostExclGst`} label="Freight" />
               </div>
             </div>
             <div className="p-3 border rounded-md bg-background space-y-2">
               <h4 className="font-medium text-sm">PVC Pricing</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" />
                 <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" />
-                <GstInputPair control={control} name={`colors.${index}.pricing.PVC.freightCostExclGst`} label="Freight" />
               </div>
             </div>
           </div>
@@ -462,9 +459,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     
-    // This function runs when the component loads or `model` data changes.
-    // It transforms the separate `colors` and `variantPricing` arrays from Firestore
-    // into a single, unified `colors` array that the form can easily manage.
     const getSafeDefaultValues = useCallback((modelData: any): Partial<ModelFormData> => {
         const safeModel = modelData || {};
         const modelColors = safeModel.colors || [];
@@ -491,8 +485,8 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 name: color.name,
                 imageUrl: color.imageUrl ?? color.imageUrls?.[0] ?? null,
                 pricing: {
-                    HYP: { cost: hypPrice.cost ?? null, sellPriceExclGst: hypPrice.sellPriceExclGst ?? null, freightCostExclGst: hypPrice.freightCostExclGst ?? null },
-                    PVC: { cost: pvcPrice.cost ?? null, sellPriceExclGst: pvcPrice.sellPriceExclGst ?? null, freightCostExclGst: pvcPrice.freightCostExclGst ?? null },
+                    HYP: { cost: hypPrice.cost ?? null, sellPriceExclGst: hypPrice.sellPriceExclGst ?? null },
+                    PVC: { cost: pvcPrice.cost ?? null, sellPriceExclGst: pvcPrice.sellPriceExclGst ?? null },
                 }
             };
         });
@@ -531,8 +525,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     
     const coverImageUrl = useWatch({ control, name: "coverImageUrl" });
 
-    // This function runs on save. It takes the unified form data and splits it back
-    // into the `colors` and `variantPricing` arrays that Firestore expects.
     async function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
 
@@ -544,8 +536,12 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         
         const variantPricingForDb: any[] = [];
         values.colors.forEach(color => {
-            variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...color.pricing.HYP });
-            variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...color.pricing.PVC });
+            if (color.pricing.HYP) {
+                variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...color.pricing.HYP });
+            }
+            if (color.pricing.PVC) {
+                variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...color.pricing.PVC });
+            }
         });
 
         const { colors, ...restOfValues } = values;
@@ -582,20 +578,20 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         setBulkFeatures('');
     };
 
-    // This function now correctly appends a single, well-structured object to the form state.
     const handleAddColor = () => {
         appendColor({
             id: `color-${Date.now()}`,
             name: '',
             imageUrl: null,
             pricing: {
-                HYP: { cost: null, sellPriceExclGst: null, freightCostExclGst: null },
-                PVC: { cost: null, sellPriceExclGst: null, freightCostExclGst: null },
+                HYP: { cost: null, sellPriceExclGst: null },
+                PVC: { cost: null, sellPriceExclGst: null },
             }
         });
     };
 
     return (
+        <FormProvider {...form}>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="flex justify-end gap-2">
@@ -795,5 +791,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 </Collapsible>
             </form>
         </Form>
+        </FormProvider>
     );
 }
