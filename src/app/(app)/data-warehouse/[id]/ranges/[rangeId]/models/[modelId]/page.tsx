@@ -57,7 +57,7 @@ export default function ModelDetailsPage() {
   const { data: vendorById, loading: vendorIdLoading } = useDoc<Vendor>(docPath);
   
   const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
-  const vendorLoading = vendorSlugLoading || vendorIdLoading;
+  const vendorLoading = vendorSlugLoading || idLoading;
   
   // Fetch Range
   const rangeQueryBySlug = useMemo(() => {
@@ -128,13 +128,13 @@ export default function ModelDetailsPage() {
             {vendor.slug === 'highfield' ? (
                 <HighfieldModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'jeanneau' ? (
-                <JeanneauModelEditor model={model} docPath={modelDocPath} />
+                <JeanneauModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'stacer' ? (
                 <StacerModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'stabicraft' ? (
                 <StabicraftModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'surtees' ? (
-                <SurteesModelEditor model={model} docPath={modelDocPath} />
+                <SurteesModelEditor model={model} docPath={modelDocPath} vendor={vendor}/>
             ) : (
                 <Card>
                     <CardHeader>
