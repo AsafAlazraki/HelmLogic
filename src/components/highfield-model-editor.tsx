@@ -72,13 +72,14 @@ const highfieldModelSchema = z.object({
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     colors: z.array(colorVariantFormSchema).default([]),
-    material: z.string().optional(),
 });
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
 const GST_RATE = 0.10;
 
+// This helper function ensures that any 'undefined' values from react-hook-form
+// are converted to 'null', which is a valid Firestore type.
 function sanitizeDataForFirestore(data: any): any {
   if (data === undefined) {
     return null;
@@ -101,7 +102,8 @@ function sanitizeDataForFirestore(data: any): any {
   return sanitizedData;
 }
 
-
+// A reusable component to handle paired GST-inclusive and GST-exclusive price inputs.
+// It automatically calculates one value when the other is changed.
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field } = useController({ control, name, defaultValue: null });
 
@@ -460,34 +462,41 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
     
+    // This function runs when the component loads or `model` data changes.
+    // It transforms the separate `colors` and `variantPricing` arrays from Firestore
+    // into a single, unified `colors` array that the form can easily manage.
     const getSafeDefaultValues = useCallback((modelData: any): Partial<ModelFormData> => {
         const safeModel = modelData || {};
         const modelColors = safeModel.colors || [];
         const modelPricing = safeModel.variantPricing || [];
 
+        const pricingMap = new Map<string, { HYP?: any, PVC?: any }>();
+        modelPricing.forEach((p: any) => {
+            if (!p.colorId) return;
+            if (!pricingMap.has(p.colorId)) {
+                pricingMap.set(p.colorId, {});
+            }
+            const entry = pricingMap.get(p.colorId)!;
+            if (p.material === 'HYP') entry.HYP = p;
+            else if (p.material === 'PVC') entry.PVC = p;
+        });
+        
         const unifiedColors = modelColors.map((color: any) => {
-            const hypPrice = modelPricing.find((p: any) => p.colorId === color.id && p.material === 'HYP') || {};
-            const pvcPrice = modelPricing.find((p: any) => p.colorId === color.id && p.material === 'PVC') || {};
+            const prices = pricingMap.get(color.id) || {};
+            const hypPrice = prices.HYP || {};
+            const pvcPrice = prices.PVC || {};
             
             return {
                 id: color.id,
                 name: color.name,
                 imageUrl: color.imageUrl ?? color.imageUrls?.[0] ?? null,
                 pricing: {
-                    HYP: {
-                        cost: hypPrice.cost ?? null,
-                        sellPriceExclGst: hypPrice.sellPriceExclGst ?? null,
-                        freightCostExclGst: hypPrice.freightCostExclGst ?? null,
-                    },
-                    PVC: {
-                        cost: pvcPrice.cost ?? null,
-                        sellPriceExclGst: pvcPrice.sellPriceExclGst ?? null,
-                        freightCostExclGst: pvcPrice.freightCostExclGst ?? null,
-                    },
+                    HYP: { cost: hypPrice.cost ?? null, sellPriceExclGst: hypPrice.sellPriceExclGst ?? null, freightCostExclGst: hypPrice.freightCostExclGst ?? null },
+                    PVC: { cost: pvcPrice.cost ?? null, sellPriceExclGst: pvcPrice.sellPriceExclGst ?? null, freightCostExclGst: pvcPrice.freightCostExclGst ?? null },
                 }
             };
         });
-        
+
         return {
             coverImageUrl: safeModel.coverImageUrl ?? null,
             galleryImageUrls: safeModel.galleryImageUrls ?? [],
@@ -498,20 +507,19 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             standardFeatures: safeModel.standardFeatures ?? [],
             optionalFeatures: safeModel.optionalFeatures ?? [],
             colors: unifiedColors,
-            material: safeModel.material,
         };
     }, []);
     
     const form = useForm<ModelFormData>({
         resolver: zodResolver(highfieldModelSchema),
+        defaultValues: getSafeDefaultValues(model)
     });
     
-    const { reset, control, getValues, setValue } = form;
+    const { reset, control } = form;
 
     useEffect(() => {
         if (model) {
-            const defaultValues = getSafeDefaultValues(model);
-            reset(defaultValues);
+            reset(getSafeDefaultValues(model));
         }
     }, [model, reset, getSafeDefaultValues]);
 
@@ -521,8 +529,10 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
     
-    const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
+    const coverImageUrl = useWatch({ control, name: "coverImageUrl" });
 
+    // This function runs on save. It takes the unified form data and splits it back
+    // into the `colors` and `variantPricing` arrays that Firestore expects.
     async function onSubmit(values: ModelFormData) {
         setIsSubmitting(true);
 
@@ -534,22 +544,14 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         
         const variantPricingForDb: any[] = [];
         values.colors.forEach(color => {
-            variantPricingForDb.push({
-                colorId: color.id,
-                colorName: color.name,
-                material: 'HYP',
-                ...color.pricing.HYP
-            });
-            variantPricingForDb.push({
-                colorId: color.id,
-                colorName: color.name,
-                material: 'PVC',
-                ...color.pricing.PVC
-            });
+            variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...color.pricing.HYP });
+            variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...color.pricing.PVC });
         });
 
+        const { colors, ...restOfValues } = values;
+
         const finalValues = {
-            ...values,
+            ...restOfValues,
             colors: colorsForDb,
             variantPricing: variantPricingForDb
         };
@@ -560,7 +562,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         try {
             await updateDoc(modelDocRef, sanitizedValues);
             toast({ title: "Model Updated", description: "Your changes have been saved." });
-            // Re-run the transformation to keep form state in sync
             reset(getSafeDefaultValues({ ...model, ...finalValues }));
         } catch (e) {
             const error = e as any;
@@ -581,6 +582,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         setBulkFeatures('');
     };
 
+    // This function now correctly appends a single, well-structured object to the form state.
     const handleAddColor = () => {
         appendColor({
             id: `color-${Date.now()}`,
@@ -653,22 +655,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
-                        
-                        <Collapsible asChild defaultOpen>
-                            <Card>
-                                <CollapsibleCardHeader title="Color Variants">
-                                    <Button type="button" variant="outline" size="sm" onClick={handleAddColor}><PlusCircle className="mr-2 h-4 w-4" />Add Color Variant</Button>
-                                </CollapsibleCardHeader>
-                                <CollapsibleContent>
-                                    <CardContent className="space-y-4">
-                                        {colorFields.map((field, index) => (
-                                            <ColorVariantItem key={field.id} index={index} remove={removeColor} />
-                                        ))}
-                                        {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Card>
-                        </Collapsible>
                     </div>
 
                     <div className="lg:col-span-3 space-y-8">
@@ -727,9 +713,11 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                     )} />
                                         <div className="pt-6">
                                             <Collapsible>
-                                                <CollapsibleTrigger className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
-                                                    <span>Image Gallery ({galleryImageFields.length})</span>
-                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                                <CollapsibleTrigger asChild>
+                                                    <Button type="button" variant="ghost" className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
+                                                        <span>Image Gallery ({galleryImageFields.length})</span>
+                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                                    </Button>
                                                 </CollapsibleTrigger>
                                                 <CollapsibleContent className="border-b">
                                                     <div className="p-4 bg-muted/20">
@@ -741,7 +729,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                                         name={`galleryImageUrls.${index}`}
                                                                         render={({ field }) => (
                                                                             <>
-                                                                                <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
+                                                                                {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />}
                                                                                 <Button
                                                                                     type="button"
                                                                                     variant="destructive"
@@ -756,9 +744,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                                     />
                                                                 </div>
                                                             ))}
-                                                            <label htmlFor="gallery-image-upload" className={cn(
-                                                                "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary"
-                                                            )}>
+                                                            <label htmlFor="gallery-image-upload" className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
                                                                 <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
                                                                     const files = Array.from(e.target.files || []);
                                                                     const dataUris = await Promise.all(files.map(fileToDataUri));
@@ -792,7 +778,21 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         </Collapsible>
                     </div>
                 </div>
-
+                 <Collapsible asChild defaultOpen>
+                    <Card>
+                        <CollapsibleCardHeader title="Color Variants">
+                            <Button type="button" variant="outline" size="sm" onClick={handleAddColor}><PlusCircle className="mr-2 h-4 w-4" />Add Color Variant</Button>
+                        </CollapsibleCardHeader>
+                        <CollapsibleContent>
+                            <CardContent className="space-y-4">
+                                {colorFields.map((field, index) => (
+                                    <ColorVariantItem key={field.id} index={index} remove={removeColor} />
+                                ))}
+                                {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
+                            </CardContent>
+                        </CollapsibleContent>
+                    </Card>
+                </Collapsible>
             </form>
         </Form>
     );
