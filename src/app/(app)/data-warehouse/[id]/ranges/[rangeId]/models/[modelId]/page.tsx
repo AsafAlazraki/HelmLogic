@@ -21,6 +21,7 @@ interface Model {
     name: string;
     slug?: string;
     coverImageUrl?: string;
+    rangeId: string;
 }
 
 interface Range {
@@ -57,7 +58,7 @@ export default function ModelDetailsPage() {
   const { data: vendorById, loading: vendorIdLoading } = useDoc<Vendor>(docPath);
   
   const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
-  const vendorLoading = vendorSlugLoading || idLoading;
+  const vendorLoading = vendorSlugLoading || vendorIdLoading;
   
   // Fetch Range
   const rangeQueryBySlug = useMemo(() => {
@@ -134,7 +135,7 @@ export default function ModelDetailsPage() {
             ) : vendor.slug === 'stabicraft' ? (
                 <StabicraftModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'surtees' ? (
-                <SurteesModelEditor model={model} docPath={modelDocPath} vendor={vendor}/>
+                <SurteesModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : (
                 <Card>
                     <CardHeader>
