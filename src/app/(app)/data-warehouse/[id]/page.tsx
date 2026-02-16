@@ -43,6 +43,7 @@ import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 import { StacerDataStructure } from '@/components/stacer-data-structure';
 import { StabicraftDataStructure } from '@/components/stabicraft-data-structure';
+import { SurteesDataStructure } from '@/components/surtees-data-structure';
 import { SamAllenUploader } from '@/components/sam-allen-uploader';
 import { SamAllenDataViewer } from '@/components/sam-allen-data-viewer';
 import { proxyFetch } from '@/actions/proxy-fetch';
@@ -768,7 +769,8 @@ export default function VendorDetailsPage() {
                             {vendor.slug === 'jeanneau' && <JeanneauDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
                             {vendor.slug === 'stacer' && <StacerDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
                             {vendor.slug === 'stabicraft' && <StabicraftDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
-                            {vendor.slug !== 'highfield' && vendor.slug !== 'jeanneau' && vendor.slug !== 'stacer' && vendor.slug !== 'stabicraft' && (
+                            {vendor.slug === 'surtees' && <SurteesDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
+                            {vendor.slug !== 'highfield' && vendor.slug !== 'jeanneau' && vendor.slug !== 'stacer' && vendor.slug !== 'stabicraft' && vendor.slug !== 'surtees' && (
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Product Ranges</CardTitle>

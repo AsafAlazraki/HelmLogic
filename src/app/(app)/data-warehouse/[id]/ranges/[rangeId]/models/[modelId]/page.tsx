@@ -14,6 +14,7 @@ import AdminGuard from '@/components/admin-guard';
 import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
 import { StacerModelEditor } from '@/components/stacer-model-editor';
 import { StabicraftModelEditor } from '@/components/stabicraft-model-editor';
+import { SurteesModelEditor } from '@/components/surtees-model-editor';
 
 interface Model {
     id: string;
@@ -127,11 +128,13 @@ export default function ModelDetailsPage() {
             {vendor.slug === 'highfield' ? (
                 <HighfieldModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'jeanneau' ? (
-                <JeanneauModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
+                <JeanneauModelEditor model={model} docPath={modelDocPath} />
             ) : vendor.slug === 'stacer' ? (
                 <StacerModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
             ) : vendor.slug === 'stabicraft' ? (
                 <StabicraftModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
+            ) : vendor.slug === 'surtees' ? (
+                <SurteesModelEditor model={model} docPath={modelDocPath} />
             ) : (
                 <Card>
                     <CardHeader>
