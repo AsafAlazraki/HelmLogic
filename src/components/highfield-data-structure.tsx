@@ -63,7 +63,7 @@ export function HighfieldDataStructure({ vendorId, vendorSlugOrId }: { vendorId:
 
     const rangesQuery = useMemo(() => {
         if (!vendorId) return null;
-        return query(collection(firestore, `data-warehouse/${vendorId}/ranges`), orderBy('order', 'asc'));
+        return query(collection(firestore, `data-warehouse/${vendorId}/ranges`));
     }, [firestore, vendorId]);
     const { data: rawRanges, loading: rangesLoading, error } = useCollection<Range>(rangesQuery);
 
@@ -87,7 +87,7 @@ export function HighfieldDataStructure({ vendorId, vendorSlugOrId }: { vendorId:
 
     const ranges = useMemo(() => {
         if (!rawRanges) return [];
-        return rawRanges.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+        return [...rawRanges].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
     }, [rawRanges]);
 
     useEffect(() => {

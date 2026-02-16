@@ -417,14 +417,14 @@ export default function RangeDetailsPage() {
 
     const modelsQuery = useMemo(() => {
         if (!modelsCollectionPath) return null;
-        return query(collection(firestore, modelsCollectionPath), orderBy('order', 'asc'));
+        return query(collection(firestore, modelsCollectionPath));
     }, [firestore, modelsCollectionPath]);
 
     const { data: rawModels, loading: modelsLoading } = useCollection<Model>(modelsQuery);
 
     const sortedModels = useMemo(() => {
         if (!rawModels) return [];
-        return rawModels.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+        return [...rawModels].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
     }, [rawModels]);
 
     useEffect(() => {
