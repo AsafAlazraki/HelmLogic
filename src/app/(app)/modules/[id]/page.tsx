@@ -74,7 +74,7 @@ const formSchema = z.object({
   associatedVendorIds: z.array(z.string()).default([]),
 });
 
-function RangesGrid({ vendor }: { vendor: Vendor }) {
+function RangesGrid({ vendor, moduleSlugOrId }: { vendor: Vendor; moduleSlugOrId: string }) {
     const firestore = useFirestore();
     const rangesQuery = useMemo(() => {
         if (!vendor?.id) return null;
@@ -94,7 +94,7 @@ function RangesGrid({ vendor }: { vendor: Vendor }) {
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {ranges.map(range => (
-                <Link key={range.id} href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}`} className="group">
+                <Link key={range.id} href={`/modules/${moduleSlugOrId}/ranges/${range.slug || range.id}`} className="group">
                     <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:shadow-xl hover:-translate-y-1">
                         <div className="h-40 bg-secondary relative">
                             {range.imageUrl ? (
@@ -275,7 +275,7 @@ export default function ModuleDetailsPage() {
                         </CardHeader>
                         <CardContent>
                             {isBoatBrand && mainVendor ? (
-                                <RangesGrid vendor={mainVendor} />
+                                <RangesGrid vendor={mainVendor} moduleSlugOrId={slugOrId} />
                             ) : (
                                 <p className="text-muted-foreground">This module's main vendor is not a boat brand. No range configuration available.</p>
                             )}
