@@ -64,10 +64,17 @@ const packageLevelSchema = z.object({
 
 const uDekOptionsSchema = z.object({
     blackOnWinterGrey: z.string().nullable().optional(),
-    teakNBlack: z.string().nullable().optional(),
+    teakOnBlack: z.string().nullable().optional(),
     steelGreyOnWinterGrey: z.string().nullable().optional(),
     winterGreyOnSteelGrey: z.string().nullable().optional(),
 }).optional();
+
+const paintOptionSchema = z.object({
+    id: z.string(),
+    imageUrl: z.string().nullable().optional(),
+    paint: z.string().optional(),
+    graphics: z.string().optional(),
+});
 
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
@@ -89,6 +96,10 @@ const modelSchema = z.object({
         stage3: z.boolean().default(false),
     }).optional(),
     uDekOptions: uDekOptionsSchema,
+    paintAndGraphicOptions: z.object({
+        standardGloss: z.array(paintOptionSchema).default([]),
+        standardMetallic: z.array(paintOptionSchema).default([]),
+    }).optional(),
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
@@ -625,8 +636,8 @@ function ImageUploadSlot({ name, label }: { name: string; label: string; }) {
 function UDekFlooringCard() {
     const uDekOptions = [
         { key: 'blackOnWinterGrey', label: 'Black on Winter Grey' },
-        { key: 'teakNBlack', label: 'Teak n Black' },
-        { key: 'steelGreyOnWinterGrey', label: 'Steel Grey n Winter Grey' },
+        { key: 'teakOnBlack', label: 'Teak on Black' },
+        { key: 'steelGreyOnWinterGrey', label: 'Steel Grey on Winter Grey' },
         { key: 'winterGreyOnSteelGrey', label: 'Winter Grey on Steel Grey' },
     ];
 
@@ -643,6 +654,128 @@ function UDekFlooringCard() {
                                 label={option.label}
                             />
                         ))}
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
+    );
+}
+
+function PaintOptionItem({ category, index, remove }: { category: 'standardGloss' | 'standardMetallic'; index: number; remove: (index: number) => void; }) {
+    const { control } = useFormContext<ModelFormData>();
+    const namePrefix = `paintAndGraphicOptions.${category}.${index}` as const;
+    const imageUrl = useWatch({ control, name: `${namePrefix}.imageUrl` });
+
+    return (
+        <Card className="p-2 bg-background/50">
+            <div className="space-y-2">
+                <div className="relative aspect-video w-full overflow-hidden rounded-md group border">
+                    {imageUrl ? (
+                        <>
+                            <Image src={imageUrl} alt={`Paint option ${index + 1}`} fill className="object-cover" />
+                             <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                onClick={() => control.setValue(`${namePrefix}.imageUrl`, null)}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </>
+                    ) : (
+                        <label htmlFor={`${namePrefix}-upload`} className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-secondary hover:bg-muted">
+                            <Upload className="w-6 h-6 text-muted-foreground" />
+                            <FormControl>
+                                <Input
+                                    id={`${namePrefix}-upload`}
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) control.setValue(`${namePrefix}.imageUrl`, await fileToDataUri(file));
+                                    }}
+                                />
+                            </FormControl>
+                        </label>
+                    )}
+                </div>
+                 <div className="flex items-end gap-2">
+                    <div className="flex-1 space-y-1">
+                        <FormField
+                            control={control}
+                            name={`${namePrefix}.paint`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Paint</FormLabel>
+                                    <FormControl><Input {...field} value={field.value ?? ''} placeholder="e.g., Blue" /></FormControl>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={control}
+                            name={`${namePrefix}.graphics`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Graphics</FormLabel>
+                                    <FormControl><Input {...field} value={field.value ?? ''} placeholder="e.g., Red" /></FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                     <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function PaintAndGraphicOptionsCard() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields: glossFields, append: appendGloss, remove: removeGloss } = useFieldArray({ control, name: 'paintAndGraphicOptions.standardGloss' });
+    const { fields: metallicFields, append: appendMetallic, remove: removeMetallic } = useFieldArray({ control, name: 'paintAndGraphicOptions.standardMetallic' });
+
+    return (
+        <Collapsible asChild defaultOpen>
+            <Card>
+                <CollapsibleCardHeader title="Paint &amp; Graphic Options" />
+                <CollapsibleContent>
+                    <CardContent className="space-y-6">
+                        <Collapsible>
+                            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border p-4 font-semibold">
+                                <span>Standard Gloss</span>
+                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-4 pt-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    {glossFields.map((field, index) => (
+                                        <PaintOptionItem key={field.id} category="standardGloss" index={index} remove={removeGloss} />
+                                    ))}
+                                </div>
+                                <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendGloss({ id: `gloss-${Date.now()}`, imageUrl: null, paint: '', graphics: '' })}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Gloss Option
+                                </Button>
+                            </CollapsibleContent>
+                        </Collapsible>
+                        <Collapsible>
+                            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border p-4 font-semibold">
+                                <span>Standard Metallic</span>
+                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-4 pt-4">
+                               <div className="grid grid-cols-2 gap-4">
+                                    {metallicFields.map((field, index) => (
+                                        <PaintOptionItem key={field.id} category="standardMetallic" index={index} remove={removeMetallic} />
+                                    ))}
+                                </div>
+                                <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendMetallic({ id: `metallic-${Date.now()}`, imageUrl: null, paint: '', graphics: '' })}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Metallic Option
+                                </Button>
+                            </CollapsibleContent>
+                        </Collapsible>
                     </CardContent>
                 </CollapsibleContent>
             </Card>
@@ -703,7 +836,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 sellPriceExclGst: p.sellPriceExclGst ?? null,
             })),
             colorStages: data.colorStages ?? { stage0: false, stage1: false, stage2: false, stage3: false },
-            uDekOptions: data.uDekOptions ?? { blackOnWinterGrey: null, teakNBlack: null, steelGreyOnWinterGrey: null, winterGreyOnSteelGrey: null },
+            uDekOptions: data.uDekOptions ?? { blackOnWinterGrey: null, teakOnBlack: null, steelGreyOnWinterGrey: null, winterGreyOnSteelGrey: null },
+            paintAndGraphicOptions: data.paintAndGraphicOptions ?? { standardGloss: [], standardMetallic: [] },
         };
     };
 
@@ -954,7 +1088,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications" />
                                     <CollapsibleContent>
@@ -1005,13 +1139,14 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                             <UDekFlooringCard />
+                            <PaintAndGraphicOptionsCard />
                         </div>
                         
                         {/* --- FULL WIDTH PACKAGE SECTION --- */}
                         <div className="lg:col-span-7 space-y-8">
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Optional Features & Packages</CardTitle>
+                                    <CardTitle>Optional Features &amp; Packages</CardTitle>
                                     <CardDescription>
                                         Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
                                     </CardDescription>
@@ -1023,7 +1158,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </div>
                                     <div className="space-y-4">
                                         {categorizedFeatures.map(({ name, items }) => (
-                                            <Collapsible key={name} defaultOpen>
+                                            <Collapsible key={name}>
                                                 <div className="flex items-center justify-between border-b px-2 py-2">
                                                     <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
                                                         <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
@@ -1098,7 +1233,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 </CollapsibleContent>
                                             </Collapsible>
                                         ))}
-                                        <Collapsible defaultOpen>
+                                        <Collapsible>
                                             <div className="flex items-center justify-between border-b px-2 py-2">
                                                 <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
                                                     <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />

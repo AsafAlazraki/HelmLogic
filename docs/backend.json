@@ -454,7 +454,7 @@
             "blackOnWinterGrey": {
               "type": "string"
             },
-            "teakNBlack": {
+            "teakOnBlack": {
               "type": "string"
             },
             "steelGreyOnWinterGrey": {
@@ -462,6 +462,58 @@
             },
             "winterGreyOnSteelGrey": {
               "type": "string"
+            }
+          }
+        },
+        "paintAndGraphicOptions": {
+          "type": "object",
+          "description": "Paint and graphic options for a Stabicraft model.",
+          "properties": {
+            "standardGloss": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "standardMetallic": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
             }
           }
         },
