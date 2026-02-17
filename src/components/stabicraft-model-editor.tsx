@@ -662,7 +662,7 @@ function UDekFlooringCard() {
 }
 
 function PaintOptionItem({ category, index, remove }: { category: 'standardGloss' | 'standardMetallic'; index: number; remove: (index: number) => void; }) {
-    const { control } = useFormContext<ModelFormData>();
+    const { control, setValue } = useFormContext<ModelFormData>();
     const namePrefix = `paintAndGraphicOptions.${category}.${index}` as const;
     const imageUrl = useWatch({ control, name: `${namePrefix}.imageUrl` });
 
@@ -678,7 +678,7 @@ function PaintOptionItem({ category, index, remove }: { category: 'standardGloss
                                 variant="destructive"
                                 size="icon"
                                 className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                onClick={() => control.setValue(`${namePrefix}.imageUrl`, null)}
+                                onClick={() => setValue(`${namePrefix}.imageUrl`, null)}
                             >
                                 <X className="h-4 w-4" />
                             </Button>
@@ -694,7 +694,7 @@ function PaintOptionItem({ category, index, remove }: { category: 'standardGloss
                                     accept="image/*"
                                     onChange={async (e) => {
                                         const file = e.target.files?.[0];
-                                        if (file) control.setValue(`${namePrefix}.imageUrl`, await fileToDataUri(file));
+                                        if (file) setValue(`${namePrefix}.imageUrl`, await fileToDataUri(file));
                                     }}
                                 />
                             </FormControl>
