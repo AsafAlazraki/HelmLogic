@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -27,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { createSlug, cn } from '@/lib/utils';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
+import { InventoryList } from '@/components/inventory-list';
 
 interface Vendor {
     id: string;
@@ -308,7 +310,7 @@ export default function ModuleDetailsPage() {
 
     useEffect(() => {
         if (subscribedOrgs.length > 0) {
-            setTempSubscribedOrgs(subscribedOrgs.map(o => o.id));
+            setTempSubscribedOrgIds(subscribedOrgs.map(o => o.id));
         }
     }, [subscribedOrgs]);
 
@@ -539,7 +541,15 @@ export default function ModuleDetailsPage() {
                                                     <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} In Stock</CardTitle>
                                                 </div>
                                             </CardHeader>
-                                            <CardContent><p className="text-muted-foreground text-xs">Shared inventory from your parent organisation.</p></CardContent>
+                                            <CardContent>
+                                                <InventoryList 
+                                                    organisation={parentOrg as any} 
+                                                    subDealers={[]} 
+                                                    parentOrg={null} 
+                                                    moduleId={moduleData.id}
+                                                    filterOrgId="local"
+                                                />
+                                            </CardContent>
                                         </Card>
                                         <Card className="border-accent/30 bg-accent/5">
                                             <CardHeader className="pb-2">
@@ -571,13 +581,15 @@ export default function ModuleDetailsPage() {
                                         )}
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="p-4 border-2 border-dashed rounded-md flex items-center justify-center min-h-[100px]">
-                                            <p className="text-muted-foreground text-sm">
-                                                {inStockFilter === 'all' 
-                                                    ? `Aggregated stock for ${dashboardOrg?.name} and its sub-dealers.` 
-                                                    : `Filtering stock for: ${inStockFilter === 'local' ? dashboardOrg?.name : dashboardSubDealers.find(sd => sd.id === inStockFilter)?.name}`}
-                                            </p>
-                                        </div>
+                                        {dashboardOrg && (
+                                            <InventoryList 
+                                                organisation={dashboardOrg as any}
+                                                subDealers={dashboardSubDealers as any[]}
+                                                parentOrg={parentOrg as any}
+                                                moduleId={moduleData.id}
+                                                filterOrgId={inStockFilter}
+                                            />
+                                        )}
                                     </CardContent>
                                 </Card>
                                 <Card><CardHeader><CardTitle>On Order</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Orders for {currentContextLabel}</p></CardContent></Card>
@@ -681,7 +693,7 @@ export default function ModuleDetailsPage() {
                                                         <div className="font-medium text-sm">{org.name}</div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <Button variant="ghost" size="icon" title="View Module As" onClick={() => { setViewContextOrgId(org.id); setView('ranges'); }}><Eye className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" title="View Module As" onClick={() => { setViewContextOrgId(org.id); setView('dashboard'); }}><Eye className="h-4 w-4" /></Button>
                                                         <Button variant="ghost" size="icon" onClick={() => setSelectedOrgId(org.id)}><Settings2 className="h-4 w-4" /></Button>
                                                     </div>
                                                 </div>

@@ -134,23 +134,6 @@
           "items": {
             "type": "string"
           }
-        },
-        "moduleAssociatedVendorAccess": {
-          "type": "object",
-          "description": "A map of module IDs to a list of allowed associated vendor IDs for that organisation.",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "dealerFitCategories": {
-          "type": "array",
-          "description": "A list of master dealer fit category IDs assigned to this organisation.",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": [
@@ -158,57 +141,28 @@
         "slug"
       ]
     },
-    "Quote": {
-      "title": "Quote",
-      "description": "Represents a sales quote for a boat package.",
+    "InventoryItem": {
+      "title": "Inventory Item",
+      "description": "An item in stock, like a boat or motor.",
       "type": "object",
       "properties": {
-        "quoteNumber": {
+        "name": {
           "type": "string",
-          "description": "A unique identifier for the quote."
+          "description": "The name or model of the stock item."
         },
-        "status": {
+        "description": {
           "type": "string",
-          "enum": [
-            "Draft",
-            "Sent",
-            "Accepted",
-            "Declined"
-          ],
-          "description": "The current status of the quote."
-        },
-        "customerName": {
-          "type": "string"
-        },
-        "createdById": {
-          "type": "string",
-          "description": "The ID of the user who created the quote."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
+          "description": "A brief description of the item."
         },
         "organisationId": {
           "type": "string",
-          "description": "The ID of the organisation this quote belongs to."
+          "description": "The ID of the organisation that currently owns this stock item."
         },
-        "modelConfiguration": {
-          "type": "object",
-          "description": "A snapshot of the configured model and options at the time of quoting.",
-          "additionalProperties": true
-        },
-        "pricingSummary": {
-          "type": "object",
-          "description": "A summary of the costs and final price.",
-          "additionalProperties": true
-        }
+        "moduleId": { "type": "string", "description": "The module this stock item belongs to." },
+        "stockNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["Available", "Sold", "Reserved"] }
       },
-      "required": [
-        "quoteNumber",
-        "status",
-        "createdById",
-        "organisationId"
-      ]
+      "required": ["name", "organisationId", "moduleId"]
     },
     "Vendor": {
       "title": "Vendor",
@@ -786,55 +740,6 @@
         "slug",
         "mainVendorId"
       ]
-    },
-    "DealerFitCategory": {
-      "title": "Dealer Fit Category",
-      "description": "A master category for dealer-fitted options, managed by admins.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the category (e.g., 'Electronics Pack')."
-        }
-      },
-      "required": ["name"]
-    },
-    "DealerFitSelection": {
-      "title": "Dealer Fit Selection",
-      "description": "An item or package of items selected by an organisation for a specific dealer fit category.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The display name for the selection (e.g., 'Garmin Basic' or 'Trolling Motor')."
-        },
-        "categoryId": {
-          "type": "string",
-          "description": "The ID of the master DealerFitCategory this selection belongs to."
-        },
-        "type": {
-          "type": "string",
-          "enum": ["item", "package"],
-          "description": "Whether this is a single item or a package of multiple items."
-        },
-        "items": {
-          "type": "array",
-          "description": "The list of items included in this selection.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "vendorId": { "type": "string" },
-              "rowId": { "type": "string" },
-              "data": { 
-                "type": "object",
-                "additionalProperties": true
-              }
-            },
-            "required": ["vendorId", "rowId", "data"]
-          }
-        }
-      },
-      "required": ["name", "categoryId", "type", "items"]
     }
   },
   "auth": {
@@ -855,17 +760,11 @@
       },
       "description": "Organisation documents, keyed by a unique ID."
     },
-    "/organisations/{organisationId}/quotes/{quoteId}": {
+    "/inventory/{itemId}": {
       "schema": {
-        "$ref": "#/backend/entities/Quote"
+        "$ref": "#/backend/entities/InventoryItem"
       },
-      "description": "Quotes created by an organisation."
-    },
-    "/organisations/{organisationId}/dealerFitSelections/{selectionId}": {
-      "schema": {
-        "$ref": "#/backend/entities/DealerFitSelection"
-      },
-      "description": "Dealer fit items and packages selected by an organisation."
+      "description": "Inventory items across the network."
     },
     "/data-warehouse/{vendorId}": {
       "schema": {
@@ -908,12 +807,6 @@
         "$ref": "#/backend/entities/Module"
       },
       "description": "Application modules."
-    },
-    "/dealerFitCategories/{categoryId}": {
-      "schema": {
-        "$ref": "#/backend/entities/DealerFitCategory"
-      },
-      "description": "Master list of categories for dealer-fitted options."
     }
   }
 }
