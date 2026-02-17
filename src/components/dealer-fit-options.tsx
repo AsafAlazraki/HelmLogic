@@ -1,122 +1,170 @@
 
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { JsonDataVisualizer } from './json-data-visualizer';
+import { useUser } from '@/firebase/auth/use-user';
+import { useFirestore } from '@/firebase/provider';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Loader2, AlertCircle, PlusCircle } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Button } from './ui/button';
+import { MasterDataBrowserDialog } from './master-data-browser-dialog';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { toast } from '@/hooks/use-toast';
 
-interface Vendor {
-    id: string;
-    name: string;
-    vendorType: string;
-    slug?: string;
+interface DealerFitCategory {
+  id: string;
+  name: string;
 }
 
 interface Organisation {
-    id: string;
-    moduleAssociatedVendorAccess?: Record<string, string[]>;
+  id: string;
+  dealerFitCategories?: string[];
+  dataWarehouseSubscriptions?: string[];
 }
 
-function VendorDataSet({ vendorId, vendorSlug }: { vendorId: string, vendorSlug?: string }) {
-    // Standardize collection name for Sam Allen vs others
-    const collectionName = vendorSlug === 'sam-allen' ? 'masterPriceList' : 'masterDataSet';
-    const { data, loading } = useCollection(`data-warehouse/${vendorId}/${collectionName}`);
-
-    if (loading) {
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        );
-    }
-    
-    return <JsonDataVisualizer data={data} />;
+interface DealerFitSelection {
+  id: string;
+  name: string;
+  type: 'item' | 'package';
+  categoryId: string;
+  items: {
+    vendorId: string;
+    rowId: string;
+    data: any;
+  }[];
 }
 
-export function DealerFitOptions({ module, organisationId }: { module: any, organisationId?: string }) {
-    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
-    const { data: organisation, loading: orgLoading } = useDoc<Organisation>(organisationId ? `/organisations/${organisationId}` : null);
+export function DealerFitOptions({ module, organisationId }: { module: any; organisationId?: string }) {
+  const { user, loading: userLoading } = useUser();
+  const firestore = useFirestore();
+  const { data: organisation, loading: orgLoading } = useDoc<Organisation>(organisationId ? `/organisations/${organisationId}` : null);
+  const { data: allCategories, loading: categoriesLoading } = useCollection<DealerFitCategory>('dealerFitCategories');
+  const { data: selections, loading: selectionsLoading } = useCollection<DealerFitSelection>(organisationId ? `/organisations/${organisationId}/dealerFitSelections` : null);
 
-    const dealerFitVendors = useMemo(() => {
-        if (!allVendors || !module || !module.associatedVendorIds) return [];
+  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
-        // 1. Identify all non-motor-brand associated vendors for this module
-        const potentialVendors = allVendors.filter(v =>
-            module.associatedVendorIds.includes(v.id) &&
-            v.vendorType !== 'Motor Brand'
-        );
+  const assignedCategories = useMemo(() => {
+    if (!allCategories || !organisation?.dealerFitCategories) return [];
+    return allCategories.filter(cat => organisation.dealerFitCategories?.includes(cat.id));
+  }, [allCategories, organisation]);
 
-        // 2. If an organisationId is provided, filter based on their moduleAssociatedVendorAccess
-        // Helmlogic Admins (no organisationId passed or no org found) see everything.
-        if (organisationId && organisation) {
-            const allowedVendorIds = organisation.moduleAssociatedVendorAccess?.[module.id] || [];
-            
-            return potentialVendors.filter(v => 
-                // Organizations always see the main vendor if it's in the list
-                v.id === module.mainVendorId || 
-                // Or if it's explicitly allowed
-                allowedVendorIds.includes(v.id)
-            );
-        }
+  const selectionsByCategory = useMemo(() => {
+    if (!selections) return new Map();
+    return selections.reduce((acc, selection) => {
+      if (!acc.has(selection.categoryId)) {
+        acc.set(selection.categoryId, []);
+      }
+      acc.get(selection.categoryId)!.push(selection);
+      return acc;
+    }, new Map<string, DealerFitSelection[]>());
+  }, [selections]);
 
-        return potentialVendors;
-    }, [allVendors, module, organisation, organisationId]);
-    
-    if (vendorsLoading || orgLoading) {
-        return (
-            <Card>
-                <CardContent className="flex h-64 items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                </CardContent>
-            </Card>
-        );
+  const handleOpenBrowser = (categoryId: string) => {
+    setActiveCategoryId(categoryId);
+    setIsBrowserOpen(true);
+  };
+  
+  const handleSaveSelection = async (selectionData: Omit<DealerFitSelection, 'id'>) => {
+    if (!organisationId) return;
+    try {
+        await addDoc(collection(firestore, `organisations/${organisationId}/dealerFitSelections`), {
+            ...selectionData,
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: 'Selection Added', description: `${selectionData.name} has been added.`});
+        setIsBrowserOpen(false);
+    } catch (error) {
+        console.error("Failed to save selection: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save selection.'});
     }
+  };
 
-    if (dealerFitVendors.length === 0) {
-        return (
-            <Card>
-                <CardContent className="flex h-64 flex-col items-center justify-center text-center">
-                    <AlertCircle className="h-10 w-10 text-muted-foreground" />
-                    <p className="mt-4 font-semibold">No Dealer Fit Vendors Available</p>
-                    <p className="text-sm text-muted-foreground">
-                        {organisationId 
-                            ? "No additional associated vendors have been enabled for your organisation in this module." 
-                            : "Associate non-motor-brand vendors with this module in the module settings."
-                        }
-                    </p>
-                </CardContent>
-            </Card>
-        );
-    }
+  const loading = userLoading || orgLoading || categoriesLoading || selectionsLoading;
 
+  if (loading) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Dealer Fit Options</CardTitle>
-                <CardDescription>
-                    Browse data from associated vendors to add as dealer-fitted options.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Tabs defaultValue={dealerFitVendors[0].id} className="w-full">
-                    <TabsList className="flex-wrap h-auto">
-                        {dealerFitVendors.map(vendor => (
-                            <TabsTrigger key={vendor.id} value={vendor.id} className="min-w-[100px]">
-                                {vendor.name}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                    {dealerFitVendors.map(vendor => (
-                        <TabsContent key={vendor.id} value={vendor.id} className="mt-4">
-                            <VendorDataSet vendorId={vendor.id} vendorSlug={vendor.slug} />
-                        </TabsContent>
-                    ))}
-                </Tabs>
-            </CardContent>
-        </Card>
+      <Card>
+        <CardContent className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </CardContent>
+      </Card>
     );
+  }
+
+  if (assignedCategories.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex h-64 flex-col items-center justify-center text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground" />
+          <p className="mt-4 font-semibold">No Dealer Fit Categories Assigned</p>
+          <p className="text-sm text-muted-foreground">
+            An admin needs to assign dealer fit categories to this organisation.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        {assignedCategories.map(category => {
+          const categorySelections = selectionsByCategory.get(category.id) || [];
+          return (
+            <Card key={category.id}>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>{category.name}</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => handleOpenBrowser(category.id)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Selection
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {categorySelections.length > 0 ? (
+                  <Accordion type="multiple" className="w-full space-y-2">
+                    {categorySelections.map(selection => (
+                       <AccordionItem value={selection.id} key={selection.id} className="border-b-0">
+                          <Card className="bg-muted/50">
+                            <AccordionTrigger className="p-4 text-base font-semibold">
+                                {selection.name} {selection.type === 'package' && `(${selection.items.length} items)`}
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 pb-4">
+                                <div className="space-y-2">
+                                    {selection.items.map((item, index) => (
+                                        <div key={index} className="p-2 border rounded-md bg-background text-sm">
+                                            <p className="font-medium">{item.data.Description || item.data.name || 'Unnamed Item'}</p>
+                                            <p className="text-xs text-muted-foreground">Vendor: {item.vendorId}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </AccordionContent>
+                          </Card>
+                       </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-lg">
+                    No selections added to this category yet.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+       {activeCategoryId && organisation && (
+        <MasterDataBrowserDialog
+          isOpen={isBrowserOpen}
+          onClose={() => setIsBrowserOpen(false)}
+          organisation={organisation}
+          categoryId={activeCategoryId}
+          onSave={handleSaveSelection}
+        />
+      )}
+    </>
+  );
 }

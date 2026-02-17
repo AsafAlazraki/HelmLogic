@@ -144,6 +144,13 @@
               "type": "string"
             }
           }
+        },
+        "dealerFitCategories": {
+          "type": "array",
+          "description": "A list of master dealer fit category IDs assigned to this organisation.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -779,6 +786,55 @@
         "slug",
         "mainVendorId"
       ]
+    },
+    "DealerFitCategory": {
+      "title": "Dealer Fit Category",
+      "description": "A master category for dealer-fitted options, managed by admins.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the category (e.g., 'Electronics Pack')."
+        }
+      },
+      "required": ["name"]
+    },
+    "DealerFitSelection": {
+      "title": "Dealer Fit Selection",
+      "description": "An item or package of items selected by an organisation for a specific dealer fit category.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The display name for the selection (e.g., 'Garmin Basic' or 'Trolling Motor')."
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "The ID of the master DealerFitCategory this selection belongs to."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["item", "package"],
+          "description": "Whether this is a single item or a package of multiple items."
+        },
+        "items": {
+          "type": "array",
+          "description": "The list of items included in this selection.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "vendorId": { "type": "string" },
+              "rowId": { "type": "string" },
+              "data": { 
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": ["vendorId", "rowId", "data"]
+          }
+        }
+      },
+      "required": ["name", "categoryId", "type", "items"]
     }
   },
   "auth": {
@@ -804,6 +860,12 @@
         "$ref": "#/backend/entities/Quote"
       },
       "description": "Quotes created by an organisation."
+    },
+    "/organisations/{organisationId}/dealerFitSelections/{selectionId}": {
+      "schema": {
+        "$ref": "#/backend/entities/DealerFitSelection"
+      },
+      "description": "Dealer fit items and packages selected by an organisation."
     },
     "/data-warehouse/{vendorId}": {
       "schema": {
@@ -846,6 +908,12 @@
         "$ref": "#/backend/entities/Module"
       },
       "description": "Application modules."
+    },
+    "/dealerFitCategories/{categoryId}": {
+      "schema": {
+        "$ref": "#/backend/entities/DealerFitCategory"
+      },
+      "description": "Master list of categories for dealer-fitted options."
     }
   }
 }

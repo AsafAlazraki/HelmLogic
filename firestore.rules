@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -44,9 +45,6 @@ service cloud.firestore {
     }
 
     match /organisations/{organisationId} {
-      // Any authenticated user can read organisation data.
-      // This allows non-admins to view organisation pages by slug.
-      // Writes are restricted to admins or members of that specific organisation.
       allow read: if request.auth != null;
       allow create: if isHelmLogicAdmin() || 
                       (request.auth != null && 
@@ -56,6 +54,10 @@ service cloud.firestore {
       match /quotes/{quoteId} {
         allow read: if isMemberOfOrganisation(organisationId) || isParentOfOrganisation(organisationId) || isHelmLogicAdmin();
         allow create, update, delete: if isMemberOfOrganisation(organisationId) || isHelmLogicAdmin();
+      }
+
+      match /dealerFitSelections/{selectionId} {
+        allow read, write: if isMemberOfOrganisation(organisationId) || isHelmLogicAdmin();
       }
     }
 
@@ -92,6 +94,11 @@ service cloud.firestore {
     match /modules/{moduleId} {
       allow read: if request.auth != null;
       allow write: if isHelmLogicAdmin();
+    }
+
+    match /dealerFitCategories/{categoryId} {
+       allow read: if request.auth != null;
+       allow write: if isHelmLogicAdmin();
     }
 
     match /{document=**} {
