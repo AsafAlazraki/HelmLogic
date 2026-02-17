@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
 import { Loader2, Save } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
@@ -39,6 +39,16 @@ interface Vendor {
     logoUrl?: string;
 }
 
+interface Module {
+    id: string;
+    name: string;
+    slug?: string;
+    mainVendorId: string;
+    associatedVendorIds?: string[];
+    logoUrl?: string;
+}
+
+
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Module name is required.' }),
   mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
@@ -53,7 +63,17 @@ export default function ModuleDetailsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
 
-    const { data: moduleData, loading: moduleLoading } = useDoc(`/modules/${slugOrId}`);
+    const moduleQueryBySlug = useMemo(() => {
+        if (!slugOrId) return null;
+        return query(collection(firestore, 'modules'), where('slug', '==', slugOrId));
+    }, [firestore, slugOrId]);
+
+    const { data: modulesBySlug, loading: slugLoading } = useCollection<Module>(moduleQueryBySlug);
+    const { data: moduleById, loading: idLoading } = useDoc<Module>(slugOrId ? `/modules/${slugOrId}`: null);
+    
+    const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
+    const moduleLoading = slugLoading || idLoading;
+
     const { data: vendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
 
     const form = useForm<z.infer<typeof formSchema>>({
