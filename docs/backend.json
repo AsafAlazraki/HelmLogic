@@ -514,6 +514,29 @@
                   "id"
                 ]
               }
+            },
+            "powderCoating": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
             }
           }
         },
@@ -625,6 +648,25 @@
             "required": [
               "colorId",
               "material"
+            ]
+          }
+        },
+        "documents": {
+          "type": "array",
+          "description": "A list of documents associated with the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "url"
             ]
           }
         }

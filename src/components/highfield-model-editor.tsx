@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, useController, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useFirestore, useStorage } from '@/firebase/provider';
-import { uploadFileToStorage } from '@/firebase/storage';
+import { uploadFileWithProgress } from '@/firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,6 +21,9 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from './ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from './ui/progress';
+
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -70,6 +73,12 @@ const optionalFeatureSchema = z.object({
     sellPriceExclGst: z.coerce.number().min(0).default(0),
 });
 
+const documentSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Document name is required"),
+  url: z.string().min(1, "Document URL is required"),
+});
+
 const highfieldModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
@@ -80,6 +89,7 @@ const highfieldModelSchema = z.object({
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     colors: z.array(colorVariantFormSchema).default([]),
+    documents: z.array(documentSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
@@ -250,7 +260,7 @@ function OptionalFeatureItem({ form, index, remove, model }: { form: any; index:
                                                     setIsUploading(true);
                                                     try {
                                                         const path = `data-warehouse/models/${model.id}/features/${index}-${Date.now()}-${file.name}`;
-                                                        const url = await uploadFileToStorage(storage, file, path);
+                                                        const url = await uploadFileWithProgress(storage, file, path, () => {});
                                                         field.onChange(url);
                                                     } catch (err) {
                                                         console.error("Upload failed", err);
@@ -441,7 +451,7 @@ function ColorVariantItem({ index, remove, model }: { index: number; remove: (in
                                 setIsUploading(true);
                                 try {
                                     const path = `data-warehouse/models/${model.id}/colors/${index}-${Date.now()}-${file.name}`;
-                                    const url = await uploadFileToStorage(storage, file, path);
+                                    const url = await uploadFileWithProgress(storage, file, path, () => {});
                                     field.onChange(url);
                                 } catch (err) {
                                     console.error("Upload failed", err);
@@ -499,6 +509,117 @@ function ColorVariantItem({ index, remove, model }: { index: number; remove: (in
   );
 }
 
+function DocumentsCard({ model }: { model: any }) {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "documents",
+    });
+    const storage = useStorage();
+    const { toast } = useToast();
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [newDocName, setNewDocName] = useState('');
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleUpload = async () => {
+        if (!fileToUpload || !newDocName.trim() || !model) return;
+
+        setIsUploading(true);
+        setUploadProgress(0);
+        try {
+            const path = `data-warehouse/models/${model.id}/documents/${Date.now()}-${fileToUpload.name}`;
+            const downloadURL = await uploadFileWithProgress(storage, fileToUpload, path, setUploadProgress);
+            
+            append({
+                id: `doc-${Date.now()}`,
+                name: newDocName,
+                url: downloadURL,
+            });
+
+            setNewDocName('');
+            setFileToUpload(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            toast({ title: 'Document Uploaded' });
+
+        } catch (err) {
+            console.error("Upload failed", err);
+            toast({ variant: 'destructive', title: 'Upload Failed' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Documents</CardTitle>
+                <CardDescription>Upload and manage model-specific documents.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
+                    <h4 className="font-medium text-sm">Upload New Document</h4>
+                    <div className="space-y-2">
+                        <Input 
+                            placeholder="Document Name" 
+                            value={newDocName} 
+                            onChange={(e) => setNewDocName(e.target.value)} 
+                            disabled={isUploading}
+                        />
+                        <Input 
+                            type="file" 
+                            ref={fileInputRef}
+                            onChange={(e) => setFileToUpload(e.target.files?.[0] || null)}
+                            disabled={isUploading}
+                        />
+                    </div>
+                     {isUploading && <Progress value={uploadProgress} className="w-full h-2" />}
+                    <Button onClick={handleUpload} disabled={isUploading || !fileToUpload || !newDocName.trim()}>
+                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                        Upload
+                    </Button>
+                </div>
+
+                <div className="space-y-2">
+                     <h4 className="font-medium text-sm">Uploaded Documents</h4>
+                     {fields.length > 0 ? (
+                        <div className="border rounded-md">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {fields.map((field, index) => (
+                                        <TableRow key={field.id}>
+                                            <TableCell>
+                                                <a href={(field as any).url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                                                    {(field as any).name}
+                                                </a>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                     ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded.</p>
+                     )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
@@ -569,6 +690,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             standardFeatures: safeModel.standardFeatures ?? [],
             optionalFeatures: safeModel.optionalFeatures ?? [],
             colors: unifiedColors,
+            documents: (safeModel.documents || []).map((d: any) => ({ ...d, id: d.id || `doc-${Math.random()}` })),
         };
     }, []);
     
@@ -779,7 +901,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                                         setIsCoverUploading(true);
                                                                         try {
                                                                             const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
-                                                                            const url = await uploadFileToStorage(storage, file, path);
+                                                                            const url = await uploadFileWithProgress(storage, file, path, () => {});
                                                                             field.onChange(url);
                                                                         } catch (err) {
                                                                             console.error("Upload failed", err);
@@ -837,7 +959,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                                         try {
                                                                             for (const file of files) {
                                                                                 const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
-                                                                                const url = await uploadFileToStorage(storage, file, path);
+                                                                                const url = await uploadFileWithProgress(storage, file, path, () => {});
                                                                                 appendGalleryImage(url);
                                                                             }
                                                                         } catch (err) {
@@ -874,6 +996,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
+                        <DocumentsCard model={model} />
                     </div>
                 </div>
                  <Collapsible asChild defaultOpen>

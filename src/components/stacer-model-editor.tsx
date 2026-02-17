@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useFirestore, useStorage } from '@/firebase/provider';
-import { uploadFileToStorage } from '@/firebase/storage';
+import { uploadFileWithProgress } from '@/firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from './ui/checkbox';
+import { Progress } from './ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -56,6 +58,12 @@ const optionalFeatureSchema = z.object({
     sellPriceExclGst: z.number().nullable().optional(),
 });
 
+const documentSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Document name is required"),
+  url: z.string().min(1, "Document URL is required"),
+});
+
 const stacerModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
@@ -69,6 +77,7 @@ const stacerModelSchema = z.object({
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
+    documents: z.array(documentSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof stacerModelSchema>;
@@ -234,7 +243,7 @@ function OptionalFeatureItem({ form, index, remove, model }: { form: any; index:
                                                     setIsUploading(true);
                                                     try {
                                                         const path = `data-warehouse/models/${model.id}/features/${index}-${Date.now()}-${file.name}`;
-                                                        const url = await uploadFileToStorage(storage, file, path);
+                                                        const url = await uploadFileWithProgress(storage, file, path, () => {});
                                                         field.onChange(url);
                                                     } catch (err) {
                                                         console.error("Upload failed", err);
@@ -276,6 +285,14 @@ function MotorConfigurationsCard({ control }: { control: any }) {
         control,
         name: "specifications.motorConfigurations",
     });
+    
+    const motorConfigOptions = [
+        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
+        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
+        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
+        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
+        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
+    ];
 
     const handleConfigChange = (checked: boolean, option: typeof motorConfigOptions[0]) => {
         if (checked) {
@@ -425,7 +442,7 @@ function ColorVariantItem({ index, remove, update, model }: { index: number; rem
                                     try {
                                         const uploadPromises = files.map(file => {
                                             const path = `data-warehouse/models/${model.id}/colors/${index}-${Date.now()}-${file.name}`;
-                                            return uploadFileToStorage(storage, file, path);
+                                            return uploadFileWithProgress(storage, file, path, () => {});
                                         });
                                         const newUrls = await Promise.all(uploadPromises);
                                         const currentUrls = watchedColor.imageUrls || [];
@@ -449,6 +466,119 @@ function ColorVariantItem({ index, remove, update, model }: { index: number; rem
         </Card>
     );
 }
+
+function DocumentsCard({ model }: { model: any }) {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "documents",
+    });
+    const storage = useStorage();
+    const { toast } = useToast();
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [newDocName, setNewDocName] = useState('');
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleUpload = async () => {
+        if (!fileToUpload || !newDocName.trim() || !model) return;
+
+        setIsUploading(true);
+        setUploadProgress(0);
+        try {
+            const path = `data-warehouse/models/${model.id}/documents/${Date.now()}-${fileToUpload.name}`;
+            const downloadURL = await uploadFileWithProgress(storage, fileToUpload, path, setUploadProgress);
+            
+            append({
+                id: `doc-${Date.now()}`,
+                name: newDocName,
+                url: downloadURL,
+            });
+
+            setNewDocName('');
+            setFileToUpload(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            toast({ title: 'Document Uploaded' });
+
+        } catch (err) {
+            console.error("Upload failed", err);
+            toast({ variant: 'destructive', title: 'Upload Failed' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Documents</CardTitle>
+                <CardDescription>Upload and manage model-specific documents.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
+                    <h4 className="font-medium text-sm">Upload New Document</h4>
+                    <div className="space-y-2">
+                        <Input 
+                            placeholder="Document Name" 
+                            value={newDocName} 
+                            onChange={(e) => setNewDocName(e.target.value)} 
+                            disabled={isUploading}
+                        />
+                        <Input 
+                            type="file" 
+                            ref={fileInputRef}
+                            onChange={(e) => setFileToUpload(e.target.files?.[0] || null)}
+                            disabled={isUploading}
+                        />
+                    </div>
+                     {isUploading && <Progress value={uploadProgress} className="w-full h-2" />}
+                    <Button onClick={handleUpload} disabled={isUploading || !fileToUpload || !newDocName.trim()}>
+                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                        Upload
+                    </Button>
+                </div>
+
+                <div className="space-y-2">
+                     <h4 className="font-medium text-sm">Uploaded Documents</h4>
+                     {fields.length > 0 ? (
+                        <div className="border rounded-md">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {fields.map((field, index) => (
+                                        <TableRow key={field.id}>
+                                            <TableCell>
+                                                <a href={(field as any).url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                                                    {(field as any).name}
+                                                </a>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                     ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded.</p>
+                     )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 export function StacerModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
@@ -486,6 +616,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                 cost: c.cost ?? null,
                 sellPriceExclGst: c.sellPriceExclGst ?? null,
             })),
+            documents: (data.documents || []).map((d: any) => ({ ...d, id: d.id || `doc-${Math.random()}` })),
         };
     }, []);
 
@@ -673,7 +804,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                                                                         setIsCoverUploading(true);
                                                                         try {
                                                                             const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
-                                                                            const url = await uploadFileToStorage(storage, file, path);
+                                                                            const url = await uploadFileWithProgress(storage, file, path, () => {});
                                                                             field.onChange(url);
                                                                         } catch (err) {
                                                                             console.error("Upload failed", err);
@@ -706,7 +837,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                                                                         name={`galleryImageUrls.${index}`}
                                                                         render={({ field }) => (
                                                                             <>
-                                                                                <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" sizes="(max-width: 768px) 33vw, 15vw" />
+                                                                                {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" sizes="(max-width: 768px) 33vw, 15vw" />}
                                                                                 <Button
                                                                                     type="button"
                                                                                     variant="destructive"
@@ -732,7 +863,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                                                                         try {
                                                                             for (const file of files) {
                                                                                 const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
-                                                                                const url = await uploadFileToStorage(storage, file, path);
+                                                                                const url = await uploadFileWithProgress(storage, file, path, () => {});
                                                                                 appendGalleryImage(url);
                                                                             }
                                                                         } catch (err) {
@@ -769,6 +900,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
+                         <DocumentsCard model={model} />
                     </div>
                 </div>
             </form>

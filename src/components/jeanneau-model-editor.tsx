@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useFirestore, useStorage } from '@/firebase/provider';
-import { uploadFileToStorage } from '@/firebase/storage';
+import { uploadFileWithProgress } from '@/firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,10 +20,12 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
+import { Progress } from './ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -60,6 +62,12 @@ const packageSchema = z.object({
     includedFeatures: z.array(z.string()).default([]),
 });
 
+const documentSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Document name is required"),
+  url: z.string().min(1, "Document URL is required"),
+});
+
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
@@ -73,6 +81,7 @@ const modelSchema = z.object({
     standardFeatures: z.array(z.string()).default([]),
     packages: z.array(packageSchema).default([]),
     colors: z.array(colorVariantSchema).default([]),
+    documents: z.array(documentSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
@@ -469,26 +478,10 @@ function ColorVariantItem({ index, remove, update, model }: { index: number; rem
                                 if (files.length > 0 && model && storage) {
                                     setIsUploading(true);
                                     try {
-                                        for (const file of files) {
-                                            const path = `data-warehouse/models/${model.id}/colors/${index}-${Date.now()}-${file.name}`;
-                                            const url = await uploadFileToStorage(storage, file, path);
-                                            const currentUrls = watchedColor.imageUrls || [];
-                                            // Since we are iterating, we need to be careful with closure. 
-                                            // But updateColor updates the field array.
-                                            // However, best to collect URLs then update.
-                                            // But uploadFileToStorage is async.
-                                            // We can push to local array then update once?
-                                            // Or better:
-                                            // This loop is tricky because update(index, ...) might overwrite previous update if called rapidly in loop without functional update.
-                                            // useFieldArray update doesn't support functional update?
-                                            // Actually, passing `...watchedColor` is dangerous inside async loop if `watchedColor` is stale.
-                                            // But here we await each upload.
-                                            // It's better to upload all then update once.
-                                        }
-                                        // Refactor: upload all then update
+                                        
                                         const uploadPromises = files.map(file => {
                                             const path = `data-warehouse/models/${model.id}/colors/${index}-${Date.now()}-${file.name}`;
-                                            return uploadFileToStorage(storage, file, path);
+                                            return uploadFileWithProgress(storage, file, path, () => {});
                                         });
                                         const newUrls = await Promise.all(uploadPromises);
                                         const currentUrls = watchedColor.imageUrls || [];
@@ -510,6 +503,118 @@ function ColorVariantItem({ index, remove, update, model }: { index: number; rem
                     <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
                 </div>
             </div>
+        </Card>
+    );
+}
+
+function DocumentsCard({ model }: { model: any }) {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "documents",
+    });
+    const storage = useStorage();
+    const { toast } = useToast();
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [newDocName, setNewDocName] = useState('');
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleUpload = async () => {
+        if (!fileToUpload || !newDocName.trim() || !model) return;
+
+        setIsUploading(true);
+        setUploadProgress(0);
+        try {
+            const path = `data-warehouse/models/${model.id}/documents/${Date.now()}-${fileToUpload.name}`;
+            const downloadURL = await uploadFileWithProgress(storage, fileToUpload, path, setUploadProgress);
+            
+            append({
+                id: `doc-${Date.now()}`,
+                name: newDocName,
+                url: downloadURL,
+            });
+
+            setNewDocName('');
+            setFileToUpload(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            toast({ title: 'Document Uploaded' });
+
+        } catch (err) {
+            console.error("Upload failed", err);
+            toast({ variant: 'destructive', title: 'Upload Failed' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Documents</CardTitle>
+                <CardDescription>Upload and manage model-specific documents.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
+                    <h4 className="font-medium text-sm">Upload New Document</h4>
+                    <div className="space-y-2">
+                        <Input 
+                            placeholder="Document Name" 
+                            value={newDocName} 
+                            onChange={(e) => setNewDocName(e.target.value)} 
+                            disabled={isUploading}
+                        />
+                        <Input 
+                            type="file" 
+                            ref={fileInputRef}
+                            onChange={(e) => setFileToUpload(e.target.files?.[0] || null)}
+                            disabled={isUploading}
+                        />
+                    </div>
+                     {isUploading && <Progress value={uploadProgress} className="w-full h-2" />}
+                    <Button onClick={handleUpload} disabled={isUploading || !fileToUpload || !newDocName.trim()}>
+                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                        Upload
+                    </Button>
+                </div>
+
+                <div className="space-y-2">
+                     <h4 className="font-medium text-sm">Uploaded Documents</h4>
+                     {fields.length > 0 ? (
+                        <div className="border rounded-md">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {fields.map((field, index) => (
+                                        <TableRow key={field.id}>
+                                            <TableCell>
+                                                <a href={(field as any).url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                                                    {(field as any).name}
+                                                </a>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                     ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded.</p>
+                     )}
+                </div>
+            </CardContent>
         </Card>
     );
 }
@@ -558,6 +663,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                 cost: c.cost ?? null,
                 sellPriceExclGst: c.sellPriceExclGst ?? null,
             })),
+            documents: (data.documents || []).map((d: any) => ({ ...d, id: d.id || `doc-${Math.random()}` })),
         };
     }, []);
 
@@ -719,11 +825,11 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                         <div className="relative">
                                             <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[hsl(var(--card))] to-transparent z-10 pointer-events-none" />
                                             <CardContent className="space-y-4 max-h-[700px] overflow-y-auto">
-                                                <div className="flex gap-2 items-center">
+                                                <div className="flex gap-2 items-center pt-2">
                                                     <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="h-9"/>
                                                     <Button type="button" size="sm" onClick={handleAddCategory}>Add Category</Button>
                                                 </div>
-                                                <Separator />
+                                                <Separator className="my-4" />
                                                 <div className="space-y-4">
                                                     {categorizedPackages.map(({ name, items }) => (
                                                         <Collapsible key={name} asChild defaultOpen>
@@ -831,7 +937,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                             setIsCoverUploading(true);
                                                                             try {
                                                                                 const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
-                                                                                const url = await uploadFileToStorage(storage, file, path);
+                                                                                const url = await uploadFileWithProgress(storage, file, path, () => {});
                                                                                 field.onChange(url);
                                                                             } catch (err) {
                                                                                 console.error("Upload failed", err);
@@ -889,7 +995,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                             try {
                                                                                 for (const file of files) {
                                                                                     const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
-                                                                                    const url = await uploadFileToStorage(storage, file, path);
+                                                                                    const url = await uploadFileWithProgress(storage, file, path, () => {});
                                                                                     appendGalleryImage(url);
                                                                                 }
                                                                             } catch (err) {
@@ -962,6 +1068,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+                            <DocumentsCard model={model} />
                         </div>
                     </div>
                 </form>
