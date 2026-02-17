@@ -526,10 +526,7 @@
                   "imageUrl": {
                     "type": "string"
                   },
-                  "paint": {
-                    "type": "string"
-                  },
-                  "graphics": {
+                  "color": {
                     "type": "string"
                   }
                 },
@@ -650,6 +647,25 @@
               "material"
             ]
           }
+        },
+        "documents": {
+          "type": "array",
+          "description": "A list of documents associated with the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "url"
+            ]
+          }
         }
       },
       "required": [
@@ -716,3 +732,5 @@
     }
   }
 }
+
+    

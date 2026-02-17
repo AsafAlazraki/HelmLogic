@@ -312,7 +312,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     };
 
     return (
-        <Collapsible asChild defaultOpen className="group">
+        <Collapsible asChild className="group">
             <Card>
                 <CollapsibleCardHeader title="Motor Configurations" description="Define supported engine configurations and HP ratings." />
                 <CollapsibleContent>
@@ -685,7 +685,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                     <div className="lg:col-span-4 space-y-8">
                         <MotorConfigurationsCard control={form.control} />
                         {/* Specifications Card */}
-                        <Collapsible asChild defaultOpen className="group">
+                        <Collapsible asChild className="group">
                             <Card>
                                 <CollapsibleCardHeader title="Specifications" count={specFields.length}>
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
@@ -708,7 +708,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                         </Collapsible>
                         
                         {/* Standard Features Card */}
-                        <Collapsible asChild defaultOpen className="group">
+                        <Collapsible asChild className="group">
                             <Card>
                                 <CollapsibleCardHeader title="Standard Features" count={featureFields.length}>
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -734,7 +734,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                         </Collapsible>
                         
                         {/* Colors Card */}
-                        <Collapsible asChild defaultOpen>
+                        <Collapsible asChild>
                             <Card>
                                 <CollapsibleCardHeader title="Color Variants">
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [], cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
@@ -752,7 +752,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                     </div>
 
                     <div className="lg:col-span-3 space-y-8">
-                        <Collapsible asChild defaultOpen>
+                        <Collapsible asChild>
                             <Card>
                                 <CollapsibleCardHeader title="Pricing" />
                                 <CollapsibleContent>
@@ -764,7 +764,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
-                        <Collapsible asChild defaultOpen>
+                        <Collapsible asChild>
                             <Card>
                                 <CollapsibleCardHeader title="Cover Image" />
                                 <CollapsibleContent>
@@ -885,7 +885,7 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
-                        <Collapsible asChild defaultOpen>
+                        <Collapsible asChild>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Features" count={optionalFeatureFields.length}>
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -908,3 +908,5 @@ export function StacerModelEditor({ model, docPath }: { model: any; docPath: str
         </FormProvider>
     );
 }
+
+    

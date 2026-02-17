@@ -123,7 +123,7 @@ function GstInputPair({ control, name, label }: { control: any, name: string, la
             field.onChange(null);
         } else {
             const num = parseFloat(val);
-            field.onChange(isNaN(num) ? null : Math.round(num * 100) / 100);
+            field.onChange(isNaN(num) ? Math.round(num * 100) / 100 : null);
         }
     };
 
@@ -340,7 +340,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     };
 
     return (
-        <Collapsible asChild defaultOpen className="group">
+        <Collapsible asChild className="group">
             <Card>
                 <CollapsibleCardHeader title="Motor Configurations" description="Define supported engine configurations and HP ratings." />
                 <CollapsibleContent>
@@ -705,7 +705,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                            <Collapsible asChild defaultOpen className="group">
+                            <Collapsible asChild className="group">
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features" count={featureFields.length} >
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('', { shouldFocus: false })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -729,7 +729,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                           <Collapsible asChild defaultOpen className="group">
+                           <Collapsible asChild className="group">
                                 <Card>
                                     <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages." count={packageFields.length} />
                                     <CollapsibleContent>
@@ -743,7 +743,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                                 <Separator className="my-4" />
                                                 <div className="space-y-4">
                                                     {categorizedPackages.map(({ name, items }) => (
-                                                        <Collapsible key={name} asChild defaultOpen>
+                                                        <Collapsible key={name} asChild>
                                                             <div className="border rounded-lg">
                                                                 <div className="flex items-center justify-between p-4">
                                                                     <CollapsibleTrigger asChild>
@@ -808,7 +808,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                         </div>
 
                         <div className="lg:col-span-3 space-y-8">
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>
@@ -917,7 +917,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                 </Card>
                             </Collapsible>
 
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Pricing" />
                                     <CollapsibleContent>
@@ -930,7 +930,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                 </Card>
                             </Collapsible>
                             
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
@@ -978,3 +978,5 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
         </FormProvider>
     );
 }
+
+    

@@ -321,7 +321,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     };
 
     return (
-        <Collapsible asChild defaultOpen className="group">
+        <Collapsible asChild className="group">
             <Card>
                 <CollapsibleCardHeader title="Motor Configurations" description="Define supported engine configurations and HP ratings." />
                 <CollapsibleContent>
@@ -799,7 +799,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                     <div className="lg:col-span-4 space-y-8">
                         <MotorConfigurationsCard control={form.control} />
-                        <Collapsible asChild defaultOpen className="group">
+                        <Collapsible asChild className="group">
                             <Card>
                                 <CollapsibleCardHeader title="Specifications" count={specFields.length}>
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
@@ -821,7 +821,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </Card>
                         </Collapsible>
                         
-                        <Collapsible asChild defaultOpen className="group">
+                        <Collapsible asChild className="group">
                             <Card>
                                 <CollapsibleCardHeader title="Standard Features" count={featureFields.length}>
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -861,7 +861,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </CardContent>
                         </Card>
 
-                        <Collapsible asChild defaultOpen>
+                        <Collapsible asChild>
                             <Card>
                                 <CollapsibleCardHeader title="Cover Image" />
                                 <CollapsibleContent>
@@ -981,7 +981,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
-                        <Collapsible asChild defaultOpen>
+                        <Collapsible asChild>
                             <Card>
                                 <CollapsibleCardHeader title="Optional Features" count={optionalFeatureFields.length}>
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -999,7 +999,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         <DocumentsCard model={model} />
                     </div>
                 </div>
-                 <Collapsible asChild defaultOpen>
+                 <Collapsible asChild>
                     <Card>
                         <CollapsibleCardHeader title="Color Variants">
                             <Button type="button" variant="outline" size="sm" onClick={handleAddColor}><PlusCircle className="mr-2 h-4 w-4" />Add Color Variant</Button>
@@ -1028,3 +1028,5 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         </FormProvider>
     );
 }
+
+    

@@ -350,7 +350,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     };
 
     return (
-        <Collapsible asChild defaultOpen className="group">
+        <Collapsible asChild className="group">
             <Card>
                 <CollapsibleCardHeader title="Motor Configurations" description="Define supported engine configurations and HP ratings." />
                 <CollapsibleContent>
@@ -794,7 +794,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
-                            <Collapsible asChild defaultOpen className="group">
+                            <Collapsible asChild className="group">
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features" count={featureFields.length} >
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('', { shouldFocus: false })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -818,7 +818,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                           <Collapsible asChild defaultOpen className="group">
+                           <Collapsible asChild className="group">
                                 <Card>
                                     <CollapsibleCardHeader title="Optional Packages" description="Group optional features into packages." count={packageFields.length} />
                                     <CollapsibleContent>
@@ -832,7 +832,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                 <Separator className="my-4" />
                                                 <div className="space-y-4">
                                                     {categorizedPackages.map(({ name, items }) => (
-                                                        <Collapsible key={name} asChild defaultOpen>
+                                                        <Collapsible key={name} asChild>
                                                             <div className="border rounded-lg">
                                                                 <div className="flex items-center justify-between p-4">
                                                                     <CollapsibleTrigger asChild>
@@ -897,7 +897,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                         </div>
 
                         <div className="lg:col-span-3 space-y-8">
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>
@@ -1018,7 +1018,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                 </Card>
                             </Collapsible>
 
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Pricing" />
                                     <CollapsibleContent>
@@ -1031,7 +1031,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                 </Card>
                             </Collapsible>
                             
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
@@ -1053,7 +1053,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                 </Card>
                             </Collapsible>
                             {/* Colors Card */}
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Color Variants">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrls: [], cost: null, sellPriceExclGst: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
@@ -1095,3 +1095,5 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         </FormProvider>
     );
 }
+
+    
