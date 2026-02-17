@@ -270,27 +270,30 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+                
+                <div className="flex-grow">
+                    <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
+                        <div className="h-52 bg-secondary relative">
+                             {model.coverImageUrl ? (
+                                <>
+                                    <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
+                                    <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card to-transparent" />
+                                </>
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                    <Sailboat className="h-12 w-12 text-muted-foreground" />
+                                </div>
+                            )}
+                        </div>
+                        <CardContent className="p-3">
+                            <p className="font-semibold truncate text-center">{model.name}</p>
+                        </CardContent>
+                    </Link>
+                </div>
 
-                <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
-                    <div className="h-52 bg-secondary relative">
-                         {model.coverImageUrl ? (
-                            <>
-                                <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
-                                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card to-transparent" />
-                            </>
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center">
-                                <Sailboat className="h-12 w-12 text-muted-foreground" />
-                            </div>
-                        )}
-                    </div>
-                    <CardContent className="p-3">
-                        <p className="font-semibold truncate text-center">{model.name}</p>
-                    </CardContent>
-                </Link>
 
                 {vendor.slug === 'stabicraft' && (
-                    <div className="mt-auto p-3 border-t">
+                    <div className="p-3 border-t">
                         <div className="space-y-2">
                              <div className="flex justify-between items-center mb-2">
                                 <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
