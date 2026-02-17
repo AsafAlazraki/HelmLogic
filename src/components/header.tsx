@@ -55,15 +55,15 @@ export function Header() {
         } else if (value === 'employee') {
             const northsideMarine = organisations?.find(o => o.name === 'Northside Marine');
             if (northsideMarine && northsideMarine.roles && northsideMarine.roles.length > 0) {
-                // Assuming the first role is the one with "all rights"
-                const adminRole = northsideMarine.roles[0];
+                // Find Managing Director role or fallback to first
+                const mdRole = northsideMarine.roles.find(r => r.name === 'Managing Director') || northsideMarine.roles[0];
                 const dataToUpdate = {
                     appRole: 'General User',
                     organisationId: northsideMarine.id,
-                    organisationRole: adminRole.id,
+                    organisationRole: mdRole.id,
                 };
                 await setDoc(userRef, dataToUpdate, { merge: true });
-                toast({ title: "Role updated", description: "Switched to Northside Marine Employee." });
+                toast({ title: "Role updated", description: `Switched to Northside Marine ${mdRole.name}.` });
             } else {
                 toast({ 
                     variant: "destructive", 
