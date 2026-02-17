@@ -285,91 +285,92 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Motor Configurations</CardTitle>
-                <CardDescription>Define supported engine configurations and HP ratings.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                {motorConfigOptions.map((option) => {
-                    const fieldIndex = fields.findIndex((field: any) => field.type === option.id);
-                    const isChecked = fieldIndex !== -1;
-                    const currentConfig = isChecked ? fields[fieldIndex] as any : null;
+        <Collapsible asChild defaultOpen className="group">
+            <Card>
+                <CollapsibleCardHeader title="Motor Configurations" description="Define supported engine configurations and HP ratings." />
+                <CollapsibleContent>
+                    <CardContent className="space-y-2">
+                        {motorConfigOptions.map((option) => {
+                            const fieldIndex = fields.findIndex((field: any) => field.type === option.id);
+                            const isChecked = fieldIndex !== -1;
+                            const currentConfig = isChecked ? fields[fieldIndex] as any : null;
 
-                    return (
-                        <Collapsible key={option.id} asChild>
-                            <div className="p-4 border rounded-lg">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        <Checkbox
-                                            checked={isChecked}
-                                            onCheckedChange={(checked) => handleConfigChange(!!checked, option)}
-                                            id={`config-${option.id}`}
-                                        />
-                                        <label htmlFor={`config-${option.id}`} className="text-sm font-medium leading-none">
-                                            {option.label}
-                                        </label>
-                                    </div>
-                                    {isChecked && (
-                                        <CollapsibleTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                            </Button>
-                                        </CollapsibleTrigger>
-                                    )}
-                                </div>
-                                <CollapsibleContent className="pt-4 mt-4 border-t">
-                                     {isChecked && currentConfig && (
-                                        <div className="space-y-4">
-                                            {(currentConfig.engines || []).map((engine: any, engineIndex: number) => (
-                                                <div key={engineIndex} className="space-y-2 rounded-md border p-4">
-                                                     <p className="text-sm font-medium text-muted-foreground">{engine.label}</p>
-                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                        <FormField
-                                                            control={control}
-                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.minHp`}
-                                                            render={({ field }) => (
-                                                                <FormItem>
-                                                                    <FormLabel>Min HP</FormLabel>
-                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                        <FormField
-                                                            control={control}
-                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.maxHp`}
-                                                            render={({ field }) => (
-                                                                <FormItem>
-                                                                    <FormLabel>Max HP</FormLabel>
-                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                        <FormField
-                                                            control={control}
-                                                            name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.recommendedHp`}
-                                                            render={({ field }) => (
-                                                                <FormItem>
-                                                                    <FormLabel>Recommended HP</FormLabel>
-                                                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
+                            return (
+                                <Collapsible key={option.id} asChild>
+                                    <div className="p-4 border rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <Checkbox
+                                                    checked={isChecked}
+                                                    onCheckedChange={(checked) => handleConfigChange(!!checked, option)}
+                                                    id={`config-${option.id}`}
+                                                />
+                                                <label htmlFor={`config-${option.id}`} className="text-sm font-medium leading-none">
+                                                    {option.label}
+                                                </label>
+                                            </div>
+                                            {isChecked && (
+                                                <CollapsibleTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                                    </Button>
+                                                </CollapsibleTrigger>
+                                            )}
                                         </div>
-                                    )}
-                                </CollapsibleContent>
-                            </div>
-                        </Collapsible>
-                    );
-                })}
-            </CardContent>
-        </Card>
+                                        <CollapsibleContent className="pt-4 mt-4 border-t">
+                                            {isChecked && currentConfig && (
+                                                <div className="space-y-4">
+                                                    {(currentConfig.engines || []).map((engine: any, engineIndex: number) => (
+                                                        <div key={engineIndex} className="space-y-2 rounded-md border p-4">
+                                                            <p className="text-sm font-medium text-muted-foreground">{engine.label}</p>
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                                <FormField
+                                                                    control={control}
+                                                                    name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.minHp`}
+                                                                    render={({ field }) => (
+                                                                        <FormItem>
+                                                                            <FormLabel>Min HP</FormLabel>
+                                                                            <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                            <FormMessage />
+                                                                        </FormItem>
+                                                                    )}
+                                                                />
+                                                                <FormField
+                                                                    control={control}
+                                                                    name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.maxHp`}
+                                                                    render={({ field }) => (
+                                                                        <FormItem>
+                                                                            <FormLabel>Max HP</FormLabel>
+                                                                            <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                            <FormMessage />
+                                                                        </FormItem>
+                                                                    )}
+                                                                />
+                                                                <FormField
+                                                                    control={control}
+                                                                    name={`specifications.motorConfigurations.${fieldIndex}.engines.${engineIndex}.recommendedHp`}
+                                                                    render={({ field }) => (
+                                                                        <FormItem>
+                                                                            <FormLabel>Recommended HP</FormLabel>
+                                                                            <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                                                            <FormMessage />
+                                                                        </FormItem>
+                                                                    )}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </CollapsibleContent>
+                                    </div>
+                                </Collapsible>
+                            );
+                        })}
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
     );
 }
 
