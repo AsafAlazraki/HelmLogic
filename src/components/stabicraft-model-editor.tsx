@@ -319,6 +319,7 @@ function OptionalFeatureEditDialog({
 }) {
   const storage = useStorage();
   const { toast } = useToast();
+  const [isUploading, setIsUploading] = React.useState(false);
   const dialogForm = useForm({
     resolver: zodResolver(
       z.object({
@@ -371,61 +372,65 @@ function OptionalFeatureEditDialog({
                 render={({ field }) => (
                   <FormItem className="w-32 flex-shrink-0">
                     <FormLabel className="sr-only">Feature Image</FormLabel>
-                    {imageUrl ? (
-                      <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                        <Image
-                          src={imageUrl}
-                          alt="Feature image"
-                          fill
-                          className="object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                          onClick={() => field.onChange(null)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center w-full">
-                        <label
-                          htmlFor={`dialog-feature-upload`}
-                          className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted"
-                        >
-                          <div className="flex flex-col items-center justify-center text-center p-2">
-                            <Upload
-                              className="w-6 h-6 mb-1 text-muted-foreground"
+                    <div className="relative aspect-square w-full overflow-hidden rounded-md group border">
+                        {isUploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                                <Loader2 className="h-6 w-6 animate-spin text-white" />
+                            </div>
+                        )}
+                        {imageUrl ? (
+                        <>
+                            <Image
+                            src={imageUrl}
+                            alt="Feature image"
+                            fill
+                            className="object-cover"
                             />
-                            <p className="text-xs text-muted-foreground">
-                              Upload
-                            </p>
-                          </div>
-                          <FormControl>
+                            <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            onClick={() => field.onChange(null)}
+                            >
+                            <X className="h-4 w-4" />
+                            </Button>
+                        </>
+                        ) : (
+                        <label
+                            htmlFor={`dialog-feature-upload`}
+                            className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-secondary hover:bg-muted"
+                        >
+                            <Upload
+                            className="w-6 h-6 text-muted-foreground"
+                            />
+                            <FormControl>
                             <Input
-                              id={`dialog-feature-upload`}
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={async (e) => {
+                                id={`dialog-feature-upload`}
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                disabled={isUploading}
+                                onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file && storage && model) {
-                                  try {
+                                    setIsUploading(true);
+                                    try {
                                     const path = `data-warehouse/models/${model.id}/features/${featureIndex}-${Date.now()}-${file.name}`;
                                     const downloadURL = await uploadFileToStorage(storage, file, path);
                                     field.onChange(downloadURL);
-                                  } catch (err) {
+                                    } catch (err) {
                                     toast({ variant: 'destructive', title: 'Upload Failed'});
-                                  }
+                                    } finally {
+                                        setIsUploading(false);
+                                    }
                                 }
-                              }}
+                                }}
                             />
-                          </FormControl>
+                            </FormControl>
                         </label>
-                      </div>
-                    )}
+                        )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -606,11 +611,17 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
     const imageUrl = useWatch({ control, name });
     const storage = useStorage();
     const { toast } = useToast();
+    const [isUploading, setIsUploading] = React.useState(false);
 
     return (
         <div className="space-y-2">
             <FormLabel className="text-xs text-center block font-semibold">{label}</FormLabel>
             <div className="relative aspect-square w-full overflow-hidden rounded-md group border">
+                {isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                        <Loader2 className="h-6 w-6 animate-spin text-white" />
+                    </div>
+                )}
                 {imageUrl ? (
                     <>
                         <Image src={imageUrl} alt={label} fill className="object-cover" />
@@ -633,15 +644,19 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
                                 type="file"
                                 className="hidden"
                                 accept="image/*"
+                                disabled={isUploading}
                                 onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (file && storage && model) {
+                                        setIsUploading(true);
                                         try {
                                             const path = `data-warehouse/models/${model.id}/udek/${name.split('.').pop()}-${Date.now()}-${file.name}`;
                                             const downloadURL = await uploadFileToStorage(storage, file, path);
                                             field.onChange(downloadURL);
                                         } catch (err) {
                                             toast({ variant: 'destructive', title: 'Upload Failed' });
+                                        } finally {
+                                            setIsUploading(false);
                                         }
                                     }
                                 }}
@@ -689,11 +704,17 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
     const imageUrl = useWatch({ control, name: `${namePrefix}.imageUrl` });
     const storage = useStorage();
     const { toast } = useToast();
+    const [isUploading, setIsUploading] = React.useState(false);
 
     return (
         <Card className="p-2 bg-background/50">
             <div className="space-y-2">
                 <div className="relative aspect-video w-full overflow-hidden rounded-md group border">
+                    {isUploading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                            <Loader2 className="h-6 w-6 animate-spin text-white" />
+                        </div>
+                    )}
                     {imageUrl ? (
                         <>
                             <Image src={imageUrl} alt={`Paint option ${index + 1}`} fill className="object-cover" />
@@ -716,15 +737,19 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
                                     type="file"
                                     className="hidden"
                                     accept="image/*"
+                                    disabled={isUploading}
                                     onChange={async (e) => {
                                         const file = e.target.files?.[0];
                                         if (file && storage && model) {
+                                            setIsUploading(true);
                                             try {
                                                 const path = `data-warehouse/models/${model.id}/paint/${category}-${index}-${Date.now()}-${file.name}`;
                                                 const downloadURL = await uploadFileToStorage(storage, file, path);
                                                 setValue(`${namePrefix}.imageUrl`, downloadURL);
                                             } catch (err) {
                                                 toast({ variant: 'destructive', title: 'Upload Failed' });
+                                            } finally {
+                                                setIsUploading(false);
                                             }
                                         }
                                     }}
@@ -820,6 +845,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const storage = useStorage();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isGalleryUploading, setIsGalleryUploading] = useState(false);
+    const [isCoverUploading, setIsCoverUploading] = useState(false);
     const [standardBulkFeatures, setStandardBulkFeatures] = useState('');
     const [categoryBulkFeatures, setCategoryBulkFeatures] = useState<Record<string, string>>({});
 
@@ -1044,8 +1071,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         {/* --- LEFT COLUMN --- */}
                         <div className="lg:col-span-4 space-y-8">
-                            <MotorConfigurationsCard control={form.control} />
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null})}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
@@ -1079,6 +1105,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+                            <MotorConfigurationsCard control={form.control} />
                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features">
@@ -1144,43 +1171,51 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                    {coverImageUrl ? (
-                                                        <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                            <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="icon"
-                                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                onClick={() => field.onChange(null)}
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-center w-full">
-                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                    <div className="relative aspect-video w-full overflow-hidden rounded-md group border">
+                                                        {isCoverUploading && (
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                                                                <Loader2 className="h-8 w-8 animate-spin text-white" />
+                                                            </div>
+                                                        )}
+                                                        {coverImageUrl ? (
+                                                            <>
+                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                                    onClick={() => field.onChange(null)}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </>
+                                                        ) : (
+                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 cursor-pointer bg-secondary hover:bg-muted">
                                                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                                     <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
                                                                     <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
                                                                 </div>
                                                                 <FormControl>
-                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" disabled={isCoverUploading} onChange={async (e) => {
                                                                         const file = e.target.files?.[0];
                                                                         if (file && storage && model) {
+                                                                            setIsCoverUploading(true);
                                                                             try {
                                                                                 const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
                                                                                 const downloadURL = await uploadFileToStorage(storage, file, path);
                                                                                 field.onChange(downloadURL);
                                                                             } catch (err) {
                                                                                 toast({ variant: 'destructive', title: 'Upload Failed' });
+                                                                            } finally {
+                                                                                setIsCoverUploading(false);
                                                                             }
                                                                         }
                                                                     }} />
                                                                 </FormControl>
                                                             </label>
-                                                        </div> 
-                                                    )}
+                                                        )} 
+                                                    </div>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
@@ -1217,22 +1252,26 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                         />
                                                                     </div>
                                                                 ))}
-                                                                <label htmlFor="gallery-image-upload" className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
-                                                                    <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                <label htmlFor="gallery-image-upload" className={cn("aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer", isGalleryUploading ? "bg-muted/50 cursor-not-allowed" : "bg-background hover:bg-secondary")}>
+                                                                    <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" disabled={isGalleryUploading} onChange={async (e) => {
                                                                         const files = Array.from(e.target.files || []);
-                                                                        for (const file of files) {
-                                                                            if (storage && model) {
-                                                                                try {
+                                                                        if(files.length === 0) return;
+                                                                        setIsGalleryUploading(true);
+                                                                        try {
+                                                                            for (const file of files) {
+                                                                                if (storage && model) {
                                                                                     const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
                                                                                     const downloadURL = await uploadFileToStorage(storage, file, path);
                                                                                     appendGalleryImage(downloadURL);
-                                                                                } catch (err) {
-                                                                                    toast({ variant: 'destructive', title: 'Upload Failed' });
                                                                                 }
                                                                             }
+                                                                        } catch (err) {
+                                                                            toast({ variant: 'destructive', title: 'Upload Failed' });
+                                                                        } finally {
+                                                                            setIsGalleryUploading(false);
                                                                         }
                                                                     }}/>
-                                                                    <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                                    {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/> : <Plus className="h-6 w-6 text-muted-foreground"/>}
                                                                 </label>
                                                             </div>
                                                         </div>
