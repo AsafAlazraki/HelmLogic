@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { uploadFileToStorage } from '@/firebase/storage';
+import { uploadFileWithProgress } from '@/firebase/storage';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -417,7 +417,7 @@ function OptionalFeatureEditDialog({
                                     setIsUploading(true);
                                     try {
                                     const path = `data-warehouse/models/${model.id}/features/${featureIndex}-${Date.now()}-${file.name}`;
-                                    const downloadURL = await uploadFileToStorage(storage, file, path);
+                                    const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
                                     field.onChange(downloadURL);
                                     } catch (err) {
                                     toast({ variant: 'destructive', title: 'Upload Failed'});
@@ -651,7 +651,7 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
                                         setIsUploading(true);
                                         try {
                                             const path = `data-warehouse/models/${model.id}/udek/${name.split('.').pop()}-${Date.now()}-${file.name}`;
-                                            const downloadURL = await uploadFileToStorage(storage, file, path);
+                                            const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
                                             field.onChange(downloadURL);
                                         } catch (err) {
                                             toast({ variant: 'destructive', title: 'Upload Failed' });
@@ -744,7 +744,7 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
                                             setIsUploading(true);
                                             try {
                                                 const path = `data-warehouse/models/${model.id}/paint/${category}-${index}-${Date.now()}-${file.name}`;
-                                                const downloadURL = await uploadFileToStorage(storage, file, path);
+                                                const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
                                                 setValue(`${namePrefix}.imageUrl`, downloadURL);
                                             } catch (err) {
                                                 toast({ variant: 'destructive', title: 'Upload Failed' });
@@ -842,7 +842,6 @@ function PaintAndGraphicOptionsCard({model}: {model: any}) {
 
 export function StabicraftModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
-    const storage = useStorage();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isGalleryUploading, setIsGalleryUploading] = useState(false);
@@ -1199,11 +1198,11 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                 <FormControl>
                                                                     <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" disabled={isCoverUploading} onChange={async (e) => {
                                                                         const file = e.target.files?.[0];
-                                                                        if (file && storage && model) {
+                                                                        if (file && model) {
                                                                             setIsCoverUploading(true);
                                                                             try {
                                                                                 const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
-                                                                                const downloadURL = await uploadFileToStorage(storage, file, path);
+                                                                                const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
                                                                                 field.onChange(downloadURL);
                                                                             } catch (err) {
                                                                                 toast({ variant: 'destructive', title: 'Upload Failed' });
@@ -1259,9 +1258,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                         setIsGalleryUploading(true);
                                                                         try {
                                                                             for (const file of files) {
-                                                                                if (storage && model) {
+                                                                                if (model) {
                                                                                     const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
-                                                                                    const downloadURL = await uploadFileToStorage(storage, file, path);
+                                                                                    const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
                                                                                     appendGalleryImage(downloadURL);
                                                                                 }
                                                                             }
