@@ -7,13 +7,13 @@ service cloud.firestore {
      * 
      * Core Philosophy:
      * This ruleset implements a multi-tenant, hierarchical authorization model based on 
-     * Organizations. Access is primarily determined by a user's affiliation with an 
-     * Organization or their role as a Sub-Dealer to a Parent Organization.
+     * Organisations. Access is primarily determined by a user's affiliation with an 
+     * Organisation or their role as a Sub-Dealer to a Parent Organisation.
      * 
      * Data Structure:
-     * - /organizations: Top-level collection for all entity groups.
-     * - /users: Source of truth for user profiles and organization context (DBAC).
-     * - /vessels: Managed assets owned by parent organizations, viewable by sub-dealers.
+     * - /organisations: Top-level collection for all entity groups.
+     * - /users: Source of truth for user profiles and organisation context (DBAC).
+     * - /vessels: Managed assets owned by parent organisations, viewable by sub-dealers.
      * - /vesselReservations: Shared collaboration documents between sub-dealers and parents.
      * - /users/{userId}/notifications: Private user-specific messaging.
      */
@@ -33,11 +33,11 @@ service cloud.firestore {
     }
 
     function isMemberOf(orgId) {
-      return isSignedIn() && getUserData().organizationId == orgId;
+      return isSignedIn() && getUserData().organisationId == orgId;
     }
 
     function isSubDealerOf(orgId) {
-      return isSignedIn() && getUserData().parentOrganizationId == orgId;
+      return isSignedIn() && getUserData().parentOrganisationId == orgId;
     }
 
     function isExistingOwner(userId) {
@@ -46,10 +46,19 @@ service cloud.firestore {
 
     // --- Collection Rules ---
 
-    match /organizations/{organizationId} {
-      allow get: if isMemberOf(organizationId) || isSubDealerOf(organizationId);
-      allow list: if false; 
+    match /organisations/{organisationId} {
+      allow get: if isMemberOf(organisationId) || isSubDealerOf(organisationId) || isSignedIn(); // Allow get for signed in users for prototype
+      allow list: if isSignedIn(); // Required for role switching and organization discovery in prototype
       allow create, update, delete: if isSignedIn(); // Simplified for prototyping
+      
+      // Sub-collections within an organisation
+      match /dealerFitSelections/{selectionId} {
+        allow get, list, create, update, delete: if isSignedIn();
+      }
+      
+      match /quotes/{quoteId} {
+        allow get, list, create, update, delete: if isSignedIn();
+      }
     }
 
     match /users/{userId} {
@@ -79,7 +88,7 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Inventory collection from previous turn
+    // Inventory collection
     match /inventory/{itemId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
@@ -95,6 +104,27 @@ service cloud.firestore {
     match /dealerFitCategories/{catId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
+    }
+    
+    // Data Warehouse
+    match /data-warehouse/{vendorId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+      
+      match /masterDataSet/{rowId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if isSignedIn();
+      }
+      
+      match /ranges/{rangeId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if isSignedIn();
+        
+        match /models/{modelId} {
+          allow get, list: if isSignedIn();
+          allow create, update, delete: if isSignedIn();
+        }
+      }
     }
   }
 }
