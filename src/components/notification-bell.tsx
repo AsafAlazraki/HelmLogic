@@ -2,7 +2,7 @@
 
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useUser } from "@/firebase/auth/use-user";
-import { useFirestore } from "@/firebase/provider";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { collection, query, orderBy, doc, updateDoc, writeBatch } from "firebase/firestore";
 import { Bell, Check, Trash2, MailOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export function NotificationBell() {
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const notificationsQuery = useMemo(() => {
+    const notificationsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(
             collection(firestore, `users/${user.uid}/notifications`),

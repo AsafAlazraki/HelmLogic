@@ -2,6 +2,8 @@
 
 import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
@@ -33,9 +35,9 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
 }
 
 function AdminRoleChecker({ user, children }: { user: User, children: React.ReactNode }) {
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole: string }>(
-        `/users/${user.uid}`
-    );
+    const firestore = useFirestore();
+    const userProfileRef = useMemoFirebase(() => doc(firestore, 'users', user.uid), [firestore, user.uid]);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole: string }>(userProfileRef);
     const router = useRouter();
 
     useEffect(() => {

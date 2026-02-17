@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus, Users, Eye, ArrowRightLeft, X, LayoutDashboard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,7 +82,7 @@ const formSchema = z.object({
 
 function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
-    const rangesQuery = useMemo(() => {
+    const rangesQuery = useMemoFirebase(() => {
         if (!vendor?.id) return null;
         return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
     }, [firestore, vendor.id]);
@@ -123,7 +123,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
 
 function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void }) {
     const firestore = useFirestore();
-    const modelsQuery = useMemo(() => {
+    const modelsQuery = useMemoFirebase(() => {
         if (!vendor?.id || !range?.id) return null;
         return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
     }, [firestore, vendor.id, range.id]);
@@ -204,7 +204,8 @@ export default function ModuleDetailsPage() {
     const [inStockFilter, setInStockFilter] = useState<string>('all');
 
     const { user, loading: userLoading } = useUser();
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string, organisationRole?: string }>(user ? `/users/${user.uid}` : null);
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string, organisationRole?: string }>(userProfileRef);
     
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
@@ -214,20 +215,25 @@ export default function ModuleDetailsPage() {
         }
     }, [userProfile, profileLoading, isAdmin]);
 
-    const moduleQueryBySlug = useMemo(() => {
+    const moduleQueryBySlug = useMemoFirebase(() => {
         if (!slugOrId) return null;
         return query(collection(firestore, 'modules'), where('slug', '==', slugOrId));
     }, [firestore, slugOrId]);
 
     const { data: modulesBySlug, loading: slugLoading } = useCollection<any>(moduleQueryBySlug);
-    const { data: moduleById, loading: idLoading } = useDoc<any>(slugOrId ? `/modules/${slugOrId}` : null);
+    const moduleByIdRef = useMemoFirebase(() => slugOrId ? doc(firestore, 'modules', slugOrId) : null, [firestore, slugOrId]);
+    const { data: moduleById, loading: idLoading } = useDoc<any>(moduleByIdRef);
     
     const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
     const moduleLoading = slugLoading || idLoading;
     
-    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
-    const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>('organisations');
-    const { data: allDealerFitCategories, loading: catsLoading } = useCollection<DealerFitCategory>('dealerFitCategories');
+    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
+    const orgsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
+    const catsQuery = useMemoFirebase(() => collection(firestore, 'dealerFitCategories'), [firestore]);
+
+    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
+    const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>(orgsQuery);
+    const { data: allDealerFitCategories, loading: catsLoading } = useCollection<DealerFitCategory>(catsQuery);
     
     const mainVendor = useMemo(() => allVendors?.find(v => v.id === moduleData?.mainVendorId), [allVendors, moduleData]);
         
@@ -628,7 +634,7 @@ export default function ModuleDetailsPage() {
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <CardTitle>{view === 'ranges' ? 'Select a Product Range' : `Models in ${selectedRange?.name}`}</CardTitle>
-                                    {isImpersonating && <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20"><Eye className="h-3 w-3" /> PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
+                                    {isImpersonating && <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20"><Eye className="h-4 w-4 mr-2" /> PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
                                 </div>
                                 <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />
                             </CardHeader>

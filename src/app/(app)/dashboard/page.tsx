@@ -4,6 +4,8 @@ import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { doc, collection } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { Loader2, Blocks } from "lucide-react";
@@ -32,8 +34,13 @@ interface Module {
 }
 
 function EmployeeDashboard({ organisationId, userProfile }: { organisationId: string, userProfile: UserProfile }) {
-    const { data: organisation, loading: orgLoading } = useDoc<Organisation>(organisationId ? `/organisations/${organisationId}` : null);
-    const { data: allModules, loading: modulesLoading } = useCollection<Module>('modules');
+    const firestore = useFirestore();
+    
+    const orgRef = useMemoFirebase(() => organisationId ? doc(firestore, 'organisations', organisationId) : null, [firestore, organisationId]);
+    const { data: organisation, loading: orgLoading } = useDoc<Organisation>(orgRef);
+    
+    const modulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
+    const { data: allModules, loading: modulesLoading } = useCollection<Module>(modulesQuery);
 
     const userPermissions = useMemo(() => {
         const roleId = userProfile?.organisationRole;
@@ -101,7 +108,9 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
 
 export default function Dashboard() {
     const { user, loading: userLoading } = useUser();
-    const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(user ? `/users/${user.uid}` : null);
+    const firestore = useFirestore();
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(userProfileRef);
     const router = useRouter();
 
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';

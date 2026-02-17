@@ -63,8 +63,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useFirestore } from "@/firebase/provider";
-import { doc, deleteDoc } from "firebase/firestore";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { doc, deleteDoc, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 interface Vendor {
@@ -130,11 +130,13 @@ const getDataSourceIcon = (dataSource?: string) => {
 };
 
 export default function DataWarehousePage() {
-    const { data: vendors, loading } = useCollection<Vendor>('data-warehouse');
+    const firestore = useFirestore();
+    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
+    const { data: vendors, loading } = useCollection<Vendor>(vendorsQuery);
+    
     const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
     const [filterType, setFilterType] = useState<string>('all');
     const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
-    const firestore = useFirestore();
     const { toast } = useToast();
     const router = useRouter();
 

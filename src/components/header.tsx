@@ -12,9 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFirestore } from "@/firebase/provider";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { useToast } from "@/hooks/use-toast";
@@ -34,10 +34,14 @@ interface Organisation {
 
 export function Header() {
   const { user } = useUser();
-  const { data: userProfile, loading: profileLoading } = useDoc<{ appRole: string, organisationId?: string }>(user ? `/users/${user.uid}` : null);
-  const { data: organisations, loading: orgsLoading } = useCollection<Organisation>('organisations');
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, loading: profileLoading } = useDoc<{ appRole: string, organisationId?: string }>(userProfileRef);
+  
+  const orgsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
+  const { data: organisations, loading: orgsLoading } = useCollection<Organisation>(orgsQuery);
 
   const handleRoleChange = async (value: string) => {
     if (!user) return;

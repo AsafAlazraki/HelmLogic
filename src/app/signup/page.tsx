@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore } from '@/firebase/provider';
+import { useAuth, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -26,6 +26,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 const formSchema = z.object({
   email: z.string().email({

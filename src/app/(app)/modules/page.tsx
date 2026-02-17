@@ -1,4 +1,3 @@
-
 'use client';
 
 import AdminGuard from "@/components/admin-guard";
@@ -6,6 +5,8 @@ import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { collection } from "firebase/firestore";
 import { Loader2, PlusCircle, Building, Wrench } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -24,9 +25,13 @@ interface Vendor {
     logoUrl?: string;
 }
 
-export default function ModulesPage() {
-    const { data: modules, loading: modulesLoading } = useCollection<Module>('modules');
-    const { data: vendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
+export function ModulesPage() {
+    const firestore = useFirestore();
+    const modulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
+    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
+
+    const { data: modules, loading: modulesLoading } = useCollection<Module>(modulesQuery);
+    const { data: vendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
 
     const loading = modulesLoading || vendorsLoading;
 
@@ -107,3 +112,5 @@ export default function ModulesPage() {
       </AdminGuard>
     );
 }
+
+export default ModulesPage;

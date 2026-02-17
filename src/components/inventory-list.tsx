@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,7 +62,7 @@ export function InventoryList({
         return [filterOrgId];
     }, [filterOrgId, organisation, subDealers]);
 
-    const inventoryQuery = useMemo(() => {
+    const inventoryQuery = useMemoFirebase(() => {
         if (targetOrgIds.length === 0) return null;
         return query(
             collection(firestore, 'inventory'),

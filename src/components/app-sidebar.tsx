@@ -26,17 +26,20 @@ import { ChevronRight } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
 import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { doc } from "firebase/firestore";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const firestore = useFirestore();
   const { isMobile, setOpenMobile } = useSidebar();
   const { user, loading: userLoading } = useUser();
-  const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string; organisationRole?: string }>(
-    user ? `/users/${user.uid}` : null
-  );
-  const { data: organisation, loading: orgLoading } = useDoc<{ subDealersEnabled?: boolean; permissions?: Record<string, Record<string, boolean>> }>(
-    userProfile?.organisationId ? `/organisations/${userProfile.organisationId}` : null
-  );
+  
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string; organisationRole?: string }>(userProfileRef);
+  
+  const orgRef = useMemoFirebase(() => userProfile?.organisationId ? doc(firestore, 'organisations', userProfile.organisationId) : null, [firestore, userProfile]);
+  const { data: organisation, loading: orgLoading } = useDoc<{ subDealersEnabled?: boolean; permissions?: Record<string, Record<string, boolean>> }>(orgRef);
 
   const isLoading = userLoading || profileLoading || orgLoading;
 

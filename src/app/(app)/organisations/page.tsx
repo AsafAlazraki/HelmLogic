@@ -5,6 +5,8 @@ import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { collection } from "firebase/firestore";
 import { Loader2, PlusCircle, Building2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,7 +23,9 @@ interface Organisation {
 }
 
 export default function OrganisationsPage() {
-    const { data: organisations, loading } = useCollection<Organisation>('organisations');
+    const firestore = useFirestore();
+    const orgsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
+    const { data: organisations, loading } = useCollection<Organisation>(orgsQuery);
 
     return (
       <AdminGuard>

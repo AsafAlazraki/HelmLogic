@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
-import { collection, query, where, doc, updateDoc, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, getDocs } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ship, Clock, CheckCircle2, XCircle, Send, MessageSquare } from 'lucide-react';
+import { Loader2, Ship, Clock, CheckCircle2, XCircle, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
     Dialog,
@@ -66,7 +66,7 @@ export function VesselOnOrderList({
     const targetOrgId = isSubDealer ? parentOrg?.id : organisation.id;
 
     // Fetch vessels that are "On Order" from the parent (if sub-dealer) or local (if parent)
-    const vesselsQuery = useMemo(() => {
+    const vesselsQuery = useMemoFirebase(() => {
         if (!targetOrgId) return null;
         return query(
             collection(firestore, 'vessels'),
@@ -78,7 +78,7 @@ export function VesselOnOrderList({
     const { data: vessels, loading: vesselsLoading } = useCollection<Vessel>(vesselsQuery);
 
     // Fetch active reservations for these vessels
-    const reservationsQuery = useMemo(() => {
+    const reservationsQuery = useMemoFirebase(() => {
         if (!vessels || vessels.length === 0) return null;
         return query(
             collection(firestore, 'vesselReservations'),
@@ -113,8 +113,7 @@ export function VesselOnOrderList({
 
             const resRef = await addDoc(collection(firestore, 'vesselReservations'), reservationData);
             
-            // Also notify parent organisation users
-            // In a real app, we'd query parent admins. For MVP prototype, we simulate notification logic.
+            // Notify parent organisation users
             const parentUsersQuery = query(collection(firestore, 'users'), where('organisationId', '==', parentOrg?.id));
             const parentUsers = await getDocs(parentUsersQuery);
             
