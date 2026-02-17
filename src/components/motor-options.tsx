@@ -8,6 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import Image from 'next/image';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { useFormContext } from 'react-hook-form';
 
 interface Vendor {
     id: string;
@@ -119,9 +120,12 @@ function MotorCard({ motor }: { motor: Motor }) {
 }
 
 export function MotorOptions({ model, module }: { model: any, module: any }) {
+    const { watch } = useFormContext();
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
     
-    const yamahaVendor = useMemo(() => {
+    const motorConfigurations = watch('specifications.motorConfigurations') || model.specifications?.motorConfigurations || [];
+
+    const motorVendor = useMemo(() => {
         if (!allVendors || !module) return null;
         
         const allModuleVendorIds = [
@@ -131,16 +135,13 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
 
         return allVendors.find(v => 
             allModuleVendorIds.includes(v.id) && 
-            v.vendorType === 'Motor Brand' &&
-            v.slug === 'yamaha'
+            v.vendorType === 'Motor Brand'
         );
     }, [allVendors, module]);
 
     const { data: motorDataSet, loading: motorsLoading } = useCollection<Motor>(
-        yamahaVendor ? `data-warehouse/${yamahaVendor.id}/masterDataSet` : null
+        motorVendor ? `data-warehouse/${motorVendor.id}/masterDataSet` : null
     );
-
-    const motorConfigurations: MotorConfig[] = model.specifications?.motorConfigurations || [];
     
     const getHpFromMotor = (motor: Motor): number | null => {
         const allKeys = Object.keys(motor);
@@ -162,9 +163,9 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     };
     
     const motorCombinations = useMemo(() => {
-        if (!motorDataSet || motorConfigurations.length === 0 || !yamahaVendor) return [];
+        if (!motorDataSet || motorConfigurations.length === 0 || !motorVendor) return [];
 
-        return motorConfigurations.map(config => {
+        return motorConfigurations.map((config: MotorConfig) => {
             let combinations: Motor[][] = [];
             
             const compatibleMotorsPerEngine = config.engines.map(engineSpec => 
@@ -203,10 +204,10 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             };
         }).filter(c => c.combinations.length > 0);
 
-    }, [motorDataSet, motorConfigurations, yamahaVendor]);
+    }, [motorDataSet, motorConfigurations, motorVendor]);
 
 
-    const loading = vendorsLoading || (yamahaVendor && motorsLoading);
+    const loading = vendorsLoading || (motorVendor && motorsLoading);
 
     const renderContent = () => {
         if (loading) {
@@ -219,12 +220,12 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             );
         }
 
-        if (!yamahaVendor) {
+        if (!motorVendor) {
              return (
                 <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                     <AlertCircle className="h-10 w-10 text-muted-foreground" />
-                    <p className="mt-4 font-semibold">Yamaha Vendor Not Found</p>
-                    <p className="text-sm text-muted-foreground">Please ensure Yamaha is an associated vendor for this module.</p>
+                    <p className="mt-4 font-semibold">No Motor Vendor Found</p>
+                    <p className="text-sm text-muted-foreground">Please ensure a motor brand is an associated vendor for this module.</p>
                 </CardContent>
             );
         }
@@ -234,7 +235,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
                     <p className="mt-4 font-semibold">No Motor Data Found</p>
-                    <p className="text-sm text-muted-foreground">The master data set for Yamaha is empty.</p>
+                    <p className="text-sm text-muted-foreground">The master data set for {motorVendor.name} is empty.</p>
                 </CardContent>
             );
         }
@@ -254,7 +255,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                  <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
                     <p className="mt-4 font-semibold">No Compatible Motors</p>
-                    <p className="text-sm text-muted-foreground">No motors in the Yamaha data set match the boat's HP requirements.</p>
+                    <p className="text-sm text-muted-foreground">No motors in the {motorVendor.name} data set match the boat's HP requirements.</p>
                 </CardContent>
             );
         }
@@ -268,33 +269,35 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                 {formatConfigType(configGroup.configType)} Configurations ({configGroup.combinations.length})
                             </AccordionTrigger>
                             <AccordionContent className="pt-4">
-                                 <div className="flex justify-end mb-4">
-                                    <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Combination</Button>
+                                <div className="flex justify-end mb-4">
+                                   <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Combination</Button>
                                 </div>
-                                <div className="flex gap-4 overflow-x-auto pb-4">
-                                {configGroup.combinations.map((combo, comboIndex) => (
-                                    <Card key={comboIndex} className="group relative flex-shrink-0">
-                                        <div className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                             <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                <Star className="h-4 w-4" />
-                                            </Button>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4"/></Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem><Pencil className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/> Remove</DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                        <CardContent className="p-4 flex items-center justify-center gap-4">
-                                            {combo.map((motor, motorIndex) => (
-                                                <MotorCard key={`${motor.id}-${motorIndex}`} motor={motor} />
-                                            ))}
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                <div className="max-h-[600px] overflow-y-auto pr-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                        {configGroup.combinations.map((combo, comboIndex) => (
+                                            <Card key={comboIndex} className="group relative">
+                                                <div className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                     <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                        <Star className="h-4 w-4" />
+                                                    </Button>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4"/></Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent>
+                                                            <DropdownMenuItem><Pencil className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/> Remove</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                                <CardContent className="p-4 flex items-center justify-center gap-4">
+                                                    {combo.map((motor, motorIndex) => (
+                                                        <MotorCard key={`${motor.id}-${motorIndex}`} motor={motor} />
+                                                    ))}
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -315,13 +318,13 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                         </CardDescription>
                     </div>
                      <div className="flex items-center gap-2">
-                        {yamahaVendor?.logoUrl && (
+                        {motorVendor?.logoUrl && (
                             <div className="relative h-10 w-20">
-                                <Image src={yamahaVendor.logoUrl} alt={`${yamahaVendor.name} logo`} fill className="object-contain" />
+                                <Image src={motorVendor.logoUrl} alt={`${motorVendor.name} logo`} fill className="object-contain" />
                             </div>
                         )}
                         <div className="h-10 px-4 py-2 border rounded-md text-sm font-medium bg-secondary">
-                           {yamahaVendor?.name || 'Yamaha'}
+                           {motorVendor?.name || 'No Motor Brand'}
                         </div>
                      </div>
                 </div>

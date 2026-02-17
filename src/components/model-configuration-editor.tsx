@@ -193,7 +193,7 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
                                 <Button type="submit" disabled={isSubmitting}>
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     <Save className="mr-2 h-4 w-4" />
-                                    {isAdmin ? 'Save Changes' : 'Save as Draft'}
+                                    Save Changes
                                 </Button>
                             </div>
                         </div>
