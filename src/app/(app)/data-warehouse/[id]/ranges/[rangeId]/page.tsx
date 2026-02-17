@@ -271,26 +271,23 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                     </DropdownMenuContent>
                 </DropdownMenu>
                 
-                <div className="flex-grow">
-                    <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
-                        <div className="h-52 bg-secondary relative">
-                             {model.coverImageUrl ? (
-                                <>
-                                    <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
-                                    <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card to-transparent" />
-                                </>
-                            ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                    <Sailboat className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                            )}
-                        </div>
-                        <CardContent className="p-3">
-                            <p className="font-semibold truncate text-center">{model.name}</p>
-                        </CardContent>
-                    </Link>
-                </div>
-
+                <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
+                    <div className="h-52 bg-secondary relative">
+                         {model.coverImageUrl ? (
+                            <>
+                                <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
+                                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card to-transparent" />
+                            </>
+                        ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                                <Sailboat className="h-12 w-12 text-muted-foreground" />
+                            </div>
+                        )}
+                    </div>
+                    <CardContent className="p-3 h-16 flex items-center justify-center">
+                        <p className="font-semibold text-center line-clamp-2">{model.name}</p>
+                    </CardContent>
+                </Link>
 
                 {vendor.slug === 'stabicraft' && (
                     <div className="p-3 border-t">
@@ -301,9 +298,10 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                                     <PlusCircle className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className="space-y-1 min-h-[60px]">
+                            <div className="space-y-1 min-h-[108px] flex flex-col">
                                 {(model.packageLevels && model.packageLevels.length > 0) ? (
-                                    model.packageLevels.map(pkg => (
+                                    <div className="flex-grow space-y-1">
+                                    {model.packageLevels.map(pkg => (
                                         <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full h-full">
                                             <span className="font-medium truncate pr-2">{pkg.name}</span>
                                             <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
@@ -315,9 +313,10 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                                                 </Button>
                                             </div>
                                         </div>
-                                    ))
+                                    ))}
+                                    </div>
                                 ) : (
-                                    <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+                                    <div className="flex-grow flex items-center justify-center text-xs text-muted-foreground">
                                         <p>No packages defined.</p>
                                     </div>
                                 )}
