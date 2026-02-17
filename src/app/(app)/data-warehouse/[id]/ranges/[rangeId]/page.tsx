@@ -272,7 +272,7 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                 </DropdownMenu>
 
                 <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
-                    <div className="h-40 bg-secondary relative">
+                    <div className="h-52 bg-secondary relative">
                          {model.coverImageUrl ? (
                             <>
                                 <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
@@ -292,33 +292,33 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                 {vendor.slug === 'stabicraft' && (
                     <div className="mt-auto p-3 border-t">
                         <div className="space-y-2">
-                             <div className="flex justify-between items-center">
+                             <div className="flex justify-between items-center mb-2">
                                 <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenAddPackageDialog}>
                                     <PlusCircle className="h-4 w-4" />
                                 </Button>
                             </div>
-                            {model.packageLevels && model.packageLevels.length > 0 ? (
-                                <div className="flex flex-wrap -m-1">
-                                    {model.packageLevels.map(pkg => (
-                                        <div key={pkg.id} className="p-1 grow basis-[30%]">
-                                            <div className="group/pkg flex items-center justify-between rounded-full bg-secondary text-secondary-foreground px-3 py-1 text-sm font-semibold transition-colors hover:bg-secondary/80 w-full h-full">
-                                                <span className="truncate pr-2">{pkg.name}</span>
-                                                <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-1 shrink-0">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
-                                                        <Pencil className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
+                            <div className="space-y-1 min-h-[60px]">
+                                {(model.packageLevels && model.packageLevels.length > 0) ? (
+                                    model.packageLevels.map(pkg => (
+                                        <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full h-full">
+                                            <span className="font-medium truncate pr-2">{pkg.name}</span>
+                                            <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-xs text-muted-foreground text-center py-2">No packages</p>
-                            )}
+                                    ))
+                                ) : (
+                                    <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+                                        <p>No packages defined.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
