@@ -4,13 +4,12 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
-
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,28 +31,27 @@ interface Permissions {
     can_view_subdealers: boolean;
 }
 
+const motorConfigOptions = [
+    { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
+    { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
+    { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
+    { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
+    { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
+];
+
 function sanitizeDataForFirestore(data: any): any {
-  if (data === undefined) {
-    return null;
-  }
-  if (data === null || typeof data !== 'object') {
-    return data;
-  }
-  if (Array.isArray(data)) {
-    return data.map(item => sanitizeDataForFirestore(item));
-  }
+  if (data === undefined) return null;
+  if (data === null || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(item => sanitizeDataForFirestore(item));
   const sanitizedData: { [key: string]: any } = {};
   for (const key in data) {
     if (Object.prototype.hasOwnProperty.call(data, key)) {
       const value = data[key];
-      if (value !== undefined) {
-          sanitizedData[key] = sanitizeDataForFirestore(value);
-      }
+      if (value !== undefined) sanitizedData[key] = sanitizeDataForFirestore(value);
     }
   }
   return sanitizedData;
 }
-
 
 const getVendorSchema = (slug?: string) => {
     switch (slug) {
@@ -62,10 +60,123 @@ const getVendorSchema = (slug?: string) => {
         case 'stacer': return stacerModelSchema;
         case 'stabicraft': return stabicraftModelSchema;
         case 'surtees': return surteesModelSchema;
-        default: return z.object({}); // Default empty schema
+        default: return z.object({});
     }
-}
+};
 
+const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
+    const data = modelData || {};
+    const specs = data.specifications || {};
+    
+    const base = {
+        coverImageUrl: data.coverImageUrl ?? null,
+        galleryImageUrls: data.galleryImageUrls ?? [],
+        cost: data.cost ?? null,
+        sellPriceExclGst: data.sellPriceExclGst ?? null,
+        freightCostExclGst: data.freightCostExclGst ?? null,
+        specifications: {
+            motorConfigurations: (specs.motorConfigurations ?? []).map((config: any) => {
+                if (config.engines && Array.isArray(config.engines) && config.engines.length > 0) return config;
+                const option = motorConfigOptions.find(o => o.id === config.type);
+                if (option) {
+                    return {
+                        ...config,
+                        engines: Array.from({ length: option.engineCount }, (_, i) => ({
+                            label: option.engineLabels[i],
+                            minHp: config.minHp ?? 0,
+                            maxHp: config.maxHp ?? 0,
+                            recommendedHp: config.recommendedHp ?? 0
+                        }))
+                    };
+                }
+                return config;
+            }),
+            otherSpecs: specs.otherSpecs ?? [],
+        },
+        standardFeatures: data.standardFeatures ?? [],
+        documents: (data.documents || []).map((d: any) => ({ ...d, id: d.id || `doc-${Math.random()}` })),
+    };
+
+    if (vendorSlug === 'highfield') {
+        const modelColors = data.colors || [];
+        const modelPricing = data.variantPricing || [];
+        const pricingMap = new Map();
+        modelPricing.forEach((p: any) => {
+            if (!p.colorId) return;
+            if (!pricingMap.has(p.colorId)) pricingMap.set(p.colorId, {});
+            const entry = pricingMap.get(p.colorId);
+            if (p.material === 'HYP') entry.HYP = p;
+            else if (p.material === 'PVC') entry.PVC = p;
+        });
+        return {
+            ...base,
+            optionalFeatures: data.optionalFeatures ?? [],
+            colors: modelColors.map((color: any) => {
+                const prices = pricingMap.get(color.id) || {};
+                return {
+                    id: color.id,
+                    name: color.name,
+                    imageUrl: color.imageUrl ?? color.imageUrls?.[0] ?? null,
+                    pricing: {
+                        HYP: { cost: prices.HYP?.cost ?? null, sellPriceExclGst: prices.HYP?.sellPriceExclGst ?? null },
+                        PVC: { cost: prices.PVC?.cost ?? null, sellPriceExclGst: prices.PVC?.sellPriceExclGst ?? null },
+                    }
+                };
+            }),
+        };
+    }
+
+    if (vendorSlug === 'stabicraft') {
+        const packageLevels = data.packageLevels || [];
+        return {
+            ...base,
+            packageLevels: packageLevels.map((p: any) => ({
+                ...p,
+                description: p.description ?? '',
+                cost: p.cost ?? null,
+                sellPriceExclGst: p.sellPriceExclGst ?? null,
+            })),
+            optionalFeatures: (data.optionalFeatures || []).map((f: any) => {
+                const packageStatus = f.packageStatus || {};
+                packageLevels.forEach((p: any) => {
+                    if (!(p.id in packageStatus)) packageStatus[p.id] = 'optional';
+                });
+                return { ...f, packageStatus };
+            }),
+            colorStages: data.colorStages ?? { stage0: false, stage1: false, stage2: false, stage3: false },
+            uDekOptions: data.uDekOptions ?? { blackOnWinterGrey: null, teakOnBlack: null, steelGreyOnWinterGrey: null, winterGreyOnSteelGrey: null },
+            paintAndGraphicOptions: data.paintAndGraphicOptions ?? { standardGloss: [], standardMetallic: [], powderCoating: [] },
+        };
+    }
+
+    if (vendorSlug === 'jeanneau' || vendorSlug === 'surtees' || vendorSlug === 'stacer') {
+        return {
+            ...base,
+            packages: (data.packages || []).map((p: any) => ({ 
+                ...p, 
+                category: p.category || undefined,
+                includedFeatures: p.includedFeatures ?? [],
+                cost: p.cost ?? null,
+                sellPriceExclGst: p.sellPriceExclGst ?? null,
+            })),
+            optionalFeatures: (data.optionalFeatures || []).map((f: any) => ({
+                ...f,
+                cost: f.cost ?? null,
+                sellPriceExclGst: f.sellPriceExclGst ?? null,
+            })),
+            colors: (data.colors || []).map((c: any) => ({
+                ...c,
+                id: c.id,
+                name: c.name,
+                imageUrls: c.imageUrls || [],
+                cost: c.cost ?? null,
+                sellPriceExclGst: c.sellPriceExclGst ?? null,
+            })),
+        };
+    }
+
+    return base;
+};
 
 export function ModelConfigurationEditor({ 
     model, 
@@ -96,9 +207,16 @@ export function ModelConfigurationEditor({
 
     const form = useForm({
         resolver: zodResolver(currentSchema),
+        defaultValues: getSafeDefaultValues(model, vendor?.slug),
     });
     
     const { reset } = form;
+
+    useEffect(() => {
+        if (model) {
+            reset(getSafeDefaultValues(model, vendor?.slug));
+        }
+    }, [model, vendor?.slug, reset]);
 
     const onSubmit = async (values: any) => {
         if (!permissions.can_edit_boat_data && !isAdmin) {
@@ -108,19 +226,19 @@ export function ModelConfigurationEditor({
 
         setIsSubmitting(true);
 
-        if (isAdmin) {
-             let finalValues = values;
+        try {
+            let finalValues = values;
 
-            // Special handling for Highfield variant pricing
+            // Specialized transformations for database storage
             if (vendor.slug === 'highfield' && values.colors) {
-                const colorsForDb = values.colors.map((color:any) => ({
+                const colorsForDb = values.colors.map((color: any) => ({
                     id: color.id,
                     name: color.name,
                     imageUrl: color.imageUrl,
                 }));
                 
                 const variantPricingForDb: any[] = [];
-                values.colors.forEach((color:any) => {
+                values.colors.forEach((color: any) => {
                     const { HYP, PVC } = color.pricing;
                     if (HYP && (HYP.cost != null || HYP.sellPriceExclGst != null)) {
                         variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...HYP });
@@ -136,70 +254,50 @@ export function ModelConfigurationEditor({
                     colors: colorsForDb,
                     variantPricing: variantPricingForDb
                 };
-            } else if (vendor.slug === 'stabicraft' && values.colorStages) {
-                const { colorStages, ...rest } = values;
-                finalValues = rest;
             }
 
             const sanitizedValues = sanitizeDataForFirestore(finalValues);
-            const modelDocRef = doc(firestore, docPath);
 
-            try {
+            if (isAdmin) {
+                const modelDocRef = doc(firestore, docPath);
                 await updateDoc(modelDocRef, sanitizedValues);
-                toast({ title: "Model Updated", description: "Your changes have been saved." });
-                reset(values);
-            } catch (e) {
-                const error = e as any;
-                console.error("Save failed:", error);
-                toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
-                const permissionError = new FirestorePermissionError({
-                    path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            } finally {
-                setIsSubmitting(false);
-            }
-        } else {
-             if (!organisationId || !user) {
-                toast({ variant: "destructive", title: "Error", description: "Cannot save. User or organisation is not identified." });
-                setIsSubmitting(false);
-                return;
-            }
-            try {
+                toast({ title: "Model Updated", description: "Master configuration has been saved." });
+            } else {
+                if (!organisationId || !user) throw new Error("Missing user context");
                 const quotesColRef = collection(firestore, `organisations/${organisationId}/quotes`);
-                const sanitizedValues = sanitizeDataForFirestore(values);
-                
                 await addDoc(quotesColRef, {
-                    quoteNumber: `DRAFT-${Date.now()}`,
+                    quoteNumber: `CONFIG-${Date.now()}`,
                     status: 'Draft',
                     createdById: user.uid,
                     createdAt: new Date().toISOString(),
                     organisationId: organisationId,
                     modelConfiguration: sanitizedValues,
-                    customerName: 'Draft Configuration',
-                    pricingSummary: {}, // To be calculated later
+                    customerName: 'Local Configuration',
+                    pricingSummary: {},
                 });
-
-                toast({ title: "Configuration Saved", description: "The configuration has been saved to your organisation." });
-            } catch (e) {
-                const error = e as any;
-                console.error("Save draft failed:", error);
-                toast({ variant: "destructive", title: "Error", description: "Could not save configuration." });
-            } finally {
-                setIsSubmitting(false);
+                toast({ title: "Configuration Saved", description: "Saved to your organization's collection." });
             }
+        } catch (e: any) {
+            console.error("Save failed:", e);
+            toast({ variant: "destructive", title: "Error", description: e.message || "Could not save changes." });
+            if (e.code === 'permission-denied') {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: docPath, operation: 'update', requestResourceData: values,
+                }));
+            }
+        } finally {
+            setIsSubmitting(false);
         }
-    }
+    };
 
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
-
         switch (vendor.slug) {
-            case 'highfield': return <HighfieldModelEditor model={model} docPath={docPath} />;
-            case 'jeanneau': return <JeanneauModelEditor model={model} docPath={docPath} />;
-            case 'stacer': return <StacerModelEditor model={model} docPath={docPath} />;
-            case 'stabicraft': return <StabicraftModelEditor model={model} docPath={docPath} />;
-            case 'surtees': return <SurteesModelEditor model={model} docPath={docPath} />;
+            case 'highfield': return <HighfieldModelEditor model={model} />;
+            case 'jeanneau': return <JeanneauModelEditor model={model} />;
+            case 'stacer': return <StacerModelEditor model={model} />;
+            case 'stabicraft': return <StabicraftModelEditor model={model} />;
+            case 'surtees': return <SurteesModelEditor model={model} />;
             default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor.</CardContent></Card>;
         }
     };
