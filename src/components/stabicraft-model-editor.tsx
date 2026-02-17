@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal, Pencil } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from './ui/checkbox';
+import { Separator } from './ui/separator';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -282,97 +283,170 @@ function PackageStatusToggle({ control, featureIndex, packageId }: { control: an
     );
 }
 
+function OptionalFeatureEditDialog({
+  isOpen,
+  setIsOpen,
+  feature,
+  featureIndex,
+  onSave,
+}: {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  feature: any;
+  featureIndex: number;
+  onSave: (index: number, data: any) => void;
+}) {
+  const dialogForm = useForm({
+    resolver: zodResolver(
+      z.object({
+        name: z.string().min(1, 'Feature name is required'),
+        imageUrl: z.string().nullable().optional(),
+        cost: z.coerce.number().nullable().optional(),
+        sellPriceExclGst: z.coerce.number().nullable().optional(),
+      })
+    ),
+  });
 
-function OptionalFeatureCard({ form, index, remove, categories, onCategoryChangeRequest }: { form: any; index: number; remove: (index: number) => void; categories: string[]; onCategoryChangeRequest: (featureIndex: number, category?: string) => void; }) {
-    const { control } = form;
-    const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
-    const packageLevels = useWatch({ control, name: 'packageLevels' });
+  useEffect(() => {
+    if (feature) {
+      dialogForm.reset({
+        name: feature.name,
+        imageUrl: feature.imageUrl,
+        cost: feature.cost,
+        sellPriceExclGst: feature.sellPriceExclGst,
+      });
+    }
+  }, [feature, dialogForm]);
 
-    return (
-        <Card className="overflow-hidden">
-            <div className="p-4 flex gap-4">
-                <FormField
-                    control={control}
-                    name={`optionalFeatures.${index}.imageUrl`}
-                    render={({ field }) => (
-                        <FormItem className="w-32 flex-shrink-0">
-                            <FormLabel className="sr-only">Feature Image</FormLabel>
-                             {imageUrl ? (
-                                <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                                    <Image src={imageUrl} alt="Feature image" fill className="object-cover" />
-                                    <Button type="button" variant="outline" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive" onClick={() => field.onChange(null)}>
-                                        <X className="h-3 w-3" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-center w-full">
-                                    <label htmlFor={`feature-upload-${index}`} className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                        <div className="flex flex-col items-center justify-center text-center p-2">
-                                            <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
-                                            <p className="text-xs text-muted-foreground">Upload</p>
-                                        </div>
-                                        <FormControl>
-                                            <Input id={`feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) field.onChange(await fileToDataUri(file));
-                                            }} />
-                                        </FormControl>
-                                    </label>
-                                </div> 
-                            )}
-                            <FormMessage />
-                        </FormItem>
+  if (!feature) return null;
+
+  const handleDialogSave = (data: any) => {
+    onSave(featureIndex, data);
+    setIsOpen(false);
+  };
+
+  const imageUrl = dialogForm.watch('imageUrl');
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Edit Optional Feature</DialogTitle>
+          <DialogDescription>
+            Make changes to the feature details below.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...dialogForm}>
+          <form
+            onSubmit={dialogForm.handleSubmit(handleDialogSave)}
+            className="space-y-4"
+          >
+            <div className="flex gap-4 items-start">
+              <FormField
+                control={dialogForm.control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormItem className="w-32 flex-shrink-0">
+                    <FormLabel className="sr-only">Feature Image</FormLabel>
+                    {imageUrl ? (
+                      <div className="relative aspect-square w-full overflow-hidden rounded-md group">
+                        <Image
+                          src={imageUrl}
+                          alt="Feature image"
+                          fill
+                          className="object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                          onClick={() => field.onChange(null)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center w-full">
+                        <label
+                          htmlFor={`dialog-feature-upload`}
+                          className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted"
+                        >
+                          <div className="flex flex-col items-center justify-center text-center p-2">
+                            <Upload
+                              className="w-6 h-6 mb-1 text-muted-foreground"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Upload
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Input
+                              id={`dialog-feature-upload`}
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file)
+                                  field.onChange(await fileToDataUri(file));
+                              }}
+                            />
+                          </FormControl>
+                        </label>
+                      </div>
                     )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex-1 space-y-3">
+                <FormField
+                  control={dialogForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Feature Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Feature Name"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <div className="flex-1 space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                        <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
-                            <FormItem className="flex-1">
-                                <FormControl><Input placeholder="Feature Name" {...field} value={field.value ?? ''} /></FormControl>
-                                <FormMessage />
-                            </FormItem> 
-                        )} />
-                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 self-start shrink-0"><MoreHorizontal className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuSub>
-                                    <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
-                                    <DropdownMenuSubContent>
-                                        <DropdownMenuItem onClick={() => onCategoryChangeRequest(index, undefined)}>Uncategorized</DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        {categories.map((cat) => (
-                                            <DropdownMenuItem key={cat} onClick={() => onCategoryChangeRequest(index, cat)}>{cat}</DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuSubContent>
-                                </DropdownMenuSub>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive" onClick={() => remove(index)}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                     <div className="grid grid-cols-2 gap-4">
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <GstInputPair
+                    control={dialogForm.control}
+                    name="cost"
+                    label="Cost"
+                  />
+                  <GstInputPair
+                    control={dialogForm.control}
+                    name="sellPriceExclGst"
+                    label="Sell Price"
+                  />
                 </div>
+              </div>
             </div>
-            {packageLevels && packageLevels.length > 0 && (
-                <CardFooter className="bg-muted/50 p-4 grid grid-cols-3 gap-4">
-                     {packageLevels.map((pkg: any) => (
-                        <div key={pkg.id} className="flex flex-col items-center gap-2">
-                             <FormLabel className="text-sm font-medium">{pkg.name}</FormLabel>
-                             <PackageStatusToggle control={control} featureIndex={index} packageId={pkg.id} />
-                        </div>
-                    ))}
-                </CardFooter>
-            )}
-        </Card>
-    );
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function MotorConfigurationsCard({ control }: { control: any }) {
@@ -508,6 +582,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+
+    const [editingFeature, setEditingFeature] = useState<{ feature: any, index: number } | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
     const getSafeDefaultValues = (modelData: any): ModelFormData => {
         const data = modelData || {};
@@ -696,6 +773,17 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         appendOptionalFeature(newFeature);
     }
     
+    const handleEditFeature = (index: number) => {
+        const feature = getValues(`optionalFeatures.${index}`);
+        setEditingFeature({ feature, index });
+        setIsEditDialogOpen(true);
+    };
+
+    const handleSaveEditedFeature = (index: number, data: any) => {
+        const currentFeature = getValues(`optionalFeatures.${index}`);
+        updateOptionalFeature(index, { ...currentFeature, ...data });
+    };
+
     return (
          <>
             <Form {...form}>
@@ -866,9 +954,55 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                     </div>
                                                 </div>
                                                 <CollapsibleContent className="p-2 space-y-4">
-                                                    {items.map(({ field, index }) => (
-                                                        <OptionalFeatureCard key={field.id} form={form} index={index} remove={removeOptionalFeature} categories={categories} onCategoryChangeRequest={handleCategoryChange}/>
-                                                    ))}
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead className="w-2/5">Feature</TableHead>
+                                                                {watchedPackageLevels.map(pkg => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                <TableHead className="w-[50px] text-right">Actions</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {items.map(({ field, index }) => (
+                                                                <TableRow key={field.id}>
+                                                                    <TableCell>
+                                                                        <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="w-full"><FormControl><Input {...field} value={field.value ?? ''} className="border-none bg-transparent p-0 shadow-none focus-visible:ring-0" /></FormControl><FormMessage /></FormItem> )} />
+                                                                    </TableCell>
+                                                                    {watchedPackageLevels.map(pkg => (
+                                                                        <TableCell key={pkg.id} className="text-center">
+                                                                            <PackageStatusToggle control={form.control} featureIndex={index} packageId={pkg.id} />
+                                                                        </TableCell>
+                                                                    ))}
+                                                                    <TableCell className="text-right">
+                                                                        <DropdownMenu>
+                                                                            <DropdownMenuTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent>
+                                                                                <DropdownMenuItem onSelect={() => handleEditFeature(index)}>
+                                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuSub>
+                                                                                    <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
+                                                                                    <DropdownMenuSubContent>
+                                                                                        <DropdownMenuItem onClick={() => handleCategoryChange(index, undefined)}>Uncategorized</DropdownMenuItem>
+                                                                                        <DropdownMenuSeparator />
+                                                                                        {categories.map((cat) => (
+                                                                                            <DropdownMenuItem key={cat} onClick={() => handleCategoryChange(index, cat)}>{cat}</DropdownMenuItem>
+                                                                                        ))}
+                                                                                    </DropdownMenuSubContent>
+                                                                                </DropdownMenuSub>
+                                                                                <DropdownMenuSeparator />
+                                                                                <DropdownMenuItem className="text-destructive" onClick={() => removeOptionalFeature(index)}>
+                                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                                </DropdownMenuItem>
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
                                                     <Collapsible>
                                                         <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center text-sm text-muted-foreground p-2 hover:bg-muted rounded-md">
                                                             <Plus className="h-4 w-4 mr-2"/> Bulk Add to {name}
@@ -892,9 +1026,55 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
                                             </div>
                                             <CollapsibleContent className="p-2 space-y-4">
-                                                 {uncategorizedFeatures.map(({ field, index }) => (
-                                                     <OptionalFeatureCard key={field.id} form={form} index={index} remove={removeOptionalFeature} categories={categories} onCategoryChangeRequest={handleCategoryChange}/>
-                                                 ))}
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead className="w-2/5">Feature</TableHead>
+                                                            {watchedPackageLevels.map(pkg => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                            <TableHead className="w-[50px] text-right">Actions</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {uncategorizedFeatures.map(({ field, index }) => (
+                                                            <TableRow key={field.id}>
+                                                                <TableCell>
+                                                                    <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="w-full"><FormControl><Input {...field} value={field.value ?? ''} className="border-none bg-transparent p-0 shadow-none focus-visible:ring-0" /></FormControl><FormMessage /></FormItem> )} />
+                                                                </TableCell>
+                                                                {watchedPackageLevels.map(pkg => (
+                                                                    <TableCell key={pkg.id} className="text-center">
+                                                                        <PackageStatusToggle control={form.control} featureIndex={index} packageId={pkg.id} />
+                                                                    </TableCell>
+                                                                ))}
+                                                                <TableCell className="text-right">
+                                                                     <DropdownMenu>
+                                                                            <DropdownMenuTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent>
+                                                                                <DropdownMenuItem onSelect={() => handleEditFeature(index)}>
+                                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuSub>
+                                                                                    <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
+                                                                                    <DropdownMenuSubContent>
+                                                                                        <DropdownMenuItem onClick={() => handleCategoryChange(index, undefined)}>Uncategorized</DropdownMenuItem>
+                                                                                        <DropdownMenuSeparator />
+                                                                                        {categories.map((cat) => (
+                                                                                            <DropdownMenuItem key={cat} onClick={() => handleCategoryChange(index, cat)}>{cat}</DropdownMenuItem>
+                                                                                        ))}
+                                                                                    </DropdownMenuSubContent>
+                                                                                </DropdownMenuSub>
+                                                                                <DropdownMenuSeparator />
+                                                                                <DropdownMenuItem className="text-destructive" onClick={() => removeOptionalFeature(index)}>
+                                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                                </DropdownMenuItem>
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
                                                 <Collapsible>
                                                     <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center text-sm text-muted-foreground p-2 hover:bg-muted rounded-md">
                                                         <Plus className="h-4 w-4 mr-2"/> Bulk Add to Uncategorized
@@ -929,6 +1109,13 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <OptionalFeatureEditDialog
+                isOpen={isEditDialogOpen}
+                setIsOpen={setIsEditDialogOpen}
+                feature={editingFeature?.feature}
+                featureIndex={editingFeature?.index ?? -1}
+                onSave={handleSaveEditedFeature}
+            />
         </>
     );
 }
