@@ -79,6 +79,12 @@ const paintOptionSchema = z.object({
     color: z.string().optional(), // For powder coating
 });
 
+const documentSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Document name is required"),
+  url: z.string().min(1, "Document URL is required"),
+});
+
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
@@ -104,13 +110,7 @@ const modelSchema = z.object({
         standardMetallic: z.array(paintOptionSchema).default([]),
         powderCoating: z.array(paintOptionSchema).default([]),
     }).optional(),
-    documents: z.array(
-        z.object({
-            id: z.string(),
-            name: z.string().min(1, "Document name is required"),
-            url: z.string().min(1, "Document URL is required"),
-        })
-    ).default([]),
+    documents: z.array(documentSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
@@ -945,70 +945,71 @@ function DocumentsCard({ model }: { model: any }) {
     };
     
     return (
+      <Collapsible asChild defaultOpen={false}>
         <Card>
-            <CardHeader>
-                <CardTitle>Documents</CardTitle>
-                <CardDescription>Upload and manage model-specific documents.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
-                    <h4 className="font-medium text-sm">Upload New Document</h4>
-                    <div className="space-y-2">
-                        <Input 
-                            placeholder="Document Name" 
-                            value={newDocName} 
-                            onChange={(e) => setNewDocName(e.target.value)} 
-                            disabled={isUploading}
-                        />
-                        <Input 
-                            type="file" 
-                            ref={fileInputRef}
-                            onChange={(e) => setFileToUpload(e.target.files?.[0] || null)}
-                            disabled={isUploading}
-                        />
-                    </div>
-                     {isUploading && <Progress value={uploadProgress} className="w-full h-2" />}
-                    <Button onClick={handleUpload} disabled={isUploading || !fileToUpload || !newDocName.trim()}>
-                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                        Upload
-                    </Button>
-                </div>
+            <CollapsibleCardHeader title="Documents" description="Upload and manage model-specific documents."/>
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
+                  <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
+                      <h4 className="font-medium text-sm">Upload New Document</h4>
+                      <div className="space-y-2">
+                          <Input 
+                              placeholder="Document Name" 
+                              value={newDocName} 
+                              onChange={(e) => setNewDocName(e.target.value)} 
+                              disabled={isUploading}
+                          />
+                          <Input 
+                              type="file" 
+                              ref={fileInputRef}
+                              onChange={(e) => setFileToUpload(e.target.files?.[0] || null)}
+                              disabled={isUploading}
+                          />
+                      </div>
+                      {isUploading && <Progress value={uploadProgress} className="w-full h-2" />}
+                      <Button onClick={handleUpload} disabled={isUploading || !fileToUpload || !newDocName.trim()}>
+                          {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                          Upload
+                      </Button>
+                  </div>
 
-                <div className="space-y-2">
-                     <h4 className="font-medium text-sm">Uploaded Documents</h4>
-                     {fields.length > 0 ? (
-                        <div className="border rounded-md">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {fields.map((field, index) => (
-                                        <TableRow key={field.id}>
-                                            <TableCell>
-                                                <a href={(field as any).url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
-                                                    {(field as any).name}
-                                                </a>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" onClick={() => remove(index)}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                     ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded.</p>
-                     )}
-                </div>
-            </CardContent>
+                  <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Uploaded Documents</h4>
+                      {fields.length > 0 ? (
+                          <div className="border rounded-md">
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead>Name</TableHead>
+                                          <TableHead className="text-right">Actions</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {fields.map((field, index) => (
+                                          <TableRow key={field.id}>
+                                              <TableCell>
+                                                  <a href={(field as any).url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                                                      {(field as any).name}
+                                                  </a>
+                                              </TableCell>
+                                              <TableCell className="text-right">
+                                                  <Button variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                                  </Button>
+                                              </TableCell>
+                                          </TableRow>
+                                      ))}
+                                  </TableBody>
+                              </Table>
+                          </div>
+                      ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded.</p>
+                      )}
+                  </div>
+              </CardContent>
+            </CollapsibleContent>
         </Card>
+      </Collapsible>
     );
 }
 
@@ -1063,7 +1064,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 cost: p.cost ?? null,
                 sellPriceExclGst: p.sellPriceExclGst ?? null,
             })),
-            colorStages: data.colorStages ?? { stage0: false, stage1: false, stage2: false, stage3: false },
             uDekOptions: data.uDekOptions ?? { blackOnWinterGrey: null, teakOnBlack: null, steelGreyOnWinterGrey: null, winterGreyOnSteelGrey: null },
             paintAndGraphicOptions: data.paintAndGraphicOptions ?? { standardGloss: [], standardMetallic: [], powderCoating: [] },
             documents: data.documents ?? [],
@@ -1464,103 +1464,100 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                             </Collapsible>
                             <UDekFlooringCard model={model} />
                             <PaintAndGraphicOptionsCard model={model} />
+                            <DocumentsCard model={model} />
                         </div>
                         
                         {/* --- FULL WIDTH PACKAGE SECTION --- */}
                         <div className="lg:col-span-7 space-y-8">
                             <Collapsible asChild defaultOpen={false}>
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle>Optional Features &amp; Packages</CardTitle>
-                                        <CardDescription>
-                                            Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4 max-h-[700px] overflow-y-auto">
-                                        <div className="flex items-center gap-2">
-                                            <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
-                                            <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>Add Category</Button>
-                                        </div>
-                                        <div className="space-y-4">
-                                            {categorizedFeatures.map(({ name, items }) => (
-                                                <Collapsible key={name} defaultOpen={false}>
-                                                    <div className="flex items-center justify-between border-b px-2 py-2">
-                                                        <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
-                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
-                                                            <h3 className="font-semibold">{name}</h3>
-                                                        </CollapsibleTrigger>
-                                                        <div className='flex items-center'>
-                                                            <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature(name)}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
-                                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCategoryToDelete(name)}><Trash2 className="h-4 w-4"/></Button>
-                                                        </div>
-                                                    </div>
-                                                    <CollapsibleContent className="p-2 space-y-4">
-                                                        <Table>
-                                                            <TableHeader>
-                                                                <TableRow>
-                                                                    <TableHead className="w-2/5">Feature</TableHead>
-                                                                    {watchedPackageLevels.map(pkg => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
-                                                                    <TableHead className="w-[50px] text-right">Actions</TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {items.map(({ field, index }) => (
-                                                                    <TableRow key={field.id}>
-                                                                        <TableCell>
-                                                                            <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="w-full"><FormControl><Input {...field} value={field.value ?? ''} className="border-none bg-transparent p-0 shadow-none focus-visible:ring-0" /></FormControl><FormMessage /></FormItem> )} />
-                                                                        </TableCell>
-                                                                        {watchedPackageLevels.map(pkg => (
-                                                                            <TableCell key={pkg.id} className="text-center">
-                                                                                <PackageStatusToggle control={form.control} featureIndex={index} packageId={pkg.id} />
-                                                                            </TableCell>
-                                                                        ))}
-                                                                        <TableCell className="text-right">
-                                                                            <DropdownMenu>
-                                                                                <DropdownMenuTrigger asChild>
-                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                                                </DropdownMenuTrigger>
-                                                                                <DropdownMenuContent>
-                                                                                    <DropdownMenuItem onSelect={() => handleEditFeature(index)}>
-                                                                                        <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                                                    </DropdownMenuItem>
-                                                                                    <DropdownMenuSub>
-                                                                                        <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
-                                                                                        <DropdownMenuSubContent>
-                                                                                            {categories.map((cat) => (
-                                                                                                <DropdownMenuItem key={cat} onClick={() => handleCategoryChange(index, cat)}>{cat}</DropdownMenuItem>
-                                                                                            ))}
-                                                                                        </DropdownMenuSubContent>
-                                                                                    </DropdownMenuSub>
-                                                                                    <DropdownMenuSeparator />
-                                                                                    <DropdownMenuItem className="text-destructive" onClick={() => removeOptionalFeature(index)}>
-                                                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                                                    </DropdownMenuItem>
-                                                                                </DropdownMenuContent>
-                                                                            </DropdownMenu>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
-                                                        <Collapsible>
-                                                            <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center text-sm text-muted-foreground p-2 hover:bg-muted rounded-md">
-                                                                <Plus className="h-4 w-4 mr-2"/> Bulk Add to {name}
+                                    <CollapsibleCardHeader title="Optional Features & Packages" description="Manage optional features and specify if they are 'Standard' or 'Optional' for each package."/>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-4 max-h-[700px] overflow-y-auto">
+                                            <div className="flex items-center gap-2">
+                                                <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
+                                                <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>Add Category</Button>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {categorizedFeatures.map(({ name, items }) => (
+                                                    <Collapsible key={name} defaultOpen={false}>
+                                                        <div className="flex items-center justify-between border-b px-2 py-2">
+                                                            <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
+                                                                <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
+                                                                <h3 className="font-semibold">{name}</h3>
                                                             </CollapsibleTrigger>
-                                                            <CollapsibleContent className="p-4 bg-muted/20 rounded-md mt-2">
-                                                                <div className="space-y-2">
-                                                                    <Textarea placeholder="One feature per line..." value={categoryBulkFeatures[name] || ''} onChange={(e) => setCategoryBulkFeatures(prev => ({...prev, [name]: e.target.value}))}/>
-                                                                    <Button type="button" size="sm" onClick={() => handleBulkAddOptionalFeatures(name)} disabled={!categoryBulkFeatures[name]?.trim()}>Add Features from Text</Button>
-                                                                </div>
-                                                            </CollapsibleContent>
-                                                        </Collapsible>
-                                                    </CollapsibleContent>
-                                                </Collapsible>
-                                            ))}
-                                        </div>
-                                    </CardContent>
+                                                            <div className='flex items-center'>
+                                                                <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature(name)}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCategoryToDelete(name)}><Trash2 className="h-4 w-4"/></Button>
+                                                            </div>
+                                                        </div>
+                                                        <CollapsibleContent className="p-2 space-y-4">
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        <TableHead className="w-2/5">Feature</TableHead>
+                                                                        {watchedPackageLevels.map(pkg => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                        <TableHead className="w-[50px] text-right">Actions</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {items.map(({ field, index }) => (
+                                                                        <TableRow key={field.id}>
+                                                                            <TableCell>
+                                                                                <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="w-full"><FormControl><Input {...field} value={field.value ?? ''} className="border-none bg-transparent p-0 shadow-none focus-visible:ring-0" /></FormControl><FormMessage /></FormItem> )} />
+                                                                            </TableCell>
+                                                                            {watchedPackageLevels.map(pkg => (
+                                                                                <TableCell key={pkg.id} className="text-center">
+                                                                                    <PackageStatusToggle control={form.control} featureIndex={index} packageId={pkg.id} />
+                                                                                </TableCell>
+                                                                            ))}
+                                                                            <TableCell className="text-right">
+                                                                                <DropdownMenu>
+                                                                                    <DropdownMenuTrigger asChild>
+                                                                                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                                                    </DropdownMenuTrigger>
+                                                                                    <DropdownMenuContent>
+                                                                                        <DropdownMenuItem onSelect={() => handleEditFeature(index)}>
+                                                                                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                                                        </DropdownMenuItem>
+                                                                                        <DropdownMenuSub>
+                                                                                            <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
+                                                                                            <DropdownMenuSubContent>
+                                                                                                {categories.map((cat) => (
+                                                                                                    <DropdownMenuItem key={cat} onClick={() => handleCategoryChange(index, cat)}>{cat}</DropdownMenuItem>
+                                                                                                ))}
+                                                                                            </DropdownMenuSubContent>
+                                                                                        </DropdownMenuSub>
+                                                                                        <DropdownMenuSeparator />
+                                                                                        <DropdownMenuItem className="text-destructive" onClick={() => removeOptionalFeature(index)}>
+                                                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                                        </DropdownMenuItem>
+                                                                                    </DropdownMenuContent>
+                                                                                </DropdownMenu>
+                                                                            </TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                            <Collapsible>
+                                                                <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center text-sm text-muted-foreground p-2 hover:bg-muted rounded-md">
+                                                                    <Plus className="h-4 w-4 mr-2"/> Bulk Add to {name}
+                                                                </CollapsibleTrigger>
+                                                                <CollapsibleContent className="p-4 bg-muted/20 rounded-md mt-2">
+                                                                    <div className="space-y-2">
+                                                                        <Textarea placeholder="One feature per line..." value={categoryBulkFeatures[name] || ''} onChange={(e) => setCategoryBulkFeatures(prev => ({...prev, [name]: e.target.value}))}/>
+                                                                        <Button type="button" size="sm" onClick={() => handleBulkAddOptionalFeatures(name)} disabled={!categoryBulkFeatures[name]?.trim()}>Add Features from Text</Button>
+                                                                    </div>
+                                                                </CollapsibleContent>
+                                                            </Collapsible>
+                                                        </CollapsibleContent>
+                                                    </Collapsible>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            <DocumentsCard model={model} />
                         </div>
                     </div>
                 </form>
