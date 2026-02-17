@@ -118,6 +118,7 @@ export default function Dashboard() {
     const isLoading = userLoading || profileLoading;
 
     useEffect(() => {
+        // Only redirect away from dashboard if we are SURE they are an admin
         if (!isLoading && isAdmin) {
             router.replace('/admin');
         }
@@ -137,7 +138,15 @@ export default function Dashboard() {
                 <h1 className="text-2xl font-semibold">Dashboard</h1>
                 <BreadcrumbNav />
             </div>
-            {organisationId && userProfile ? <EmployeeDashboard organisationId={organisationId} userProfile={userProfile} /> : <p>You are not part of an organisation.</p>}
+            {organisationId && userProfile ? (
+                <EmployeeDashboard organisationId={organisationId} userProfile={userProfile} />
+            ) : (
+                <div className="flex flex-col items-center justify-center h-80 border-2 border-dashed rounded-lg">
+                    <Blocks className="h-16 w-16 text-muted-foreground opacity-20" />
+                    <h3 className="mt-4 text-lg font-semibold text-muted-foreground">Welcome to HelmLogic</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">You are not currently associated with an organisation.</p>
+                </div>
+            )}
         </div>
     );
 }

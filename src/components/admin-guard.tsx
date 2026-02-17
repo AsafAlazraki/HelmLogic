@@ -21,7 +21,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
 
     if (userLoading) {
         return (
-            <div className="flex h-full w-full items-center justify-center">
+            <div className="flex h-screen w-screen items-center justify-center bg-background">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
             </div>
         );
@@ -41,16 +41,20 @@ function AdminRoleChecker({ user, children }: { user: User, children: React.Reac
     const router = useRouter();
 
     useEffect(() => {
-        if (!profileLoading) {
-            if (userProfile?.appRole !== 'HelmLogic Admin') {
+        // Only redirect if we HAVE a profile and it's explicitly NOT an admin
+        if (!profileLoading && userProfile) {
+            if (userProfile.appRole !== 'HelmLogic Admin') {
                 router.replace('/dashboard');
             }
         }
+        // NOTE: We don't redirect if userProfile is missing yet, to avoid loops 
+        // while Firestore document creation/syncing is in progress.
     }, [userProfile, profileLoading, router]);
 
+    // Show loader while we're confirming the role
     if (profileLoading || userProfile?.appRole !== 'HelmLogic Admin') {
         return (
-            <div className="flex h-full w-full items-center justify-center">
+            <div className="flex h-full w-full items-center justify-center min-h-[400px]">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
             </div>
         );

@@ -107,7 +107,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
                                 <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" sizes="(max-width: 768px) 50vw, 25vw" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center">
-                                    <Loader2 className="h-12 w-12 text-muted-foreground" />
+                                    <Wrench className="h-12 w-12 text-muted-foreground" />
                                 </div>
                             )}
                         </div>
@@ -148,7 +148,7 @@ function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Ve
                                 <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center">
-                                    <Loader2 className="h-12 w-12 text-muted-foreground" />
+                                    <Wrench className="h-12 w-12 text-muted-foreground" />
                                 </div>
                             )}
                         </div>
