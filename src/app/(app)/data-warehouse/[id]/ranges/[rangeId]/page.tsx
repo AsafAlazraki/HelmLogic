@@ -64,6 +64,7 @@ interface Model {
     slug?: string;
     coverImageUrl?: string;
     packages?: { id: string; name: string }[];
+    packageLevels?: { id: string; name: string }[];
     order?: number;
 }
 
@@ -210,16 +211,16 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
 
     const handleSavePackage = async (data: PackageFormData) => {
         let updatedPackages;
+        const currentPackages = model.packageLevels || [];
         if (editingPackage) {
-            updatedPackages = model.packages?.map(p => p.id === editingPackage.id ? { ...p, name: data.name } : p) || [];
+            updatedPackages = currentPackages.map(p => p.id === editingPackage.id ? { ...p, name: data.name } : p);
         } else {
-            const newPackage = { id: `pkg-${Date.now()}`, name: data.name };
-            updatedPackages = [...(model.packages || []), newPackage];
+            const newPackage = { id: `pkg-lvl-${Date.now()}`, name: data.name };
+            updatedPackages = [...currentPackages, newPackage];
         }
         try {
-            await updateDoc(doc(firestore, modelPath), { packages: updatedPackages });
+            await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
             toast({ title: editingPackage ? 'Package Updated' : 'Package Added' });
-            router.refresh();
         } catch(error) {
             console.error('Failed to save package:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not save package.' });
@@ -228,11 +229,10 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
 
     const handleDeletePackage = async (packageId: string, e: React.MouseEvent) => {
         e.preventDefault();
-        const updatedPackages = model.packages?.filter(p => p.id !== packageId) || [];
+        const updatedPackages = model.packageLevels?.filter(p => p.id !== packageId) || [];
         try {
-            await updateDoc(doc(firestore, modelPath), { packages: updatedPackages });
+            await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
             toast({ title: 'Package Deleted' });
-            router.refresh();
         } catch(error) {
             console.error('Failed to delete package:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not delete package.' });
@@ -298,9 +298,9 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                                     <PlusCircle className="h-4 w-4" />
                                 </Button>
                             </div>
-                            {model.packages && model.packages.length > 0 ? (
+                            {model.packageLevels && model.packageLevels.length > 0 ? (
                                 <div className="flex flex-wrap -m-1">
-                                    {model.packages.map(pkg => (
+                                    {model.packageLevels.map(pkg => (
                                         <div key={pkg.id} className="p-1 grow basis-[30%]">
                                             <div className="group/pkg flex items-center justify-between rounded-full bg-secondary text-secondary-foreground px-3 py-1 text-sm font-semibold transition-colors hover:bg-secondary/80 w-full h-full">
                                                 <span className="truncate pr-2">{pkg.name}</span>

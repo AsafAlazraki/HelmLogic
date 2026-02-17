@@ -429,6 +429,24 @@
             ]
           }
         },
+        "colorStages": {
+          "type": "object",
+          "description": "Available color stages for a Stabicraft model.",
+          "properties": {
+            "stage0": {
+              "type": "boolean"
+            },
+            "stage1": {
+              "type": "boolean"
+            },
+            "stage2": {
+              "type": "boolean"
+            },
+            "stage3": {
+              "type": "boolean"
+            }
+          }
+        },
         "specifications": {
           "type": "object",
           "properties": {
@@ -444,21 +462,39 @@
                       "Single",
                       "Twin",
                       "Triple",
+                      "Quad",
                       "SingleWithAux"
                     ]
                   },
-                  "minHp": {
-                    "type": "number"
-                  },
-                  "maxHp": {
-                    "type": "number"
-                  },
-                  "recommendedHp": {
-                    "type": "number"
+                  "engines": {
+                    "type": "array",
+                    "description": "An array of engine specifications for this configuration.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "description": "A label for the engine (e.g., 'Main Engine', 'Engine 1')."
+                        },
+                        "minHp": {
+                          "type": "number"
+                        },
+                        "maxHp": {
+                          "type": "number"
+                        },
+                        "recommendedHp": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "label"
+                      ]
+                    }
                   }
                 },
                 "required": [
-                  "type"
+                  "type",
+                  "engines"
                 ]
               }
             },

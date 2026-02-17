@@ -72,6 +72,12 @@ const modelSchema = z.object({
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     packageLevels: z.array(packageLevelSchema).default([]),
+    colorStages: z.object({
+        stage0: z.boolean().default(false),
+        stage1: z.boolean().default(false),
+        stage2: z.boolean().default(false),
+        stage3: z.boolean().default(false),
+    }).optional(),
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
@@ -539,6 +545,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 cost: p.cost ?? null,
                 sellPriceExclGst: p.sellPriceExclGst ?? null,
             })),
+            colorStages: data.colorStages ?? { stage0: false, stage1: false, stage2: false, stage3: false },
         };
     };
 
@@ -673,27 +680,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                         {/* --- LEFT COLUMN --- */}
                         <div className="lg:col-span-4 space-y-8">
                             <MotorConfigurationsCard control={form.control} />
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Specifications">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-6">
-                                            <div className="space-y-4">
-                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
-                                                {specFields.map((field, index) => (
-                                                    <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
                             
                             <Collapsible asChild defaultOpen>
                                 <Card>
@@ -877,99 +863,57 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            {packageLevelFields.length === 0 && (
-                                <Collapsible asChild defaultOpen>
-                                    <Card>
-                                        <CollapsibleCardHeader title="Cover Image" />
-                                        <CollapsibleContent>
-                                            <CardContent>
-                                                {/* Cover Image and Gallery FormField */}
-                                                <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                            {coverImageUrl ? (
-                                                                <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                                    <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="icon"
-                                                                        className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                                                                        onClick={() => field.onChange(null)}
-                                                                    >
-                                                                        <X className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center justify-center w-full">
-                                                                    <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                            <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                                        </div>
-                                                                        <FormControl>
-                                                                            <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                                const file = e.target.files?.[0];
-                                                                                if (file) field.onChange(await fileToDataUri(file));
-                                                                            }} />
-                                                                        </FormControl>
-                                                                    </label>
-                                                                </div> 
-                                                            )}
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )} />
-                                                <div className="pt-6">
-                                                    <Collapsible>
-                                                        <CollapsibleTrigger className="flex w-full items-center justify-between border-b border-t py-2 text-sm font-medium data-[state=open]:border-b-0">
-                                                            <span>Image Gallery ({galleryImageFields.length})</span>
-                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                                        </CollapsibleTrigger>
-                                                        <CollapsibleContent className="border-b">
-                                                            <div className="p-4 bg-muted/20">
-                                                                <div className="grid grid-cols-3 gap-2">
-                                                                    {galleryImageFields.map((item, index) => (
-                                                                        <div key={item.id} className="group relative aspect-square">
-                                                                            <FormField
-                                                                                control={form.control}
-                                                                                name={`galleryImageUrls.${index}`}
-                                                                                render={({ field }) => (
-                                                                                    <>
-                                                                                        <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="rounded-md object-cover" />
-                                                                                        <Button
-                                                                                            type="button"
-                                                                                            variant="destructive"
-                                                                                            size="icon"
-                                                                                            className="absolute right-1 top-1 z-10 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                                                                                            onClick={() => removeGalleryImage(index)}
-                                                                                        >
-                                                                                            <Trash2 className="h-4 w-4" />
-                                                                                        </Button>
-                                                                                    </>
-                                                                                )}
-                                                                            />
-                                                                        </div>
-                                                                    ))}
-                                                                    <label htmlFor="gallery-image-upload" className={cn(
-                                                                        "flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed bg-background hover:bg-secondary"
-                                                                    )}>
-                                                                        <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                            const files = Array.from(e.target.files || []);
-                                                                            const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                            dataUris.forEach(uri => appendGalleryImage(uri));
-                                                                        }}/>
-                                                                        <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                                    </label>
-                                                                </div>
+
+                             <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Specifications" />
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-6">
+                                            <div className="space-y-4">
+                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
+                                                {specFields.map((field, index) => (
+                                                    <div key={field.id} className="flex items-end gap-2">
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                             <Collapsible asChild defaultOpen>
+                                <Card>
+                                    <CollapsibleCardHeader title="Avail. Color Stages" />
+                                    <CollapsibleContent>
+                                        <CardContent className="grid grid-cols-2 gap-4">
+                                            {([0, 1, 2, 3] as const).map((stage) => (
+                                                <FormField
+                                                    key={stage}
+                                                    control={form.control}
+                                                    name={`colorStages.stage${stage}`}
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-4">
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                />
+                                                            </FormControl>
+                                                            <div className="space-y-1 leading-none">
+                                                                <FormLabel>
+                                                                    Stage {stage}
+                                                                </FormLabel>
                                                             </div>
-                                                        </CollapsibleContent>
-                                                    </Collapsible>
-                                                </div>
-                                            </CardContent>
-                                        </CollapsibleContent>
-                                    </Card>
-                                </Collapsible>
-                            )}
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ))}
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
                         </div>
                         
                         {/* --- FULL WIDTH PACKAGE SECTION --- */}
