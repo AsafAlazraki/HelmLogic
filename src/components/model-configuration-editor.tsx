@@ -149,20 +149,22 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
     return (
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-                 <div className="flex items-center justify-between mb-4">
-                    {breadcrumbs}
-                    <div className="flex items-center gap-2">
-                        <Button type="button" variant="outline" onClick={() => {}}>
-                            Start Quote
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Changes
-                        </Button>
-                    </div>
-                </div>
                 <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            {breadcrumbs}
+                            <div className="flex items-center gap-2">
+                                <Button type="button" variant="outline" onClick={() => {}}>
+                                    Start Quote
+                                </Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    <Save className="mr-2 h-4 w-4" />
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </div>
+                    </CardHeader>
                     <CardContent className="p-6">
                         <Tabs defaultValue="boat" className="w-full">
                             <TabsList className="grid w-full grid-cols-4">
