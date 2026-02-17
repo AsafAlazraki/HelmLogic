@@ -72,6 +72,7 @@ const formSchema = z.object({
   secondaryLogoUrl: z.string().nullable().optional(),
   subDealersEnabled: z.boolean().optional(),
   dataWarehouseSubscriptions: z.array(z.string()).optional(),
+  enabledModuleSubscriptions: z.array(z.string()).optional(),
   parentOrganisationId: z.string().nullable().optional(),
 });
 
@@ -129,6 +130,7 @@ export default function OrganisationDetailsPage() {
     const orgLoading = slugLoading || idLoading;
 
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
+    const { data: allModules, loading: modulesLoading } = useCollection<{id: string, name: string, logoUrl?:string}>('modules');
 
     const subDealersQuery = useMemo(() => {
         if (!organisation) return null;
@@ -164,6 +166,7 @@ export default function OrganisationDetailsPage() {
                 permissions: initialPermissions,
                 subDealersEnabled: organisation.subDealersEnabled || false,
                 dataWarehouseSubscriptions: organisation.dataWarehouseSubscriptions || [],
+                enabledModuleSubscriptions: organisation.enabledModuleSubscriptions || [],
             });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
@@ -244,6 +247,7 @@ export default function OrganisationDetailsPage() {
                 permissions: values.permissions || {},
                 subDealersEnabled: values.subDealersEnabled || false,
                 dataWarehouseSubscriptions: values.dataWarehouseSubscriptions || [],
+                enabledModuleSubscriptions: values.enabledModuleSubscriptions || [],
             };
             
             if (values.primaryLogo instanceof File && storage) {
@@ -662,11 +666,68 @@ export default function OrganisationDetailsPage() {
                                     </Card>
                                     <Card>
                                         <CardHeader>
-                                            <CardTitle>Module Control</CardTitle>
-                                            <CardDescription>Further module controls will be available here.</CardDescription>
+                                            <CardTitle>Module Subscriptions</CardTitle>
+                                            <CardDescription>Select which modules this organisation can access.</CardDescription>
                                         </CardHeader>
                                         <CardContent>
-                                            <p className="text-sm text-muted-foreground">This feature is coming soon.</p>
+                                            {modulesLoading ? (
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                            ) : (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="enabledModuleSubscriptions"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            {allModules && allModules.length > 0 ? (
+                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                                    {allModules.map((module) => {
+                                                                        const isSubscribed = field.value?.includes(module.id);
+                                                                        
+                                                                        const handleToggle = () => {
+                                                                            const newValue = isSubscribed
+                                                                                ? field.value?.filter((id) => id !== module.id)
+                                                                                : [...(field.value || []), module.id];
+                                                                            field.onChange(newValue);
+                                                                        };
+
+                                                                        return (
+                                                                            <Card 
+                                                                                key={module.id}
+                                                                                onClick={handleToggle}
+                                                                                className={cn(
+                                                                                    "cursor-pointer transition-all duration-200 ease-in-out hover:shadow-md hover:-translate-y-1 relative overflow-hidden",
+                                                                                    isSubscribed ? "border-primary ring-2 ring-primary" : "border-border"
+                                                                                )}
+                                                                            >
+                                                                                {isSubscribed && (
+                                                                                    <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5 z-10">
+                                                                                        <Check className="h-3 w-3" />
+                                                                                    </div>
+                                                                                )}
+                                                                                <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
+                                                                                    {module.logoUrl ? (
+                                                                                        <div className="relative h-full w-full">
+                                                                                            <Image src={module.logoUrl} alt={`${module.name} logo`} fill className="object-contain" sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw" />
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <Building className="h-8 w-8 text-muted-foreground"/>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="p-3 text-center">
+                                                                                    <p className="text-sm font-medium truncate">{module.name}</p>
+                                                                                </div>
+                                                                            </Card>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-sm text-muted-foreground">No modules found. Add modules in the Admin section.</p>
+                                                            )}
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            )}
                                         </CardContent>
                                     </Card>
                                 </div>

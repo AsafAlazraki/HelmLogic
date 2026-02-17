@@ -126,6 +126,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "enabledModuleSubscriptions": {
+          "type": "array",
+          "description": "A list of module IDs that this organisation has access to.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -267,23 +274,23 @@
           "description": "URL for the boat's main cover image."
         },
         "galleryImageUrls": {
-            "type": "array",
-            "description": "A list of URLs for the model's image gallery.",
-            "items": {
-                "type": "string"
-            }
+          "type": "array",
+          "description": "A list of URLs for the model's image gallery.",
+          "items": {
+            "type": "string"
+          }
         },
         "cost": {
           "type": "number",
           "description": "Base cost of the model."
         },
         "sellPriceExclGst": {
-            "type": "number",
-            "description": "Base selling price, excluding GST."
+          "type": "number",
+          "description": "Base selling price, excluding GST."
         },
         "freightCostExclGst": {
-            "type": "number",
-            "description": "Freight cost, excluding GST."
+          "type": "number",
+          "description": "Freight cost, excluding GST."
         },
         "colors": {
           "type": "array",
@@ -526,10 +533,7 @@
                   "imageUrl": {
                     "type": "string"
                   },
-                  "paint": {
-                    "type": "string"
-                  },
-                  "graphics": {
+                  "color": {
                     "type": "string"
                   }
                 },
@@ -677,6 +681,41 @@
         "rangeId",
         "vendorId"
       ]
+    },
+    "Module": {
+      "title": "Module",
+      "description": "Represents an application module that connects various vendors and data for an organisation.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the module."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the module name."
+        },
+        "mainVendorId": {
+          "type": "string",
+          "description": "The ID of the main vendor for this module."
+        },
+        "associatedVendorIds": {
+          "type": "array",
+          "description": "A list of IDs for associated vendors.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL for the module's logo, typically inherited from the main vendor."
+        }
+      },
+      "required": [
+        "name",
+        "slug",
+        "mainVendorId"
+      ]
     }
   },
   "auth": {
@@ -732,6 +771,12 @@
         "$ref": "#/backend/entities/MasterDataRow"
       },
       "description": "A collection of individual data rows that make up the vendor's bulk master price list."
+    },
+    "/modules/{moduleId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Module"
+      },
+      "description": "Application modules."
     }
   }
 }
