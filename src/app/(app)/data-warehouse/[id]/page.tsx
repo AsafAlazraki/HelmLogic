@@ -497,7 +497,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 
                 const imageUrlKey = 'SummaryImage';
                 
-                const colorsKey = findKey(['colors', 'available_colors', 'availableColors']);
+                const colorsKey = findKey(['colors', 'available_colors', 'availableColors', 'Colours']);
 
                 const titleKey = modelNameKey || null;
                 const infoKeys = [productGroupKey, subCategoryKey].filter(Boolean) as string[];
@@ -602,12 +602,18 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                 <div className="max-h-[600px] overflow-auto">
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
                                         {filteredData.map((item) => {
-                                            let itemImageUrl = imageUrlKey && item[imageUrlKey] ? item[imageUrlKey] : null;
-                                            if (vendor.slug === 'yamaha' && itemImageUrl && !itemImageUrl.startsWith('http')) {
-                                                const baseUrl = 'https://www.yamaha-motor.com.au';
-                                                const path = itemImageUrl.startsWith('/') ? itemImageUrl : `/${itemImageUrl}`;
-                                                itemImageUrl = `${baseUrl}${path}`;
+                                            let itemImageUrl: string | null = null;
+                                            if (imageUrlKey && item[imageUrlKey] && typeof item[imageUrlKey] === 'string' && item[imageUrlKey].includes('/')) {
+                                                const rawUrl = item[imageUrlKey].trim();
+                                                if (rawUrl.startsWith('http')) {
+                                                    itemImageUrl = rawUrl;
+                                                } else if (vendor.slug === 'yamaha') {
+                                                    const baseUrl = 'https://www.yamaha-motor.com.au';
+                                                    const path = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+                                                    itemImageUrl = `${baseUrl}${path}`;
+                                                }
                                             }
+                                            
                                             const itemColors = colorsKey && Array.isArray(item[colorsKey]) ? item[colorsKey] : [];
                                             
                                             return (
@@ -628,7 +634,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                         <div className="space-y-1 text-sm text-muted-foreground">
                                                             {infoKeys.map((key) => (
                                                                 <div key={key} className="flex justify-between items-start gap-2">
-                                                                    <span className="font-medium capitalize truncate text-xs">{key.replace(/_/g, ' ')}:</span>\n                                                                    <span className="truncate text-right text-xs text-foreground">{String(item[key])}</span>
+                                                                    <span className="font-medium capitalize truncate text-xs">{key.replace(/_/g, ' ')}:</span>
+                                                                    <span className="truncate text-right text-xs text-foreground">{String(item[key])}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -637,8 +644,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                         <CardFooter className="pt-0 mt-auto flex flex-wrap gap-2">
                                                             {itemColors.map((color: any, index: number) => (
                                                                 <div key={index} className="flex items-center gap-1.5 text-xs">
-                                                                    <div className="h-3 w-3 rounded-full border" style={{ backgroundColor: typeof color === 'string' ? color.toLowerCase().replace(/ /g, '') : color.hex || 'transparent' }}></div>
-                                                                    <span className="text-muted-foreground">{typeof color === 'string' ? color : color.name}</span>
+                                                                    <div className="h-3 w-3 rounded-full border" style={{ backgroundColor: typeof color === 'string' ? color.toLowerCase().replace(/ /g, '') : color.hex || color.Name || 'transparent' }}></div>
+                                                                    <span className="text-muted-foreground">{typeof color === 'string' ? color : color.name || color.Name}</span>
                                                                 </div>
                                                             ))}
                                                         </CardFooter>
