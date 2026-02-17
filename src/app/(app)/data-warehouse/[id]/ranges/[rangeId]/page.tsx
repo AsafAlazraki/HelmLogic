@@ -12,7 +12,6 @@ import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, Ar
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import AdminGuard from '@/components/admin-guard';
 import {
     Table,
     TableBody,
@@ -55,7 +54,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Badge } from '@/components/ui/badge';
+import { useUser } from '@/firebase/auth/use-user';
 
 
 interface Model {
@@ -149,7 +148,7 @@ function PackageDialog({
     );
 }
 
-function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendor: Vendor; range: Range; model: Model; index: number; totalModels: number; onMove: (index: number, direction: 'up' | 'down') => void; }) {
+function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }: { vendor: Vendor; range: Range; model: Model; index: number; totalModels: number; onMove: (index: number, direction: 'up' | 'down') => void; isAdmin: boolean; }) {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
@@ -246,33 +245,35 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
     return (
         <>
             <Card className="relative h-full transition-all duration-300 ease-in-out group hover:border-primary hover:shadow-xl hover:-translate-y-1 overflow-hidden flex flex-col">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                         <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-primary/10 hover:text-primary" onClick={(e) => e.preventDefault()}>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()}>
-                        <DropdownMenuItem onClick={() => onMove(index, 'up')} disabled={index === 0}>
-                            <ArrowUp className="mr-2 h-4 w-4" /> Move Up
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
-                            <ArrowDown className="mr-2 h-4 w-4" /> Move Down
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => { setNewModelName(model.name); setIsRenameDialogOpen(true); }}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {isAdmin && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-primary/10 hover:text-primary" onClick={(e) => e.preventDefault()}>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()}>
+                            <DropdownMenuItem onClick={() => onMove(index, 'up')} disabled={index === 0}>
+                                <ArrowUp className="mr-2 h-4 w-4" /> Move Up
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
+                                <ArrowDown className="mr-2 h-4 w-4" /> Move Down
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => { setNewModelName(model.name); setIsRenameDialogOpen(true); }}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
                 
-                <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
-                    <div className="h-52 bg-secondary relative">
+                <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block h-full flex flex-col">
+                    <div className="h-48 bg-secondary relative">
                          {model.coverImageUrl ? (
                             <>
                                 <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
@@ -284,19 +285,21 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                             </div>
                         )}
                     </div>
-                    <CardContent className="p-3 h-16 flex items-center justify-center">
+                    <CardContent className="p-3 flex-grow h-20 flex items-center justify-center">
                         <p className="font-semibold text-center line-clamp-2">{model.name}</p>
                     </CardContent>
                 </Link>
 
                 {vendor.slug === 'stabicraft' && (
-                    <div className="p-3 border-t">
+                    <div className="p-3 border-t mt-auto">
                         <div className="space-y-2">
                              <div className="flex justify-between items-center mb-2">
                                 <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenAddPackageDialog}>
-                                    <PlusCircle className="h-4 w-4" />
-                                </Button>
+                                {isAdmin && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenAddPackageDialog}>
+                                        <PlusCircle className="h-4 w-4" />
+                                    </Button>
+                                )}
                             </div>
                             <div className="space-y-1 min-h-[108px] flex flex-col">
                                 {(model.packageLevels && model.packageLevels.length > 0) ? (
@@ -304,14 +307,16 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                                     {model.packageLevels.map(pkg => (
                                         <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full h-full">
                                             <span className="font-medium truncate pr-2">{pkg.name}</span>
-                                            <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
+                                            {isAdmin && (
+                                                <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                     </div>
@@ -390,6 +395,10 @@ export default function RangeDetailsPage() {
     const [newModelName, setNewModelName] = useState('');
     const [isAddingModel, setIsAddingModel] = useState(false);
     const { toast } = useToast();
+
+    const { user, loading: userLoading } = useUser();
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(user ? `/users/${user.uid}` : null);
+    const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
     const vendorQuery = useMemo(() => {
         if (!vendorSlugOrId) return null;
@@ -491,7 +500,7 @@ export default function RangeDetailsPage() {
         }
     };
     
-    const loading = vendorLoading || rangeLoading || modelsLoading;
+    const loading = vendorLoading || rangeLoading || modelsLoading || userLoading || profileLoading;
 
     const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
         if (!vendor || !range) return [];
@@ -530,57 +539,59 @@ export default function RangeDetailsPage() {
     }
 
     return (
-        <AdminGuard>
-            <div className="space-y-4">
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <h1 className="text-2xl font-semibold">Models in {range.name}</h1>
-                                <BreadcrumbNav parts={breadcrumbParts} />
-                                <CardDescription>Manage the models available in this product range.</CardDescription>
-                            </div>
-                            <div className="flex items-center gap-2">
+        <div className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <h1 className="text-2xl font-semibold">Models in {range.name}</h1>
+                            <BreadcrumbNav parts={breadcrumbParts} />
+                            <CardDescription>Manage the models available in this product range.</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {isAdmin && (
                                 <Button variant="outline" onClick={() => setIsAddModelDialogOpen(true)}>
                                     <PlusCircle className="mr-2 h-4 w-4" />
                                     Add Model
                                 </Button>
-                                <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
-                                    <LayoutGrid className="h-4 w-4" />
-                                    <span className="sr-only">Card View</span>
-                                </Button>
-                                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
-                                    <List className="h-4 w-4" />
-                                    <span className="sr-only">List View</span>
-                                </Button>
-                            </div>
+                            )}
+                            <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
+                                <LayoutGrid className="h-4 w-4" />
+                                <span className="sr-only">Card View</span>
+                            </Button>
+                            <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                                <List className="h-4 w-4" />
+                                <span className="sr-only">List View</span>
+                            </Button>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                         {sortedModels && sortedModels.length > 0 ? (
-                            <>
-                                {viewMode === 'card' ? (
-                                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    </div>
+                </CardHeader>
+                <CardContent>
+                     {sortedModels && sortedModels.length > 0 ? (
+                        <>
+                            {viewMode === 'card' ? (
+                                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    {sortedModels.map((model, index) => (
+                                        <ModelCard key={model.id} vendor={vendor} range={range} model={model} index={index} totalModels={sortedModels.length} onMove={handleMoveModel} isAdmin={isAdmin}/>
+                                    ))}
+                                </div>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Model Name</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {sortedModels.map((model, index) => (
-                                            <ModelCard key={model.id} vendor={vendor} range={range} model={model} index={index} totalModels={sortedModels.length} onMove={handleMoveModel}/>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Model Name</TableHead>
-                                                <TableHead className="text-right">Actions</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {sortedModels.map((model, index) => (
-                                                <TableRow key={model.id}>
-                                                    <TableCell className="font-medium">{model.name}</TableCell>
-                                                    <TableCell className="text-right">
+                                            <TableRow key={model.id}>
+                                                <TableCell className="font-medium">{model.name}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {isAdmin && (
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
-                                                                 <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent>
                                                                 <DropdownMenuItem onClick={() => router.push(`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`)}>
@@ -595,51 +606,51 @@ export default function RangeDetailsPage() {
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                )}
-                            </>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-lg">
-                                <Sailboat className="h-16 w-16 text-muted-foreground" />
-                                <h3 className="mt-4 text-lg font-semibold">No Models in this Range</h3>
-                                <p className="mt-2 text-sm text-muted-foreground">Go back to the vendor page to add models to this range.</p>
-                                <Button asChild className="mt-6" variant="outline">
-                                    <Link href={`/data-warehouse/${vendor.slug || vendor.id}`}>Back to Vendor</Link>
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-            <Dialog open={isAddModelDialogOpen} onOpenChange={setIsAddModelDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add New Model</DialogTitle>
-                        <DialogDescription>
-                            Enter the name for the new model in the {range?.name} range.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right">Name</Label>
-                            <Input id="name" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3" />
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-lg">
+                            <Sailboat className="h-16 w-16 text-muted-foreground" />
+                            <h3 className="mt-4 text-lg font-semibold">No Models in this Range</h3>
+                            <p className="mt-2 text-sm text-muted-foreground">Go back to the vendor page to add models to this range.</p>
+                            <Button asChild className="mt-6" variant="outline">
+                                <Link href={`/data-warehouse/${vendor.slug || vendor.id}`}>Back to Vendor</Link>
+                            </Button>
                         </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+        <Dialog open={isAddModelDialogOpen} onOpenChange={setIsAddModelDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add New Model</DialogTitle>
+                    <DialogDescription>
+                        Enter the name for the new model in the {range?.name} range.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">Name</Label>
+                        <Input id="name" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3" />
                     </div>
-                    <DialogFooter>
-                         <DialogClose asChild>
-                            <Button type="button" variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim()}>
-                            {isAddingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Add Model
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </AdminGuard>
+                </div>
+                <DialogFooter>
+                     <DialogClose asChild>
+                        <Button type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim()}>
+                        {isAddingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Add Model
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

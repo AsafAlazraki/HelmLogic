@@ -10,7 +10,6 @@ import { useMemo } from 'react';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where } from 'firebase/firestore';
 import { HighfieldModelEditor } from '@/components/highfield-model-editor';
-import AdminGuard from '@/components/admin-guard';
 import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
 import { StacerModelEditor } from '@/components/stacer-model-editor';
 import { StabicraftModelEditor } from '@/components/stabicraft-model-editor';
@@ -119,37 +118,35 @@ export default function ModelDetailsPage() {
   const modelDocPath = `/data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
 
   return (
-    <AdminGuard>
-        <div className="space-y-4">
-            <div>
-                <h1 className="text-2xl font-semibold">{vendor.name} - {range.name} - {model.name}</h1>
-                <BreadcrumbNav parts={breadcrumbParts} />
-            </div>
-            
-            {vendor.slug === 'highfield' ? (
-                <HighfieldModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-            ) : vendor.slug === 'jeanneau' ? (
-                <JeanneauModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-            ) : vendor.slug === 'stacer' ? (
-                <StacerModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-            ) : vendor.slug === 'stabicraft' ? (
-                <StabicraftModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-            ) : vendor.slug === 'surtees' ? (
-                <SurteesModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-            ) : (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Model Details</CardTitle>
-                        <CardDescription>Details for the {model.name} model will be displayed here.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-center h-64 text-muted-foreground border-2 border-dashed rounded-lg">
-                            <p>Model-specific editor coming soon.</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+    <div className="space-y-4">
+        <div>
+            <h1 className="text-2xl font-semibold">{vendor.name} - {range.name} - {model.name}</h1>
+            <BreadcrumbNav parts={breadcrumbParts} />
         </div>
-    </AdminGuard>
+        
+        {vendor.slug === 'highfield' ? (
+            <HighfieldModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
+        ) : vendor.slug === 'jeanneau' ? (
+            <JeanneauModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
+        ) : vendor.slug === 'stacer' ? (
+            <StacerModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
+        ) : vendor.slug === 'stabicraft' ? (
+            <StabicraftModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
+        ) : vendor.slug === 'surtees' ? (
+            <SurteesModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
+        ) : (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Model Details</CardTitle>
+                    <CardDescription>Details for the {model.name} model will be displayed here.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-center h-64 text-muted-foreground border-2 border-dashed rounded-lg">
+                        <p>Model-specific editor coming soon.</p>
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+    </div>
   );
 }
