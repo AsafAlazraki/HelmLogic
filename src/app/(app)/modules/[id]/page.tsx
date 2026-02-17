@@ -18,6 +18,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import ManageOrganisationPage from "@/components/manage-organisation-page";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Vendor {
     id: string;
@@ -241,6 +242,7 @@ export default function ModuleDetailsPage() {
     };
     
     const loading = moduleLoading || mainVendorLoading || userLoading || profileLoading;
+    const defaultTab = isAdmin ? 'bmt' : 'dashboard';
 
     if (loading) {
       return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
@@ -264,13 +266,61 @@ export default function ModuleDetailsPage() {
                     <BreadcrumbNav parts={breadcrumbParts.filter(p => isAdmin || p.label !== 'Modules')} />
                 </div>
             </div>
-             <Tabs defaultValue="bmt">
-                <TabsList className={isAdmin ? "grid w-full grid-cols-4" : "grid w-full grid-cols-3"}>
-                    <TabsTrigger value="bmt">BMT</TabsTrigger>
-                    <TabsTrigger value="operations">Operations</TabsTrigger>
-                    {isAdmin && <TabsTrigger value="organisations">Organisations</TabsTrigger>}
-                    {isAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
-                </TabsList>
+             <Tabs defaultValue={defaultTab}>
+                 {isAdmin ? (
+                    <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="bmt">BMT</TabsTrigger>
+                        <TabsTrigger value="operations">Operations</TabsTrigger>
+                        <TabsTrigger value="organisations">Organisations</TabsTrigger>
+                        <TabsTrigger value="settings">Settings</TabsTrigger>
+                    </TabsList>
+                ) : (
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                        <TabsTrigger value="bmt">BMT</TabsTrigger>
+                        <TabsTrigger value="operations">Operations</TabsTrigger>
+                    </TabsList>
+                )}
+                
+                {!isAdmin && (
+                    <TabsContent value="dashboard">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-1 flex flex-col gap-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>In Stock</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-muted-foreground">Stock information will be displayed here.</p>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>On Order</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-muted-foreground">Ordered items will be displayed here.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                            <div className="lg:col-span-2">
+                                <Card className="h-full flex flex-col">
+                                    <CardHeader>
+                                        <CardTitle>Quotes</CardTitle>
+                                        <CardDescription>A list of recently created quotes.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex-grow">
+                                        <ScrollArea className="h-[500px]">
+                                            <div className="flex items-center justify-center h-full p-8 text-muted-foreground">
+                                                <p>Quotes list will appear here.</p>
+                                            </div>
+                                        </ScrollArea>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
+                    </TabsContent>
+                )}
 
                 <TabsContent value="bmt">
                    {view === 'ranges' || view === 'models' ? (
