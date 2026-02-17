@@ -57,7 +57,7 @@ const getVendorSchema = (slug?: string) => {
 }
 
 
-export function ModelConfigurationEditor({ model, docPath, vendor, module }: { model: any, docPath: string, vendor: any, module: any }) {
+export function ModelConfigurationEditor({ model, docPath, vendor, module, breadcrumbs }: { model: any, docPath: string, vendor: any, module: any, breadcrumbs: React.ReactNode }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,11 +136,11 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module }: { m
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
 
         switch (vendor.slug) {
-            case 'highfield': return <HighfieldModelEditor model={model} docPath={docPath} vendor={vendor} />;
-            case 'jeanneau': return <JeanneauModelEditor model={model} docPath={docPath} vendor={vendor} />;
-            case 'stacer': return <StacerModelEditor model={model} docPath={docPath} vendor={vendor} />;
-            case 'stabicraft': return <StabicraftModelEditor model={model} docPath={docPath} vendor={vendor} />;
-            case 'surtees': return <SurteesModelEditor model={model} docPath={docPath} vendor={vendor} />;
+            case 'highfield': return <HighfieldModelEditor model={model} docPath={docPath} />;
+            case 'jeanneau': return <JeanneauModelEditor model={model} docPath={docPath} />;
+            case 'stacer': return <StacerModelEditor model={model} docPath={docPath} />;
+            case 'stabicraft': return <StabicraftModelEditor model={model} docPath={docPath} />;
+            case 'surtees': return <SurteesModelEditor model={model} docPath={docPath} />;
             default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor.</CardContent></Card>;
         }
     };
@@ -148,7 +148,8 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module }: { m
     return (
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-                <div className="flex justify-end mb-4">
+                 <div className="flex items-center justify-between mb-4">
+                    {breadcrumbs}
                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <Save className="mr-2 h-4 w-4" />
