@@ -244,7 +244,7 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
 
     return (
         <>
-            <Card className="relative group overflow-hidden">
+            <Card className="relative group overflow-hidden flex flex-col h-full">
                 {isAdmin && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -271,13 +271,11 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
-                <div>
-                    <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
+                <div className="flex-grow">
+                    <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block h-full flex flex-col">
                         <div className="h-52 bg-secondary relative">
                              {model.coverImageUrl ? (
-                                <>
-                                    <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
-                                </>
+                                <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center">
                                     <Sailboat className="h-12 w-12 text-muted-foreground" />
@@ -331,7 +329,6 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
                 )}
             </Card>
 
-            {/* Dialogs */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -398,7 +395,7 @@ export default function RangeDetailsPage() {
 
     const { user, loading: userLoading } = useUser();
     const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(user ? `/users/${user.uid}` : null);
-    const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
+    const isAdmin = !!userProfile && userProfile.appRole === 'HelmLogic Admin';
 
     const vendorQuery = useMemo(() => {
         if (!vendorSlugOrId) return null;
@@ -508,7 +505,7 @@ export default function RangeDetailsPage() {
              { label: 'Admin', href: '/admin' },
              { label: 'Data Warehouse', href: '/data-warehouse' },
              { label: vendor.name, href: `/data-warehouse/${vendor.slug || vendor.id}` },
-             { label: range.name, href: '#' }
+             { label: range.name, href: `/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}` }
         ];
     }, [vendor, range]);
 
@@ -589,25 +586,27 @@ export default function RangeDetailsPage() {
                                                 <TableRow key={model.id}>
                                                     <TableCell className="font-medium">{model.name}</TableCell>
                                                     <TableCell className="text-right">
-                                                        {isAdmin && (
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent>
-                                                                    <DropdownMenuItem onClick={() => router.push(`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`)}>
-                                                                        <Pencil className="mr-2 h-4 w-4" /> View Details
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
-                                                                        <ArrowUp className="mr-2 h-4 w-4" /> Move Up
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
-                                                                        <ArrowDown className="mr-2 h-4 w-4" /> Move Down
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        )}
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent>
+                                                                <DropdownMenuItem onClick={() => router.push(`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`)}>
+                                                                    <Pencil className="mr-2 h-4 w-4" /> View Details
+                                                                </DropdownMenuItem>
+                                                                {isAdmin && (
+                                                                    <>
+                                                                        <DropdownMenuSeparator />
+                                                                        <DropdownMenuItem onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
+                                                                            <ArrowUp className="mr-2 h-4 w-4" /> Move Up
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
+                                                                            <ArrowDown className="mr-2 h-4 w-4" /> Move Down
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}

@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
-import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -21,8 +20,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc, collection, query, where, writeBatch } from 'firebase/firestore';
-import { Loader2, Save, Sailboat } from 'lucide-react';
+import { doc, updateDoc, collection, query, where, writeBatch, orderBy } from 'firebase/firestore';
+import { Loader2, Save, Sailboat, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -34,7 +33,11 @@ import { createSlug } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
-import { orderBy } from 'firebase/firestore';
+import { StabicraftModelEditor } from '@/components/stabicraft-model-editor';
+import { HighfieldModelEditor } from '@/components/highfield-model-editor';
+import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
+import { StacerModelEditor } from '@/components/stacer-model-editor';
+import { SurteesModelEditor } from '@/components/surtees-model-editor';
 
 interface Vendor {
     id: string;
@@ -59,13 +62,13 @@ interface Range {
     order?: number;
 }
 
-interface Module {
-    id: string;
-    name: string;
-    slug?: string;
-    mainVendorId: string;
-    associatedVendorIds?: string[];
-    logoUrl?: string;
+interface Model {
+  id: string;
+  name: string;
+  slug?: string;
+  coverImageUrl?: string;
+  order?: number;
+  [key: string]: any;
 }
 
 const formSchema = z.object({
@@ -74,7 +77,7 @@ const formSchema = z.object({
   associatedVendorIds: z.array(z.string()).default([]),
 });
 
-function RangesGrid({ vendor, moduleSlugOrId }: { vendor: Vendor; moduleSlugOrId: string }) {
+function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
     const rangesQuery = useMemo(() => {
         if (!vendor?.id) return null;
@@ -94,7 +97,7 @@ function RangesGrid({ vendor, moduleSlugOrId }: { vendor: Vendor; moduleSlugOrId
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {ranges.map(range => (
-                <Link key={range.id} href={`/modules/${moduleSlugOrId}/ranges/${range.slug || range.id}`} className="group">
+                <div key={range.id} className="group cursor-pointer" onClick={() => onRangeSelect(range)}>
                     <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:shadow-xl hover:-translate-y-1">
                         <div className="h-40 bg-secondary relative">
                             {range.imageUrl ? (
@@ -109,8 +112,69 @@ function RangesGrid({ vendor, moduleSlugOrId }: { vendor: Vendor; moduleSlugOrId
                             <CardTitle className="text-lg">{range.name}</CardTitle>
                         </CardHeader>
                     </Card>
-                </Link>
+                </div>
             ))}
+        </div>
+    );
+}
+
+function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void }) {
+    const firestore = useFirestore();
+    const modelsQuery = useMemo(() => {
+        if (!vendor?.id || !range?.id) return null;
+        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
+    }, [firestore, vendor.id, range.id]);
+    
+    const { data: models, loading: modelsLoading } = useCollection<Model>(modelsQuery);
+    
+    if (modelsLoading) {
+        return <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    }
+    
+    if (!models || models.length === 0) {
+        return <p className="text-muted-foreground text-center py-8">No models found for {range.name}.</p>;
+    }
+    
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {models.map(model => (
+                <div key={model.id} className="group cursor-pointer" onClick={() => onModelSelect(model)}>
+                    <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:shadow-xl hover:-translate-y-1 flex flex-col">
+                         <div className="h-52 bg-secondary relative">
+                            {model.coverImageUrl ? (
+                                <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                    <Sailboat className="h-12 w-12 text-muted-foreground" />
+                                </div>
+                            )}
+                        </div>
+                        <CardHeader className="flex-grow flex items-center justify-center">
+                            <CardTitle className="text-lg text-center">{model.name}</CardTitle>
+                        </CardHeader>
+                    </Card>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function ModuleBreadcrumbs({ module, range, model, onBreadcrumbClick }: { module: Module; range: Range | null; model: Model | null; onBreadcrumbClick: (level: 'module' | 'range') => void }) {
+    return (
+        <div className="flex items-center text-sm text-muted-foreground mt-2">
+            <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('module')}>{module.name}</button>
+            {range && (
+                <>
+                    <ChevronRight className="h-4 w-4 mx-1" />
+                    <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('range')}>{range.name}</button>
+                </>
+            )}
+            {model && (
+                <>
+                    <ChevronRight className="h-4 w-4 mx-1" />
+                    <span className="font-medium text-foreground">{model.name}</span>
+                </>
+            )}
         </div>
     );
 }
@@ -122,10 +186,11 @@ export default function ModuleDetailsPage() {
     const slugOrId = params.id as string;
     const [isLoading, setIsLoading] = useState(false);
     const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
+    const [selectedRange, setSelectedRange] = useState<Range | null>(null);
+    const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const { toast } = useToast();
     const firestore = useFirestore();
 
-    // --- Data Fetching ---
     const { user, loading: userLoading } = useUser();
     const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(user ? `/users/${user.uid}` : null);
     
@@ -150,13 +215,11 @@ export default function ModuleDetailsPage() {
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
     const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
     
-    // --- Forms ---
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: { name: '', mainVendorId: '', associatedVendorIds: [] },
     });
 
-    // --- Effects ---
     useEffect(() => {
         if (moduleData) {
             form.reset(moduleData);
@@ -172,7 +235,6 @@ export default function ModuleDetailsPage() {
         }
     }, [allOrganisations, moduleData]);
 
-    // --- Handlers ---
     async function onSettingsSubmit(values: z.infer<typeof formSchema>) {
         if (!moduleData) return;
         setIsLoading(true);
@@ -233,8 +295,25 @@ export default function ModuleDetailsPage() {
             setIsSavingSubscriptions(false);
         }
     };
+    
+    const handleRangeSelect = (range: Range) => {
+        setSelectedRange(range);
+        setSelectedModel(null);
+    };
+    
+    const handleModelSelect = (model: Model) => {
+        setSelectedModel(model);
+    };
+    
+    const handleBreadcrumbClick = (level: 'module' | 'range') => {
+        if (level === 'module') {
+            setSelectedRange(null);
+            setSelectedModel(null);
+        } else if (level === 'range') {
+            setSelectedModel(null);
+        }
+    };
 
-    // --- Render Logic ---
     const loading = moduleLoading || mainVendorLoading || vendorsLoading || orgsLoading || userLoading || profileLoading;
 
     if (loading) {
@@ -247,16 +326,30 @@ export default function ModuleDetailsPage() {
     
     const breadcrumbParts = [
         isAdmin ? { href: "/admin", label: "Admin" } : { href: "/dashboard", label: "Dashboard"},
-        { href: "/modules", label: "Modules" },
+        isAdmin ? { href: "/modules", label: "Modules" } : {href: "/dashboard", label: "Dashboard"},
         { href: `/modules/${slugOrId}`, label: moduleData.name },
     ];
+    
+    const getModelEditor = () => {
+        if (!selectedModel || !mainVendor || !selectedRange) return <p>Select a model to view details.</p>;
+        const modelDocPath = `/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`;
+
+        switch (mainVendor.slug) {
+            case 'highfield': return <HighfieldModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
+            case 'jeanneau': return <JeanneauModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
+            case 'stacer': return <StacerModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
+            case 'stabicraft': return <StabicraftModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
+            case 'surtees': return <SurteesModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
+            default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor.</CardContent></Card>;
+        }
+    };
 
     return (
         <div className="space-y-4">
              <div className="flex items-start justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Module: {moduleData.name}</h1>
-                    <BreadcrumbNav parts={breadcrumbParts} />
+                    <BreadcrumbNav parts={breadcrumbParts.filter(p => isAdmin || p.label !== 'Modules')} />
                 </div>
             </div>
              <Tabs defaultValue="configuration">
@@ -271,11 +364,19 @@ export default function ModuleDetailsPage() {
                    <Card>
                          <CardHeader>
                             <CardTitle>Module Configuration</CardTitle>
-                            {isBoatBrand && mainVendor && <CardDescription>Viewing ranges for {mainVendor.name}.</CardDescription>}
+                            {mainVendor && <ModuleBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} onBreadcrumbClick={handleBreadcrumbClick} />}
                         </CardHeader>
                         <CardContent>
                             {isBoatBrand && mainVendor ? (
-                                <RangesGrid vendor={mainVendor} moduleSlugOrId={slugOrId} />
+                                <>
+                                    {!selectedRange ? (
+                                        <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />
+                                    ) : !selectedModel ? (
+                                        <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} />
+                                    ) : (
+                                        getModelEditor()
+                                    )}
+                                </>
                             ) : (
                                 <p className="text-muted-foreground">This module's main vendor is not a boat brand. No range configuration available.</p>
                             )}
