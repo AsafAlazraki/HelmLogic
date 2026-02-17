@@ -24,7 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface Vendor {
     id: string;
@@ -462,10 +462,10 @@ export default function ModuleDetailsPage() {
             </Tabs>
              <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
                 <DialogContent className="sm:max-w-md bg-transparent border-none shadow-none">
-                    <div className="text-center mb-6">
-                        <h2 className="text-2xl font-semibold text-white">{selectedModel?.name}</h2>
-                        <p className="text-muted-foreground text-lg">What would you like to do with this model?</p>
-                    </div>
+                    <DialogHeader className="text-center mb-6">
+                        <DialogTitle className="text-2xl font-semibold text-white">{selectedModel?.name}</DialogTitle>
+                        <DialogDescription className="text-lg text-muted-foreground">What would you like to do with this model?</DialogDescription>
+                    </DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('config')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
