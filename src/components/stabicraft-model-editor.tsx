@@ -1342,8 +1342,9 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 <CollapsibleTrigger asChild>
                                                     <Button type="button" variant="ghost" className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
                                                         <span>Image Gallery ({galleryImageFields.length})</span>
-                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                                    </CollapsibleTrigger>
+                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                                    </Button>
+                                                </CollapsibleTrigger>
                                                 <CollapsibleContent className="border-b">
                                                     <div className="p-4 bg-muted/20">
                                                         <div className="grid grid-cols-3 gap-2">
@@ -1354,7 +1355,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                         name={`galleryImageUrls.${index}`}
                                                                         render={({ field }) => (
                                                                             <>
-                                                                                {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" sizes="(max-width: 768px) 33vw, 10vw" /> }
+                                                                                {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" sizes="(max-width: 768px) 33vw, 10vw" />}
                                                                                 <Button
                                                                                     type="button"
                                                                                     variant="destructive"
