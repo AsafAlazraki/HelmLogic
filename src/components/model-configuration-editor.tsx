@@ -4,11 +4,13 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import type { User } from 'firebase/auth';
+
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,7 +60,7 @@ const getVendorSchema = (slug?: string) => {
 }
 
 
-export function ModelConfigurationEditor({ model, docPath, vendor, module, breadcrumbs }: { model: any, docPath: string, vendor: any, module: any, breadcrumbs: React.ReactNode }) {
+export function ModelConfigurationEditor({ model, docPath, vendor, module, breadcrumbs, user, isAdmin, organisationId }: { model: any, docPath: string, vendor: any, module: any, breadcrumbs: React.ReactNode, user: User | null, isAdmin: boolean, organisationId?: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,55 +83,86 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
     const onSubmit = async (values: any) => {
         setIsSubmitting(true);
 
-        let finalValues = values;
+        if (isAdmin) {
+             let finalValues = values;
 
-        // Special handling for Highfield variant pricing
-        if (vendor.slug === 'highfield' && values.colors) {
-            const colorsForDb = values.colors.map((color:any) => ({
-                id: color.id,
-                name: color.name,
-                imageUrl: color.imageUrl,
-            }));
-            
-            const variantPricingForDb: any[] = [];
-            values.colors.forEach((color:any) => {
-                const { HYP, PVC } = color.pricing;
-                if (HYP && (HYP.cost != null || HYP.sellPriceExclGst != null)) {
-                    variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...HYP });
-                }
-                if (PVC && (PVC.cost != null || PVC.sellPriceExclGst != null)) {
-                    variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...PVC });
-                }
-            });
+            // Special handling for Highfield variant pricing
+            if (vendor.slug === 'highfield' && values.colors) {
+                const colorsForDb = values.colors.map((color:any) => ({
+                    id: color.id,
+                    name: color.name,
+                    imageUrl: color.imageUrl,
+                }));
+                
+                const variantPricingForDb: any[] = [];
+                values.colors.forEach((color:any) => {
+                    const { HYP, PVC } = color.pricing;
+                    if (HYP && (HYP.cost != null || HYP.sellPriceExclGst != null)) {
+                        variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...HYP });
+                    }
+                    if (PVC && (PVC.cost != null || PVC.sellPriceExclGst != null)) {
+                        variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...PVC });
+                    }
+                });
 
-            const { colors, ...restOfValues } = values;
-            finalValues = {
-                ...restOfValues,
-                colors: colorsForDb,
-                variantPricing: variantPricingForDb
-            };
-        } else if (vendor.slug === 'stabicraft' && values.colorStages) {
-             const { colorStages, ...rest } = values;
-             finalValues = rest;
-        }
+                const { colors, ...restOfValues } = values;
+                finalValues = {
+                    ...restOfValues,
+                    colors: colorsForDb,
+                    variantPricing: variantPricingForDb
+                };
+            } else if (vendor.slug === 'stabicraft' && values.colorStages) {
+                const { colorStages, ...rest } = values;
+                finalValues = rest;
+            }
 
-        const sanitizedValues = sanitizeDataForFirestore(finalValues);
-        const modelDocRef = doc(firestore, docPath);
+            const sanitizedValues = sanitizeDataForFirestore(finalValues);
+            const modelDocRef = doc(firestore, docPath);
 
-        try {
-            await updateDoc(modelDocRef, sanitizedValues);
-            toast({ title: "Model Updated", description: "Your changes have been saved." });
-            reset(values);
-        } catch (e) {
-            const error = e as any;
-            console.error("Save failed:", error);
-            toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
-            const permissionError = new FirestorePermissionError({
-                path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        } finally {
-            setIsSubmitting(false);
+            try {
+                await updateDoc(modelDocRef, sanitizedValues);
+                toast({ title: "Model Updated", description: "Your changes have been saved." });
+                reset(values);
+            } catch (e) {
+                const error = e as any;
+                console.error("Save failed:", error);
+                toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
+                const permissionError = new FirestorePermissionError({
+                    path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            } finally {
+                setIsSubmitting(false);
+            }
+        } else {
+             if (!organisationId || !user) {
+                toast({ variant: "destructive", title: "Error", description: "Cannot save draft. User or organisation is not identified." });
+                setIsSubmitting(false);
+                return;
+            }
+            try {
+                const quotesColRef = collection(firestore, `organisations/${organisationId}/quotes`);
+                const sanitizedValues = sanitizeDataForFirestore(values);
+                
+                await addDoc(quotesColRef, {
+                    quoteNumber: `DRAFT-${Date.now()}`,
+                    status: 'Draft',
+                    createdById: user.uid,
+                    createdAt: new Date().toISOString(),
+                    organisationId: organisationId,
+                    modelConfiguration: sanitizedValues,
+                    customerName: 'Draft Configuration',
+                    pricingSummary: {}, // To be calculated later
+                });
+
+                toast({ title: "Draft Saved", description: "The configuration has been saved as a new draft." });
+            } catch (e) {
+                const error = e as any;
+                console.error("Save draft failed:", error);
+                toast({ variant: "destructive", title: "Error", description: "Could not save draft." });
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     }
 
@@ -160,7 +193,7 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
                                 <Button type="submit" disabled={isSubmitting}>
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     <Save className="mr-2 h-4 w-4" />
-                                    Save Changes
+                                    {isAdmin ? 'Save Changes' : 'Save as Draft'}
                                 </Button>
                             </div>
                         </div>

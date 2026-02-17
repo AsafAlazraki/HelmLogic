@@ -196,7 +196,7 @@ export default function ModuleDetailsPage() {
     const firestore = useFirestore();
 
     const { user, loading: userLoading } = useUser();
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(user ? `/users/${user.uid}` : null);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string }>(user ? `/users/${user.uid}` : null);
     
     const moduleQueryBySlug = useMemo(() => {
         if (!slugOrId) return null;
@@ -359,6 +359,9 @@ export default function ModuleDetailsPage() {
                                             onBreadcrumbClick={handleBreadcrumbClick}
                                         />
                                     }
+                                    user={user}
+                                    isAdmin={isAdmin}
+                                    organisationId={userProfile?.organisationId}
                                 />
                             )}
                             {(view === 'quote' || view === 'operations') && (
