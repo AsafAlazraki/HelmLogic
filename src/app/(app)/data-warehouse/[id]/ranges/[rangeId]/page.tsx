@@ -244,7 +244,7 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
 
     return (
         <>
-            <Card className="relative group overflow-hidden flex flex-col h-full">
+            <Card className="relative group overflow-hidden">
                 {isAdmin && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -271,8 +271,8 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
-                <div className="flex flex-col flex-grow">
-                    <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block h-full flex flex-col flex-grow">
+                <div>
+                    <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block">
                         <div className="h-52 bg-secondary relative">
                              {model.coverImageUrl ? (
                                 <>
@@ -284,51 +284,51 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
                                 </div>
                             )}
                         </div>
-                        <CardContent className="p-3 flex-grow h-20 flex items-center justify-center">
+                        <CardContent className="p-3 h-20 flex items-center justify-center">
                             <p className="font-semibold text-center line-clamp-2">{model.name}</p>
                         </CardContent>
                     </Link>
+                </div>
 
-                    {vendor.slug === 'stabicraft' && (
-                        <div className="p-3 border-t mt-auto">
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
-                                    {isAdmin && (
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenAddPackageDialog}>
-                                            <PlusCircle className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className="space-y-1 min-h-[108px] flex flex-col">
-                                    {(model.packageLevels && model.packageLevels.length > 0) ? (
-                                        <div className="flex-grow space-y-1">
-                                        {model.packageLevels.map(pkg => (
-                                            <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full h-full">
-                                                <span className="font-medium truncate pr-2">{pkg.name}</span>
-                                                {isAdmin && (
-                                                    <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
-                                                            <Pencil className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
+                {vendor.slug === 'stabicraft' && (
+                    <div className="p-3 border-t">
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
+                                {isAdmin && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenAddPackageDialog}>
+                                        <PlusCircle className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <div className="space-y-1 min-h-[108px] flex flex-col">
+                                {(model.packageLevels && model.packageLevels.length > 0) ? (
+                                    <div className="flex-grow space-y-1">
+                                    {model.packageLevels.map(pkg => (
+                                        <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full h-full">
+                                            <span className="font-medium truncate pr-2">{pkg.name}</span>
+                                            {isAdmin && (
+                                                <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <div className="flex-grow flex items-center justify-center text-xs text-muted-foreground">
-                                            <p>No packages defined.</p>
-                                        </div>
-                                    )}
-                                </div>
+                                    ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex-grow flex items-center justify-center text-xs text-muted-foreground">
+                                        <p>No packages defined.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </Card>
 
             {/* Dialogs */}
