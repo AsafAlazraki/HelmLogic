@@ -603,14 +603,12 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
                                         {filteredData.map((item) => {
                                             let itemImageUrl: string | null = null;
-                                            if (imageUrlKey && item[imageUrlKey] && typeof item[imageUrlKey] === 'string' && item[imageUrlKey].includes('/')) {
-                                                const rawUrl = item[imageUrlKey].trim();
-                                                if (rawUrl.startsWith('http')) {
-                                                    itemImageUrl = rawUrl;
-                                                } else if (vendor.slug === 'yamaha') {
-                                                    const baseUrl = 'https://www.yamaha-motor.com.au';
-                                                    const path = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
-                                                    itemImageUrl = `${baseUrl}${path}`;
+                                            if (imageUrlKey && item[imageUrlKey] && typeof item[imageUrlKey] === 'string') {
+                                                const path = item[imageUrlKey].trim().replace(/\\/g, '');
+                                                if (path.startsWith('http')) {
+                                                    itemImageUrl = path;
+                                                } else if (vendor.slug === 'yamaha' && path) {
+                                                    itemImageUrl = `https://www.yamaha-motor.com.au${path}`;
                                                 }
                                             }
                                             
