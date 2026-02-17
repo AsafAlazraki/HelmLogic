@@ -113,6 +113,7 @@ const permissionsConfig = [
     { id: 'can_create_quotes', label: 'Create Quotes' },
     { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
+    { id: 'can_see_parent_inventory', label: 'Access Parent Inventory' },
     { id: 'can_access_settings', label: 'Access Settings' },
 ];
 

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus, Users, Eye } from 'lucide-react';
+import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus, Users, Eye, ArrowRightLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -77,6 +77,15 @@ const formSchema = z.object({
   mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
   associatedVendorIds: z.array(z.string()).default([]),
 });
+
+const permissionsConfig = [
+    { id: 'can_access_module', label: 'Access Modules' },
+    { id: 'can_create_quotes', label: 'Create Quotes' },
+    { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
+    { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
+    { id: 'can_see_parent_inventory', label: 'Access Parent Inventory' },
+    { id: 'can_access_settings', label: 'Access Settings' },
+];
 
 function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
@@ -249,6 +258,10 @@ export default function ModuleDetailsPage() {
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
+    const parentOrg = useMemo(() => 
+        currentMemberOrg?.parentOrganisationId ? allOrganisations?.find(o => o.id === currentMemberOrg.parentOrganisationId) : null,
+    [currentMemberOrg, allOrganisations]);
+
     // Permissions logic
     const userPermissions = useMemo(() => {
         if (isAdmin) return {
@@ -256,6 +269,7 @@ export default function ModuleDetailsPage() {
             can_create_quotes: true,
             can_edit_boat_data: true,
             can_view_subdealers: true,
+            can_see_parent_inventory: true,
         };
         const roleId = userProfile?.organisationRole;
         if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return {
@@ -263,6 +277,7 @@ export default function ModuleDetailsPage() {
             can_create_quotes: false,
             can_edit_boat_data: false,
             can_view_subdealers: false,
+            can_see_parent_inventory: false,
         };
         return currentMemberOrg.permissions[roleId];
     }, [isAdmin, userProfile, currentMemberOrg]);
@@ -277,6 +292,7 @@ export default function ModuleDetailsPage() {
             if (myOrg) {
                 contexts.push({ id: myOrg.id, name: `My Org: ${myOrg.name}` });
             }
+            // For org members, context switching is handled via the Sub Dealers tab now
             if (userPermissions.can_view_subdealers) {
                 memberSubDealers.forEach(sd => contexts.push({ id: sd.id, name: `Sub Dealer: ${sd.name}` }));
             }
@@ -462,7 +478,7 @@ export default function ModuleDetailsPage() {
                     <div className="flex items-center justify-between mb-2">
                         <h1 className="text-2xl font-semibold">Module: {moduleData.name}</h1>
                         <div className="flex items-center gap-2">
-                            {userPermissions.can_view_subdealers && (
+                            {isAdmin && (
                                 <>
                                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Viewing As:</span>
                                     <Select 
@@ -480,6 +496,15 @@ export default function ModuleDetailsPage() {
                                         </SelectContent>
                                     </Select>
                                 </>
+                            )}
+                            {!isAdmin && isImpersonating && (
+                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                                    <Eye className="h-3 w-3" /> 
+                                    PREVIEWING AS {currentContextLabel.toUpperCase()}
+                                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-2" onClick={() => setViewContextOrgId(userProfile?.organisationId || null)}>
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -507,7 +532,29 @@ export default function ModuleDetailsPage() {
                     <TabsContent value="dashboard">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-1 flex flex-col gap-6">
-                                <Card><CardHeader><CardTitle>In Stock</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Stock for {currentContextLabel}</p></CardContent></Card>
+                                {userPermissions.can_see_parent_inventory && parentOrg && (
+                                    <>
+                                        <Card className="border-accent/30 bg-accent/5">
+                                            <CardHeader className="pb-2">
+                                                <div className="flex items-center gap-2 text-accent">
+                                                    <ArrowRightLeft className="h-4 w-4" />
+                                                    <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} In Stock</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent><p className="text-muted-foreground text-xs">Shared inventory from your parent organisation.</p></CardContent>
+                                        </Card>
+                                        <Card className="border-accent/30 bg-accent/5">
+                                            <CardHeader className="pb-2">
+                                                <div className="flex items-center gap-2 text-accent">
+                                                    <ArrowRightLeft className="h-4 w-4" />
+                                                    <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} On Order</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent><p className="text-muted-foreground text-xs">Shared order visibility from your parent organisation.</p></CardContent>
+                                        </Card>
+                                    </>
+                                )}
+                                <Card><CardHeader><CardTitle>Local In Stock</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Stock for {currentContextLabel}</p></CardContent></Card>
                                 <Card><CardHeader><CardTitle>On Order</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Orders for {currentContextLabel}</p></CardContent></Card>
                             </div>
                             <div className="lg:col-span-2">
@@ -632,9 +679,9 @@ export default function ModuleDetailsPage() {
                                 <CardDescription>Manage module access and view sub-dealer configurations.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                 {selectedOrgId && activeConfigOrg ? (
+                                 {selectedOrgId && activeConfigSd ? (
                                     <OrganisationModuleConfig 
-                                        organisation={activeConfigOrg}
+                                        organisation={activeConfigSd}
                                         module={moduleData}
                                         allVendors={allVendors || []}
                                         allDealerFitCategories={allDealerFitCategories || []}
@@ -672,7 +719,7 @@ export default function ModuleDetailsPage() {
                                                             </div>
                                                             {hasAccess && (
                                                                 <div className="flex gap-2">
-                                                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => { setViewContextOrgId(sd.id); setView('ranges'); }}>
+                                                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => { setViewContextOrgId(sd.id); setView('dashboard'); }}>
                                                                         <Eye className="mr-2 h-4 w-4" /> View View
                                                                     </Button>
                                                                     <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedOrgId(sd.id)}>
