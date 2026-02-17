@@ -1,63 +1,195 @@
 'use client';
 
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useFirestore } from '@/firebase/provider';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { HighfieldModelEditor } from '@/components/highfield-model-editor';
-import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
-import { StacerModelEditor } from '@/components/stacer-model-editor';
-import { StabicraftModelEditor } from '@/components/stabicraft-model-editor';
-import { SurteesModelEditor } from '@/components/surtees-model-editor';
+import { Button } from '@/components/ui/button';
+import { Loader2, Save } from 'lucide-react';
+
+import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
+import { JeanneauModelEditor, jeanneauModelSchema } from '@/components/jeanneau-model-editor';
+import { StacerModelEditor, stacerModelSchema } from '@/components/stacer-model-editor';
+import { StabicraftModelEditor, stabicraftModelSchema } from '@/components/stabicraft-model-editor';
+import { SurteesModelEditor, surteesModelSchema } from '@/components/surtees-model-editor';
 import { MotorOptions } from './motor-options';
 
+function sanitizeDataForFirestore(data: any): any {
+  if (data === undefined) {
+    return null;
+  }
+  if (data === null || typeof data !== 'object') {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeDataForFirestore(item));
+  }
+  const sanitizedData: { [key: string]: any } = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      if (value !== undefined) {
+          sanitizedData[key] = sanitizeDataForFirestore(value);
+      }
+    }
+  }
+  return sanitizedData;
+}
+
+
+const getVendorSchema = (slug?: string) => {
+    switch (slug) {
+        case 'highfield': return highfieldModelSchema;
+        case 'jeanneau': return jeanneauModelSchema;
+        case 'stacer': return stacerModelSchema;
+        case 'stabicraft': return stabicraftModelSchema;
+        case 'surtees': return surteesModelSchema;
+        default: return z.object({}); // Default empty schema
+    }
+}
+
+
 export function ModelConfigurationEditor({ model, docPath, vendor, module }: { model: any, docPath: string, vendor: any, module: any }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const currentSchema = getVendorSchema(vendor?.slug);
+
+    const form = useForm({
+        resolver: zodResolver(currentSchema),
+    });
+    
+    const { reset } = form;
+
+    useEffect(() => {
+        if (model) {
+            // This will be handled inside each specific editor now
+        }
+    }, [model, reset]);
+
+
+    const onSubmit = async (values: any) => {
+        setIsSubmitting(true);
+
+        let finalValues = values;
+
+        // Special handling for Highfield variant pricing
+        if (vendor.slug === 'highfield' && values.colors) {
+            const colorsForDb = values.colors.map((color:any) => ({
+                id: color.id,
+                name: color.name,
+                imageUrl: color.imageUrl,
+            }));
+            
+            const variantPricingForDb: any[] = [];
+            values.colors.forEach((color:any) => {
+                const { HYP, PVC } = color.pricing;
+                if (HYP && (HYP.cost != null || HYP.sellPriceExclGst != null)) {
+                    variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...HYP });
+                }
+                if (PVC && (PVC.cost != null || PVC.sellPriceExclGst != null)) {
+                    variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...PVC });
+                }
+            });
+
+            const { colors, ...restOfValues } = values;
+            finalValues = {
+                ...restOfValues,
+                colors: colorsForDb,
+                variantPricing: variantPricingForDb
+            };
+        } else if (vendor.slug === 'stabicraft' && values.colorStages) {
+             const { colorStages, ...rest } = values;
+             finalValues = rest;
+        }
+
+        const sanitizedValues = sanitizeDataForFirestore(finalValues);
+        const modelDocRef = doc(firestore, docPath);
+
+        try {
+            await updateDoc(modelDocRef, sanitizedValues);
+            toast({ title: "Model Updated", description: "Your changes have been saved." });
+            reset(values);
+        } catch (e) {
+            const error = e as any;
+            console.error("Save failed:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not save changes." });
+            const permissionError = new FirestorePermissionError({
+                path: modelDocRef.path, operation: 'update', requestResourceData: sanitizedValues,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
 
         switch (vendor.slug) {
-            case 'highfield': return <HighfieldModelEditor model={model} docPath={docPath} />;
-            case 'jeanneau': return <JeanneauModelEditor model={model} docPath={docPath} />;
-            case 'stacer': return <StacerModelEditor model={model} docPath={docPath} />;
-            case 'stabicraft': return <StabicraftModelEditor model={model} docPath={docPath} />;
-            case 'surtees': return <SurteesModelEditor model={model} docPath={docPath} />;
+            case 'highfield': return <HighfieldModelEditor model={model} docPath={docPath} vendor={vendor} />;
+            case 'jeanneau': return <JeanneauModelEditor model={model} docPath={docPath} vendor={vendor} />;
+            case 'stacer': return <StacerModelEditor model={model} docPath={docPath} vendor={vendor} />;
+            case 'stabicraft': return <StabicraftModelEditor model={model} docPath={docPath} vendor={vendor} />;
+            case 'surtees': return <SurteesModelEditor model={model} docPath={docPath} vendor={vendor} />;
             default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor.</CardContent></Card>;
         }
     };
 
     return (
-        <Tabs defaultValue="boat" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="boat">Boat</TabsTrigger>
-                <TabsTrigger value="motor">Motor</TabsTrigger>
-                <TabsTrigger value="trailer">Trailer</TabsTrigger>
-                <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
-            </TabsList>
-            <TabsContent value="boat">
-                {getModelEditor()}
-            </TabsContent>
-            <TabsContent value="motor">
-                <MotorOptions model={model} module={module} />
-            </TabsContent>
-            <TabsContent value="trailer">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Trailer Options</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground">Trailer configuration options will be available here soon.</p>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            <TabsContent value="dealer-fit">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Dealer Fit Options</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground">Dealer fit options will be available here soon.</p>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
+        <FormProvider {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+                <div className="flex justify-end mb-4">
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Changes
+                    </Button>
+                </div>
+                <Tabs defaultValue="boat" className="w-full">
+                    <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="boat">Boat</TabsTrigger>
+                        <TabsTrigger value="motor">Motor</TabsTrigger>
+                        <TabsTrigger value="trailer">Trailer</TabsTrigger>
+                        <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="boat" className="mt-6">
+                        {getModelEditor()}
+                    </TabsContent>
+                    <TabsContent value="motor" className="mt-6">
+                        <MotorOptions model={model} module={module} />
+                    </TabsContent>
+                    <TabsContent value="trailer" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Trailer Options</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-muted-foreground">Trailer configuration options will be available here soon.</p>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="dealer-fit" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Dealer Fit Options</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-muted-foreground">Dealer fit options will be available here soon.</p>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
+            </form>
+        </FormProvider>
     );
 }
-    
