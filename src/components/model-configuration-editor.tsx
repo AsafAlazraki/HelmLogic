@@ -7,8 +7,9 @@ import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
 import { StacerModelEditor } from '@/components/stacer-model-editor';
 import { StabicraftModelEditor } from '@/components/stabicraft-model-editor';
 import { SurteesModelEditor } from '@/components/surtees-model-editor';
+import { MotorOptions } from './motor-options';
 
-export function ModelConfigurationEditor({ model, docPath, vendor }: { model: any, docPath: string, vendor: any }) {
+export function ModelConfigurationEditor({ model, docPath, vendor, module }: { model: any, docPath: string, vendor: any, module: any }) {
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
 
@@ -34,14 +35,7 @@ export function ModelConfigurationEditor({ model, docPath, vendor }: { model: an
                 {getModelEditor()}
             </TabsContent>
             <TabsContent value="motor">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Motor Options</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground">Motor configuration options will be available here soon.</p>
-                    </CardContent>
-                </Card>
+                <MotorOptions model={model} module={module} />
             </TabsContent>
             <TabsContent value="trailer">
                 <Card>

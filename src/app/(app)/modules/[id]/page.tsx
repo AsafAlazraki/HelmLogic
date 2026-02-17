@@ -55,6 +55,7 @@ interface Model {
   slug?: string;
   coverImageUrl?: string;
   order?: number;
+  packageLevels?: { id: string; name: string }[];
   [key: string]: any;
 }
 
@@ -127,7 +128,7 @@ function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Ve
             {models.map(model => (
                 <div key={model.id} className="group cursor-pointer" onClick={() => onModelSelect(model)}>
                     <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:shadow-xl hover:-translate-y-1 flex flex-col">
-                         <div className="h-52 bg-secondary relative">
+                        <div className="h-52 bg-secondary relative">
                             {model.coverImageUrl ? (
                                 <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
                             ) : (
@@ -136,9 +137,33 @@ function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Ve
                                 </div>
                             )}
                         </div>
-                        <CardHeader className="flex-grow flex items-center justify-center">
-                            <CardTitle className="text-lg text-center">{model.name}</CardTitle>
-                        </CardHeader>
+                        <CardContent className="p-3 h-20 flex items-center justify-center">
+                            <p className="font-semibold text-center line-clamp-2">{model.name}</p>
+                        </CardContent>
+                         {vendor.slug === 'stabicraft' && (
+                            <div className="p-3 border-t">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
+                                    </div>
+                                    <div className="space-y-1 min-h-[108px] flex flex-col">
+                                        {(model.packageLevels && model.packageLevels.length > 0) ? (
+                                            <div className="flex-grow space-y-1">
+                                            {model.packageLevels.map(pkg => (
+                                                <div key={pkg.id} className="flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm w-full h-full">
+                                                    <span className="font-medium truncate pr-2">{pkg.name}</span>
+                                                </div>
+                                            ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex-grow flex items-center justify-center text-xs text-muted-foreground">
+                                                <p>No packages defined.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </Card>
                 </div>
             ))}
@@ -359,7 +384,7 @@ export default function ModuleDetailsPage() {
                                     {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
                                     {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} />}
                                     {view === 'config' && selectedModel && selectedRange && mainVendor && (
-                                        <ModelConfigurationEditor model={selectedModel} docPath={`/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} vendor={mainVendor} />
+                                        <ModelConfigurationEditor model={selectedModel} docPath={`/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} vendor={mainVendor} module={moduleData} />
                                     )}
                                     {view === 'quote' && (
                                         <div className="flex h-96 w-full items-center justify-center rounded-lg border-2 border-dashed">
@@ -462,7 +487,7 @@ export default function ModuleDetailsPage() {
             </Tabs>
              <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
                 <DialogContent className="sm:max-w-md bg-transparent border-none shadow-none">
-                    <DialogHeader className="text-center mb-6">
+                     <DialogHeader className="text-center mb-6">
                         <DialogTitle className="text-2xl font-semibold text-white">{selectedModel?.name}</DialogTitle>
                         <DialogDescription className="text-lg text-muted-foreground">What would you like to do with this model?</DialogDescription>
                     </DialogHeader>
