@@ -35,6 +35,7 @@ import { createSlug } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
+import { orderBy } from 'firebase/firestore';
 
 interface Vendor {
     id: string;
@@ -74,9 +75,10 @@ const formSchema = z.object({
 });
 
 function RangesGrid({ vendor }: { vendor: Vendor }) {
+    const firestore = useFirestore();
     const rangesQuery = useMemo(() => {
-        return query(collection(useFirestore(), `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
-    }, [vendor.id]);
+        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
+    }, [firestore, vendor.id]);
 
     const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
 
@@ -91,7 +93,7 @@ function RangesGrid({ vendor }: { vendor: Vendor }) {
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {ranges.map(range => (
-                <Link key={range.id} href={`/data-warehouse/${vendor.id}/ranges/${range.slug || range.id}`} className="group">
+                <Link key={range.id} href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}`} className="group">
                     <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:shadow-xl hover:-translate-y-1">
                         <div className="h-40 bg-secondary relative">
                             {range.imageUrl ? (
