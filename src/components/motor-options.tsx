@@ -8,6 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import Image from 'next/image';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Vendor {
     id: string;
@@ -93,29 +94,35 @@ function MotorCard({ motor }: { motor: Motor }) {
 
 export function MotorOptions({ model, module }: { model: any, module: any }) {
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
+    const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
 
-    const motorVendor = useMemo(() => {
-        if (!allVendors || !module) return null;
+    const motorVendors = useMemo(() => {
+        if (!allVendors || !module) return [];
         const allModuleVendorIds = [
             ...(module.associatedVendorIds || []),
             module.mainVendorId,
         ].filter(Boolean);
 
-        return allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
+        return allVendors.filter(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
     }, [allVendors, module]);
+    
+    const selectedVendor = useMemo(() => {
+        if (!selectedVendorId) return null;
+        return motorVendors.find(v => v.id === selectedVendorId);
+    }, [selectedVendorId, motorVendors]);
 
     const { data: motorDataSet, loading: motorsLoading } = useCollection<Motor>(
-        motorVendor ? `data-warehouse/${motorVendor.id}/masterDataSet` : null
+        selectedVendorId ? `data-warehouse/${selectedVendorId}/masterDataSet` : null
     );
 
     const motorConfigurations: MotorConfig[] = model.specifications?.motorConfigurations || [];
 
     const motorCombinations = useMemo(() => {
-        if (!motorDataSet || motorConfigurations.length === 0) return [];
+        if (!motorDataSet || motorConfigurations.length === 0 || !selectedVendor) return [];
 
         return motorConfigurations.map(config => {
             let combinations: Motor[][] = [];
-            const isYamaha = motorVendor?.slug === 'yamaha';
+            const isYamaha = selectedVendor?.slug === 'yamaha';
 
             const compatibleMotorsPerEngine = config.engines.map(engineSpec => 
                 motorDataSet.filter(motor => {
@@ -157,96 +164,61 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             };
         }).filter(c => c.combinations.length > 0);
 
-    }, [motorDataSet, motorConfigurations, motorVendor]);
+    }, [motorDataSet, motorConfigurations, selectedVendor]);
 
 
-    const loading = vendorsLoading || motorsLoading;
+    const loading = vendorsLoading || (selectedVendorId && motorsLoading);
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-48">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        );
-    }
-    
-    if (!motorVendor) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Motor Options</CardTitle>
-                </CardHeader>
+    const renderContent = () => {
+        if (loading) {
+            return (
+                <div className="flex justify-center items-center h-48">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            );
+        }
+
+        if (!selectedVendorId) {
+             return (
                 <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                     <AlertCircle className="h-10 w-10 text-muted-foreground" />
-                    <p className="mt-4 font-semibold">No Motor Brand Associated</p>
-                    <p className="text-sm text-muted-foreground">Please associate a 'Motor Brand' vendor with this module in the settings.</p>
+                    <p className="mt-4 font-semibold">Select a Motor Brand</p>
+                    <p className="text-sm text-muted-foreground">Please choose a motor brand from the dropdown above to see compatible options.</p>
                 </CardContent>
-            </Card>
-        );
-    }
-
-    if (!motorDataSet || motorDataSet.length === 0) {
-         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Motor Options for {motorVendor.name}</CardTitle>
-                </CardHeader>
-                 <CardContent className="flex flex-col items-center justify-center h-48 text-center">
+            );
+        }
+        
+        if (!motorDataSet || motorDataSet.length === 0) {
+             return (
+                <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
                     <p className="mt-4 font-semibold">No Motor Data Found</p>
-                    <p className="text-sm text-muted-foreground">The master data set for {motorVendor.name} is empty.</p>
+                    <p className="text-sm text-muted-foreground">The master data set for {selectedVendor?.name} is empty.</p>
                 </CardContent>
-            </Card>
-        );
-    }
-    
-    if (motorConfigurations.length === 0) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Motor Options</CardTitle>
-                </CardHeader>
+            );
+        }
+        
+        if (motorConfigurations.length === 0) {
+            return (
                  <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
                     <p className="mt-4 font-semibold">HP Requirements Not Set</p>
                     <p className="text-sm text-muted-foreground">Please set the motor HP configurations for this boat in the 'Boat' tab first.</p>
                 </CardContent>
-            </Card>
-        );
-    }
-
-    if (motorCombinations.length === 0) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Motor Options</CardTitle>
-                </CardHeader>
+            );
+        }
+    
+        if (motorCombinations.length === 0) {
+            return (
                  <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
                     <p className="mt-4 font-semibold">No Compatible Motors</p>
-                    <p className="text-sm text-muted-foreground">No motors in the {motorVendor.name} data set match the boat's HP requirements.</p>
+                    <p className="text-sm text-muted-foreground">No motors in the {selectedVendor?.name} data set match the boat's HP requirements.</p>
                 </CardContent>
-            </Card>
-        );
-    }
-    
-    return (
-        <Card>
-            <CardHeader>
-                 <div className="flex items-start justify-between">
-                    <div>
-                        <CardTitle>Motor Options</CardTitle>
-                        <CardDescription>
-                            Compatible motor combinations from {motorVendor.name}.
-                        </CardDescription>
-                    </div>
-                     {motorVendor.logoUrl && (
-                        <div className="relative h-12 w-24">
-                            <Image src={motorVendor.logoUrl} alt={`${motorVendor.name} logo`} fill className="object-contain" />
-                        </div>
-                    )}
-                </div>
-            </CardHeader>
+            );
+        }
+        
+        return (
             <CardContent>
                 <Accordion type="multiple" className="w-full space-y-4">
                     {motorCombinations.map((configGroup, index) => (
@@ -283,6 +255,43 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     ))}
                 </Accordion>
             </CardContent>
+        );
+    }
+    
+    return (
+        <Card>
+            <CardHeader>
+                 <div className="flex items-start justify-between">
+                    <div>
+                        <CardTitle>Motor Options</CardTitle>
+                        <CardDescription>
+                            Select a motor brand to see compatible engine combinations.
+                        </CardDescription>
+                    </div>
+                     <div className="flex items-center gap-2">
+                        {selectedVendor?.logoUrl && (
+                            <div className="relative h-10 w-20">
+                                <Image src={selectedVendor.logoUrl} alt={`${selectedVendor.name} logo`} fill className="object-contain" />
+                            </div>
+                        )}
+                        <Select onValueChange={setSelectedVendorId} value={selectedVendorId ?? ""}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Choose Brand" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {motorVendors.length > 0 ? (
+                                    motorVendors.map(vendor => (
+                                        <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
+                                    ))
+                                ) : (
+                                    <SelectItem value="none" disabled>No motor brands</SelectItem>
+                                )}
+                            </SelectContent>
+                        </Select>
+                     </div>
+                </div>
+            </CardHeader>
+            {renderContent()}
         </Card>
     );
 }
