@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -15,7 +16,7 @@ import { useFirestore, useStorage } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2 } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -32,6 +33,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -73,6 +83,7 @@ const formSchema = z.object({
   subDealersEnabled: z.boolean().optional(),
   dataWarehouseSubscriptions: z.array(z.string()).optional(),
   enabledModuleSubscriptions: z.array(z.string()).optional(),
+  moduleAssociatedVendorAccess: z.record(z.string(), z.array(z.string())).optional(),
   parentOrganisationId: z.string().nullable().optional(),
 });
 
@@ -89,6 +100,15 @@ interface Vendor {
     id: string;
     name: string;
     logoUrl?: string;
+    vendorType: string;
+}
+
+interface Module {
+    id: string;
+    name: string;
+    logoUrl?: string;
+    mainVendorId: string;
+    associatedVendorIds?: string[];
 }
 
 const createSlug = (name: string) =>
@@ -104,6 +124,104 @@ const permissionsConfig = [
     { id: 'manageDataSources', label: 'Manage Data Sources' },
 ];
 
+function ModuleVendorAccessDialog({ 
+    isOpen, 
+    setIsOpen, 
+    module, 
+    organisation, 
+    allVendors,
+    onUpdate
+}: { 
+    isOpen: boolean; 
+    setIsOpen: (open: boolean) => void; 
+    module: Module; 
+    organisation: OrganisationFormData;
+    allVendors: Vendor[];
+    onUpdate: (moduleId: string, vendorIds: string[]) => void;
+}) {
+    const currentAllowedVendorIds = useMemo(() => 
+        organisation.moduleAssociatedVendorAccess?.[module.id] || [], 
+    [organisation, module]);
+
+    const associatedVendors = useMemo(() => {
+        if (!module.associatedVendorIds || !allVendors) return [];
+        return allVendors.filter(v => module.associatedVendorIds?.includes(v.id));
+    }, [module, allVendors]);
+
+    // Main vendor and Motor brands are always accessible
+    const motorVendorIds = useMemo(() => 
+        associatedVendors.filter(v => v.vendorType === 'Motor Brand').map(v => v.id),
+    [associatedVendors]);
+
+    const handleToggle = (vendorId: string, checked: boolean) => {
+        const newValue = checked 
+            ? [...currentAllowedVendorIds, vendorId]
+            : currentAllowedVendorIds.filter(id => id !== vendorId);
+        onUpdate(module.id, newValue);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Configure Vendor Access for {module.name}</DialogTitle>
+                    <DialogDescription>
+                        Grant or revoke access to specific vendors for this organisation within this module.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Auto-Granted Access</h4>
+                        <p className="text-xs text-muted-foreground mb-2">These vendors are always available within the module.</p>
+                        <div className="space-y-2">
+                            {allVendors?.find(v => v.id === module.mainVendorId) && (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/50 border text-sm opacity-70">
+                                    <Check className="h-4 w-4 text-green-600" />
+                                    <span>Main Vendor: {allVendors.find(v => v.id === module.mainVendorId)?.name}</span>
+                                </div>
+                            )}
+                            {associatedVendors.filter(v => v.vendorType === 'Motor Brand').map(v => (
+                                <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/50 border text-sm opacity-70">
+                                    <Check className="h-4 w-4 text-green-600" />
+                                    <span>Motor Brand: {v.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Optional Associated Vendors</h4>
+                        <p className="text-xs text-muted-foreground mb-2">Select which additional vendors this organisation can access.</p>
+                        <div className="grid gap-2">
+                            {associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').length > 0 ? (
+                                associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').map(vendor => (
+                                    <div key={vendor.id} className="flex items-center space-x-3 p-2 rounded-md border hover:bg-muted/50 transition-colors">
+                                        <Checkbox 
+                                            id={`vendor-${vendor.id}`} 
+                                            checked={currentAllowedVendorIds.includes(vendor.id)}
+                                            onCheckedChange={(checked) => handleToggle(vendor.id, !!checked)}
+                                        />
+                                        <Label htmlFor={`vendor-${vendor.id}`} className="font-normal text-sm cursor-pointer flex-1">
+                                            {vendor.name}
+                                        </Label>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground py-4 text-center border-2 border-dashed rounded-md">No optional associated vendors for this module.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button">Close</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function OrganisationDetailsPage() {
     const params = useParams();
     const router = useRouter();
@@ -118,6 +236,8 @@ export default function OrganisationDetailsPage() {
     const firestore = useFirestore();
     const storage = useStorage();
 
+    const [activeVendorConfigModule, setActiveVendorConfigModule] = useState<Module | null>(null);
+
     const orgQueryBySlug = useMemo(() => {
         if (!slugOrId) return null;
         return query(collection(firestore, 'organisations'), where('slug', '==', slugOrId));
@@ -130,7 +250,7 @@ export default function OrganisationDetailsPage() {
     const orgLoading = slugLoading || idLoading;
 
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
-    const { data: allModules, loading: modulesLoading } = useCollection<{id: string, name: string, logoUrl?:string}>('modules');
+    const { data: allModules, loading: modulesLoading } = useCollection<Module>('modules');
 
     const subDealersQuery = useMemo(() => {
         if (!organisation) return null;
@@ -167,6 +287,7 @@ export default function OrganisationDetailsPage() {
                 subDealersEnabled: organisation.subDealersEnabled || false,
                 dataWarehouseSubscriptions: organisation.dataWarehouseSubscriptions || [],
                 enabledModuleSubscriptions: organisation.enabledModuleSubscriptions || [],
+                moduleAssociatedVendorAccess: organisation.moduleAssociatedVendorAccess || {},
             });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
@@ -248,6 +369,7 @@ export default function OrganisationDetailsPage() {
                 subDealersEnabled: values.subDealersEnabled || false,
                 dataWarehouseSubscriptions: values.dataWarehouseSubscriptions || [],
                 enabledModuleSubscriptions: values.enabledModuleSubscriptions || [],
+                moduleAssociatedVendorAccess: values.moduleAssociatedVendorAccess || {},
             };
             
             if (values.primaryLogo instanceof File && storage) {
@@ -325,6 +447,14 @@ export default function OrganisationDetailsPage() {
             </FormItem>
         )} />
     );
+
+    const handleUpdateModuleVendorAccess = (moduleId: string, vendorIds: string[]) => {
+        const currentAccess = form.getValues('moduleAssociatedVendorAccess') || {};
+        form.setValue('moduleAssociatedVendorAccess', {
+            ...currentAccess,
+            [moduleId]: vendorIds
+        }, { shouldDirty: true });
+    };
 
     return (
         <AdminGuard>
@@ -667,7 +797,7 @@ export default function OrganisationDetailsPage() {
                                     <Card>
                                         <CardHeader>
                                             <CardTitle>Module Subscriptions</CardTitle>
-                                            <CardDescription>Select which modules this organisation can access.</CardDescription>
+                                            <CardDescription>Select modules and configure organisation-specific vendor access for each.</CardDescription>
                                         </CardHeader>
                                         <CardContent>
                                             {modulesLoading ? (
@@ -679,7 +809,7 @@ export default function OrganisationDetailsPage() {
                                                     render={({ field }) => (
                                                         <FormItem>
                                                             {allModules && allModules.length > 0 ? (
-                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                                                     {allModules.map((module) => {
                                                                         const isSubscribed = field.value?.includes(module.id);
                                                                         
@@ -693,28 +823,39 @@ export default function OrganisationDetailsPage() {
                                                                         return (
                                                                             <Card 
                                                                                 key={module.id}
-                                                                                onClick={handleToggle}
                                                                                 className={cn(
-                                                                                    "cursor-pointer transition-all duration-200 ease-in-out hover:shadow-md hover:-translate-y-1 relative overflow-hidden",
-                                                                                    isSubscribed ? "border-primary ring-2 ring-primary" : "border-border"
+                                                                                    "transition-all duration-200 ease-in-out relative overflow-hidden flex flex-col",
+                                                                                    isSubscribed ? "border-primary ring-1 ring-primary" : "border-border"
                                                                                 )}
                                                                             >
-                                                                                {isSubscribed && (
-                                                                                    <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5 z-10">
-                                                                                        <Check className="h-3 w-3" />
+                                                                                <div className="flex items-start justify-between p-4 bg-muted/30">
+                                                                                    <div className="flex items-center gap-3">
+                                                                                        <Checkbox 
+                                                                                            checked={isSubscribed}
+                                                                                            onCheckedChange={handleToggle}
+                                                                                        />
+                                                                                        <span className="font-medium text-sm">{module.name}</span>
                                                                                     </div>
-                                                                                )}
-                                                                                <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
-                                                                                    {module.logoUrl ? (
-                                                                                        <div className="relative h-full w-full">
-                                                                                            <Image src={module.logoUrl} alt={`${module.name} logo`} fill className="object-contain" sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw" />
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <Building className="h-8 w-8 text-muted-foreground"/>
+                                                                                    {isSubscribed && (
+                                                                                        <Button 
+                                                                                            type="button" 
+                                                                                            variant="ghost" 
+                                                                                            size="icon" 
+                                                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                                                            onClick={() => setActiveVendorConfigModule(module)}
+                                                                                        >
+                                                                                            <Settings2 className="h-4 w-4" />
+                                                                                        </Button>
                                                                                     )}
                                                                                 </div>
-                                                                                <div className="p-3 text-center">
-                                                                                    <p className="text-sm font-medium truncate">{module.name}</p>
+                                                                                <div className="h-20 bg-muted/10 flex items-center justify-center p-2">
+                                                                                    {module.logoUrl ? (
+                                                                                        <div className="relative h-full w-full">
+                                                                                            <Image src={module.logoUrl} alt={`${module.name} logo`} fill className="object-contain" sizes="(max-width: 640px) 100vw, 20vw" />
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <Building className="h-8 w-8 text-muted-foreground/30"/>
+                                                                                    )}
                                                                                 </div>
                                                                             </Card>
                                                                         );
@@ -842,6 +983,17 @@ export default function OrganisationDetailsPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+            )}
+
+            {activeVendorConfigModule && (
+                <ModuleVendorAccessDialog 
+                    isOpen={!!activeVendorConfigModule}
+                    setIsOpen={(open) => !open && setActiveVendorConfigModule(null)}
+                    module={activeVendorConfigModule}
+                    organisation={form.getValues()}
+                    allVendors={allVendors || []}
+                    onUpdate={handleUpdateModuleVendorAccess}
+                />
             )}
         </AdminGuard>
     );

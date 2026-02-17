@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -223,7 +224,7 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
                                 </Card>
                             </TabsContent>
                             <TabsContent value="dealer-fit" className="mt-6">
-                                <DealerFitOptions module={module} />
+                                <DealerFitOptions module={module} organisationId={organisationId} />
                             </TabsContent>
                         </Tabs>
                     </CardContent>

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -132,6 +133,16 @@
           "description": "A list of module IDs that this organisation has access to.",
           "items": {
             "type": "string"
+          }
+        },
+        "moduleAssociatedVendorAccess": {
+          "type": "object",
+          "description": "A map of module IDs to a list of allowed associated vendor IDs for that organisation.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
