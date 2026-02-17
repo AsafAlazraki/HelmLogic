@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2, AlertCircle, MoreHorizontal, Pencil, Trash2, PlusCircle, Star } from 'lucide-react';
@@ -8,8 +8,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import Image from 'next/image';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 
 interface Vendor {
     id: string;
@@ -21,10 +19,6 @@ interface Vendor {
 
 interface Motor {
     id: string;
-    'Model Name'?: string;
-    HP?: number | string;
-    'Sub Catagory'?: string;
-    'Product Group'?: string;
     SummaryImage?: string;
     [key: string]: any;
 }
@@ -82,11 +76,26 @@ function MotorCard({ motor }: { motor: Motor }) {
             itemImageUrl = `https://www.yamaha-motor.com.au${path}`;
         }
     }
+
+    const allKeys = Object.keys(motor);
+    const normalize = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
+    const findKey = (potentials: string[]) => {
+        const normalizedPotentials = potentials.map(normalize);
+        for (const key of allKeys) {
+            if (normalizedPotentials.includes(normalize(key))) {
+                return key;
+            }
+        }
+        return undefined;
+    };
+    const modelNameKey = findKey(['Model Name', 'ModelName', 'name']);
+    const modelName = modelNameKey ? motor[modelNameKey] : 'Unknown Motor';
+
     return (
         <Card className="overflow-hidden w-40 flex-shrink-0">
             <div className="relative h-24 bg-secondary">
                  {itemImageUrl ? (
-                    <Image src={itemImageUrl} alt={motor['Model Name'] || 'Motor'} fill className="object-contain p-2" />
+                    <Image src={String(itemImageUrl)} alt={String(modelName)} fill className="object-contain p-2" />
                 ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                         <AlertCircle className="w-8 h-8"/>
@@ -94,7 +103,7 @@ function MotorCard({ motor }: { motor: Motor }) {
                 )}
             </div>
             <CardFooter className="p-2 text-center text-xs font-semibold">
-                <p className="w-full truncate">{motor['Model Name']}</p>
+                <p className="w-full truncate">{String(modelName)}</p>
             </CardFooter>
         </Card>
     );
@@ -102,59 +111,77 @@ function MotorCard({ motor }: { motor: Motor }) {
 
 export function MotorOptions({ model, module }: { model: any, module: any }) {
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
-    const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-
-    const motorVendors = useMemo(() => {
-        if (!allVendors || !module) return [];
+    
+    const yamahaVendor = useMemo(() => {
+        if (!allVendors || !module) return null;
         const allModuleVendorIds = [
             ...(module.associatedVendorIds || []),
             module.mainVendorId,
         ].filter(Boolean);
 
-        return allVendors.filter(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
+        return allVendors.find(v => 
+            allModuleVendorIds.includes(v.id) && 
+            v.vendorType === 'Motor Brand' &&
+            v.slug === 'yamaha'
+        );
     }, [allVendors, module]);
-    
-    const selectedVendor = useMemo(() => {
-        if (!selectedVendorId) return null;
-        return motorVendors.find(v => v.id === selectedVendorId);
-    }, [selectedVendorId, motorVendors]);
 
     const { data: motorDataSet, loading: motorsLoading } = useCollection<Motor>(
-        selectedVendorId ? `data-warehouse/${selectedVendorId}/masterDataSet` : null
+        yamahaVendor ? `data-warehouse/${yamahaVendor.id}/masterDataSet` : null
     );
 
     const motorConfigurations: MotorConfig[] = model.specifications?.motorConfigurations || [];
-
+    
+    const getHpFromMotor = (motor: Motor): number | null => {
+        const allKeys = Object.keys(motor);
+        const normalize = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
+        const findKey = (potentials: string[]) => {
+            const normalizedPotentials = potentials.map(normalize);
+            for (const key of allKeys) {
+                if (normalizedPotentials.includes(normalize(key))) {
+                    return key;
+                }
+            }
+            return undefined;
+        };
+        const modelNameKey = findKey(['Model Name', 'ModelName', 'name']);
+        if (modelNameKey && typeof motor[modelNameKey] === 'string') {
+            return getHpFromModelName(motor[modelNameKey] as string);
+        }
+        return null;
+    };
+    
     const motorCombinations = useMemo(() => {
-        if (!motorDataSet || motorConfigurations.length === 0 || !selectedVendor) return [];
+        if (!motorDataSet || motorConfigurations.length === 0 || !yamahaVendor) return [];
 
         return motorConfigurations.map(config => {
             let combinations: Motor[][] = [];
-            const isYamaha = selectedVendor?.slug === 'yamaha';
-
+            
             const compatibleMotorsPerEngine = config.engines.map(engineSpec => 
                 motorDataSet.filter(motor => {
-                    const motorHp = isYamaha ? getHpFromModelName(motor['Model Name']) : (typeof motor.HP === 'string' ? parseFloat(motor.HP) : motor.HP);
+                    const motorHp = getHpFromMotor(motor);
                     if (motorHp === undefined || motorHp === null || isNaN(motorHp)) return false;
                     
-                    const minHp = engineSpec.minHp ?? 0;
-                    const maxHp = engineSpec.maxHp ?? 0;
-                    
-                    if (maxHp === 0) {
+                    const minHp = Number(engineSpec.minHp ?? 0);
+                    const maxHp = Number(engineSpec.maxHp ?? 0);
+
+                    if (maxHp > 0) {
+                        return motorHp >= minHp && motorHp <= maxHp;
+                    } else if (minHp > 0) {
                         return motorHp >= minHp;
                     }
                     
-                    return motorHp >= minHp && motorHp <= maxHp;
+                    return false; // Don't match if no valid HP range is set
                 })
             );
 
             if(config.type === 'Single' && compatibleMotorsPerEngine.length > 0) {
                 combinations = compatibleMotorsPerEngine[0].map(m => [m]);
-            } else if (config.type === 'Twin' && compatibleMotorsPerEngine.length > 0) {
+            } else if (config.type === 'Twin' && compatibleMotorsPerEngine.length > 0 && compatibleMotorsPerEngine[0].length > 0) {
                 combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 2);
-            } else if (config.type === 'Triple' && compatibleMotorsPerEngine.length > 0) {
+            } else if (config.type === 'Triple' && compatibleMotorsPerEngine.length > 0 && compatibleMotorsPerEngine[0].length > 0) {
                 combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 3);
-            } else if (config.type === 'Quad' && compatibleMotorsPerEngine.length > 0) {
+            } else if (config.type === 'Quad' && compatibleMotorsPerEngine.length > 0 && compatibleMotorsPerEngine[0].length > 0) {
                 combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 4);
             } else if (config.type === 'SingleWithAux' && compatibleMotorsPerEngine.length === 2) {
                 combinations = cartesian(compatibleMotorsPerEngine[0], compatibleMotorsPerEngine[1]);
@@ -166,10 +193,10 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             };
         }).filter(c => c.combinations.length > 0);
 
-    }, [motorDataSet, motorConfigurations, selectedVendor]);
+    }, [motorDataSet, motorConfigurations, yamahaVendor]);
 
 
-    const loading = vendorsLoading || (selectedVendorId && motorsLoading);
+    const loading = vendorsLoading || (yamahaVendor && motorsLoading);
 
     const renderContent = () => {
         if (loading) {
@@ -182,12 +209,12 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             );
         }
 
-        if (!selectedVendorId) {
+        if (!yamahaVendor) {
              return (
                 <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                     <AlertCircle className="h-10 w-10 text-muted-foreground" />
-                    <p className="mt-4 font-semibold">Select a Motor Brand</p>
-                    <p className="text-sm text-muted-foreground">Please choose a motor brand from the dropdown above to see compatible options.</p>
+                    <p className="mt-4 font-semibold">Yamaha Vendor Not Found</p>
+                    <p className="text-sm text-muted-foreground">Please ensure Yamaha is an associated vendor for this module.</p>
                 </CardContent>
             );
         }
@@ -197,7 +224,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
                     <p className="mt-4 font-semibold">No Motor Data Found</p>
-                    <p className="text-sm text-muted-foreground">The master data set for {selectedVendor?.name} is empty.</p>
+                    <p className="text-sm text-muted-foreground">The master data set for Yamaha is empty.</p>
                 </CardContent>
             );
         }
@@ -217,7 +244,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                  <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
                     <p className="mt-4 font-semibold">No Compatible Motors</p>
-                    <p className="text-sm text-muted-foreground">No motors in the {selectedVendor?.name} data set match the boat's HP requirements.</p>
+                    <p className="text-sm text-muted-foreground">No motors in the Yamaha data set match the boat's HP requirements.</p>
                 </CardContent>
             );
         }
@@ -270,33 +297,22 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     return (
         <Card>
             <CardHeader>
-                 <div className="flex items-start justify-between">
+                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle>Motor Options</CardTitle>
                         <CardDescription>
-                            Select a motor brand to see compatible engine combinations.
+                            Compatible motor combinations for this model are shown below.
                         </CardDescription>
                     </div>
                      <div className="flex items-center gap-2">
-                        {selectedVendor?.logoUrl && (
+                        {yamahaVendor?.logoUrl && (
                             <div className="relative h-10 w-20">
-                                <Image src={selectedVendor.logoUrl} alt={`${selectedVendor.name} logo`} fill className="object-contain" />
+                                <Image src={yamahaVendor.logoUrl} alt={`${yamahaVendor.name} logo`} fill className="object-contain" />
                             </div>
                         )}
-                        <Select onValueChange={setSelectedVendorId} value={selectedVendorId ?? ""}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Choose Brand" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {motorVendors.length > 0 ? (
-                                    motorVendors.map(vendor => (
-                                        <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
-                                    ))
-                                ) : (
-                                    <SelectItem value="none" disabled>No motor brands</SelectItem>
-                                )}
-                            </SelectContent>
-                        </Select>
+                        <div className="h-10 px-4 py-2 border rounded-md text-sm font-medium bg-secondary">
+                           {yamahaVendor?.name || 'Yamaha'}
+                        </div>
                      </div>
                 </div>
             </CardHeader>
