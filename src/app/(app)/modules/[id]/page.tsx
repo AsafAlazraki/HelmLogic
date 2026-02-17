@@ -708,11 +708,7 @@ export default function ModuleDetailsPage() {
                                                 <div className="p-4 flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border">
-                                                            {org.primaryLogoUrl ? (
-                                                                <Image src={org.primaryLogoUrl} alt={org.name} fill className="object-contain p-1" sizes="40px" />
-                                                            ) : (
-                                                                <Building className="h-5 w-5 text-muted-foreground" />
-                                                            )}
+                                                            <Building className="h-5 w-5 text-muted-foreground" />
                                                         </div>
                                                         <div className="font-medium text-sm">{org.name}</div>
                                                     </div>
@@ -761,11 +757,7 @@ export default function ModuleDetailsPage() {
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border">
-                                                                        {sd.primaryLogoUrl ? (
-                                                                            <Image src={sd.primaryLogoUrl} alt={sd.name} fill className="object-contain p-1" sizes="40px" />
-                                                                        ) : (
-                                                                            <Building className="h-5 w-5 text-muted-foreground" />
-                                                                        )}
+                                                                        <Building className="h-5 w-5 text-muted-foreground" />
                                                                     </div>
                                                                     <div className="font-semibold text-sm">{sd.name}</div>
                                                                 </div>
@@ -862,13 +854,10 @@ export default function ModuleDetailsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('bmt')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><Wrench className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Configuration</p></CardContent>
-                        </Card>
                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Quotation</p></CardContent>
-                        </Card>
                          <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Operations</p></CardContent>
-                        </Card>
                     </div>
                 </DialogContent>
             </Dialog>

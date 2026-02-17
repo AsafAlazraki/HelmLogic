@@ -99,12 +99,8 @@ export function OrganisationModuleConfig({
                     Back to list
                 </Button>
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border">
-                        {organisation.primaryLogoUrl ? (
-                            <Image src={organisation.primaryLogoUrl} alt={organisation.name} fill className="object-contain p-1" sizes="40px" />
-                        ) : (
-                            <Building className="h-5 w-5 text-muted-foreground" />
-                        )}
+                    <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center border">
+                        <Building className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <h2 className="text-xl font-bold">{organisation.name} Configuration</h2>
                 </div>
@@ -247,12 +243,8 @@ export function OrganisationModuleConfig({
                                                 <div className="p-4 flex flex-col gap-4">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border">
-                                                                {sd.primaryLogoUrl ? (
-                                                                    <Image src={sd.primaryLogoUrl} alt={sd.name} fill className="object-contain p-1" sizes="40px" />
-                                                                ) : (
-                                                                    <Building className="h-5 w-5 text-muted-foreground" />
-                                                                )}
+                                                            <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center border">
+                                                                <Building className="h-5 w-5 text-muted-foreground" />
                                                             </div>
                                                             <div className="font-semibold text-sm">{sd.name}</div>
                                                         </div>
