@@ -1,3 +1,4 @@
+
 // This file is functionally identical to the other *-data-structure.tsx files.
 // Any changes to the core logic for adding, editing, or deleting ranges should be
 // replicated across all four files (Highfield, Jeanneau, Stacer, Stabicraft).
@@ -9,13 +10,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, writeBatch, doc, setDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createSlug } from '@/lib/utils';
-import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,7 @@ const initialRanges = ['Merry Fisher', 'Cap Camarat', 'DB', 'TH'];
 
 export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: string, vendorSlugOrId: string }) {
     const firestore = useFirestore();
+    const storage = useStorage();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -140,14 +142,16 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
         try {
             const rangesCollectionRef = collection(firestore, `data-warehouse/${vendorId}/ranges`);
             const newRangeRef = doc(rangesCollectionRef);
+            const slug = createSlug(newRangeName);
             const data: Partial<Range> = {
                 name: newRangeName,
-                slug: createSlug(newRangeName),
+                slug: slug,
                 vendorId: vendorId,
                 order: ranges.length
             };
-            if (addRangeImage) {
-                data.imageUrl = await fileToDataUri(addRangeImage);
+            if (addRangeImage && storage) {
+                const path = `data-warehouse/${vendorId}/ranges/${slug}/cover-${Date.now()}-${addRangeImage.name}`;
+                data.imageUrl = await uploadFileToStorage(storage, addRangeImage, path);
             }
             await setDoc(newRangeRef, data);
             
@@ -168,14 +172,16 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
         if (!editingRange) return;
         try {
             const rangeDocRef = doc(firestore, `data-warehouse/${vendorId}/ranges`, editingRange.id);
+            const slug = createSlug(values.name);
             const dataToUpdate: Partial<Range> = {
                 name: values.name,
-                slug: createSlug(values.name),
+                slug: slug,
             };
 
             let imageWasUpdated = false;
-            if (values.image instanceof File) {
-                dataToUpdate.imageUrl = await fileToDataUri(values.image);
+            if (values.image instanceof File && storage) {
+                const path = `data-warehouse/${vendorId}/ranges/${slug}/cover-${Date.now()}-${values.image.name}`;
+                dataToUpdate.imageUrl = await uploadFileToStorage(storage, values.image, path);
                 imageWasUpdated = true;
             }
             
@@ -183,11 +189,12 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
             toast({ title: 'Range Updated' });
 
             if (imageWasUpdated) {
-                router.refresh();
+                window.location.reload();
+            } else {
+                setIsEditDialogOpen(false);
+                setEditingRange(null);
             }
 
-            setIsEditDialogOpen(false);
-            setEditingRange(null);
         } catch (error) {
             console.error('Failed to update range:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not update range.' });
@@ -261,7 +268,7 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                                 <div className="w-32 flex-shrink-0">
                                     {addRangeImagePreview ? (
                                         <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                                            <Image src={addRangeImagePreview} alt="New Range Preview" fill className="object-cover" />
+                                            <Image src={addRangeImagePreview} alt="New Range Preview" fill className="object-cover" sizes="128px" />
                                             <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => { setAddRangeImage(null); setAddRangeImagePreview(null); }}>
                                                 <X className="h-4 w-4" />
                                             </Button>
@@ -325,7 +332,7 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                                         <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${range.slug || range.id}`} className="block h-full">
                                             <div className="h-40 bg-secondary relative">
                                                 {range.imageUrl ? (
-                                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" />
+                                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" sizes="(max-width: 768px) 50vw, 25vw" />
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center">
                                                         <Sailboat className="h-12 w-12 text-muted-foreground" />

@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -28,7 +29,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
-import { fileToDataUri } from '@/firebase/storage-utils';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -69,6 +69,7 @@ export default function AddOrganisationPage() {
   const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
+  const storage = useStorage();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -111,12 +112,14 @@ export default function AddOrganisationPage() {
           subDealersEnabled: values.subDealersEnabled || false,
       };
 
-      if (values.primaryLogo instanceof File) {
-          dataToCreate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
+      if (values.primaryLogo instanceof File && storage) {
+          const path = `organisations/${newOrgRef.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
+          dataToCreate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
       }
 
-      if (values.secondaryLogo instanceof File) {
-          dataToCreate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
+      if (values.secondaryLogo instanceof File && storage) {
+          const path = `organisations/${newOrgRef.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
+          dataToCreate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
       }
 
       await setDoc(newOrgRef, dataToCreate)
@@ -294,6 +297,7 @@ export default function AddOrganisationPage() {
                                         alt="Primary Logo Preview" 
                                         fill
                                         className="rounded-md object-contain border p-1"
+                                        sizes="128px"
                                       />
                                     </div>
                                   )}
@@ -333,6 +337,7 @@ export default function AddOrganisationPage() {
                                         alt="Secondary Logo Preview" 
                                         fill
                                         className="rounded-md object-contain border p-1"
+                                        sizes="128px"
                                       />
                                     </div>
                                   )}

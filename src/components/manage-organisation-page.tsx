@@ -10,7 +10,8 @@ import Link from 'next/link';
 
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Save, X, Mail, PlusCircle } from 'lucide-react';
@@ -22,7 +23,6 @@ import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { fileToDataUri } from '@/firebase/storage-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
@@ -90,6 +90,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
     const firestore = useFirestore();
+    const storage = useStorage();
 
     const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(`/organisations/${orgId}`);
     
@@ -195,16 +196,18 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 permissions: values.permissions || {},
             };
             
-            if (values.primaryLogo instanceof File) {
-                dataToUpdate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
+            if (values.primaryLogo instanceof File && storage) {
+                const path = `organisations/${organisation.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
+                dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
             } else if (values.primaryLogoUrl === '') {
                 dataToUpdate.primaryLogoUrl = null;
             } else {
                 dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl || null;
             }
             
-            if (values.secondaryLogo instanceof File) {
-                dataToUpdate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
+            if (values.secondaryLogo instanceof File && storage) {
+                const path = `organisations/${organisation.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
+                dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
             } else if (values.secondaryLogoUrl === '') {
                 dataToUpdate.secondaryLogoUrl = null;
             } else {
@@ -313,7 +316,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                     <FormItem><FormLabel>Primary Logo</FormLabel>
                                                         {primaryLogoPreview && (
                                                             <div className="mt-2 w-32 h-32 relative group">
-                                                                <Image src={primaryLogoPreview} alt="Primary Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                                <Image src={primaryLogoPreview} alt="Primary Logo Preview" fill className="rounded-md object-contain border p-1" sizes="128px" />
                                                                 <Button
                                                                     type="button"
                                                                     variant="destructive"
@@ -341,7 +344,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                     <FormItem><FormLabel>Secondary Logo</FormLabel>
                                                         {secondaryLogoPreview && (
                                                             <div className="mt-2 w-32 h-32 relative group">
-                                                                <Image src={secondaryLogoPreview} alt="Secondary Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                                <Image src={secondaryLogoPreview} alt="Secondary Logo Preview" fill className="rounded-md object-contain border p-1" sizes="128px" />
                                                                 <Button
                                                                     type="button"
                                                                     variant="destructive"

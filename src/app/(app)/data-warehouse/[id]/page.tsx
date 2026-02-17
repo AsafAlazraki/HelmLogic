@@ -13,6 +13,7 @@ import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav'
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon } from 'lucide-react';
@@ -618,7 +619,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                 <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors flex flex-col" onClick={() => handleEditItem(item)}>
                                                     {itemImageUrl ? (
                                                         <div className="relative h-40 w-full bg-secondary">
-                                                            <Image src={itemImageUrl} alt={titleKey ? String(item[titleKey]) : 'Product image'} fill className="object-contain p-4"/>
+                                                            <Image src={itemImageUrl} alt={titleKey ? String(item[titleKey]) : 'Product image'} fill className="object-contain p-4" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw" />
                                                         </div>
                                                     ) : (
                                                         <div className="relative h-40 w-full bg-secondary flex items-center justify-center">
@@ -741,10 +742,9 @@ export default function VendorDetailsPage() {
                 notes: values.notes || '',
             };
 
-            if (values.logo instanceof File) {
-                // The uploadFileWithProgress is removed, so direct upload logic needs to be considered or removed.
-                // For now, let's assume we are not handling new file uploads in this submit.
-                // dataToUpdate.logoUrl = await uploadFileWithProgress(storage, values.logo, logoPath, () => {});
+            if (values.logo instanceof File && storage) {
+                const logoPath = `data-warehouse/${vendor.id}/logos/${Date.now()}-${values.logo.name}`;
+                dataToUpdate.logoUrl = await uploadFileToStorage(storage, values.logo, logoPath);
             } else if (values.logoUrl === null) {
                 dataToUpdate.logoUrl = null;
             }
@@ -910,7 +910,7 @@ export default function VendorDetailsPage() {
                                                         <FormLabel>Vendor Logo</FormLabel>
                                                         {logoPreview && (
                                                             <div className="mt-2 w-32 h-32 relative group">
-                                                                <Image src={logoPreview} alt="Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                                <Image src={logoPreview} alt="Logo Preview" fill className="rounded-md object-contain border p-1" sizes="128px" />
                                                                 <Button
                                                                     type="button"
                                                                     variant="destructive"

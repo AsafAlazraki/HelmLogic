@@ -5,10 +5,10 @@ import { useForm, useFieldArray, useWatch, useController, FormProvider, useFormC
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, D
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -429,11 +430,98 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     );
 }
 
+function ColorVariantItem({ index, remove, update, model }: { index: number; remove: (index: number) => void; update: (index: number, val: any) => void; model: any }) {
+    const { control } = useFormContext<ModelFormData>();
+    const watchedColor = useWatch({ control, name: `colors.${index}` });
+    const storage = useStorage();
+    const [isUploading, setIsUploading] = useState(false);
+
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-4">
+                <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
+            </div>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <FormLabel>Images</FormLabel>
+                    <div className="grid grid-cols-3 gap-2">
+                        {(watchedColor?.imageUrls || []).map((url, imgIndex) => (
+                            <div key={imgIndex} className="relative aspect-square group">
+                                <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" sizes="128px" />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                    onClick={() => {
+                                        const updatedImages = watchedColor.imageUrls.filter((_, i) => i !== imgIndex);
+                                        update(index, { ...watchedColor, imageUrls: updatedImages });
+                                    }}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                        <label htmlFor={`color-image-upload-${index}`} className={cn("aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary", isUploading && "bg-muted/50 cursor-not-allowed")}>
+                            <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" disabled={isUploading} onChange={async (e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length > 0 && model && storage) {
+                                    setIsUploading(true);
+                                    try {
+                                        for (const file of files) {
+                                            const path = `data-warehouse/models/${model.id}/colors/${index}-${Date.now()}-${file.name}`;
+                                            const url = await uploadFileToStorage(storage, file, path);
+                                            const currentUrls = watchedColor.imageUrls || [];
+                                            // Since we are iterating, we need to be careful with closure. 
+                                            // But updateColor updates the field array.
+                                            // However, best to collect URLs then update.
+                                            // But uploadFileToStorage is async.
+                                            // We can push to local array then update once?
+                                            // Or better:
+                                            // This loop is tricky because update(index, ...) might overwrite previous update if called rapidly in loop without functional update.
+                                            // useFieldArray update doesn't support functional update?
+                                            // Actually, passing `...watchedColor` is dangerous inside async loop if `watchedColor` is stale.
+                                            // But here we await each upload.
+                                            // It's better to upload all then update once.
+                                        }
+                                        // Refactor: upload all then update
+                                        const uploadPromises = files.map(file => {
+                                            const path = `data-warehouse/models/${model.id}/colors/${index}-${Date.now()}-${file.name}`;
+                                            return uploadFileToStorage(storage, file, path);
+                                        });
+                                        const newUrls = await Promise.all(uploadPromises);
+                                        const currentUrls = watchedColor.imageUrls || [];
+                                        update(index, { ...watchedColor, imageUrls: [...currentUrls, ...newUrls] });
+
+                                    } catch (err) {
+                                        console.error("Upload failed", err);
+                                    } finally {
+                                        setIsUploading(false);
+                                    }
+                                }
+                            }}/>
+                            {isUploading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/> : <Plus className="h-6 w-6 text-muted-foreground"/>}
+                        </label>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <GstInputPair control={control} name={`colors.${index}.cost`} label="Additional Cost" />
+                    <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
+                </div>
+            </div>
+        </Card>
+    );
+}
+
 export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
+    const [isCoverUploading, setIsCoverUploading] = useState(false);
+    const [isGalleryUploading, setIsGalleryUploading] = useState(false);
     
     const [newCategoryName, setNewCategoryName] = useState('');
 
@@ -711,35 +799,52 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                             <FormField control={control} name="coverImageUrl" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                    {coverImageUrl ? (
-                                                        <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                            <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="icon"
-                                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                onClick={() => field.onChange(null)}
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-center w-full">
-                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                    <div className="relative aspect-video w-full overflow-hidden rounded-md group bg-background border">
+                                                        {isCoverUploading && (
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                                                                <Loader2 className="h-8 w-8 animate-spin text-white" />
+                                                            </div>
+                                                        )}
+                                                        {coverImageUrl ? (
+                                                            <>
+                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                    onClick={() => field.onChange(null)}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </>
+                                                        ) : (
+                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 cursor-pointer hover:bg-secondary/50">
                                                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                                     <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
                                                                     <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
                                                                 </div>
                                                                 <FormControl>
-                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" disabled={isCoverUploading} onChange={async (e) => {
                                                                         const file = e.target.files?.[0];
-                                                                        if (file) field.onChange(await fileToDataUri(file));
+                                                                        if (file && model && storage) {
+                                                                            setIsCoverUploading(true);
+                                                                            try {
+                                                                                const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
+                                                                                const url = await uploadFileToStorage(storage, file, path);
+                                                                                field.onChange(url);
+                                                                            } catch (err) {
+                                                                                console.error("Upload failed", err);
+                                                                                toast({ variant: "destructive", title: "Upload Failed" });
+                                                                            } finally {
+                                                                                setIsCoverUploading(false);
+                                                                            }
+                                                                        }
                                                                     }} />
                                                                 </FormControl>
                                                             </label>
-                                                        </div> 
-                                                    )}
+                                                        )} 
+                                                    </div>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
@@ -761,7 +866,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                             name={`galleryImageUrls.${index}`}
                                                                             render={({ field }) => (
                                                                                 <>
-                                                                                    <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />
+                                                                                    {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" sizes="(max-width: 768px) 33vw, 15vw" /> }
                                                                                     <Button
                                                                                         type="button"
                                                                                         variant="destructive"
@@ -776,13 +881,26 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                         />
                                                                     </div>
                                                                 ))}
-                                                                <label htmlFor="gallery-image-upload" className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
-                                                                    <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                                <label htmlFor="gallery-image-upload" className={cn("aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary", isGalleryUploading && "bg-muted/50 cursor-not-allowed")}>
+                                                                    <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" disabled={isGalleryUploading} onChange={async (e) => {
                                                                         const files = Array.from(e.target.files || []);
-                                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                        dataUris.forEach(uri => appendGalleryImage(uri));
+                                                                        if (files.length > 0 && model && storage) {
+                                                                            setIsGalleryUploading(true);
+                                                                            try {
+                                                                                for (const file of files) {
+                                                                                    const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
+                                                                                    const url = await uploadFileToStorage(storage, file, path);
+                                                                                    appendGalleryImage(url);
+                                                                                }
+                                                                            } catch (err) {
+                                                                                console.error("Gallery upload failed", err);
+                                                                                toast({ variant: "destructive", title: "Gallery Upload Failed" });
+                                                                            } finally {
+                                                                                setIsGalleryUploading(false);
+                                                                            }
+                                                                        }
                                                                     }}/>
-                                                                    <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                                    {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/> : <Plus className="h-6 w-6 text-muted-foreground"/>}
                                                                 </label>
                                                             </div>
                                                         </div>
@@ -837,49 +955,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                     <CollapsibleContent>
                                         <CardContent className="space-y-4">
                                             {colorFields.map((field, index) => (
-                                                <Card key={field.id} className="p-4 bg-muted/50">
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="sr-only">Color Name</FormLabel><FormControl><Input placeholder="Color Name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="destructive" size="icon" onClick={() => removeColor(index)} className="ml-2 shrink-0"><Trash2 className="h-4 w-4" /></Button>
-                                                    </div>
-                                                    <div className="space-y-4">
-                                                        <div className="space-y-2">
-                                                            <FormLabel>Images</FormLabel>
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                {(watchedColors?.[index]?.imageUrls || []).map((url, imgIndex) => (
-                                                                    <div key={imgIndex} className="relative aspect-square group">
-                                                                        <Image src={url} alt={`Color variant ${imgIndex+1}`} fill className="object-cover rounded-md" />
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="icon"
-                                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                            onClick={() => {
-                                                                                const updatedImages = watchedColors[index].imageUrls.filter((_, i) => i !== imgIndex);
-                                                                                updateColor(index, { ...watchedColors[index], imageUrls: updatedImages });
-                                                                            }}
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </div>
-                                                                ))}
-                                                                <label htmlFor={`color-image-upload-${index}`} className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
-                                                                    <Input id={`color-image-upload-${index}`} type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                        const files = Array.from(e.target.files || []);
-                                                                        const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                        const currentUrls = watchedColors[index].imageUrls || [];
-                                                                        updateColor(index, { ...watchedColors[index], imageUrls: [...currentUrls, ...dataUris] });
-                                                                    }}/>
-                                                                    <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                                                            <GstInputPair control={control} name={`colors.${index}.cost`} label="Additional Cost" />
-                                                            <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Additional Sell Price" />
-                                                        </div>
-                                                    </div>
-                                                </Card>
+                                                <ColorVariantItem key={field.id} index={index} remove={removeColor} update={updateColor} model={model} />
                                             ))}
                                             {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
                                         </CardContent>

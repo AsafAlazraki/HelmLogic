@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { uploadFileWithProgress } from '@/firebase/storage';
+import { uploadFileToStorage } from '@/firebase/storage';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -386,6 +386,7 @@ function OptionalFeatureEditDialog({
                             alt="Feature image"
                             fill
                             className="object-cover"
+                            sizes="128px"
                             />
                             <Button
                             type="button"
@@ -418,10 +419,11 @@ function OptionalFeatureEditDialog({
                                     setIsUploading(true);
                                     try {
                                     const path = `data-warehouse/models/${model.id}/features/${featureIndex}-${Date.now()}-${file.name}`;
-                                    const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
+                                    const downloadURL = await uploadFileToStorage(storage, file, path);
                                     field.onChange(downloadURL);
                                     } catch (err) {
-                                    toast({ variant: 'destructive', title: 'Upload Failed'});
+                                        console.error("Upload failed", err);
+                                        toast({ variant: 'destructive', title: 'Upload Failed'});
                                     } finally {
                                         setIsUploading(false);
                                     }
@@ -626,7 +628,7 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
                 )}
                 {imageUrl ? (
                     <>
-                        <Image src={imageUrl} alt={label} fill className="object-cover" />
+                        <Image src={imageUrl} alt={label} fill className="object-cover" sizes="(max-width: 768px) 100vw, 20vw" />
                         <Button
                             type="button"
                             variant="destructive"
@@ -653,9 +655,10 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
                                         setIsUploading(true);
                                         try {
                                             const path = `data-warehouse/models/${model.id}/udek/${name.split('.').pop()}-${Date.now()}-${file.name}`;
-                                            const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
+                                            const downloadURL = await uploadFileToStorage(storage, file, path);
                                             setValue(name, downloadURL);
                                         } catch (err) {
+                                            console.error("Upload failed", err);
                                             toast({ variant: 'destructive', title: 'Upload Failed' });
                                         } finally {
                                             setIsUploading(false);
@@ -720,7 +723,7 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
                     )}
                     {imageUrl ? (
                         <>
-                            <Image src={imageUrl} alt={`Paint option ${index + 1}`} fill className="object-cover" />
+                            <Image src={imageUrl} alt={`Paint option ${index + 1}`} fill className="object-cover" sizes="(max-width: 768px) 100vw, 25vw" />
                              <Button
                                 type="button"
                                 variant="destructive"
@@ -747,9 +750,10 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
                                             setIsUploading(true);
                                             try {
                                                 const path = `data-warehouse/models/${model.id}/paint/${category}-${index}-${Date.now()}-${file.name}`;
-                                                const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
+                                                const downloadURL = await uploadFileToStorage(storage, file, path);
                                                 setValue(`${namePrefix}.imageUrl`, downloadURL);
                                             } catch (err) {
+                                                console.error("Upload failed", err);
                                                 toast({ variant: 'destructive', title: 'Upload Failed' });
                                             } finally {
                                                 setIsUploading(false);
@@ -1179,7 +1183,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                         )}
                                                         {coverImageUrl ? (
                                                             <>
-                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
+                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
                                                                 <Button
                                                                     type="button"
                                                                     variant="destructive"
@@ -1203,9 +1207,10 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                             setIsCoverUploading(true);
                                                                             try {
                                                                                 const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
-                                                                                const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
+                                                                                const downloadURL = await uploadFileToStorage(storage, file, path);
                                                                                 field.onChange(downloadURL);
                                                                             } catch (err) {
+                                                                                console.error("Upload failed", err);
                                                                                 toast({ variant: 'destructive', title: 'Upload Failed' });
                                                                             } finally {
                                                                                 setIsCoverUploading(false);
@@ -1237,7 +1242,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                             name={`galleryImageUrls.${index}`}
                                                                             render={({ field }) => (
                                                                                 <>
-                                                                                    {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />}
+                                                                                    {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" sizes="(max-width: 768px) 33vw, 10vw" /> }
                                                                                     <Button
                                                                                         type="button"
                                                                                         variant="destructive"
@@ -1261,11 +1266,12 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                             for (const file of files) {
                                                                                 if (model) {
                                                                                     const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
-                                                                                    const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
+                                                                                    const downloadURL = await uploadFileToStorage(storage, file, path);
                                                                                     appendGalleryImage(downloadURL);
                                                                                 }
                                                                             }
                                                                         } catch (err) {
+                                                                            console.error("Upload failed", err);
                                                                             toast({ variant: 'destructive', title: 'Upload Failed' });
                                                                         } finally {
                                                                             setIsGalleryUploading(false);

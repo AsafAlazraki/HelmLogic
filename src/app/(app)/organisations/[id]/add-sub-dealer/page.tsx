@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, doc, setDoc, query, where } from 'firebase/firestore';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -27,7 +28,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
-import { fileToDataUri } from '@/firebase/storage-utils';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 
@@ -72,6 +72,7 @@ export default function AddSubDealerPage() {
   const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
+  const storage = useStorage();
   const router = useRouter();
   const params = useParams();
   const parentOrgSlugOrId = params.id as string;
@@ -147,12 +148,14 @@ export default function AddSubDealerPage() {
           parentOrganisationId: parentOrganisation.id,
       };
 
-      if (values.primaryLogo instanceof File) {
-          dataToCreate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
+      if (values.primaryLogo instanceof File && storage) {
+          const path = `organisations/${newOrgRef.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
+          dataToCreate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
       }
 
-      if (values.secondaryLogo instanceof File) {
-          dataToCreate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
+      if (values.secondaryLogo instanceof File && storage) {
+          const path = `organisations/${newOrgRef.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
+          dataToCreate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
       }
 
       await setDoc(newOrgRef, dataToCreate)
@@ -330,6 +333,7 @@ export default function AddSubDealerPage() {
                                         alt="Primary Logo Preview" 
                                         fill
                                         className="rounded-md object-contain border p-1"
+                                        sizes="128px"
                                       />
                                     </div>
                                   )}
@@ -369,6 +373,7 @@ export default function AddSubDealerPage() {
                                         alt="Secondary Logo Preview" 
                                         fill
                                         className="rounded-md object-contain border p-1"
+                                        sizes="128px"
                                       />
                                     </div>
                                   )}

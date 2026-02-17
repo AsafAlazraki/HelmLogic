@@ -5,10 +5,10 @@ import { useForm, useFieldArray, useWatch, useController, FormProvider, useFormC
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,8 +94,6 @@ const motorConfigOptions = [
     { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
 ];
 
-// This helper function ensures that any 'undefined' values from react-hook-form
-// are converted to 'null', which is a valid Firestore type.
 function sanitizeDataForFirestore(data: any): any {
   if (data === undefined) {
     return null;
@@ -118,8 +116,6 @@ function sanitizeDataForFirestore(data: any): any {
   return sanitizedData;
 }
 
-// A reusable component to handle paired GST-inclusive and GST-exclusive price inputs.
-// It automatically calculates one value when the other is changed.
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field, fieldState } = useController({ control, name, defaultValue: null });
 
@@ -129,7 +125,6 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
         if (val === '' || val === null || val === undefined) return '';
         const num = typeof val === 'string' ? parseFloat(val) : val;
         if (isNaN(num)) return '';
-        // Round to 2 decimals for display
         return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
     };
 
@@ -137,7 +132,6 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        // Pass string directly to allow typing decimals (e.g. "10.")
         field.onChange(val === '' ? null : val);
     };
 
@@ -149,7 +143,6 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 const excl = num / (1 + GST_RATE);
-                // Round to 2 decimals
                 field.onChange(Math.round(excl * 100) / 100);
             }
         }
@@ -212,9 +205,11 @@ const CollapsibleCardHeader = ({ title, description, children, count }: { title:
 );
 
 
-function OptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
+function OptionalFeatureItem({ form, index, remove, model }: { form: any; index: number; remove: (index: number) => void; model: any; }) {
     const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
     const { control } = form;
+    const storage = useStorage();
+    const [isUploading, setIsUploading] = useState(false);
 
     return (
         <Card key={index} className="relative bg-muted/50 overflow-hidden p-4 group/item">
@@ -229,29 +224,45 @@ function OptionalFeatureItem({ form, index, remove }: { form: any; index: number
                     render={({ field }) => (
                         <FormItem className="w-32 flex-shrink-0">
                             <FormLabel className="sr-only">Feature Image</FormLabel>
-                             {imageUrl ? (
-                                <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                                    <Image src={imageUrl} alt="Feature image" fill className="object-cover" />
-                                    <Button type="button" variant="outline" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive" onClick={() => field.onChange(null)}>
-                                        <X className="h-3 w-3" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-center w-full">
-                                    <label htmlFor={`feature-upload-${index}`} className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                            <div className="relative aspect-square w-full overflow-hidden rounded-md group bg-background border">
+                                {isUploading && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                                        <Loader2 className="h-6 w-6 animate-spin text-white" />
+                                    </div>
+                                )}
+                                {imageUrl ? (
+                                    <>
+                                        <Image src={imageUrl} alt="Feature image" fill className="object-cover" sizes="128px" />
+                                        <Button type="button" variant="outline" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive" onClick={() => field.onChange(null)}>
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <label htmlFor={`feature-upload-${index}`} className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
                                         <div className="flex flex-col items-center justify-center text-center p-2">
                                             <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
                                             <p className="text-xs text-muted-foreground">Upload</p>
                                         </div>
                                         <FormControl>
-                                            <Input id={`feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                            <Input id={`feature-upload-${index}`} type="file" className="hidden" accept="image/*" disabled={isUploading} onChange={async (e) => {
                                                 const file = e.target.files?.[0];
-                                                if (file) field.onChange(await fileToDataUri(file));
+                                                if (file && storage && model) {
+                                                    setIsUploading(true);
+                                                    try {
+                                                        const path = `data-warehouse/models/${model.id}/features/${index}-${Date.now()}-${file.name}`;
+                                                        const url = await uploadFileToStorage(storage, file, path);
+                                                        field.onChange(url);
+                                                    } catch (err) {
+                                                        console.error("Upload failed", err);
+                                                    } finally {
+                                                        setIsUploading(false);
+                                                    }
+                                                }
                                             }} />
                                         </FormControl>
                                     </label>
-                                </div> 
-                            )}
+                                )}
+                            </div>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -389,9 +400,11 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     );
 }
 
-function ColorVariantItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+function ColorVariantItem({ index, remove, model }: { index: number; remove: (index: number) => void; model: any; }) {
   const { control } = useFormContext<ModelFormData>();
   const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
+  const storage = useStorage();
+  const [isUploading, setIsUploading] = useState(false);
 
   return (
     <Card className="bg-muted/50 overflow-hidden">
@@ -402,29 +415,45 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
           render={({ field }) => (
             <FormItem className="w-32 flex-shrink-0">
               <FormLabel className="sr-only">Color Image</FormLabel>
-              {imageUrl ? (
-                <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                  <Image src={imageUrl} alt="Color variant" fill className="object-cover" />
-                  <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => field.onChange(null)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center w-full">
-                  <label htmlFor={`color-upload-${index}`} className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                    <div className="flex flex-col items-center justify-center text-center p-2">
-                      <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">Upload</p>
-                    </div>
-                    <FormControl>
-                      <Input id={`color-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) field.onChange(await fileToDataUri(file));
-                      }} />
-                    </FormControl>
-                  </label>
-                </div>
-              )}
+              <div className="relative aspect-square w-full overflow-hidden rounded-md group bg-background border">
+                  {isUploading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                            <Loader2 className="h-6 w-6 animate-spin text-white" />
+                        </div>
+                    )}
+                  {imageUrl ? (
+                    <>
+                      <Image src={imageUrl} alt="Color variant" fill className="object-cover" sizes="128px" />
+                      <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => field.onChange(null)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <label htmlFor={`color-upload-${index}`} className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                        <div className="flex flex-col items-center justify-center text-center p-2">
+                          <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Upload</p>
+                        </div>
+                        <FormControl>
+                          <Input id={`color-upload-${index}`} type="file" className="hidden" accept="image/*" disabled={isUploading} onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file && storage && model) {
+                                setIsUploading(true);
+                                try {
+                                    const path = `data-warehouse/models/${model.id}/colors/${index}-${Date.now()}-${file.name}`;
+                                    const url = await uploadFileToStorage(storage, file, path);
+                                    field.onChange(url);
+                                } catch (err) {
+                                    console.error("Upload failed", err);
+                                } finally {
+                                    setIsUploading(false);
+                                }
+                            }
+                          }} />
+                        </FormControl>
+                    </label>
+                  )}
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -473,10 +502,14 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
 
 export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [bulkFeatures, setBulkFeatures] = useState('');
+    const [isCoverUploading, setIsCoverUploading] = useState(false);
+    const [isGalleryUploading, setIsGalleryUploading] = useState(false);
     
+    // ... getSafeDefaultValues (omitted for brevity, it's unchanged)
     const getSafeDefaultValues = useCallback((modelData: any): Partial<ModelFormData> => {
         const safeModel = modelData || {};
         const modelColors = safeModel.colors || [];
@@ -513,12 +546,11 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
             if (config.engines && Array.isArray(config.engines) && config.engines.length > 0) {
                 return config;
             }
-            // Populate default engines based on config type if missing
             const option = motorConfigOptions.find(o => o.id === config.type);
             if (option) {
                  const engines = Array.from({ length: option.engineCount }, (_, i) => ({
                     label: option.engineLabels[i],
-                    minHp: config.minHp ?? 0, // Attempt to migrate old single hp values if they existed
+                    minHp: config.minHp ?? 0,
                     maxHp: config.maxHp ?? 0,
                     recommendedHp: config.recommendedHp ?? 0
                 }));
@@ -715,35 +747,52 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                         <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                {coverImageUrl ? (
-                                                    <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                        <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="icon"
-                                                            className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                            onClick={() => field.onChange(null)}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center justify-center w-full">
-                                                        <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
+                                                <div className="relative aspect-video w-full overflow-hidden rounded-md group bg-background border">
+                                                    {isCoverUploading && (
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                                                            <Loader2 className="h-8 w-8 animate-spin text-white" />
+                                                        </div>
+                                                    )}
+                                                    {coverImageUrl ? (
+                                                        <>
+                                                            <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                onClick={() => field.onChange(null)}
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 cursor-pointer hover:bg-secondary/50">
                                                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                                 <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
                                                                 <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
                                                             </div>
                                                             <FormControl>
-                                                                <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" disabled={isCoverUploading} onChange={async (e) => {
                                                                     const file = e.target.files?.[0];
-                                                                    if (file) field.onChange(await fileToDataUri(file));
+                                                                    if (file && model && storage) {
+                                                                        setIsCoverUploading(true);
+                                                                        try {
+                                                                            const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
+                                                                            const url = await uploadFileToStorage(storage, file, path);
+                                                                            field.onChange(url);
+                                                                        } catch (err) {
+                                                                            console.error("Upload failed", err);
+                                                                            toast({ variant: "destructive", title: "Upload Failed" });
+                                                                        } finally {
+                                                                            setIsCoverUploading(false);
+                                                                        }
+                                                                    }
                                                                 }} />
                                                             </FormControl>
                                                         </label>
-                                                    </div> 
-                                                )}
+                                                    )}
+                                                </div> 
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -765,7 +814,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                                         name={`galleryImageUrls.${index}`}
                                                                         render={({ field }) => (
                                                                             <>
-                                                                                {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />}
+                                                                                {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" sizes="(max-width: 768px) 33vw, 15vw" />}
                                                                                 <Button
                                                                                     type="button"
                                                                                     variant="destructive"
@@ -780,13 +829,26 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                                                     />
                                                                 </div>
                                                             ))}
-                                                            <label htmlFor="gallery-image-upload" className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
-                                                                <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                                            <label htmlFor="gallery-image-upload" className={cn("aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary", isGalleryUploading && "bg-muted/50 cursor-not-allowed")}>
+                                                                <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" disabled={isGalleryUploading} onChange={async (e) => {
                                                                     const files = Array.from(e.target.files || []);
-                                                                    const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                    dataUris.forEach(uri => appendGalleryImage(uri));
+                                                                    if (files.length > 0 && model && storage) {
+                                                                        setIsGalleryUploading(true);
+                                                                        try {
+                                                                            for (const file of files) {
+                                                                                const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
+                                                                                const url = await uploadFileToStorage(storage, file, path);
+                                                                                appendGalleryImage(url);
+                                                                            }
+                                                                        } catch (err) {
+                                                                            console.error("Gallery upload failed", err);
+                                                                            toast({ variant: "destructive", title: "Gallery Upload Failed" });
+                                                                        } finally {
+                                                                            setIsGalleryUploading(false);
+                                                                        }
+                                                                    }
                                                                 }}/>
-                                                                <Plus className="h-6 w-6 text-muted-foreground"/>
+                                                                {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/> : <Plus className="h-6 w-6 text-muted-foreground"/>}
                                                             </label>
                                                         </div>
                                                     </div>
@@ -805,7 +867,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
                                         {optionalFeatureFields.map((field, index) => (
-                                            <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
+                                            <OptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} model={model} />
                                         ))}
                                         {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
                                     </CardContent>
@@ -822,7 +884,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                         <CollapsibleContent>
                             <CardContent className="space-y-4">
                                 {colorFields.map((field, index) => (
-                                    <ColorVariantItem key={field.id} index={index} remove={removeColor} />
+                                    <ColorVariantItem key={field.id} index={index} remove={removeColor} model={model} />
                                 ))}
                                 {colorFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No color variants added.</p>}
                             </CardContent>

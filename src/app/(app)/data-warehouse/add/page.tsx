@@ -91,7 +91,7 @@ export default function AddVendorPage() {
                 logoUrl: null,
             };
 
-            if (values.logo instanceof File) {
+            if (values.logo instanceof File && storage) {
                 const logoFile = values.logo;
                 const logoPath = `data-warehouse/${vendorId}/logos/${Date.now()}-${logoFile.name}`;
                 dataToCreate.logoUrl = await uploadFileToStorage(storage, logoFile, logoPath);
@@ -289,6 +289,7 @@ export default function AddVendorPage() {
                                                         alt="Logo Preview" 
                                                         fill
                                                         className="rounded-md object-contain border p-1"
+                                                        sizes="128px"
                                                     />
                                                     </div>
                                                 )}
@@ -355,5 +356,3 @@ export default function AddVendorPage() {
         </AdminGuard>
     );
 }
-
-    

@@ -11,7 +11,8 @@ import Link from 'next/link';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle } from 'lucide-react';
@@ -34,7 +35,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { fileToDataUri } from '@/firebase/storage-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
@@ -115,6 +115,7 @@ export default function OrganisationDetailsPage() {
     const [vendorToUnsubscribe, setVendorToUnsubscribe] = useState<Vendor | null>(null);
     const slugOrId = params.id as string;
     const firestore = useFirestore();
+    const storage = useStorage();
 
     const orgQueryBySlug = useMemo(() => {
         if (!slugOrId) return null;
@@ -245,16 +246,18 @@ export default function OrganisationDetailsPage() {
                 dataWarehouseSubscriptions: values.dataWarehouseSubscriptions || [],
             };
             
-            if (values.primaryLogo instanceof File) {
-                dataToUpdate.primaryLogoUrl = await fileToDataUri(values.primaryLogo);
+            if (values.primaryLogo instanceof File && storage) {
+                const path = `organisations/${organisation.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
+                dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
             } else if (values.primaryLogoUrl === '') {
                 dataToUpdate.primaryLogoUrl = null;
             } else {
                 dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl || null;
             }
             
-            if (values.secondaryLogo instanceof File) {
-                dataToUpdate.secondaryLogoUrl = await fileToDataUri(values.secondaryLogo);
+            if (values.secondaryLogo instanceof File && storage) {
+                const path = `organisations/${organisation.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
+                dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
             } else if (values.secondaryLogoUrl === '') {
                 dataToUpdate.secondaryLogoUrl = null;
             } else {
@@ -389,7 +392,7 @@ export default function OrganisationDetailsPage() {
                                                     <FormItem><FormLabel>Primary Logo</FormLabel>
                                                         {primaryLogoPreview && (
                                                             <div className="mt-2 w-32 h-32 relative group">
-                                                                <Image src={primaryLogoPreview} alt="Primary Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                                <Image src={primaryLogoPreview} alt="Primary Logo Preview" fill className="rounded-md object-contain border p-1" sizes="128px" />
                                                                 <Button
                                                                     type="button"
                                                                     variant="destructive"
@@ -417,7 +420,7 @@ export default function OrganisationDetailsPage() {
                                                     <FormItem><FormLabel>Secondary Logo</FormLabel>
                                                         {secondaryLogoPreview && (
                                                             <div className="mt-2 w-32 h-32 relative group">
-                                                                <Image src={secondaryLogoPreview} alt="Secondary Logo Preview" fill className="rounded-md object-contain border p-1" />
+                                                                <Image src={secondaryLogoPreview} alt="Secondary Logo Preview" fill className="rounded-md object-contain border p-1" sizes="128px" />
                                                                 <Button
                                                                     type="button"
                                                                     variant="destructive"
@@ -634,7 +637,7 @@ export default function OrganisationDetailsPage() {
                                                                                 <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
                                                                                     {vendor.logoUrl ? (
                                                                                         <div className="relative h-full w-full">
-                                                                                            <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" />
+                                                                                            <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw" />
                                                                                         </div>
                                                                                     ) : (
                                                                                         <Building className="h-8 w-8 text-muted-foreground"/>
