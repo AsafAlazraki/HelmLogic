@@ -1,21 +1,10 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
      * HelmLogic Security Rules
-     * 
-     * Core Philosophy:
-     * This ruleset implements a multi-tenant, hierarchical authorization model based on 
-     * Organisations. Access is primarily determined by a user's affiliation with an 
-     * Organisation or their role as a Sub-Dealer to a Parent Organisation.
-     * 
-     * Data Structure:
-     * - /organisations: Top-level collection for all entity groups.
-     * - /users: Source of truth for user profiles and organisation context (DBAC).
-     * - /vessels: Managed assets owned by parent organisations, viewable by sub-dealers.
-     * - /vesselReservations: Shared collaboration documents between sub-dealers and parents.
-     * - /users/{userId}/notifications: Private user-specific messaging.
      */
 
     // --- Helper Functions ---
@@ -40,18 +29,13 @@ service cloud.firestore {
       return isSignedIn() && getUserData().parentOrganisationId == orgId;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
     // --- Collection Rules ---
 
     match /organisations/{organisationId} {
-      allow get: if isMemberOf(organisationId) || isSubDealerOf(organisationId) || isSignedIn(); // Allow get for signed in users for prototype
-      allow list: if isSignedIn(); // Required for role switching and organization discovery in prototype
-      allow create, update, delete: if isSignedIn(); // Simplified for prototyping
+      allow get: if isMemberOf(organisationId) || isSubDealerOf(organisationId) || isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
       
-      // Sub-collections within an organisation
       match /dealerFitSelections/{selectionId} {
         allow get, list, create, update, delete: if isSignedIn();
       }
@@ -62,8 +46,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn(); // Allow reading other users for notifications logic
-      allow list: if isSignedIn(); // Allow discovery for prototype
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if isSignedIn(); 
       allow delete: if false;
@@ -83,30 +67,26 @@ service cloud.firestore {
 
     match /users/{userId}/notifications/{notificationId} {
       allow get, list: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow create: if isSignedIn(); // Allow creation by other users/system logic for prototype
+      allow update: if isOwner(userId);
+      allow create: if isSignedIn();
       allow delete: if false;
     }
     
-    // Inventory collection
     match /inventory/{itemId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
     
-    // Modules collection
     match /modules/{moduleId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
     
-    // Dealer Fit Categories
     match /dealerFitCategories/{catId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
     
-    // Data Warehouse
     match /data-warehouse/{vendorId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();

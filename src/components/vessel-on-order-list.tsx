@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -7,7 +8,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { collection, query, where, doc, updateDoc, addDoc, getDocs } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ship, Clock, CheckCircle2, XCircle, Send } from 'lucide-react';
+import { Loader2, Ship, Clock, CheckCircle2, XCircle, Send, PlusCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
     Dialog,
@@ -28,15 +29,14 @@ interface Vessel {
     name: string;
     serialNumber: string;
     status: string;
-    organizationId: string;
-    reservationStatus?: 'Awaiting Confirmation' | 'Approved' | 'Declined';
-    reservationId?: string;
+    organisationId: string;
 }
 
 interface Reservation {
     id: string;
     vesselId: string;
-    subDealerOrganizationId: string;
+    subDealerOrganisationId: string;
+    vesselOwnerOrganisationId: string;
     requestedByUserId: string;
     customerName: string;
     description: string;
@@ -70,7 +70,7 @@ export function VesselOnOrderList({
         if (!targetOrgId) return null;
         return query(
             collection(firestore, 'vessels'),
-            where('organizationId', '==', targetOrgId),
+            where('organisationId', '==', targetOrgId),
             where('status', '==', 'On Order')
         );
     }, [firestore, targetOrgId]);
@@ -93,7 +93,6 @@ export function VesselOnOrderList({
     const [customerName, setCustomerName] = useState('');
     const [description, setDescription] = useState('');
 
-    const [isDeclining, setIsDeclining] = useState(false);
     const [resToDecline, setResToDecline] = useState<Reservation | null>(null);
     const [declineNote, setDeclineNote] = useState('');
 
@@ -103,7 +102,8 @@ export function VesselOnOrderList({
         try {
             const reservationData = {
                 vesselId: selectedVessel.id,
-                subDealerOrganizationId: organisation.id,
+                subDealerOrganisationId: organisation.id,
+                vesselOwnerOrganisationId: targetOrgId!,
                 requestedByUserId: user.uid,
                 customerName,
                 description,
@@ -114,7 +114,7 @@ export function VesselOnOrderList({
             const resRef = await addDoc(collection(firestore, 'vesselReservations'), reservationData);
             
             // Notify parent organisation users
-            const parentUsersQuery = query(collection(firestore, 'users'), where('organisationId', '==', parentOrg?.id));
+            const parentUsersQuery = query(collection(firestore, 'users'), where('organisationId', '==', targetOrgId));
             const parentUsers = await getDocs(parentUsersQuery);
             
             parentUsers.forEach(uDoc => {
@@ -133,6 +133,7 @@ export function VesselOnOrderList({
             setCustomerName('');
             setDescription('');
         } catch (error) {
+            console.error("Reservation request failed:", error);
             toast({ variant: 'destructive', title: "Request Failed" });
         } finally {
             setIsReserving(false);
@@ -167,7 +168,24 @@ export function VesselOnOrderList({
             setResToDecline(null);
             setDeclineNote('');
         } catch (error) {
+            console.error("Action failed:", error);
             toast({ variant: 'destructive', title: "Action Failed" });
+        }
+    };
+
+    const handleAddTestOnOrderBoat = async () => {
+        try {
+            await addDoc(collection(firestore, 'vessels'), {
+                name: `Ordered Vessel ${Math.floor(Math.random() * 1000)}`,
+                serialNumber: `ORD-${Math.floor(Math.random() * 10000)}`,
+                status: 'On Order',
+                organisationId: targetOrgId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
+            toast({ title: "Test Boat Added" });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Failed to add boat" });
         }
     };
 
@@ -177,12 +195,15 @@ export function VesselOnOrderList({
         <div className="space-y-4">
             {(!vessels || vessels.length === 0) ? (
                 <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-md text-center">
-                    <p className="text-muted-foreground text-sm">No "On Order" vessels currently listed for this network.</p>
+                    <p className="text-muted-foreground text-sm mb-4">No "On Order" vessels currently listed for this network.</p>
+                    <Button variant="outline" size="sm" onClick={handleAddTestOnOrderBoat}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Test On Order Boat
+                    </Button>
                 </div>
             ) : (
                 <div className="space-y-3">
                     {vessels.map(vessel => {
-                        const reservation = reservations?.find(r => r.vesselId === vessel.id && r.status !== 'Declined');
+                        const reservation = reservations?.find(r => r.vesselId === vessel.id && r.status !== 'Cancelled');
                         return (
                             <div key={vessel.id} className="flex items-center justify-between p-4 border rounded-md bg-background group hover:border-primary transition-all">
                                 <div className="flex items-center gap-4">
@@ -192,11 +213,14 @@ export function VesselOnOrderList({
                                     <div>
                                         <p className="font-bold text-sm">{vessel.name}</p>
                                         <p className="text-xs text-muted-foreground">SN: {vessel.serialNumber}</p>
+                                        {reservation?.status === 'Declined' && (
+                                            <p className="text-[10px] text-destructive mt-1 font-medium italic">Declined: {reservation.declineNote}</p>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                    {reservation ? (
+                                    {reservation && reservation.status !== 'Declined' ? (
                                         <div className="flex items-center gap-2">
                                             <Badge variant={reservation.status === 'Approved' ? 'default' : 'secondary'} className="gap-1 px-2 py-1">
                                                 {reservation.status === 'Approved' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
@@ -205,10 +229,10 @@ export function VesselOnOrderList({
                                             
                                             {!isSubDealer && reservation.status === 'Awaiting Confirmation' && (
                                                 <div className="flex gap-1">
-                                                    <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 hover:text-green-700" onClick={() => handleProcessReservation(reservation, true)}>
+                                                    <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleProcessReservation(reservation, true)}>
                                                         Approve
                                                     </Button>
-                                                    <Button size="sm" variant="outline" className="h-8 px-2 text-destructive hover:text-destructive" onClick={() => setResToDecline(reservation)}>
+                                                    <Button size="sm" variant="outline" className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => setResToDecline(reservation)}>
                                                         Decline
                                                     </Button>
                                                 </div>
@@ -225,6 +249,11 @@ export function VesselOnOrderList({
                             </div>
                         );
                     })}
+                    <div className="pt-2">
+                        <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground" onClick={handleAddTestOnOrderBoat}>
+                            + Seed Test Data
+                        </Button>
+                    </div>
                 </div>
             )}
 
