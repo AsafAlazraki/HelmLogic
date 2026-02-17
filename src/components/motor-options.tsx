@@ -172,9 +172,11 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const renderContent = () => {
         if (loading) {
             return (
-                <div className="flex justify-center items-center h-48">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
+                <CardContent>
+                    <div className="flex justify-center items-center h-48">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                </CardContent>
             );
         }
 
