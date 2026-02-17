@@ -1342,7 +1342,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 <CollapsibleTrigger asChild>
                                                     <Button type="button" variant="ghost" className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
                                                         <span>Image Gallery ({galleryImageFields.length})</span>
-                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                                     </Button>
                                                 </CollapsibleTrigger>
                                                 <CollapsibleContent className="border-b">
@@ -1440,7 +1440,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                             <TableHeader>
                                                                 <TableRow>
                                                                     <TableHead className="w-2/5">Feature</TableHead>
-                                                                    {watchedPackageLevels.map(pkg => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
+                                                                    {(watchedPackageLevels || []).map(pkg => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
                                                                     <TableHead className="w-[50px] text-right">Actions</TableHead>
                                                                 </TableRow>
                                                             </TableHeader>
@@ -1450,7 +1450,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                         <TableCell>
                                                                             <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="w-full"><FormControl><Input {...field} value={field.value ?? ''} className="border-none bg-transparent p-0 shadow-none focus-visible:ring-0" /></FormControl><FormMessage /></FormItem> )} />
                                                                         </TableCell>
-                                                                        {watchedPackageLevels.map(pkg => (
+                                                                        {(watchedPackageLevels || []).map(pkg => (
                                                                             <TableCell key={pkg.id} className="text-center">
                                                                                 <PackageStatusToggle control={control} featureIndex={index} packageId={pkg.id} />
                                                                             </TableCell>
