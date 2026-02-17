@@ -1,3 +1,4 @@
+
 'use client';
 
 import AdminGuard from "@/components/admin-guard";
@@ -5,7 +6,7 @@ import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { Loader2, PlusCircle, Building } from "lucide-react";
+import { Loader2, PlusCircle, Building, Wrench } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -42,12 +43,20 @@ export default function ModulesPage() {
                     <h1 className="text-2xl font-semibold">Modules</h1>
                     <BreadcrumbNav />
                 </div>
-                <Button asChild>
-                    <Link href="/modules/add">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Module
-                    </Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" asChild>
+                        <Link href="/modules/dealer-fit-options">
+                            <Wrench className="mr-2 h-4 w-4" />
+                            Dealer Fit Options
+                        </Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/modules/add">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Module
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
              {loading ? (

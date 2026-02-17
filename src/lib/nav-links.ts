@@ -27,7 +27,6 @@ export const navLinks: NavLink[] = [
       { href: '/data-warehouse', label: 'Data Warehouse', icon: Warehouse },
       { href: '/organisations', label: 'Organisations', icon: Building2 },
       { href: '/modules', label: 'Modules', icon: Blocks },
-      { href: '/admin/dealer-fit-options', label: 'Dealer Fit Options', icon: Wrench },
     ],
   },
 ];
