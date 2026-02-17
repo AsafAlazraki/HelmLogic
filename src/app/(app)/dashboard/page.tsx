@@ -14,12 +14,14 @@ import Image from "next/image";
 interface UserProfile {
     appRole?: string;
     organisationId?: string;
+    organisationRole?: string;
 }
 
 interface Organisation {
     id: string;
     name: string;
     enabledModuleSubscriptions?: string[];
+    permissions?: Record<string, Record<string, boolean>>;
 }
 
 interface Module {
@@ -29,16 +31,22 @@ interface Module {
     logoUrl?: string;
 }
 
-function EmployeeDashboard({ organisationId }: { organisationId: string }) {
+function EmployeeDashboard({ organisationId, userProfile }: { organisationId: string, userProfile: UserProfile }) {
     const { data: organisation, loading: orgLoading } = useDoc<Organisation>(organisationId ? `/organisations/${organisationId}` : null);
     const { data: allModules, loading: modulesLoading } = useCollection<Module>('modules');
+
+    const userPermissions = useMemo(() => {
+        const roleId = userProfile?.organisationRole;
+        if (!roleId || !organisation?.permissions?.[roleId]) return { can_access_module: false };
+        return organisation.permissions[roleId];
+    }, [userProfile, organisation]);
 
     const subscribedModuleIds = useMemo(() => organisation?.enabledModuleSubscriptions || [], [organisation]);
 
     const subscribedModules = useMemo(() => {
-        if (!allModules || subscribedModuleIds.length === 0) return [];
+        if (!allModules || subscribedModuleIds.length === 0 || !userPermissions.can_access_module) return [];
         return allModules.filter(module => subscribedModuleIds.includes(module.id));
-    }, [allModules, subscribedModuleIds]);
+    }, [allModules, subscribedModuleIds, userPermissions]);
 
     const loading = orgLoading || modulesLoading;
 
@@ -76,7 +84,12 @@ function EmployeeDashboard({ organisationId }: { organisationId: string }) {
                     <Card className="flex flex-col items-center justify-center h-80 border-2 border-dashed">
                         <Blocks className="h-16 w-16 text-muted-foreground" />
                         <h3 className="mt-4 text-lg font-semibold">No Modules Available</h3>
-                        <p className="mt-2 text-sm text-muted-foreground">Your organisation does not have access to any modules yet.</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            {userPermissions.can_access_module 
+                                ? "Your organisation does not have access to any modules yet."
+                                : "Your role does not have permission to access modules."
+                            }
+                        </p>
                         <p className="mt-1 text-sm text-muted-foreground">Please contact your administrator.</p>
                     </Card>
                 </div>
@@ -115,7 +128,7 @@ export default function Dashboard() {
                 <h1 className="text-2xl font-semibold">Dashboard</h1>
                 <BreadcrumbNav />
             </div>
-            {organisationId ? <EmployeeDashboard organisationId={organisationId} /> : <p>You are not part of an organisation.</p>}
+            {organisationId && userProfile ? <EmployeeDashboard organisationId={organisationId} userProfile={userProfile} /> : <p>You are not part of an organisation.</p>}
         </div>
     );
 }

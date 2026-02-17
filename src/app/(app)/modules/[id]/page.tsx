@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -46,6 +45,7 @@ interface Organisation {
     dealerFitCategories?: string[];
     subDealersEnabled?: boolean;
     parentOrganisationId?: string;
+    permissions?: Record<string, Record<string, boolean>>;
 }
 
 interface Range {
@@ -199,7 +199,7 @@ export default function ModuleDetailsPage() {
     const [viewContextOrgId, setViewContextOrgId] = useState<string | null>(null);
 
     const { user, loading: userLoading } = useUser();
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string }>(user ? `/users/${user.uid}` : null);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string, organisationRole?: string }>(user ? `/users/${user.uid}` : null);
     
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
@@ -249,6 +249,24 @@ export default function ModuleDetailsPage() {
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
+    // Permissions logic
+    const userPermissions = useMemo(() => {
+        if (isAdmin) return {
+            can_access_module: true,
+            can_create_quotes: true,
+            can_edit_boat_data: true,
+            can_view_subdealers: true,
+        };
+        const roleId = userProfile?.organisationRole;
+        if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return {
+            can_access_module: false,
+            can_create_quotes: false,
+            can_edit_boat_data: false,
+            can_view_subdealers: false,
+        };
+        return currentMemberOrg.permissions[roleId];
+    }, [isAdmin, userProfile, currentMemberOrg]);
+
     const availableContexts = useMemo(() => {
         const contexts = [];
         if (isAdmin) {
@@ -259,10 +277,12 @@ export default function ModuleDetailsPage() {
             if (myOrg) {
                 contexts.push({ id: myOrg.id, name: `My Org: ${myOrg.name}` });
             }
-            memberSubDealers.forEach(sd => contexts.push({ id: sd.id, name: `Sub Dealer: ${sd.name}` }));
+            if (userPermissions.can_view_subdealers) {
+                memberSubDealers.forEach(sd => contexts.push({ id: sd.id, name: `Sub Dealer: ${sd.name}` }));
+            }
         }
         return contexts;
-    }, [isAdmin, allOrganisations, userProfile, memberSubDealers]);
+    }, [isAdmin, allOrganisations, userProfile, memberSubDealers, userPermissions]);
 
     const [tempSubscribedOrgIds, setTempSubscribedOrgs] = useState<string[]>([]);
 
@@ -421,6 +441,10 @@ export default function ModuleDetailsPage() {
     if (!moduleData) {
         return <Card><CardHeader><CardTitle>Module Not Found</CardTitle></CardHeader></Card>;
     }
+
+    if (!userPermissions.can_access_module) {
+        return <Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>Your role does not have permission to access modules. Please contact your administrator.</CardDescription></CardHeader></Card>;
+    }
     
     const breadcrumbParts = [
         isAdmin ? { href: "/admin", label: "Admin" } : { href: "/dashboard", label: "Dashboard"},
@@ -438,21 +462,25 @@ export default function ModuleDetailsPage() {
                     <div className="flex items-center justify-between mb-2">
                         <h1 className="text-2xl font-semibold">Module: {moduleData.name}</h1>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Viewing As:</span>
-                            <Select 
-                                value={viewContextOrgId || 'master'} 
-                                onValueChange={(val) => setViewContextOrgId(val === 'master' ? null : val)}
-                            >
-                                <SelectTrigger className={cn("w-[220px] h-9", isImpersonating && "border-primary ring-1 ring-primary bg-primary/5")}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {availableContexts.map(ctx => (
-                                        <SelectItem key={ctx.id} value={ctx.id}>{ctx.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {userPermissions.can_view_subdealers && (
+                                <>
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Viewing As:</span>
+                                    <Select 
+                                        value={viewContextOrgId || 'master'} 
+                                        onValueChange={(val) => setViewContextOrgId(val === 'master' ? null : val)}
+                                    >
+                                        <SelectTrigger className={cn("w-[220px] h-9", isImpersonating && "border-primary ring-1 ring-primary bg-primary/5")}>
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableContexts.map(ctx => (
+                                                <SelectItem key={ctx.id} value={ctx.id}>{ctx.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </>
+                            )}
                         </div>
                     </div>
                     <BreadcrumbNav parts={breadcrumbParts.filter(p => isAdmin || p.label !== 'Modules')} />
@@ -467,11 +495,11 @@ export default function ModuleDetailsPage() {
                         <TabsTrigger value="settings">Settings</TabsTrigger>
                     </TabsList>
                 ) : (
-                    <TabsList className={cn("grid w-full", currentMemberOrg?.subDealersEnabled ? "grid-cols-4" : "grid-cols-3")}>
+                    <TabsList className={cn("grid w-full", (currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers) ? "grid-cols-4" : "grid-cols-3")}>
                         <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                         <TabsTrigger value="bmt">BMT</TabsTrigger>
                         <TabsTrigger value="operations">Operations</TabsTrigger>
-                        {currentMemberOrg?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
+                        {currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                     </TabsList>
                 )}
                 
@@ -503,7 +531,7 @@ export default function ModuleDetailsPage() {
                                 <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />
                             </CardHeader>
                             <CardContent>
-                                {isBoatBrand && mainVendor ? (
+                                {mainVendor && (mainVendor.vendorType === 'Boat Brand') ? (
                                     <>
                                         {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
                                         {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} />}
@@ -525,6 +553,7 @@ export default function ModuleDetailsPage() {
                                     user={user}
                                     isAdmin={isAdmin && !viewContextOrgId}
                                     organisationId={viewContextOrgId || undefined}
+                                    permissions={userPermissions as any}
                                 />
                             )}
                             {(view === 'quote' || view === 'operations') && (
@@ -595,7 +624,7 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
                 )}
 
-                {!isAdmin && currentMemberOrg?.subDealersEnabled && (
+                {!isAdmin && currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers && (
                     <TabsContent value="sub-dealers">
                         <Card>
                             <CardHeader>
@@ -728,7 +757,6 @@ export default function ModuleDetailsPage() {
                         </Card>
                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Quotation</p></CardContent>
-                        </Card>
                          <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Operations</p></CardContent>
                         </Card>

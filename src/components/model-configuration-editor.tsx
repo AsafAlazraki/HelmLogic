@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -25,6 +24,13 @@ import { StabicraftModelEditor, stabicraftModelSchema } from '@/components/stabi
 import { SurteesModelEditor, surteesModelSchema } from '@/components/surtees-model-editor';
 import { MotorOptions } from './motor-options';
 import { DealerFitOptions } from './dealer-fit-options';
+
+interface Permissions {
+    can_access_module: boolean;
+    can_create_quotes: boolean;
+    can_edit_boat_data: boolean;
+    can_view_subdealers: boolean;
+}
 
 function sanitizeDataForFirestore(data: any): any {
   if (data === undefined) {
@@ -61,7 +67,27 @@ const getVendorSchema = (slug?: string) => {
 }
 
 
-export function ModelConfigurationEditor({ model, docPath, vendor, module, breadcrumbs, user, isAdmin, organisationId }: { model: any, docPath: string, vendor: any, module: any, breadcrumbs: React.ReactNode, user: User | null, isAdmin: boolean, organisationId?: string }) {
+export function ModelConfigurationEditor({ 
+    model, 
+    docPath, 
+    vendor, 
+    module, 
+    breadcrumbs, 
+    user, 
+    isAdmin, 
+    organisationId,
+    permissions = { can_access_module: true, can_create_quotes: true, can_edit_boat_data: true, can_view_subdealers: true }
+}: { 
+    model: any, 
+    docPath: string, 
+    vendor: any, 
+    module: any, 
+    breadcrumbs: React.ReactNode, 
+    user: User | null, 
+    isAdmin: boolean, 
+    organisationId?: string,
+    permissions?: Permissions
+}) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,14 +100,12 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
     
     const { reset } = form;
 
-    useEffect(() => {
-        if (model) {
-            // This will be handled inside each specific editor now
-        }
-    }, [model, reset]);
-
-
     const onSubmit = async (values: any) => {
+        if (!permissions.can_edit_boat_data && !isAdmin) {
+            toast({ variant: "destructive", title: "Access Denied", description: "You do not have permission to edit boat data." });
+            return;
+        }
+
         setIsSubmitting(true);
 
         if (isAdmin) {
@@ -137,7 +161,7 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
             }
         } else {
              if (!organisationId || !user) {
-                toast({ variant: "destructive", title: "Error", description: "Cannot save draft. User or organisation is not identified." });
+                toast({ variant: "destructive", title: "Error", description: "Cannot save. User or organisation is not identified." });
                 setIsSubmitting(false);
                 return;
             }
@@ -156,11 +180,11 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
                     pricingSummary: {}, // To be calculated later
                 });
 
-                toast({ title: "Draft Saved", description: "The configuration has been saved as a new draft." });
+                toast({ title: "Configuration Saved", description: "The configuration has been saved to your organisation." });
             } catch (e) {
                 const error = e as any;
                 console.error("Save draft failed:", error);
-                toast({ variant: "destructive", title: "Error", description: "Could not save draft." });
+                toast({ variant: "destructive", title: "Error", description: "Could not save configuration." });
             } finally {
                 setIsSubmitting(false);
             }
@@ -188,14 +212,18 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
                         <div className="flex items-center justify-between">
                             {breadcrumbs}
                             <div className="flex items-center gap-2">
-                                <Button type="button" variant="outline" onClick={() => {}}>
-                                    Start Quote
-                                </Button>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    <Save className="mr-2 h-4 w-4" />
-                                    Save Changes
-                                </Button>
+                                {(permissions.can_create_quotes || isAdmin) && (
+                                    <Button type="button" variant="outline" onClick={() => {}}>
+                                        Start Quote
+                                    </Button>
+                                )}
+                                {(permissions.can_edit_boat_data || isAdmin) && (
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        <Save className="mr-2 h-4 w-4" />
+                                        Save Changes
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </CardHeader>

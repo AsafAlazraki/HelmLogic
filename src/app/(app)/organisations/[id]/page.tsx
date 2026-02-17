@@ -109,10 +109,10 @@ interface DealerFitCategory {
 }
 
 const permissionsConfig = [
-    { id: 'viewFinancials', label: 'View Financials' },
-    { id: 'editInventory', label: 'Edit Inventory' },
-    { id: 'manageUsers', label: 'Manage Users' },
-    { id: 'manageDataSources', label: 'Manage Data Sources' },
+    { id: 'can_access_module', label: 'Access Modules' },
+    { id: 'can_create_quotes', label: 'Create Quotes' },
+    { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
+    { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
 ];
 
 export default function OrganisationDetailsPage() {
