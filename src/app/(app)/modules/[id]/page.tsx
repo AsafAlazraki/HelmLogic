@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus, Users, Eye, ArrowRightLeft } from 'lucide-react';
+import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus, Users, Eye, ArrowRightLeft, X, LayoutDashboard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -77,15 +77,6 @@ const formSchema = z.object({
   mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
   associatedVendorIds: z.array(z.string()).default([]),
 });
-
-const permissionsConfig = [
-    { id: 'can_access_module', label: 'Access Modules' },
-    { id: 'can_create_quotes', label: 'Create Quotes' },
-    { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
-    { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
-    { id: 'can_see_parent_inventory', label: 'Access Parent Inventory' },
-    { id: 'can_access_settings', label: 'Access Settings' },
-];
 
 function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
@@ -206,6 +197,8 @@ export default function ModuleDetailsPage() {
     const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
     const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
     const [viewContextOrgId, setViewContextOrgId] = useState<string | null>(null);
+    
+    const [inStockFilter, setInStockFilter] = useState<string>('all');
 
     const { user, loading: userLoading } = useUser();
     const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string, organisationRole?: string }>(user ? `/users/${user.uid}` : null);
@@ -262,6 +255,18 @@ export default function ModuleDetailsPage() {
         currentMemberOrg?.parentOrganisationId ? allOrganisations?.find(o => o.id === currentMemberOrg.parentOrganisationId) : null,
     [currentMemberOrg, allOrganisations]);
 
+    // Dashboard Context Data
+    const dashboardOrg = useMemo(() => 
+        viewContextOrgId ? allOrganisations?.find(o => o.id === viewContextOrgId) : currentMemberOrg,
+    [viewContextOrgId, allOrganisations, currentMemberOrg]);
+
+    const dashboardSubDealers = useMemo(() => {
+        if (!dashboardOrg || !allOrganisations) return [];
+        return allOrganisations.filter(o => o.parentOrganisationId === dashboardOrg.id);
+    }, [dashboardOrg, allOrganisations]);
+
+    const showStockFilter = dashboardSubDealers.length > 0;
+
     // Permissions logic
     const userPermissions = useMemo(() => {
         if (isAdmin) return {
@@ -292,7 +297,6 @@ export default function ModuleDetailsPage() {
             if (myOrg) {
                 contexts.push({ id: myOrg.id, name: `My Org: ${myOrg.name}` });
             }
-            // For org members, context switching is handled via the Sub Dealers tab now
             if (userPermissions.can_view_subdealers) {
                 memberSubDealers.forEach(sd => contexts.push({ id: sd.id, name: `Sub Dealer: ${sd.name}` }));
             }
@@ -448,7 +452,7 @@ export default function ModuleDetailsPage() {
     };
     
     const loading = moduleLoading || vendorsLoading || orgsLoading || userLoading || profileLoading || catsLoading;
-    const defaultTab = isAdmin ? 'bmt' : 'dashboard';
+    const defaultTab = (isAdmin && !viewContextOrgId) ? 'bmt' : 'dashboard';
 
     if (loading) {
       return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
@@ -470,6 +474,7 @@ export default function ModuleDetailsPage() {
 
     const currentContextLabel = availableContexts.find(c => c.id === (viewContextOrgId || 'master'))?.name || 'Master Data';
     const isImpersonating = viewContextOrgId !== null && (isAdmin || viewContextOrgId !== userProfile?.organisationId);
+    const isViewingOrg = viewContextOrgId !== null || !isAdmin;
     
     return (
         <div className="space-y-4">
@@ -512,23 +517,16 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
              <Tabs defaultValue={defaultTab}>
-                 {isAdmin ? (
-                    <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="bmt">BMT</TabsTrigger>
-                        <TabsTrigger value="operations">Operations</TabsTrigger>
-                        <TabsTrigger value="organisations">Organisations</TabsTrigger>
-                        <TabsTrigger value="settings">Settings</TabsTrigger>
-                    </TabsList>
-                ) : (
-                    <TabsList className={cn("grid w-full", (currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers) ? "grid-cols-4" : "grid-cols-3")}>
-                        <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-                        <TabsTrigger value="bmt">BMT</TabsTrigger>
-                        <TabsTrigger value="operations">Operations</TabsTrigger>
-                        {currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
-                    </TabsList>
-                )}
+                 <TabsList className={cn("grid w-full", (isAdmin && !viewContextOrgId) ? "grid-cols-4" : (currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers) ? "grid-cols-5" : "grid-cols-4")}>
+                    {isViewingOrg && <TabsTrigger value="dashboard"><LayoutDashboard className="h-4 w-4 mr-2" /> Dashboard</TabsTrigger>}
+                    <TabsTrigger value="bmt">BMT</TabsTrigger>
+                    <TabsTrigger value="operations">Operations</TabsTrigger>
+                    {isAdmin && !viewContextOrgId && <TabsTrigger value="organisations">Organisations</TabsTrigger>}
+                    {isAdmin && !viewContextOrgId && <TabsTrigger value="settings">Settings</TabsTrigger>}
+                    {isViewingOrg && currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
+                </TabsList>
                 
-                {!isAdmin && (
+                {isViewingOrg && (
                     <TabsContent value="dashboard">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-1 flex flex-col gap-6">
@@ -554,7 +552,34 @@ export default function ModuleDetailsPage() {
                                         </Card>
                                     </>
                                 )}
-                                <Card><CardHeader><CardTitle>Local In Stock</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Stock for {currentContextLabel}</p></CardContent></Card>
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                        <CardTitle className="text-lg">Local In Stock</CardTitle>
+                                        {showStockFilter && (
+                                            <Select value={inStockFilter} onValueChange={setInStockFilter}>
+                                                <SelectTrigger className="w-[160px] h-8 text-xs">
+                                                    <SelectValue placeholder="Filter Stock" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Network Stock</SelectItem>
+                                                    <SelectItem value="local">{dashboardOrg?.name}</SelectItem>
+                                                    {dashboardSubDealers.map(sd => (
+                                                        <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="p-4 border-2 border-dashed rounded-md flex items-center justify-center min-h-[100px]">
+                                            <p className="text-muted-foreground text-sm">
+                                                {inStockFilter === 'all' 
+                                                    ? `Aggregated stock for ${dashboardOrg?.name} and its sub-dealers.` 
+                                                    : `Filtering stock for: ${inStockFilter === 'local' ? dashboardOrg?.name : dashboardSubDealers.find(sd => sd.id === inStockFilter)?.name}`}
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                                 <Card><CardHeader><CardTitle>On Order</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Orders for {currentContextLabel}</p></CardContent></Card>
                             </div>
                             <div className="lg:col-span-2">
@@ -619,7 +644,7 @@ export default function ModuleDetailsPage() {
                     <Card><CardHeader><CardTitle>Operations</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Operations features for {currentContextLabel} coming soon.</p></CardContent></Card>
                 </TabsContent>
 
-                 {isAdmin && (
+                 {isAdmin && !viewContextOrgId && (
                     <TabsContent value="organisations">
                        <Card>
                             <CardHeader>
@@ -671,7 +696,7 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
                 )}
 
-                {!isAdmin && currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers && (
+                {isViewingOrg && currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers && (
                     <TabsContent value="sub-dealers">
                         <Card>
                             <CardHeader>
@@ -679,9 +704,9 @@ export default function ModuleDetailsPage() {
                                 <CardDescription>Manage module access and view sub-dealer configurations.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                 {selectedOrgId && activeConfigSd ? (
+                                 {selectedOrgId && (allOrganisations?.find(o => o.id === selectedOrgId)) ? (
                                     <OrganisationModuleConfig 
-                                        organisation={activeConfigSd}
+                                        organisation={allOrganisations.find(o => o.id === selectedOrgId)!}
                                         module={moduleData}
                                         allVendors={allVendors || []}
                                         allDealerFitCategories={allDealerFitCategories || []}
@@ -744,7 +769,7 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
                 )}
 
-                {isAdmin && (
+                {isAdmin && !viewContextOrgId && (
                     <TabsContent value="settings" className="space-y-6">
                         <Form {...settingsForm}>
                             <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
