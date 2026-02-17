@@ -265,7 +265,7 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
              <Tabs defaultValue="bmt">
-                <TabsList className={isAdmin ? "grid w-full grid-cols-4" : "grid w-full grid-cols-2"}>
+                <TabsList className={isAdmin ? "grid w-full grid-cols-4" : "grid w-full grid-cols-3"}>
                     <TabsTrigger value="bmt">BMT</TabsTrigger>
                     <TabsTrigger value="operations">Operations</TabsTrigger>
                     {isAdmin && <TabsTrigger value="organisations">Organisations</TabsTrigger>}
@@ -332,36 +332,36 @@ export default function ModuleDetailsPage() {
 
                  {isAdmin && (
                     <TabsContent value="organisations">
-                       <ManageOrganisationPage orgId={moduleData.id} />
+                       <ManageOrganisationPage orgId={moduleData.mainVendorId} />
                     </TabsContent>
                 )}
 
                 {isAdmin && (
                     <TabsContent value="settings" className="space-y-4">
-                       <ManageOrganisationPage orgId={moduleData.id} />
+                       <ManageOrganisationPage orgId={moduleData.mainVendorId} />
                     </TabsContent>
                 )}
             </Tabs>
              <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
-                <DialogContent className="sm:max-w-3xl bg-transparent border-none shadow-none text-primary-foreground">
-                    <DialogHeader className="text-center mb-6">
-                        <DialogTitle className="text-2xl font-semibold text-card-foreground">{selectedModel?.name}</DialogTitle>
-                        <DialogDescription className="text-lg text-muted-foreground">What would you like to do with this model?</DialogDescription>
+                <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-center text-2xl font-semibold text-card-foreground">{selectedModel?.name}</DialogTitle>
+                        <DialogDescription className="text-center text-lg text-muted-foreground">What would you like to do with this model?</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/10 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('bmt')}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
+                        <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('bmt')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
                                 <Wrench className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
                                 <p className="font-semibold text-xl">Configuration</p>
                             </CardContent>
                         </Card>
-                        <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/10 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
+                        <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
                                 <FileText className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
                                 <p className="font-semibold text-xl">Quotation</p>
                             </CardContent>
                         </Card>
-                         <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/10 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
+                         <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
                                 <ClipboardList className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
                                 <p className="font-semibold text-xl">Operations</p>
