@@ -35,6 +35,11 @@ interface MotorConfig {
     engines: EngineSpec[];
 }
 
+const formatConfigType = (type: string) => {
+    // Add spaces before capital letters (but not at the beginning)
+    return type.replace(/([A-Z])/g, ' $1').trim();
+};
+
 const getHpFromModelName = (modelName?: string): number | null => {
     if (!modelName) return null;
     const match = modelName.match(/(\d+(\.\d+)?)/);
@@ -67,13 +72,17 @@ const combinationsWithReplacement = (arr: any[], size: number): any[][] => {
 
 
 function MotorCard({ motor }: { motor: Motor }) {
-     let itemImageUrl: string | null = null;
+    let itemImageUrl: string | null = null;
     if (motor.SummaryImage && typeof motor.SummaryImage === 'string') {
         const path = motor.SummaryImage.trim().replace(/\\/g, '');
-        if (path.startsWith('http')) {
-            itemImageUrl = path;
-        } else if (path) {
-            itemImageUrl = `https://www.yamaha-motor.com.au${path}`;
+        if (path) {
+            try {
+                // Use URL constructor for robust path joining
+                itemImageUrl = new URL(path, 'https://www.yamaha-motor.com.au').toString();
+            } catch (e) {
+                console.error("Invalid image URL path:", path, e);
+                itemImageUrl = null;
+            }
         }
     }
 
@@ -114,6 +123,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     
     const yamahaVendor = useMemo(() => {
         if (!allVendors || !module) return null;
+        
         const allModuleVendorIds = [
             ...(module.associatedVendorIds || []),
             module.mainVendorId,
@@ -171,7 +181,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                         return motorHp >= minHp;
                     }
                     
-                    return false; // Don't match if no valid HP range is set
+                    return false;
                 })
             );
 
@@ -255,15 +265,15 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     {motorCombinations.map((configGroup, index) => (
                         <AccordionItem value={`config-${index}`} key={configGroup.configType} className="border-none">
                             <AccordionTrigger className="text-lg font-semibold bg-muted p-4 rounded-md">
-                                {configGroup.configType} Configurations ({configGroup.combinations.length})
+                                {formatConfigType(configGroup.configType)} Configurations ({configGroup.combinations.length})
                             </AccordionTrigger>
                             <AccordionContent className="pt-4">
                                  <div className="flex justify-end mb-4">
                                     <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Combination</Button>
                                 </div>
-                                <div className="space-y-4">
+                                <div className="flex gap-4 overflow-x-auto pb-4">
                                 {configGroup.combinations.map((combo, comboIndex) => (
-                                    <Card key={comboIndex} className="group relative">
+                                    <Card key={comboIndex} className="group relative flex-shrink-0">
                                         <div className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                                              <Button variant="ghost" size="icon" className="h-7 w-7">
                                                 <Star className="h-4 w-4" />
@@ -278,7 +288,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
-                                        <CardContent className="p-4 flex flex-wrap items-center justify-center gap-4">
+                                        <CardContent className="p-4 flex items-center justify-center gap-4">
                                             {combo.map((motor, motorIndex) => (
                                                 <MotorCard key={`${motor.id}-${motorIndex}`} motor={motor} />
                                             ))}
