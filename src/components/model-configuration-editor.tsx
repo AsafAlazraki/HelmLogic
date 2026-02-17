@@ -4,7 +4,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -260,7 +260,7 @@ export function ModelConfigurationEditor({
 
             if (isAdmin) {
                 const modelDocRef = doc(firestore, docPath);
-                await updateDoc(modelDocRef, sanitizedValues);
+                await setDoc(modelDocRef, sanitizedValues, { merge: true });
                 toast({ title: "Model Updated", description: "Master configuration has been saved." });
             } else {
                 if (!organisationId || !user) throw new Error("Missing user context");
@@ -292,7 +292,7 @@ export function ModelConfigurationEditor({
 
     const onInvalid = (errors: any) => {
         console.error("Form Validation Errors:", errors);
-        toast({ variant: "destructive", title: "Validation Error", description: "Please check the form for errors." });
+        toast({ variant: "destructive", title: "Validation Error", description: "Please check the form for errors. See console for details." });
     };
 
     const getModelEditor = () => {
