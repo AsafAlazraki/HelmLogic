@@ -1,812 +1,301 @@
-
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's profile information.",
+    "Organization": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Organization",
       "type": "object",
+      "description": "Represents an organization within the HelmLogic ecosystem, which can be a parent company or a sub-dealer.",
       "properties": {
-        "displayName": {
+        "id": {
           "type": "string",
-          "description": "The user's display name."
+          "description": "Unique identifier for the Organization entity."
         },
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "The user's email address."
-        },
-        "appRole": {
-          "type": "string",
-          "description": "The user's role within the application."
-        },
-        "organisationId": {
-          "type": "string",
-          "description": "The ID of the organisation the user belongs to."
-        },
-        "organisationRole": {
-          "type": "string",
-          "description": "The ID of the user's role within their organisation."
-        }
-      },
-      "required": [
-        "email"
-      ]
-    },
-    "Organisation": {
-      "title": "Organisation",
-      "description": "Represents an organisation within the application.",
-      "type": "object",
-      "properties": {
         "name": {
           "type": "string",
-          "description": "The name of the organisation."
+          "description": "The official name of the organization."
         },
-        "slug": {
+        "type": {
           "type": "string",
-          "description": "A URL-friendly version of the organisation name."
+          "description": "The type of the organization, e.g., 'Parent', 'SubDealer'."
         },
-        "address": {
+        "parentOrganizationId": {
           "type": "string",
-          "description": "The physical address of the organisation."
+          "description": "Reference to the ID of the parent organization, if this organization is a sub-dealer. (Relationship: Organization 1:N Organization)"
         },
-        "phoneNumber": {
+        "createdAt": {
           "type": "string",
-          "description": "The contact phone number for the organisation."
+          "description": "Timestamp when the organization record was created.",
+          "format": "date-time"
         },
-        "abn": {
+        "updatedAt": {
           "type": "string",
-          "description": "The Australian Business Number for the organisation."
-        },
-        "primaryColor": {
-          "type": "string",
-          "description": "The primary branding color in hex format."
-        },
-        "accentColor": {
-          "type": "string",
-          "description": "The accent branding color in hex format."
-        },
-        "secondaryColor": {
-          "type": "string",
-          "description": "The secondary branding color in hex format."
-        },
-        "primaryLogoUrl": {
-          "type": "string",
-          "description": "URL for the primary company logo."
-        },
-        "secondaryLogoUrl": {
-          "type": "string",
-          "description": "URL for the secondary company logo or icon."
-        },
-        "subDealersEnabled": {
-          "type": "boolean",
-          "description": "Indicates if the Sub Dealers module is enabled for the organisation."
-        },
-        "parentOrganisationId": {
-          "type": "string",
-          "description": "The ID of the parent organisation, if this is a sub-dealer."
-        },
-        "roles": {
-          "type": "array",
-          "description": "A list of roles within the organisation, forming a hierarchy.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "A unique identifier for the role."
-              },
-              "name": {
-                "type": "string",
-                "description": "The name of the role."
-              },
-              "parent": {
-                "type": "string",
-                "description": "The ID of the parent role. Empty for top-level roles."
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "permissions": {
-          "type": "object",
-          "description": "Defines permissions for each role ID.",
-          "additionalProperties": {
-            "type": "object",
-            "description": "A map of permission keys to boolean values.",
-            "additionalProperties": {
-              "type": "boolean"
-            }
-          }
-        },
-        "dataWarehouseSubscriptions": {
-          "type": "array",
-          "description": "A list of vendor IDs from the data warehouse that this organisation is subscribed to.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "enabledModuleSubscriptions": {
-          "type": "array",
-          "description": "A list of module IDs that this organisation has access to.",
-          "items": {
-            "type": "string"
-          }
+          "description": "Timestamp when the organization record was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
+        "id",
         "name",
-        "slug"
+        "type",
+        "createdAt",
+        "updatedAt"
       ]
     },
-    "InventoryItem": {
-      "title": "Inventory Item",
-      "description": "An item in stock, like a boat or motor.",
+    "Vessel": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Vessel",
       "type": "object",
+      "description": "Represents a maritime vessel managed within the HelmLogic application, including its status and ownership.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Vessel entity."
+        },
         "name": {
           "type": "string",
-          "description": "The name or model of the stock item."
+          "description": "The name or model of the vessel."
+        },
+        "serialNumber": {
+          "type": "string",
+          "description": "A unique serial or hull number for the vessel."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the vessel, e.g., 'On Order', 'In Stock', 'Reserved', 'Sold', 'In Transit'."
+        },
+        "organizationId": {
+          "type": "string",
+          "description": "Reference to the ID of the Organization that currently owns or has ordered this vessel. (Relationship: Organization 1:N Vessel)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the vessel record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the vessel record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "serialNumber",
+        "status",
+        "organizationId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "VesselReservation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "VesselReservation",
+      "type": "object",
+      "description": "Represents a request by a sub-dealer to reserve an 'on order' vessel for a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the VesselReservation entity."
+        },
+        "vesselId": {
+          "type": "string",
+          "description": "Reference to the ID of the Vessel being requested for reservation. (Relationship: Vessel 1:N VesselReservation)"
+        },
+        "subDealerOrganizationId": {
+          "type": "string",
+          "description": "Reference to the ID of the sub-dealer Organization making the reservation request. (Relationship: Organization 1:N VesselReservation)"
+        },
+        "requestedByUserId": {
+          "type": "string",
+          "description": "Reference to the ID of the user (from the sub-dealer organization) who initiated the reservation request. (Relationship: User 1:N VesselReservation)"
+        },
+        "customerName": {
+          "type": "string",
+          "description": "The name of the end customer for whom the vessel is being reserved."
         },
         "description": {
           "type": "string",
-          "description": "A brief description of the item."
+          "description": "An optional description or additional notes provided by the sub-dealer for the reservation request."
         },
-        "organisationId": {
+        "status": {
           "type": "string",
-          "description": "The ID of the organisation that currently owns this stock item."
+          "description": "The current status of the reservation request, e.g., 'Awaiting Confirmation', 'Approved', 'Declined', 'Cancelled'."
         },
-        "moduleId": { "type": "string", "description": "The module this stock item belongs to." },
-        "stockNumber": { "type": "string" },
-        "status": { "type": "string", "enum": ["Available", "Sold", "Reserved"] }
-      },
-      "required": ["name", "organisationId", "moduleId"]
-    },
-    "Vendor": {
-      "title": "Vendor",
-      "description": "Represents a vendor for data connection.",
-      "type": "object",
-      "properties": {
-        "name": {
+        "requestedAt": {
           "type": "string",
-          "description": "The name of the vendor."
+          "description": "Timestamp when the reservation request was submitted.",
+          "format": "date-time"
         },
-        "slug": {
+        "processedByUserId": {
           "type": "string",
-          "description": "A URL-friendly version of the vendor name."
+          "description": "Reference to the ID of the user (from the parent organization) who approved or declined the reservation. (Relationship: User 1:N VesselReservation)"
         },
-        "vendorType": {
+        "processedAt": {
           "type": "string",
-          "description": "The type of the vendor.",
-          "enum": [
-            "Boat Brand",
-            "Motor Brand",
-            "Trailer Brand",
-            "Electronics Brand",
-            "Electronics Supplier",
-            "Parts Wholesaler",
-            "Other"
-          ]
+          "description": "Timestamp when the reservation request was approved or declined.",
+          "format": "date-time"
         },
-        "dataSource": {
+        "declineNote": {
           "type": "string",
-          "description": "The source of the data connection.",
-          "enum": [
-            "Business Central",
-            "Direct API",
-            "Document Upload",
-            "Other"
-          ]
-        },
-        "primaryContact": {
-          "type": "string",
-          "description": "Primary contact for the vendor (e.g., name, email, phone)."
-        },
-        "website": {
-          "type": "string",
-          "description": "The vendor's website URL."
-        },
-        "address": {
-          "type": "string",
-          "description": "The physical address of the vendor."
-        },
-        "abn": {
-          "type": "string",
-          "description": "The Australian Business Number for the vendor."
-        },
-        "logoUrl": {
-          "type": "string",
-          "description": "URL for the vendor logo."
-        },
-        "notes": {
-          "type": "string",
-          "description": "General notes about the vendor."
+          "description": "An optional note provided by the parent organization user if the reservation request was declined."
         }
       },
       "required": [
-        "name",
-        "slug"
+        "id",
+        "vesselId",
+        "subDealerOrganizationId",
+        "requestedByUserId",
+        "customerName",
+        "status",
+        "requestedAt"
       ]
     },
-    "MasterDataRow": {
-      "title": "Master Data Row",
-      "description": "Represents a single row of data from a vendor's master data set.",
+    "Notification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Notification",
       "type": "object",
-      "additionalProperties": true
-    },
-    "Range": {
-      "title": "Range",
-      "description": "Represents a product range for a vendor.",
-      "type": "object",
+      "description": "Represents a notification sent to a user within the HelmLogic application, often related to actions like reservation requests or status changes.",
       "properties": {
-        "name": {
+        "id": {
           "type": "string",
-          "description": "The name of the range."
+          "description": "Unique identifier for the Notification entity."
         },
-        "slug": {
+        "recipientUserId": {
           "type": "string",
-          "description": "A URL-friendly version of the range name."
+          "description": "Reference to the ID of the user who is the intended recipient of this notification. (Relationship: User 1:N Notification)"
         },
-        "vendorId": {
+        "type": {
           "type": "string",
-          "description": "The ID of the vendor this range belongs to."
+          "description": "The type of notification, e.g., 'ReservationRequest', 'ReservationApproved', 'ReservationDeclined', 'SystemAlert'."
         },
-        "imageUrl": {
+        "message": {
           "type": "string",
-          "description": "URL for the range's image."
+          "description": "The detailed message content of the notification."
         },
-        "order": {
-          "type": "number",
-          "description": "The display order of the range."
+        "sourceEntityId": {
+          "type": "string",
+          "description": "The ID of the entity that triggered this notification (e.g., a VesselReservation ID)."
+        },
+        "sourceEntityType": {
+          "type": "string",
+          "description": "The type of the entity that triggered this notification (e.g., 'VesselReservation')."
+        },
+        "isRead": {
+          "type": "boolean",
+          "description": "Indicates whether the recipient user has read the notification."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the notification was generated.",
+          "format": "date-time"
         }
       },
       "required": [
-        "name",
-        "slug",
-        "vendorId"
-      ]
-    },
-    "Model": {
-      "title": "Model",
-      "description": "Represents a specific model within a product range.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the model."
-        },
-        "slug": {
-          "type": "string",
-          "description": "A URL-friendly version of the model name."
-        },
-        "rangeId": {
-          "type": "string",
-          "description": "The ID of the range this model belongs to."
-        },
-        "vendorId": {
-          "type": "string",
-          "description": "The ID of the vendor this model belongs to."
-        },
-        "order": {
-          "type": "number",
-          "description": "The display order of the model."
-        },
-        "coverImageUrl": {
-          "type": "string",
-          "description": "URL for the boat's main cover image."
-        },
-        "galleryImageUrls": {
-          "type": "array",
-          "description": "A list of URLs for the model's image gallery.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "cost": {
-          "type": "number",
-          "description": "Base cost of the model."
-        },
-        "sellPriceExclGst": {
-          "type": "number",
-          "description": "Base selling price, excluding GST."
-        },
-        "freightCostExclGst": {
-          "type": "number",
-          "description": "Freight cost, excluding GST."
-        },
-        "colors": {
-          "type": "array",
-          "description": "Available color variants for the model, each with associated images.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "imageUrls": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "standardFeatures": {
-          "type": "array",
-          "description": "A list of standard features for the model.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "optionalFeatures": {
-          "type": "array",
-          "description": "A list of optional add-ons for the model.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "category": {
-                "type": "string",
-                "description": "The category for the optional feature."
-              },
-              "imageUrl": {
-                "type": "string"
-              },
-              "packageStatus": {
-                "type": "object",
-                "description": "A map of package IDs to their status ('standard' or 'optional') for this feature.",
-                "additionalProperties": {
-                  "type": "string",
-                  "enum": [
-                    "standard",
-                    "optional"
-                  ]
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "packages": {
-          "type": "array",
-          "description": "A list of optional packages for the model.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "category": {
-                "type": "string",
-                "description": "The category for the optional package."
-              },
-              "imageUrl": {
-                "type": "string"
-              },
-              "cost": {
-                "type": "number"
-              },
-              "sellPriceExclGst": {
-                "type": "number"
-              },
-              "includedFeatures": {
-                "type": "array",
-                "description": "A list of features included in this package.",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "packageLevels": {
-          "type": "array",
-          "description": "A list of tiered packages for a Stabicraft model.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string",
-                "description": "A description for the package level."
-              },
-              "cost": {
-                "type": "number"
-              },
-              "sellPriceExclGst": {
-                "type": "number"
-              },
-              "includedFeatures": {
-                "type": "array",
-                "description": "A list of features included in this package level.",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "colorStages": {
-          "type": "object",
-          "description": "Available color stages for a Stabicraft model.",
-          "properties": {
-            "stage0": {
-              "type": "boolean"
-            },
-            "stage1": {
-              "type": "boolean"
-            },
-            "stage2": {
-              "type": "boolean"
-            },
-            "stage3": {
-              "type": "boolean"
-            }
-          }
-        },
-        "uDekOptions": {
-          "type": "object",
-          "description": "U-Dek flooring image URLs.",
-          "properties": {
-            "blackOnWinterGrey": {
-              "type": "string"
-            },
-            "teakOnBlack": {
-              "type": "string"
-            },
-            "steelGreyOnWinterGrey": {
-              "type": "string"
-            },
-            "winterGreyOnSteelGrey": {
-              "type": "string"
-            }
-          }
-        },
-        "paintAndGraphicOptions": {
-          "type": "object",
-          "description": "Paint and graphic options for a Stabicraft model.",
-          "properties": {
-            "standardGloss": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "imageUrl": {
-                    "type": "string"
-                  },
-                  "paint": {
-                    "type": "string"
-                  },
-                  "graphics": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "standardMetallic": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "imageUrl": {
-                    "type": "string"
-                  },
-                  "paint": {
-                    "type": "string"
-                  },
-                  "graphics": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "powderCoating": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "imageUrl": {
-                    "type": "string"
-                  },
-                  "color": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id"
-                ]
-              }
-            }
-          }
-        },
-        "specifications": {
-          "type": "object",
-          "properties": {
-            "motorConfigurations": {
-              "type": "array",
-              "description": "Defines the supported engine configurations and their respective horsepower ratings.",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "Single",
-                      "Twin",
-                      "Triple",
-                      "Quad",
-                      "SingleWithAux"
-                    ]
-                  },
-                  "engines": {
-                    "type": "array",
-                    "description": "An array of engine specifications for this configuration.",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "label": {
-                          "type": "string",
-                          "description": "A label for the engine (e.g., 'Main Engine', 'Engine 1')."
-                        },
-                        "minHp": {
-                          "type": "number"
-                        },
-                        "maxHp": {
-                          "type": "number"
-                        },
-                        "recommendedHp": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "label"
-                      ]
-                    }
-                  }
-                },
-                "required": [
-                  "type",
-                  "engines"
-                ]
-              }
-            },
-            "otherSpecs": {
-              "type": "array",
-              "description": "A list of other key-value specifications.",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "label",
-                  "value"
-                ]
-              }
-            }
-          }
-        },
-        "variantPricing": {
-          "type": "array",
-          "description": "Pricing for specific model variants (e.g., by color and material). Highfield specific.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "colorId": {
-                "type": "string"
-              },
-              "colorName": {
-                "type": "string"
-              },
-              "material": {
-                "type": "string",
-                "enum": [
-                  "HYP",
-                  "PVC"
-                ]
-              },
-              "cost": {
-                "type": "number"
-              },
-              "sellPriceExclGst": {
-                "type": "number"
-              },
-              "freightCostExclGst": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "colorId",
-              "material"
-            ]
-          }
-        },
-        "documents": {
-          "type": "array",
-          "description": "A list of documents associated with the model.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "url": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "url"
-            ]
-          }
-        }
-      },
-      "required": [
-        "name",
-        "slug",
-        "rangeId",
-        "vendorId"
-      ]
-    },
-    "Module": {
-      "title": "Module",
-      "description": "Represents an application module that connects various vendors and data for an organisation.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the module."
-        },
-        "slug": {
-          "type": "string",
-          "description": "A URL-friendly version of the module name."
-        },
-        "mainVendorId": {
-          "type": "string",
-          "description": "The ID of the main vendor for this module."
-        },
-        "associatedVendorIds": {
-          "type": "array",
-          "description": "A list of IDs for associated vendors.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "logoUrl": {
-          "type": "string",
-          "description": "URL for the module's logo, typically inherited from the main vendor."
-        }
-      },
-      "required": [
-        "name",
-        "slug",
-        "mainVendorId"
+        "id",
+        "recipientUserId",
+        "type",
+        "message",
+        "sourceEntityId",
+        "sourceEntityType",
+        "isRead",
+        "createdAt"
       ]
     }
   },
   "auth": {
     "providers": [
-      "email"
+      "password",
+      "anonymous"
     ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/UserProfile"
+    "structure": [
+      {
+        "path": "/organizations/{organizationId}",
+        "definition": {
+          "entityName": "Organization",
+          "schema": {
+            "$ref": "#/backend/entities/Organization"
+          },
+          "description": "Top-level collection for all organizations, including parent companies and sub-dealers. Access is restricted based on membership and roles within the specific organization. Includes a conceptual 'members' map or linkage to the '/users' collection for authorization.",
+          "params": [
+            {
+              "name": "organizationId",
+              "description": "The unique identifier of the organization."
+            }
+          ]
+        }
       },
-      "description": "User profile documents, keyed by user ID."
-    },
-    "/organisations/{organisationId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Organisation"
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Conceptual collection (derived from application requirements, not explicitly in provided schema) to store user profiles, their associated organization ID (`organizationId`), their parent organization ID (`parentOrganizationId`, if they are part of a sub-dealer organization), and their roles within the organization. This data is critical for DBAC and authorization independence, allowing security rules to perform a single lookup to establish user context.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user (matching Firebase Authentication UID)."
+            }
+          ]
+        }
       },
-      "description": "Organisation documents, keyed by a unique ID."
-    },
-    "/inventory/{itemId}": {
-      "schema": {
-        "$ref": "#/backend/entities/InventoryItem"
+      {
+        "path": "/vessels/{vesselId}",
+        "definition": {
+          "entityName": "Vessel",
+          "schema": {
+            "$ref": "#/backend/entities/Vessel"
+          },
+          "description": "Top-level collection for all maritime vessels. Each document explicitly includes the `organizationId` of the owning organization for direct ownership-based authorization. Sub-dealers can list 'On Order' vessels belonging to their parent organization.",
+          "params": [
+            {
+              "name": "vesselId",
+              "description": "The unique identifier of the vessel."
+            }
+          ]
+        }
       },
-      "description": "Inventory items across the network."
-    },
-    "/data-warehouse/{vendorId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Vendor"
+      {
+        "path": "/vesselReservations/{reservationId}",
+        "definition": {
+          "entityName": "VesselReservation",
+          "schema": {
+            "$ref": "#/backend/entities/VesselReservation"
+          },
+          "description": "Top-level collection for all sub-dealer vessel reservation requests. Includes denormalized 'subDealerOrganizationId' (the requesting sub-dealer), 'vesselOwnerOrganizationId' (the parent organization owning the vessel), and 'vesselStatus' (e.g., 'On Order') for complete authorization independence and simplified security rules. This allows both sub-dealers and parent organizations to manage reservations without 'get()' operations on other collections.",
+          "params": [
+            {
+              "name": "reservationId",
+              "description": "The unique identifier of the vessel reservation request."
+            }
+          ]
+        }
       },
-      "description": "Vendor documents for the data warehouse, keyed by a unique ID."
-    },
-    "/data-warehouse/{vendorId}/masterDataSet/{rowId}": {
-      "schema": {
-        "$ref": "#/backend/entities/MasterDataRow"
-      },
-      "description": "A collection of individual data rows that make up the vendor's master data set."
-    },
-    "/data-warehouse/{vendorId}/ranges/{rangeId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Range"
-      },
-      "description": "Product ranges for a specific vendor."
-    },
-    "/data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Model"
-      },
-      "description": "Specific models within a product range."
-    },
-    "/data-warehouse/{vendorId}/masterPriceList/{rowId}": {
-      "schema": {
-        "$ref": "#/backend/entities/MasterDataRow"
-      },
-      "description": "A collection of individual data rows that make up the vendor's master price list."
-    },
-    "/data-warehouse/{vendorId}/bulkMasterPriceList/{rowId}": {
-      "schema": {
-        "$ref": "#/backend/entities/MasterDataRow"
-      },
-      "description": "A collection of individual data rows that make up the vendor's bulk master price list."
-    },
-    "/modules/{moduleId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Module"
-      },
-      "description": "Application modules."
-    }
+      {
+        "path": "/users/{userId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": {
+            "$ref": "#/backend/entities/Notification"
+          },
+          "description": "Subcollection under each user document to store personal notifications. Access is strictly limited to the user specified by the `userId` in the path, ensuring privacy and enabling secure list operations.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who is the recipient of the notification."
+            },
+            {
+              "name": "notificationId",
+              "description": "The unique identifier of the notification."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The proposed Firestore data structure prioritizes Authorization Independence and Queryable Authorization Policies (QAPs) by strategically denormalizing authorization context and segregating data by security posture. \n\n**Authorization Independence:**\n1.  **Organization Membership/Roles:** A conceptual `/users/{userId}` collection (though not explicitly provided in the entity schemas, it's essential for DBAC) will store a user's `organizationId`, `parentOrganizationId` (if applicable), and `roles` (e.g., `orgAdmin: true`, `dealerUser: true`). This allows Firestore rules to perform a single `get(/users/$(request.auth.uid))` to retrieve all necessary authorization context for the authenticated user, without needing to traverse document hierarchies. \n2.  **Vessel Ownership:** Each document in the `/vessels/{vesselId}` collection explicitly contains an `organizationId` field, directly indicating the owning organization. This eliminates the need for rules to perform `get()` operations on parent `Organization` documents to determine ownership, making vessel access rules atomic and performant.\n3.  **Vessel Reservation Authorization (CRITICAL):** The `/vesselReservations/{reservationId}` collection is designed with significant denormalization to ensure complete authorization independence. Each `VesselReservation` document will denormalize both the `subDealerOrganizationId` (the organization initiating the request) and `vesselOwnerOrganizationId` (the parent organization that owns the vessel and must approve the reservation). This means that rules for creating, reading, updating, or deleting `VesselReservation` documents can evaluate permissions solely based on the data within the `VesselReservation` document itself and the user's `request.auth` context (obtained from the `/users/{userId}` lookup), without requiring any `get()` operations on the related `Vessel` or `Organization` documents.\n4.  **Notifications:** Notifications are stored in a subcollection `/users/{userId}/notifications/{notificationId}`. This path-based ownership ensures that access to notifications is strictly limited to the `userId` specified in the path, matching `request.auth.uid`, making them authorization independent and private to the user.\n\n**Queryable Authorization Policies (QAPs):**\n1.  **Organizations:** While a general `list` for all organizations is typically not required, specific organization data (e.g., a user's own organization) can be retrieved securely using `where id == request.auth.organizationId` (after a `/users/{userId}` lookup).\n2.  **Vessels:** \n    *   Parent organizations can securely `list` all their vessels using `db.collection('vessels').where('organizationId', '==', request.auth.organizationId)`.\n    *   Sub-dealers can securely `list` 'On Order' vessels from their parent organization using `db.collection('vessels').where('organizationId', '==', request.auth.parentOrganizationId).where('status', '==', 'On Order')`. Both queries rely on indexed fields, making them efficient and secure without rule filtering.\n3.  **Vessel Reservations:** \n    *   Sub-dealers can securely `list` their own reservation requests using `db.collection('vesselReservations').where('subDealerOrganizationId', '==', request.auth.organizationId)`.\n    *   Parent organizations can securely `list` reservation requests that require their action using `db.collection('vesselReservations').where('vesselOwnerOrganizationId', '==', request.auth.organizationId).where('status', '==', 'Awaiting Confirmation')`. These are clear, index-friendly queries.\n4.  **Notifications:** The structure `/users/{userId}/notifications/{notificationId}` inherently supports secure QAPs. A user can `list` their own notifications by querying `db.collection('users').doc(request.auth.uid).collection('notifications')`, with rules ensuring `request.auth.uid` matches the `userId` in the path segment.\n\nThis design avoids complex rule logic and `get()` calls, leading to simpler, more robust, and debuggable security rules, and ensures that `list` operations are performant and secure from the outset."
   }
 }
