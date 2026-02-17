@@ -66,3 +66,4 @@ export function ModelConfigurationEditor({ model, docPath, vendor }: { model: an
         </Tabs>
     );
 }
+    

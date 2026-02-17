@@ -8,24 +8,14 @@ import { z } from 'zod';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, collection, query, where, writeBatch, orderBy } from 'firebase/firestore';
-import { Loader2, Save, Sailboat, ChevronRight } from 'lucide-react';
+import { Loader2, Save, Sailboat, ChevronRight, Wrench, FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -33,11 +23,8 @@ import { createSlug } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
-import { StabicraftModelEditor } from '@/components/stabicraft-model-editor';
-import { HighfieldModelEditor } from '@/components/highfield-model-editor';
-import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
-import { StacerModelEditor } from '@/components/stacer-model-editor';
-import { SurteesModelEditor } from '@/components/surtees-model-editor';
+import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface Vendor {
     id: string;
@@ -159,17 +146,17 @@ function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Ve
     );
 }
 
-function ModuleBreadcrumbs({ module, range, model, onBreadcrumbClick }: { module: Module; range: Range | null; model: Model | null; onBreadcrumbClick: (level: 'module' | 'range') => void }) {
+function ModuleConfigurationBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: 'ranges' | 'models' | 'config' | 'quote', onBreadcrumbClick: (level: 'ranges' | 'models') => void }) {
     return (
         <div className="flex items-center text-sm text-muted-foreground mt-2">
-            <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('module')}>{module.name}</button>
-            {range && (
+            <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
+            {range && (view === 'models' || view === 'config' || view === 'quote') && (
                 <>
                     <ChevronRight className="h-4 w-4 mx-1" />
-                    <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('range')}>{range.name}</button>
+                    <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('models')}>{range.name}</button>
                 </>
             )}
-            {model && (
+            {model && (view === 'config' || view === 'quote') && (
                 <>
                     <ChevronRight className="h-4 w-4 mx-1" />
                     <span className="font-medium text-foreground">{model.name}</span>
@@ -184,10 +171,15 @@ export default function ModuleDetailsPage() {
     const router = useRouter();
     const params = useParams();
     const slugOrId = params.id as string;
-    const [isLoading, setIsLoading] = useState(false);
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
+    
+    // State for configuration flow
+    const [view, setView] = useState<'ranges' | 'models' | 'config' | 'quote'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+    const [isChoiceDialogOpen, setIsChoiceDialogOpen] = useState(false);
+
     const { toast } = useToast();
     const firestore = useFirestore();
 
@@ -199,8 +191,8 @@ export default function ModuleDetailsPage() {
         return query(collection(firestore, 'modules'), where('slug', '==', slugOrId));
     }, [firestore, slugOrId]);
 
-    const { data: modulesBySlug, loading: slugLoading } = useCollection<Module>(moduleQueryBySlug);
-    const { data: moduleById, loading: idLoading } = useDoc<Module>(slugOrId ? `/modules/${slugOrId}` : null);
+    const { data: modulesBySlug, loading: slugLoading } = useCollection<any>(moduleQueryBySlug);
+    const { data: moduleById, loading: idLoading } = useDoc<any>(slugOrId ? `/modules/${slugOrId}` : null);
     
     const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
     const moduleLoading = slugLoading || idLoading;
@@ -235,9 +227,36 @@ export default function ModuleDetailsPage() {
         }
     }, [allOrganisations, moduleData]);
 
+    // NEW handlers for the configuration flow
+    const handleRangeSelect = (range: Range) => {
+        setSelectedRange(range);
+        setView('models');
+    };
+    
+    const handleModelSelect = (model: Model) => {
+        setSelectedModel(model);
+        setIsChoiceDialogOpen(true);
+    };
+
+    const handleChoiceSelect = (choice: 'config' | 'quote') => {
+        setView(choice);
+        setIsChoiceDialogOpen(false);
+    };
+    
+    const handleBreadcrumbClick = (level: 'ranges' | 'models') => {
+        if (level === 'ranges') {
+            setView('ranges');
+            setSelectedRange(null);
+            setSelectedModel(null);
+        } else if (level === 'models') {
+            setView('models');
+            setSelectedModel(null);
+        }
+    };
+    
     async function onSettingsSubmit(values: z.infer<typeof formSchema>) {
         if (!moduleData) return;
-        setIsLoading(true);
+        setIsSavingSettings(true);
         try {
             const moduleRef = doc(firestore, 'modules', moduleData.id);
             const vendor = allVendors?.find(v => v.id === values.mainVendorId);
@@ -258,7 +277,7 @@ export default function ModuleDetailsPage() {
             console.error("Failed to update module:", error);
             toast({ variant: 'destructive', title: 'Update Failed' });
         } finally {
-            setIsLoading(false);
+            setIsSavingSettings(false);
         }
     }
     
@@ -296,24 +315,6 @@ export default function ModuleDetailsPage() {
         }
     };
     
-    const handleRangeSelect = (range: Range) => {
-        setSelectedRange(range);
-        setSelectedModel(null);
-    };
-    
-    const handleModelSelect = (model: Model) => {
-        setSelectedModel(model);
-    };
-    
-    const handleBreadcrumbClick = (level: 'module' | 'range') => {
-        if (level === 'module') {
-            setSelectedRange(null);
-            setSelectedModel(null);
-        } else if (level === 'range') {
-            setSelectedModel(null);
-        }
-    };
-
     const loading = moduleLoading || mainVendorLoading || vendorsLoading || orgsLoading || userLoading || profileLoading;
 
     if (loading) {
@@ -330,20 +331,6 @@ export default function ModuleDetailsPage() {
         { href: `/modules/${slugOrId}`, label: moduleData.name },
     ];
     
-    const getModelEditor = () => {
-        if (!selectedModel || !mainVendor || !selectedRange) return <p>Select a model to view details.</p>;
-        const modelDocPath = `/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`;
-
-        switch (mainVendor.slug) {
-            case 'highfield': return <HighfieldModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            case 'jeanneau': return <JeanneauModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            case 'stacer': return <StacerModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            case 'stabicraft': return <StabicraftModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            case 'surtees': return <SurteesModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor.</CardContent></Card>;
-        }
-    };
-
     return (
         <div className="space-y-4">
              <div className="flex items-start justify-between">
@@ -353,10 +340,10 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
              <Tabs defaultValue="configuration">
-                <TabsList className={isAdmin ? "grid w-full grid-cols-4" : "grid w-full grid-cols-3"}>
+                <TabsList className={isAdmin ? "grid w-full grid-cols-4" : "grid w-full grid-cols-2"}>
                     <TabsTrigger value="configuration">Configuration</TabsTrigger>
-                    <TabsTrigger value="quotation">Quotation</TabsTrigger>
                     <TabsTrigger value="operations">Operations</TabsTrigger>
+                    {isAdmin && <TabsTrigger value="organisations">Organisations</TabsTrigger>}
                     {isAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
                 </TabsList>
 
@@ -364,30 +351,29 @@ export default function ModuleDetailsPage() {
                    <Card>
                          <CardHeader>
                             <CardTitle>Module Configuration</CardTitle>
-                            {mainVendor && <ModuleBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} onBreadcrumbClick={handleBreadcrumbClick} />}
+                            {mainVendor && <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
                         </CardHeader>
                         <CardContent>
                             {isBoatBrand && mainVendor ? (
                                 <>
-                                    {!selectedRange ? (
-                                        <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />
-                                    ) : !selectedModel ? (
-                                        <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} />
-                                    ) : (
-                                        getModelEditor()
+                                    {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
+                                    {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} />}
+                                    {view === 'config' && selectedModel && selectedRange && mainVendor && (
+                                        <ModelConfigurationEditor model={selectedModel} docPath={`/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} vendor={mainVendor} />
+                                    )}
+                                    {view === 'quote' && (
+                                        <div className="flex h-96 w-full items-center justify-center rounded-lg border-2 border-dashed">
+                                            <div className="text-center">
+                                                <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+                                                <p className="mt-4 text-muted-foreground">Preparing quotation engine...</p>
+                                            </div>
+                                        </div>
                                     )}
                                 </>
                             ) : (
-                                <p className="text-muted-foreground">This module's main vendor is not a boat brand. No range configuration available.</p>
+                                <p className="text-muted-foreground">This module's main vendor is not a boat brand. No configuration view available.</p>
                             )}
                         </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="quotation">
-                    <Card>
-                        <CardHeader><CardTitle>Quotation</CardTitle><CardDescription>Placeholder for quotation functionality.</CardDescription></CardHeader>
-                        <CardContent><p className="text-muted-foreground">This section will contain quotation-related features for the {moduleData.name} module.</p></CardContent>
                     </Card>
                 </TabsContent>
 
@@ -397,6 +383,35 @@ export default function ModuleDetailsPage() {
                         <CardContent><p className="text-muted-foreground">This section will contain operations-related features for the {moduleData.name} module.</p></CardContent>
                     </Card>
                 </TabsContent>
+
+                 {isAdmin && (
+                    <TabsContent value="organisations">
+                        <Card>
+                            <CardHeader className="flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle>Subscribed Organisations</CardTitle>
+                                    <CardDescription>Grant organisations access to this module.</CardDescription>
+                                </div>
+                                <Button onClick={handleSaveSubscriptions} disabled={isSavingSubscriptions}>
+                                    {isSavingSubscriptions ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                                    Save Subscriptions
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {allOrganisations?.map(org => (
+                                    <div key={org.id} className="flex items-center space-x-3 p-3 border rounded-md">
+                                        <Checkbox 
+                                            id={`org-${org.id}`}
+                                            checked={subscribedOrgs.includes(org.id)}
+                                            onCheckedChange={(checked) => handleSubscriptionChange(org.id, !!checked)}
+                                        />
+                                        <label htmlFor={`org-${org.id}`} className="font-normal text-sm">{org.name}</label>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                )}
 
                 {isAdmin && (
                     <TabsContent value="settings" className="space-y-4">
@@ -409,8 +424,8 @@ export default function ModuleDetailsPage() {
                                             <CardDescription>Edit the module details and vendor relationships.</CardDescription>
                                         </div>
                                         <div className="flex gap-2">
-                                            <Button type="submit" disabled={isLoading}>
-                                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                            <Button type="submit" disabled={isSavingSettings}>
+                                                {isSavingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                 Save Settings
                                             </Button>
                                         </div>
@@ -442,33 +457,32 @@ export default function ModuleDetailsPage() {
                                 </Card>
                             </form>
                         </Form>
-                        <Card>
-                            <CardHeader className="flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle>Subscribed Organisations</CardTitle>
-                                    <CardDescription>Grant organisations access to this module.</CardDescription>
-                                </div>
-                                <Button onClick={handleSaveSubscriptions} disabled={isSavingSubscriptions}>
-                                    {isSavingSubscriptions ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                                    Save Subscriptions
-                                </Button>
-                            </CardHeader>
-                            <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {allOrganisations?.map(org => (
-                                    <div key={org.id} className="flex items-center space-x-3 p-3 border rounded-md">
-                                        <Checkbox 
-                                            id={`org-${org.id}`}
-                                            checked={subscribedOrgs.includes(org.id)}
-                                            onCheckedChange={(checked) => handleSubscriptionChange(org.id, !!checked)}
-                                        />
-                                        <label htmlFor={`org-${org.id}`} className="font-normal text-sm">{org.name}</label>
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
                     </TabsContent>
                 )}
             </Tabs>
+             <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
+                <DialogContent className="sm:max-w-md bg-transparent border-none shadow-none">
+                    <div className="text-center mb-6">
+                        <h2 className="text-2xl font-semibold text-white">{selectedModel?.name}</h2>
+                        <p className="text-muted-foreground text-lg">What would you like to do with this model?</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('config')}>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                                <Wrench className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
+                                <p className="font-semibold text-xl">Configuration</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                                <FileText className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
+                                <p className="font-semibold text-xl">Quotation</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+    
