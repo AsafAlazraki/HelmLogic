@@ -113,6 +113,7 @@ const permissionsConfig = [
     { id: 'can_create_quotes', label: 'Create Quotes' },
     { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
+    { id: 'can_access_settings', label: 'Access Settings' },
 ];
 
 export default function OrganisationDetailsPage() {
@@ -168,7 +169,8 @@ export default function OrganisationDetailsPage() {
 
     useEffect(() => {
         if (organisation) {
-            const initialPermissions = organisation.permissions || {};
+            // Deep clone permissions to avoid direct mutation issues
+            const initialPermissions = JSON.parse(JSON.stringify(organisation.permissions || {}));
             (organisation.roles || []).forEach(role => {
                 if (!initialPermissions[role.id]) {
                     initialPermissions[role.id] = {};

@@ -31,14 +31,14 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
   const { user, loading: userLoading } = useUser();
-  const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string }>(
+  const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string; organisationRole?: string }>(
     user ? `/users/${user.uid}` : null
   );
-  const { data: organisation } = useDoc<{ subDealersEnabled?: boolean }>(
+  const { data: organisation, loading: orgLoading } = useDoc<{ subDealersEnabled?: boolean; permissions?: Record<string, Record<string, boolean>> }>(
     userProfile?.organisationId ? `/organisations/${userProfile.organisationId}` : null
   );
 
-  const isLoading = userLoading || profileLoading;
+  const isLoading = userLoading || profileLoading || orgLoading;
 
   useEffect(() => {
     if (isMobile) {
@@ -57,6 +57,8 @@ export function AppSidebar() {
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
     const isOrgMember = !!userProfile?.organisationId;
     const subDealersEnabled = !!organisation?.subDealersEnabled;
+    const roleId = userProfile?.organisationRole;
+    const userPermissions = roleId && organisation?.permissions?.[roleId] ? organisation.permissions[roleId] : {};
 
     return navLinks.filter(link => {
       if (link.label === 'Admin') {
@@ -66,10 +68,14 @@ export function AppSidebar() {
         return false; // Hide Dashboard for admins
       }
       if (link.label === 'Manage') {
-        return isOrgMember && !isAdmin;
+        if (isAdmin) return false;
+        if (!isOrgMember) return false;
+        return !!userPermissions.can_access_settings;
       }
       if (link.label === 'Sub Dealers') {
-        return isOrgMember && !isAdmin && subDealersEnabled;
+        if (isAdmin) return false;
+        if (!isOrgMember || !subDealersEnabled) return false;
+        return !!userPermissions.can_view_subdealers;
       }
       return true;
     });
