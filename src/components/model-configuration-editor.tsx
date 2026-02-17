@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
@@ -290,6 +290,11 @@ export function ModelConfigurationEditor({
         }
     };
 
+    const onInvalid = (errors: any) => {
+        console.error("Form Validation Errors:", errors);
+        toast({ variant: "destructive", title: "Validation Error", description: "Please check the form for errors." });
+    };
+
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
         switch (vendor.slug) {
@@ -304,7 +309,7 @@ export function ModelConfigurationEditor({
 
     return (
         <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">

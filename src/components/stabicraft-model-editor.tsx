@@ -4,27 +4,61 @@ import * as React from 'react';
 import { useState } from 'react';
 import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
-import Image from 'next/image';
 import { useStorage } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { uploadFileWithProgress } from '@/firebase/storage';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal, Pencil } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from './ui/checkbox';
-import { Separator } from './ui/separator';
-import { Label } from './ui/label';
-import { Progress } from './ui/progress';
 
 const GST_RATE = 0.10;
+
+export const stabicraftModelSchema = z.object({
+    coverImageUrl: z.string().nullable().optional(),
+    galleryImageUrls: z.array(z.string()).default([]),
+    packageLevels: z.array(z.object({
+        id: z.string(),
+        name: z.string().min(1, 'Name is required'),
+        description: z.string().optional(),
+        cost: z.coerce.number().nullable().optional(),
+        sellPriceExclGst: z.coerce.number().nullable().optional(),
+    })).default([]),
+    optionalFeatures: z.array(z.object({
+        id: z.string(),
+        name: z.string().min(1, 'Name is required'),
+        category: z.string().optional(),
+        packageStatus: z.record(z.string(), z.enum(['standard', 'optional', 'na'])).default({}),
+    })).default([]),
+    colorStages: z.object({
+        stage0: z.boolean().default(false),
+        stage1: z.boolean().default(false),
+        stage2: z.boolean().default(false),
+        stage3: z.boolean().default(false),
+    }).optional().nullable(),
+    uDekOptions: z.object({
+        blackOnWinterGrey: z.string().nullable().optional(),
+        teakOnBlack: z.string().nullable().optional(),
+        steelGreyOnWinterGrey: z.string().nullable().optional(),
+        winterGreyOnSteelGrey: z.string().nullable().optional(),
+    }).optional().nullable(),
+    paintAndGraphicOptions: z.object({
+        standardGloss: z.array(z.any()).default([]),
+        standardMetallic: z.array(z.any()).default([]),
+        powderCoating: z.array(z.any()).default([]),
+    }).optional().nullable(),
+    specifications: z.object({
+        motorConfigurations: z.array(z.any()).default([]),
+        otherSpecs: z.array(z.object({ id: z.string(), label: z.string(), value: z.string() })).default([]),
+    }).optional(),
+    standardFeatures: z.array(z.string()).default([]),
+    documents: z.array(z.object({ id: z.string(), name: z.string(), url: z.string() })).default([]),
+});
+
+type ModelFormData = z.infer<typeof stabicraftModelSchema>;
 
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field } = useController({ control, name, defaultValue: null });
@@ -68,18 +102,15 @@ function PackageStatusToggle({ featureIndex, packageId }: { featureIndex: number
 }
 
 export function StabicraftModelEditor({ model }: { model: any }) {
-    const { control, getValues, setValue } = useFormContext();
+    const { control } = useFormContext<ModelFormData>();
     const storage = useStorage();
     const { toast } = useToast();
 
-    const [isGalleryUploading, setIsGalleryUploading] = useState(false);
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
 
-    const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
-    const { fields: featureFields, append: appendFeature, remove: removeFeature } = useFieldArray({ control, name: "standardFeatures" });
     const { fields: packageLevelFields, append: appendPackageLevel, remove: removePackageLevel } = useFieldArray({ control, name: "packageLevels" });
-    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature, update: updateOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
+    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
     
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' });
     const watchedPackageLevels = useWatch({ control, name: 'packageLevels' });
