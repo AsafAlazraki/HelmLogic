@@ -51,7 +51,7 @@ const formSchema = z.object({
   accentColor: hexColorValidation,
   secondaryColor: hexColorValidation,
   roles: z.array(roleSchema).optional(),
-  permissions: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
+  permissions: z.record(z.string(), z.record(z.string(), z.boolean().optional().nullable())).optional(),
   primaryLogo: z.any().optional(),
   secondaryLogo: z.any().optional(),
   primaryLogoUrl: z.string().nullable().optional(),
@@ -104,7 +104,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
-        defaultValues: {},
+        defaultValues: {
+            name: '',
+            permissions: {},
+            roles: []
+        },
     });
 
     const inviteForm = useForm<InviteFormData>({
@@ -203,8 +207,8 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
             } else if (values.primaryLogoUrl === '') {
                 dataToUpdate.primaryLogoUrl = null;
-            } else {
-                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl || null;
+            } else if (organisation.primaryLogoUrl) {
+                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl;
             }
             
             if (values.secondaryLogo instanceof File && storage) {
@@ -212,8 +216,8 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
             } else if (values.secondaryLogoUrl === '') {
                 dataToUpdate.secondaryLogoUrl = null;
-            } else {
-                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl || null;
+            } else if (organisation.secondaryLogoUrl) {
+                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl;
             }
 
             await updateDoc(orgDocRef, dataToUpdate)
@@ -234,6 +238,15 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             setIsSubmitting(false);
         }
     }
+
+    const onInvalid = (errors: any) => {
+        console.error("Form Validation Errors:", errors);
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please check the form for errors. Missing required fields or invalid data types.",
+        });
+    };
 
     const ColorFormField = ({ name, label, description }: { name: "primaryColor" | "accentColor" | "secondaryColor", label: string, description: string }) => (
         <FormField control={form.control} name={name} render={({ field }) => (
@@ -261,7 +274,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : organisation ? (
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
                         <div className="flex items-center justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
                             <Button type="submit" disabled={isSubmitting}>
