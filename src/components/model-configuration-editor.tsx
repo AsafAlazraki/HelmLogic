@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -152,41 +151,49 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
             <form onSubmit={form.handleSubmit(onSubmit)}>
                  <div className="flex items-center justify-between mb-4">
                     {breadcrumbs}
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Changes
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" onClick={() => {}}>
+                            Start Quote
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
+                        </Button>
+                    </div>
                 </div>
-                <Tabs defaultValue="boat" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="boat">Boat</TabsTrigger>
-                        <TabsTrigger value="motor">Motor</TabsTrigger>
-                        <TabsTrigger value="trailer">Trailer</TabsTrigger>
-                        <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="boat" className="mt-6">
-                        {getModelEditor()}
-                    </TabsContent>
-                    <TabsContent value="motor" className="mt-6">
-                        <MotorOptions model={model} module={module} />
-                    </TabsContent>
-                    <TabsContent value="trailer" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Trailer Options</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-muted-foreground">Trailer configuration options will be available here soon.</p>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                    <TabsContent value="dealer-fit" className="mt-6">
-                        <DealerFitOptions module={module} />
-                    </TabsContent>
-                </Tabs>
+                <Card>
+                    <CardContent className="p-6">
+                        <Tabs defaultValue="boat" className="w-full">
+                            <TabsList className="grid w-full grid-cols-4">
+                                <TabsTrigger value="boat">Boat</TabsTrigger>
+                                <TabsTrigger value="motor">Motor</TabsTrigger>
+                                <TabsTrigger value="trailer">Trailer</TabsTrigger>
+                                <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="boat" className="mt-6">
+                                {getModelEditor()}
+                            </TabsContent>
+                            <TabsContent value="motor" className="mt-6">
+                                <MotorOptions model={model} module={module} />
+                            </TabsContent>
+                            <TabsContent value="trailer" className="mt-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Trailer Options</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-muted-foreground">Trailer configuration options will be available here soon.</p>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="dealer-fit" className="mt-6">
+                                <DealerFitOptions module={module} />
+                            </TabsContent>
+                        </Tabs>
+                    </CardContent>
+                </Card>
             </form>
         </FormProvider>
     );
 }
-    
