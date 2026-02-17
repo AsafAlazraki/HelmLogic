@@ -842,6 +842,7 @@ function PaintAndGraphicOptionsCard({model}: {model: any}) {
 
 export function StabicraftModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isGalleryUploading, setIsGalleryUploading] = useState(false);
