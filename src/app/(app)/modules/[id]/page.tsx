@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ManageOrganisationPage } from '@/components/manage-organisation-page';
+import ManageOrganisationPage from "@/components/manage-organisation-page";
 
 interface Vendor {
     id: string;
@@ -332,18 +332,18 @@ export default function ModuleDetailsPage() {
 
                  {isAdmin && (
                     <TabsContent value="organisations">
-                       <ManageOrganisationPage orgId={moduleData.id} isAdminPage={true} />
+                       <ManageOrganisationPage orgId={moduleData.id} />
                     </TabsContent>
                 )}
 
                 {isAdmin && (
                     <TabsContent value="settings" className="space-y-4">
-                       <ManageOrganisationPage orgId={moduleData.id} isAdminPage={true} isSettingsPage={true} />
+                       <ManageOrganisationPage orgId={moduleData.id} />
                     </TabsContent>
                 )}
             </Tabs>
              <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
-                 <DialogContent className="sm:max-w-3xl bg-transparent border-none shadow-none text-primary-foreground">
+                <DialogContent className="sm:max-w-3xl bg-transparent border-none shadow-none text-primary-foreground">
                     <DialogHeader className="text-center mb-6">
                         <DialogTitle className="text-2xl font-semibold text-card-foreground">{selectedModel?.name}</DialogTitle>
                         <DialogDescription className="text-lg text-muted-foreground">What would you like to do with this model?</DialogDescription>
