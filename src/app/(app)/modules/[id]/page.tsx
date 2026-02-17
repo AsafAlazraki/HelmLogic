@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus } from 'lucide-react';
+import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -40,9 +40,11 @@ interface Vendor {
 interface Organisation {
     id: string;
     name: string;
+    primaryLogoUrl?: string;
     enabledModuleSubscriptions?: string[];
     moduleAssociatedVendorAccess?: Record<string, string[]>;
     dealerFitCategories?: string[];
+    subDealersEnabled?: boolean;
 }
 
 interface Range {
@@ -192,7 +194,6 @@ export default function ModuleDetailsPage() {
     
     const [isSavingModule, setIsSavingModule] = useState(false);
     const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
-    const [activeVendorConfigOrg, setActiveVendorConfigOrg] = useState<Organisation | null>(null);
     const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 
     const { user, loading: userLoading } = useUser();
@@ -220,12 +221,28 @@ export default function ModuleDetailsPage() {
     
     const subscribedOrgs = useMemo(() => {
         if (!allOrganisations || !moduleData) return [];
-        return allOrganisations.filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id));
+        // Only top-level organisations (no parent) or specifically enabled ones
+        return allOrganisations.filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id) && !org.parentOrganisationId);
     }, [allOrganisations, moduleData]);
 
     const activeConfigOrg = useMemo(() => 
         selectedOrgId ? allOrganisations?.find(o => o.id === selectedOrgId) : null,
     [selectedOrgId, allOrganisations]);
+
+    const activeOrgSubDealers = useMemo(() => {
+        if (!selectedOrgId || !allOrganisations) return [];
+        return allOrganisations.filter(org => org.parentOrganisationId === selectedOrgId);
+    }, [selectedOrgId, allOrganisations]);
+
+    // Member self-service sub-dealers
+    const memberSubDealers = useMemo(() => {
+        if (!userProfile?.organisationId || !allOrganisations) return [];
+        return allOrganisations.filter(org => org.parentOrganisationId === userProfile.organisationId);
+    }, [userProfile?.organisationId, allOrganisations]);
+
+    const currentMemberOrg = useMemo(() => 
+        userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
+    [userProfile?.organisationId, allOrganisations]);
 
     const [tempSubscribedOrgIds, setTempSubscribedOrgs] = useState<string[]>([]);
 
@@ -303,13 +320,12 @@ export default function ModuleDetailsPage() {
         }
     };
 
-    const handleUpdateOrgVendorAccess = async (moduleId: string, vendorIds: string[]) => {
-        const targetOrgId = selectedOrgId || activeVendorConfigOrg?.id;
-        if (!targetOrgId) return;
+    const handleUpdateOrgVendorAccess = async (targetId: string, vendorIds: string[]) => {
+        if (!targetId) return;
         try {
-            const orgRef = doc(firestore, 'organisations', targetOrgId);
+            const orgRef = doc(firestore, 'organisations', targetId);
             await updateDoc(orgRef, {
-                [`moduleAssociatedVendorAccess.${moduleId}`]: vendorIds
+                [`moduleAssociatedVendorAccess.${moduleData.id}`]: vendorIds
             });
             toast({ title: "Vendor access updated." });
         } catch (error) {
@@ -317,16 +333,35 @@ export default function ModuleDetailsPage() {
         }
     };
 
-    const handleUpdateOrgCategories = async (catIds: string[]) => {
-        if (!selectedOrgId) return;
+    const handleUpdateOrgCategories = async (targetId: string, catIds: string[]) => {
+        if (!targetId) return;
         try {
-            const orgRef = doc(firestore, 'organisations', selectedOrgId);
+            const orgRef = doc(firestore, 'organisations', targetId);
             await updateDoc(orgRef, {
                 dealerFitCategories: catIds
             });
             toast({ title: "Dealer fit options updated." });
         } catch (error) {
             toast({ variant: "destructive", title: "Failed to update categories." });
+        }
+    };
+
+    const handleToggleModuleAccess = async (orgId: string, hasAccess: boolean) => {
+        if (!moduleData) return;
+        try {
+            const org = allOrganisations?.find(o => o.id === orgId);
+            if (!org) return;
+            const currentSubs = org.enabledModuleSubscriptions || [];
+            const newSubs = hasAccess 
+                ? [...new Set([...currentSubs, moduleData.id])]
+                : currentSubs.filter(id => id !== moduleData.id);
+            
+            await updateDoc(doc(firestore, 'organisations', orgId), {
+                enabledModuleSubscriptions: newSubs
+            });
+            toast({ title: hasAccess ? "Access granted" : "Access revoked" });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Update failed" });
         }
     };
 
@@ -390,10 +425,11 @@ export default function ModuleDetailsPage() {
                         <TabsTrigger value="settings">Settings</TabsTrigger>
                     </TabsList>
                 ) : (
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className={cn("grid w-full", currentMemberOrg?.subDealersEnabled ? "grid-cols-4" : "grid-cols-3")}>
                         <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                         <TabsTrigger value="bmt">BMT</TabsTrigger>
                         <TabsTrigger value="operations">Operations</TabsTrigger>
+                        {currentMemberOrg?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                     </TabsList>
                 )}
                 
@@ -473,12 +509,15 @@ export default function ModuleDetailsPage() {
                                 {selectedOrgId && activeConfigOrg ? (
                                     <OrganisationModuleConfig 
                                         organisation={activeConfigOrg}
+                                        subDealers={activeOrgSubDealers}
                                         module={moduleData}
                                         allVendors={allVendors || []}
                                         allDealerFitCategories={allDealerFitCategories || []}
                                         onBack={() => setSelectedOrgId(null)}
-                                        onUpdateVendors={(vids) => handleUpdateOrgVendorAccess(moduleData.id, vids)}
-                                        onUpdateCategories={handleUpdateOrgCategories}
+                                        onUpdateVendors={(vids) => handleUpdateOrgVendorAccess(selectedOrgId, vids)}
+                                        onUpdateCategories={(cids) => handleUpdateOrgCategories(selectedOrgId, cids)}
+                                        onToggleSubDealerAccess={handleToggleModuleAccess}
+                                        onUpdateSubDealerVendors={handleUpdateOrgVendorAccess}
                                     />
                                 ) : subscribedOrgs.length > 0 ? (
                                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -486,7 +525,13 @@ export default function ModuleDetailsPage() {
                                             <Card key={org.id} className="relative group hover:border-primary transition-colors cursor-pointer" onClick={() => setSelectedOrgId(org.id)}>
                                                 <div className="p-4 flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center"><Building className="h-5 w-5 text-muted-foreground" /></div>
+                                                        <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border">
+                                                            {org.primaryLogoUrl ? (
+                                                                <Image src={org.primaryLogoUrl} alt={org.name} fill className="object-contain p-1" sizes="40px" />
+                                                            ) : (
+                                                                <Building className="h-5 w-5 text-muted-foreground" />
+                                                            )}
+                                                        </div>
                                                         <div className="font-medium text-sm">{org.name}</div>
                                                     </div>
                                                     <Button variant="ghost" size="icon"><Settings2 className="h-4 w-4" /></Button>
@@ -499,6 +544,74 @@ export default function ModuleDetailsPage() {
                                 )}
                             </CardContent>
                        </Card>
+                    </TabsContent>
+                )}
+
+                {!isAdmin && currentMemberOrg?.subDealersEnabled && (
+                    <TabsContent value="sub-dealers">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Sub Dealer Management</CardTitle>
+                                <CardDescription>Manage module access and associated vendors for your sub-dealer network.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                 {selectedOrgId && activeConfigOrg ? (
+                                    <OrganisationModuleConfig 
+                                        organisation={activeConfigOrg}
+                                        module={moduleData}
+                                        allVendors={allVendors || []}
+                                        allDealerFitCategories={allDealerFitCategories || []}
+                                        onBack={() => setSelectedOrgId(null)}
+                                        onUpdateVendors={(vids) => handleUpdateOrgVendorAccess(selectedOrgId, vids)}
+                                        onUpdateCategories={(cids) => handleUpdateOrgCategories(selectedOrgId, cids)}
+                                    />
+                                ) : memberSubDealers.length > 0 ? (
+                                    <div className="space-y-4">
+                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                            {memberSubDealers.map(sd => {
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                return (
+                                                    <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
+                                                        <div className="p-4 flex flex-col gap-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border">
+                                                                        {sd.primaryLogoUrl ? (
+                                                                            <Image src={sd.primaryLogoUrl} alt={sd.name} fill className="object-contain p-1" sizes="40px" />
+                                                                        ) : (
+                                                                            <Building className="h-5 w-5 text-muted-foreground" />
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="font-semibold text-sm">{sd.name}</div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Checkbox 
+                                                                        id={`sd-access-${sd.id}`} 
+                                                                        checked={hasAccess} 
+                                                                        onCheckedChange={(checked) => handleToggleModuleAccess(sd.id, !!checked)} 
+                                                                    />
+                                                                    <label htmlFor={`sd-access-${sd.id}`} className="text-xs text-muted-foreground cursor-pointer">Module Access</label>
+                                                                </div>
+                                                            </div>
+                                                            {hasAccess && (
+                                                                <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedOrgId(sd.id)}>
+                                                                    <Settings2 className="mr-2 h-4 w-4" /> Configure Access
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </Card>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                                        <Users className="h-12 w-12 mx-auto mb-4 opacity-20"/>
+                                        <p>No sub dealers found for your organisation.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </TabsContent>
                 )}
 
@@ -532,11 +645,11 @@ export default function ModuleDetailsPage() {
                         </Form>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
-                                <div><CardTitle>Organisation Access</CardTitle><CardDescription>Select which organisations can use this module.</CardDescription></div>
+                                <div><CardTitle>Organisation Access</CardTitle><CardDescription>Select which top-level organisations can use this module.</CardDescription></div>
                                 <Button onClick={handleSaveSubscriptions} disabled={isSavingSubscriptions}>{isSavingSubscriptions ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}Save Subscriptions</Button>
                             </CardHeader>
                             <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {allOrganisations?.map(org => (
+                                {allOrganisations?.filter(o => !o.parentOrganisationId).map(org => (
                                     <div key={org.id} className="flex items-center space-x-3 p-3 border rounded-md">
                                         <Checkbox id={`org-sub-${org.id}`} checked={tempSubscribedOrgIds.includes(org.id)} onCheckedChange={(checked) => checked ? setTempSubscribedOrgs(prev => [...prev, org.id]) : setTempSubscribedOrgs(prev => prev.filter(id => id !== org.id))} />
                                         <label htmlFor={`org-sub-${org.id}`} className="font-normal text-sm cursor-pointer">{org.name}</label>
@@ -566,17 +679,6 @@ export default function ModuleDetailsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-
-            {activeVendorConfigOrg && moduleData && (
-                <ModuleVendorAccessDialog 
-                    isOpen={!!activeVendorConfigOrg}
-                    setIsOpen={(open) => !open && setActiveVendorConfigOrg(null)}
-                    module={moduleData}
-                    organisation={activeVendorConfigOrg as any}
-                    allVendors={allVendors || []}
-                    onUpdate={handleUpdateOrgVendorAccess}
-                />
-            )}
         </div>
     );
 }
