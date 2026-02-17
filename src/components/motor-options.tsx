@@ -3,12 +3,13 @@
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, AlertCircle, MoreHorizontal, Pencil, Trash2, PlusCircle } from 'lucide-react';
+import { Loader2, AlertCircle, MoreHorizontal, Pencil, Trash2, PlusCircle, Star } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 interface Vendor {
     id: string;
@@ -42,7 +43,6 @@ interface MotorConfig {
 
 const getHpFromModelName = (modelName?: string): number | null => {
     if (!modelName) return null;
-    // This regex looks for numbers, optionally with a decimal point.
     const match = modelName.match(/(\d+(\.\d+)?)/);
     return match ? parseFloat(match[0]) : null;
 };
@@ -52,17 +52,25 @@ const cartesian = (...a: any[][]) => a.reduce((acc, val) => acc.flatMap(d => val
 
 // Helper function for combinations with replacement
 const combinationsWithReplacement = (arr: any[], size: number): any[][] => {
-    if (size === 0) return [[]];
-    if (!arr.length) return [];
-    
-    const first = arr[0];
-    const rest = arr;
-    
-    const combosWithFirst = combinationsWithReplacement(rest, size - 1).map(combo => [first, ...combo]);
-    const combosWithoutFirst = size > 1 && arr.length > 1 ? combinationsWithReplacement(arr.slice(1), size) : [];
-    
-    return [...combosWithFirst, ...combosWithoutFirst];
+    if (!arr.length || size <= 0) return [];
+    if (size === 1) return arr.map(item => [item]);
+
+    const result: any[][] = [];
+    const recurse = (temp: any[], start: number) => {
+        if (temp.length === size) {
+            result.push(temp.slice());
+            return;
+        }
+        for (let i = start; i < arr.length; i++) {
+            temp.push(arr[i]);
+            recurse(temp, i);
+            temp.pop();
+        }
+    };
+    recurse([], 0);
+    return result;
 };
+
 
 function MotorCard({ motor }: { motor: Motor }) {
      let itemImageUrl: string | null = null;
@@ -75,7 +83,7 @@ function MotorCard({ motor }: { motor: Motor }) {
         }
     }
     return (
-        <Card className="overflow-hidden w-40">
+        <Card className="overflow-hidden w-40 flex-shrink-0">
             <div className="relative h-24 bg-secondary">
                  {itemImageUrl ? (
                     <Image src={itemImageUrl} alt={motor['Model Name'] || 'Motor'} fill className="object-contain p-2" />
@@ -131,8 +139,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     
                     const minHp = engineSpec.minHp ?? 0;
                     const maxHp = engineSpec.maxHp ?? 0;
-
-                    // If maxHp is 0 or not defined, treat it as having no upper limit for that spec
+                    
                     if (maxHp === 0) {
                         return motorHp >= minHp;
                     }
@@ -141,23 +148,18 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 })
             );
 
-            if(config.type === 'Single') {
+            if(config.type === 'Single' && compatibleMotorsPerEngine.length > 0) {
                 combinations = compatibleMotorsPerEngine[0].map(m => [m]);
-            } else if (config.type === 'Twin' && config.engines.length === 2) {
-                 // Assuming twin engines share the same specs
-                const compatibleList = compatibleMotorsPerEngine[0];
-                const uniquePairs: Motor[][] = [];
-                for(let i = 0; i < compatibleList.length; i++) {
-                    for (let j = i; j < compatibleList.length; j++) {
-                        uniquePairs.push([compatibleList[i], compatibleList[j]]);
-                    }
-                }
-                combinations = uniquePairs;
-            } else if (config.type === 'SingleWithAux' && config.engines.length === 2) {
+            } else if (config.type === 'Twin' && compatibleMotorsPerEngine.length > 0) {
+                combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 2);
+            } else if (config.type === 'Triple' && compatibleMotorsPerEngine.length > 0) {
+                combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 3);
+            } else if (config.type === 'Quad' && compatibleMotorsPerEngine.length > 0) {
+                combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 4);
+            } else if (config.type === 'SingleWithAux' && compatibleMotorsPerEngine.length === 2) {
                 combinations = cartesian(compatibleMotorsPerEngine[0], compatibleMotorsPerEngine[1]);
             }
-            // Logic for Triple and Quad can be added similarly
-
+            
             return {
                 configType: config.type,
                 combinations,
@@ -210,7 +212,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             );
         }
     
-        if (motorCombinations.length === 0) {
+        if (!motorCombinations || motorCombinations.length === 0) {
             return (
                  <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
@@ -235,15 +237,20 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                 <div className="space-y-4">
                                 {configGroup.combinations.map((combo, comboIndex) => (
                                     <Card key={comboIndex} className="group relative">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4"/></Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent>
-                                                <DropdownMenuItem><Pencil className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/> Remove</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <div className="absolute top-2 right-2 flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                             <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                <Star className="h-4 w-4" />
+                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4"/></Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    <DropdownMenuItem><Pencil className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/> Remove</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                         <CardContent className="p-4 flex flex-wrap items-center justify-center gap-4">
                                             {combo.map((motor, motorIndex) => (
                                                 <MotorCard key={`${motor.id}-${motorIndex}`} motor={motor} />
