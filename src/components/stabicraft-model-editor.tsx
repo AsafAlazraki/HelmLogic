@@ -500,7 +500,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     };
 
     return (
-        <Collapsible asChild defaultOpen className="group">
+        <Collapsible asChild className="group">
             <Card>
                 <CollapsibleCardHeader title="Motor Configurations" description="Define supported engine configurations and HP ratings." />
                 <CollapsibleContent>
@@ -642,7 +642,7 @@ function UDekFlooringCard() {
     ];
 
     return (
-        <Collapsible asChild defaultOpen>
+        <Collapsible asChild>
             <Card>
                 <CollapsibleCardHeader title="U-Dek Flooring Options" />
                 <CollapsibleContent>
@@ -739,7 +739,7 @@ function PaintAndGraphicOptionsCard() {
     const { fields: metallicFields, append: appendMetallic, remove: removeMetallic } = useFieldArray({ control, name: 'paintAndGraphicOptions.standardMetallic' });
 
     return (
-        <Collapsible asChild defaultOpen>
+        <Collapsible asChild>
             <Card>
                 <CollapsibleCardHeader title="Paint &amp; Graphic Options" />
                 <CollapsibleContent>
@@ -789,8 +789,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [standardBulkFeatures, setStandardBulkFeatures] = useState('');
     const [categoryBulkFeatures, setCategoryBulkFeatures] = useState<Record<string, string>>({});
-    const [uncategorizedBulkFeatures, setUncategorizedBulkFeatures] = useState('');
-
 
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -867,8 +865,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const watchedPackageLevels = useWatch({ control: form.control, name: 'packageLevels' });
     const coverImageUrl = useWatch({ control: form.control, name: "coverImageUrl" });
 
-    const { uncategorizedFeatures, categorizedFeatures } = React.useMemo(() => {
-        const uncategorized: { field: any, index: number }[] = [];
+    const categorizedFeatures = React.useMemo(() => {
         const categoryMap = new Map<string, { field: any, index: number }[]>();
     
         optionalFeatureFields.forEach((field, index) => {
@@ -876,17 +873,13 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             if (category && categories.includes(category)) {
                 if (!categoryMap.has(category)) categoryMap.set(category, []);
                 categoryMap.get(category)!.push({ field, index });
-            } else {
-                uncategorized.push({ field, index });
             }
         });
     
-        const categorized = categories.map(name => ({
+        return categories.map(name => ({
             name,
             items: categoryMap.get(name) || []
         }));
-    
-        return { uncategorizedFeatures: uncategorized, categorizedFeatures: categorized };
     }, [optionalFeatureFields, watchedOptionalFeatures, categories]);
 
 
@@ -927,11 +920,17 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     
     const handleConfirmDeleteCategory = () => {
         if (!categoryToDelete) return;
-        watchedOptionalFeatures?.forEach((feature, index) => {
-            if (feature.category === categoryToDelete) {
-                updateOptionalFeature(index, { ...feature, category: undefined });
-            }
+        
+        const indicesToRemove = watchedOptionalFeatures
+            .map((feature, index) => ({ feature, index }))
+            .filter(({ feature }) => feature.category === categoryToDelete)
+            .map(({ index }) => index)
+            .reverse();
+
+        indicesToRemove.forEach(index => {
+            removeOptionalFeature(index);
         });
+
         setCategories(prev => prev.filter(c => c !== categoryToDelete));
         setCategoryToDelete(null);
     };
@@ -941,8 +940,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         updateOptionalFeature(featureIndex, { ...currentFeature, category: newCategory });
     };
     
-    const handleBulkAddOptionalFeatures = (category?: string) => {
-        const textToParse = category ? categoryBulkFeatures[category] : uncategorizedBulkFeatures;
+    const handleBulkAddOptionalFeatures = (category: string) => {
+        const textToParse = category ? categoryBulkFeatures[category] : '';
         if (!textToParse) return;
 
         const features = textToParse.split('\n').map(f => f.trim()).filter(Boolean);
@@ -966,8 +965,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
         if (category) {
             setCategoryBulkFeatures(prev => ({...prev, [category]: ''}));
-        } else {
-            setUncategorizedBulkFeatures('');
         }
     };
 
@@ -1015,8 +1012,41 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                         {/* --- LEFT COLUMN --- */}
                         <div className="lg:col-span-4 space-y-8">
                             <MotorConfigurationsCard control={form.control} />
-                            
-                            <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
+                                <Card>
+                                    <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null})}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
+                                    </CollapsibleCardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-4">
+                                             {packageLevelFields.map((field, index) => (
+                                                <PackageLevelItem key={field.id} form={form} index={index} remove={removePackageLevel} />
+                                            ))}
+                                            {packageLevelFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No package levels added.</p>}
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                             <Collapsible asChild>
+                                <Card>
+                                    <CollapsibleCardHeader title="Specifications" />
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-6">
+                                            <div className="space-y-4">
+                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
+                                                {specFields.map((field, index) => (
+                                                    <div key={field.id} className="flex items-end gap-2">
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                            <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -1044,7 +1074,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
                         {/* --- RIGHT COLUMN --- */}
                         <div className="lg:col-span-3 space-y-8">
-                           <Collapsible asChild defaultOpen>
+                           <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Pricing" />
                                     <CollapsibleContent>
@@ -1073,41 +1103,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                             
-                            <Collapsible asChild defaultOpen>
-                                <Card>
-                                    <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null})}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
-                                    </CollapsibleCardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4">
-                                             {packageLevelFields.map((field, index) => (
-                                                <PackageLevelItem key={field.id} form={form} index={index} remove={removePackageLevel} />
-                                            ))}
-                                            {packageLevelFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No package levels added.</p>}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                            <Collapsible asChild>
-                                <Card>
-                                    <CollapsibleCardHeader title="Specifications" />
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-6">
-                                            <div className="space-y-4">
-                                                {specFields.length > 0 && <FormLabel>Other Specs</FormLabel>}
-                                                {specFields.map((field, index) => (
-                                                    <div key={field.id} className="flex items-end gap-2">
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={form.control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                             <Collapsible asChild defaultOpen>
+                            
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Avail. Color Stages" />
                                     <CollapsibleContent>
@@ -1158,7 +1155,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </div>
                                     <div className="space-y-4">
                                         {categorizedFeatures.map(({ name, items }) => (
-                                            <Collapsible key={name}>
+                                            <Collapsible key={name} defaultOpen={false}>
                                                 <div className="flex items-center justify-between border-b px-2 py-2">
                                                     <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
                                                         <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
@@ -1201,8 +1198,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                                 <DropdownMenuSub>
                                                                                     <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
                                                                                     <DropdownMenuSubContent>
-                                                                                        <DropdownMenuItem onClick={() => handleCategoryChange(index, undefined)}>Uncategorized</DropdownMenuItem>
-                                                                                        <DropdownMenuSeparator />
                                                                                         {categories.map((cat) => (
                                                                                             <DropdownMenuItem key={cat} onClick={() => handleCategoryChange(index, cat)}>{cat}</DropdownMenuItem>
                                                                                         ))}
@@ -1233,77 +1228,6 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                 </CollapsibleContent>
                                             </Collapsible>
                                         ))}
-                                        <Collapsible>
-                                            <div className="flex items-center justify-between border-b px-2 py-2">
-                                                <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
-                                                    <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
-                                                    <h3 className="font-semibold">Uncategorized</h3>
-                                                </CollapsibleTrigger>
-                                                <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
-                                            </div>
-                                            <CollapsibleContent className="p-2 space-y-4">
-                                                <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead className="w-2/5">Feature</TableHead>
-                                                            {watchedPackageLevels.map(pkg => <TableHead key={pkg.id} className="text-center">{pkg.name}</TableHead>)}
-                                                            <TableHead className="w-[50px] text-right">Actions</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {uncategorizedFeatures.map(({ field, index }) => (
-                                                            <TableRow key={field.id}>
-                                                                <TableCell>
-                                                                    <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="w-full"><FormControl><Input {...field} value={field.value ?? ''} className="border-none bg-transparent p-0 shadow-none focus-visible:ring-0" /></FormControl><FormMessage /></FormItem> )} />
-                                                                </TableCell>
-                                                                {watchedPackageLevels.map(pkg => (
-                                                                    <TableCell key={pkg.id} className="text-center">
-                                                                        <PackageStatusToggle control={form.control} featureIndex={index} packageId={pkg.id} />
-                                                                    </TableCell>
-                                                                ))}
-                                                                <TableCell className="text-right">
-                                                                     <DropdownMenu>
-                                                                            <DropdownMenuTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                                            </DropdownMenuTrigger>
-                                                                            <DropdownMenuContent>
-                                                                                <DropdownMenuItem onSelect={() => handleEditFeature(index)}>
-                                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                                                </DropdownMenuItem>
-                                                                                <DropdownMenuSub>
-                                                                                    <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
-                                                                                    <DropdownMenuSubContent>
-                                                                                        <DropdownMenuItem onClick={() => handleCategoryChange(index, undefined)}>Uncategorized</DropdownMenuItem>
-                                                                                        <DropdownMenuSeparator />
-                                                                                        {categories.map((cat) => (
-                                                                                            <DropdownMenuItem key={cat} onClick={() => handleCategoryChange(index, cat)}>{cat}</DropdownMenuItem>
-                                                                                        ))}
-                                                                                    </DropdownMenuSubContent>
-                                                                                </DropdownMenuSub>
-                                                                                <DropdownMenuSeparator />
-                                                                                <DropdownMenuItem className="text-destructive" onClick={() => removeOptionalFeature(index)}>
-                                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                                                </DropdownMenuItem>
-                                                                            </DropdownMenuContent>
-                                                                        </DropdownMenu>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                    </TableBody>
-                                                </Table>
-                                                <Collapsible>
-                                                    <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center text-sm text-muted-foreground p-2 hover:bg-muted rounded-md">
-                                                        <Plus className="h-4 w-4 mr-2"/> Bulk Add to Uncategorized
-                                                    </CollapsibleTrigger>
-                                                    <CollapsibleContent className="p-4 bg-muted/20 rounded-md mt-2">
-                                                        <div className="space-y-2">
-                                                            <Textarea placeholder="One feature per line..." value={uncategorizedBulkFeatures} onChange={(e) => setUncategorizedBulkFeatures(e.target.value)}/>
-                                                            <Button type="button" size="sm" onClick={() => handleBulkAddOptionalFeatures()} disabled={!uncategorizedBulkFeatures.trim()}>Add Features from Text</Button>
-                                                        </div>
-                                                    </CollapsibleContent>
-                                                </Collapsible>
-                                            </CollapsibleContent>
-                                        </Collapsible>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -1316,7 +1240,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                     <DialogHeader>
                         <DialogTitle>Delete Category "{categoryToDelete}"?</DialogTitle>
                         <DialogDescription>
-                            This will remove the category. Any features inside it will become uncategorized. This action cannot be undone.
+                            This will permanently delete the category and all features within it. This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
