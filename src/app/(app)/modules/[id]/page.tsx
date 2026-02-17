@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -306,7 +305,7 @@ export default function ModuleDetailsPage() {
         return contexts;
     }, [isAdmin, allOrganisations, userProfile, memberSubDealers, userPermissions]);
 
-    const [tempSubscribedOrgIds, setTempSubscribedOrgs] = useState<string[]>([]);
+    const [tempSubscribedOrgIds, setTempSubscribedOrgIds] = useState<string[]>([]);
 
     useEffect(() => {
         if (subscribedOrgs.length > 0) {
@@ -817,7 +816,7 @@ export default function ModuleDetailsPage() {
                             <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {allOrganisations?.filter(o => !o.parentOrganisationId).map(org => (
                                     <div key={org.id} className="flex items-center space-x-3 p-3 border rounded-md">
-                                        <Checkbox id={`org-sub-${org.id}`} checked={tempSubscribedOrgIds.includes(org.id)} onCheckedChange={(checked) => checked ? setTempSubscribedOrgs(prev => [...prev, org.id]) : setTempSubscribedOrgs(prev => prev.filter(id => id !== org.id))} />
+                                        <Checkbox id={`org-sub-${org.id}`} checked={tempSubscribedOrgIds.includes(org.id)} onCheckedChange={(checked) => checked ? setTempSubscribedOrgIds(prev => [...prev, org.id]) : setTempSubscribedOrgIds(prev => prev.filter(id => id !== org.id))} />
                                         <label htmlFor={`org-sub-${org.id}`} className="font-normal text-sm cursor-pointer">{org.name}</label>
                                     </div>
                                 ))}
