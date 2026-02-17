@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -21,6 +22,7 @@ import { StacerModelEditor, stacerModelSchema } from '@/components/stacer-model-
 import { StabicraftModelEditor, stabicraftModelSchema } from '@/components/stabicraft-model-editor';
 import { SurteesModelEditor, surteesModelSchema } from '@/components/surtees-model-editor';
 import { MotorOptions } from './motor-options';
+import { DealerFitOptions } from './dealer-fit-options';
 
 function sanitizeDataForFirestore(data: any): any {
   if (data === undefined) {
@@ -180,17 +182,11 @@ export function ModelConfigurationEditor({ model, docPath, vendor, module, bread
                         </Card>
                     </TabsContent>
                     <TabsContent value="dealer-fit" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Dealer Fit Options</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-muted-foreground">Dealer fit options will be available here soon.</p>
-                            </CardContent>
-                        </Card>
+                        <DealerFitOptions module={module} />
                     </TabsContent>
                 </Tabs>
             </form>
         </FormProvider>
     );
 }
+    
