@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
-import { useForm, useFieldArray, useWatch, useController } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -62,6 +62,13 @@ const packageLevelSchema = z.object({
     sellPriceExclGst: z.coerce.number().nullable().optional(),
 });
 
+const uDekOptionsSchema = z.object({
+    blackOnWinterGrey: z.string().nullable().optional(),
+    teakNBlack: z.string().nullable().optional(),
+    steelGreyOnWinterGrey: z.string().nullable().optional(),
+    winterGreyOnSteelGrey: z.string().nullable().optional(),
+}).optional();
+
 const modelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
@@ -81,6 +88,7 @@ const modelSchema = z.object({
         stage2: z.boolean().default(false),
         stage3: z.boolean().default(false),
     }).optional(),
+    uDekOptions: uDekOptionsSchema,
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
@@ -570,6 +578,78 @@ function MotorConfigurationsCard({ control }: { control: any }) {
     );
 }
 
+function ImageUploadSlot({ name, label }: { name: string; label: string; }) {
+    const { control } = useFormContext();
+    const { field } = useController({ control, name });
+    const imageUrl = useWatch({ control, name });
+
+    return (
+        <div className="space-y-2">
+            <FormLabel className="text-xs text-center block font-semibold">{label}</FormLabel>
+            <div className="relative aspect-square w-full overflow-hidden rounded-md group border">
+                {imageUrl ? (
+                    <>
+                        <Image src={imageUrl} alt={label} fill className="object-cover" />
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            onClick={() => field.onChange(null)}
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </>
+                ) : (
+                    <label htmlFor={name} className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-secondary hover:bg-muted">
+                        <Upload className="w-6 h-6 text-muted-foreground" />
+                        <FormControl>
+                            <Input
+                                id={name}
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) field.onChange(await fileToDataUri(file));
+                                }}
+                            />
+                        </FormControl>
+                    </label>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function UDekFlooringCard() {
+    const uDekOptions = [
+        { key: 'blackOnWinterGrey', label: 'Black on Winter Grey' },
+        { key: 'teakNBlack', label: 'Teak n Black' },
+        { key: 'steelGreyOnWinterGrey', label: 'Steel Grey n Winter Grey' },
+        { key: 'winterGreyOnSteelGrey', label: 'Winter Grey on Steel Grey' },
+    ];
+
+    return (
+        <Collapsible asChild defaultOpen>
+            <Card>
+                <CollapsibleCardHeader title="U-Dek Flooring Options" />
+                <CollapsibleContent>
+                    <CardContent className="grid grid-cols-2 gap-4">
+                        {uDekOptions.map(option => (
+                            <ImageUploadSlot
+                                key={option.key}
+                                name={`uDekOptions.${option.key}`}
+                                label={option.label}
+                            />
+                        ))}
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
+    );
+}
+
 export function StabicraftModelEditor({ model, docPath }: { model: any; docPath: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -623,6 +703,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                 sellPriceExclGst: p.sellPriceExclGst ?? null,
             })),
             colorStages: data.colorStages ?? { stage0: false, stage1: false, stage2: false, stage3: false },
+            uDekOptions: data.uDekOptions ?? { blackOnWinterGrey: null, teakNBlack: null, steelGreyOnWinterGrey: null, winterGreyOnSteelGrey: null },
         };
     };
 
@@ -873,8 +954,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-
-                             <Collapsible asChild defaultOpen>
+                            <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications" />
                                     <CollapsibleContent>
@@ -924,6 +1004,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
+                            <UDekFlooringCard />
                         </div>
                         
                         {/* --- FULL WIDTH PACKAGE SECTION --- */}

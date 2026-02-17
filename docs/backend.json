@@ -447,6 +447,24 @@
             }
           }
         },
+        "uDekOptions": {
+          "type": "object",
+          "description": "U-Dek flooring image URLs.",
+          "properties": {
+            "blackOnWinterGrey": {
+              "type": "string"
+            },
+            "teakNBlack": {
+              "type": "string"
+            },
+            "steelGreyOnWinterGrey": {
+              "type": "string"
+            },
+            "winterGreyOnSteelGrey": {
+              "type": "string"
+            }
+          }
+        },
         "specifications": {
           "type": "object",
           "properties": {
