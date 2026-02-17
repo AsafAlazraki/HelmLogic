@@ -14,6 +14,7 @@ interface Vendor {
     name: string;
     vendorType: string;
     logoUrl?: string;
+    slug?: string;
 }
 
 interface Motor {
@@ -94,9 +95,14 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
 
     const motorVendor = useMemo(() => {
-        if (!allVendors || !module.associatedVendorIds) return null;
-        return allVendors.find(v => module.associatedVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
-    }, [allVendors, module.associatedVendorIds]);
+        if (!allVendors || !module) return null;
+        const allModuleVendorIds = [
+            ...(module.associatedVendorIds || []),
+            module.mainVendorId,
+        ].filter(Boolean);
+
+        return allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
+    }, [allVendors, module]);
 
     const { data: motorDataSet, loading: motorsLoading } = useCollection<Motor>(
         motorVendor ? `data-warehouse/${motorVendor.id}/masterDataSet` : null
@@ -115,7 +121,16 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 motorDataSet.filter(motor => {
                     const motorHp = isYamaha ? getHpFromModelName(motor['Model Name']) : (typeof motor.HP === 'string' ? parseFloat(motor.HP) : motor.HP);
                     if (motorHp === undefined || motorHp === null || isNaN(motorHp)) return false;
-                    return motorHp >= engineSpec.minHp && motorHp <= engineSpec.maxHp;
+                    
+                    const minHp = engineSpec.minHp ?? 0;
+                    const maxHp = engineSpec.maxHp ?? 0;
+
+                    // If maxHp is 0 or not defined, treat it as having no upper limit for that spec
+                    if (maxHp === 0) {
+                        return motorHp >= minHp;
+                    }
+                    
+                    return motorHp >= minHp && motorHp <= maxHp;
                 })
             );
 
@@ -180,6 +195,21 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                      <AlertCircle className="h-10 w-10 text-muted-foreground" />
                     <p className="mt-4 font-semibold">No Motor Data Found</p>
                     <p className="text-sm text-muted-foreground">The master data set for {motorVendor.name} is empty.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    if (motorConfigurations.length === 0) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Motor Options</CardTitle>
+                </CardHeader>
+                 <CardContent className="flex flex-col items-center justify-center h-48 text-center">
+                     <AlertCircle className="h-10 w-10 text-muted-foreground" />
+                    <p className="mt-4 font-semibold">HP Requirements Not Set</p>
+                    <p className="text-sm text-muted-foreground">Please set the motor HP configurations for this boat in the 'Boat' tab first.</p>
                 </CardContent>
             </Card>
         );
