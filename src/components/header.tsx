@@ -18,6 +18,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { useToast } from "@/hooks/use-toast";
+import { NotificationBell } from "./notification-bell";
 
 
 const UserMenu = dynamic(() => import('@/components/user-menu').then(mod => mod.UserMenu), {
@@ -126,7 +127,10 @@ export function Header() {
             </Select>
         ) : null}
       </div>
-      <UserMenu />
+      <div className="flex items-center gap-4">
+        <NotificationBell />
+        <UserMenu />
+      </div>
     </header>
   )
 }

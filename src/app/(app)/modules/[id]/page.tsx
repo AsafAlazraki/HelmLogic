@@ -28,6 +28,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { createSlug, cn } from '@/lib/utils';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { InventoryList } from '@/components/inventory-list';
+import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 
 interface Vendor {
     id: string;
@@ -198,6 +199,7 @@ export default function ModuleDetailsPage() {
     const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
     const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
     const [viewContextOrgId, setViewContextOrgId] = useState<string | null>(null);
+    const [tempSubscribedOrgIds, setTempSubscribedOrgIds] = useState<string[]>([]);
     
     const [inStockFilter, setInStockFilter] = useState<string>('all');
 
@@ -304,8 +306,6 @@ export default function ModuleDetailsPage() {
         }
         return contexts;
     }, [isAdmin, allOrganisations, userProfile, memberSubDealers, userPermissions]);
-
-    const [tempSubscribedOrgIds, setTempSubscribedOrgIds] = useState<string[]>([]);
 
     useEffect(() => {
         if (subscribedOrgs.length > 0) {
@@ -557,7 +557,13 @@ export default function ModuleDetailsPage() {
                                                     <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} On Order</CardTitle>
                                                 </div>
                                             </CardHeader>
-                                            <CardContent><p className="text-muted-foreground text-xs">Shared order visibility from your parent organisation.</p></CardContent>
+                                            <CardContent>
+                                                <VesselOnOrderList 
+                                                    organisation={dashboardOrg as any}
+                                                    parentOrg={parentOrg as any}
+                                                    moduleId={moduleData.id}
+                                                />
+                                            </CardContent>
                                         </Card>
                                     </>
                                 )}
@@ -591,7 +597,20 @@ export default function ModuleDetailsPage() {
                                         )}
                                     </CardContent>
                                 </Card>
-                                <Card><CardHeader><CardTitle>On Order</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Orders for {currentContextLabel}</p></CardContent></Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>On Order</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {dashboardOrg && (
+                                            <VesselOnOrderList 
+                                                organisation={dashboardOrg as any}
+                                                parentOrg={parentOrg as any}
+                                                moduleId={moduleData.id}
+                                            />
+                                        )}
+                                    </CardContent>
+                                </Card>
                             </div>
                             <div className="lg:col-span-2">
                                 <Card className="h-full flex flex-col">

@@ -22,7 +22,7 @@ import Link from 'next/link';
 import { Loader2, Ship } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { doc, setDoc } from 'firebase/firestore';
-import FirebaseClientProvider from '@/firebase/client-provider';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { Checkbox } from '@/components/ui/checkbox';

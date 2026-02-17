@@ -21,7 +21,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Ship } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import FirebaseClientProvider from '@/firebase/client-provider';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const formSchema = z.object({
   email: z.string().email({

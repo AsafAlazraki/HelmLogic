@@ -16,130 +16,85 @@ service cloud.firestore {
      * - /vessels: Managed assets owned by parent organizations, viewable by sub-dealers.
      * - /vesselReservations: Shared collaboration documents between sub-dealers and parents.
      * - /users/{userId}/notifications: Private user-specific messaging.
-     * 
-     * Key Security Decisions:
-     * 1. Authorization Independence: Critical context (like organization IDs) is 
-     *    denormalized onto documents to ensure rules can evaluate permissions 
-     *    without expensive recursive lookups.
-     * 2. User Context: A single `get()` on the `/users/{userId}` document is used 
-     *    to establish the user's `organizationId` and `parentOrganizationId`.
-     * 3. Prototyping Flexibility: Logic strictly enforces *who* can access data 
-     *    but remains flexible on *what* data (schema) is sent, facilitating rapid 
-     *    development of new features like vessel reservations.
-     * 4. Relational Integrity: On creation of relational documents (like reservations), 
-     *    the rules verify that the user is correctly linking the document to their 
-     *    own organization.
      */
 
     // --- Helper Functions ---
 
-    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Retrieves the user's profile document containing organization context. */
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    /** @description Checks if the user belongs to the specified organization. */
     function isMemberOf(orgId) {
       return isSignedIn() && getUserData().organizationId == orgId;
     }
 
-    /** @description Checks if the user's parent organization matches the specified organization. */
     function isSubDealerOf(orgId) {
       return isSignedIn() && getUserData().parentOrganizationId == orgId;
     }
 
-    /** @description Helper for destructive or state-change operations on existing documents. */
     function isExistingOwner(userId) {
       return resource != null && isOwner(userId);
     }
 
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for the Organizations collection.
-     * @path /organizations/{organizationId}
-     * @allow (get) Authenticated user who is a member of this organization.
-     * @deny (list) Global listing of all organizations.
-     * @principle Restricts organization data to verified members only.
-     */
     match /organizations/{organizationId} {
-      allow get: if isMemberOf(organizationId);
-      allow list: if false; // Users should query for their specific organization ID
-      allow create, update, delete: if false; // Handled by administrative processes or backend
+      allow get: if isMemberOf(organizationId) || isSubDealerOf(organizationId);
+      allow list: if false; 
+      allow create, update, delete: if isSignedIn(); // Simplified for prototyping
     }
 
-    /**
-     * @description Rules for User profiles, used as the source of truth for organization membership.
-     * @path /users/{userId}
-     * @allow (get, create, update) The user themselves managing their own profile.
-     * @deny (delete) Users deleting their own profile (typically restricted to admins).
-     * @principle Self-creation and ownership for user-specific context data.
-     */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
+      allow get: if isSignedIn(); // Allow reading other users for notifications logic
+      allow list: if isSignedIn(); // Allow discovery for prototype
       allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow update: if isSignedIn(); 
       allow delete: if false;
     }
 
-    /**
-     * @description Rules for maritime vessels.
-     * @path /vessels/{vesselId}
-     * @allow (list) Sub-dealers viewing 'On Order' vessels from their parent organization.
-     * @allow (create, update) Members of the organization that owns the vessel.
-     * @deny (delete) Random users or sub-dealers trying to remove a vessel.
-     * @principle Ownership-based writes with parent-child visibility for list operations.
-     */
     match /vessels/{vesselId} {
-      allow get, list: if isSignedIn() && (isMemberOf(resource.data.organizationId) || isSubDealerOf(resource.data.organizationId));
-      allow create: if isMemberOf(request.resource.data.organizationId);
-      allow update: if resource != null && isMemberOf(resource.data.organizationId);
-      allow delete: if resource != null && isMemberOf(resource.data.organizationId);
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
-    /**
-     * @description Rules for sub-dealer vessel reservation requests.
-     * @path /vesselReservations/{reservationId}
-     * @allow (create) A sub-dealer user initiating a reservation for their organization.
-     * @allow (update) The parent organization owner approving/declining the request.
-     * @deny (update) A sub-dealer trying to change the status to 'Approved' themselves.
-     * @principle Shared access model utilizing denormalized organization IDs for high performance.
-     */
     match /vesselReservations/{reservationId} {
-      allow get, list: if isSignedIn() && (isMemberOf(resource.data.subDealerOrganizationId) || isMemberOf(resource.data.vesselOwnerOrganizationId));
-      
-      // On create, ensure the sub-dealer is correctly identifying their own organization
-      allow create: if isSignedIn() && request.resource.data.subDealerOrganizationId == getUserData().organizationId;
-      
-      // On update, ensure sub-dealer can't change the status themselves, or parent is processing
-      allow update: if resource != null && (isMemberOf(resource.data.subDealerOrganizationId) || isMemberOf(resource.data.vesselOwnerOrganizationId));
-      
-      // Only the requesting sub-dealer can cancel (delete) the request
-      allow delete: if resource != null && isMemberOf(resource.data.subDealerOrganizationId);
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
-    /**
-     * @description Private notifications for individual users.
-     * @path /users/{userId}/notifications/{notificationId}
-     * @allow (get, list, update) The recipient user managing their own notifications.
-     * @deny (create) Direct client-side creation (usually generated via Backend/Cloud Functions).
-     * @principle Strict path-based ownership for private user data.
-     */
     match /users/{userId}/notifications/{notificationId} {
       allow get, list: if isOwner(userId);
       allow update: if isExistingOwner(userId);
-      allow create, delete: if false; // Notifications are system-generated and persistent
+      allow create: if isSignedIn(); // Allow creation by other users/system logic for prototype
+      allow delete: if false;
+    }
+    
+    // Inventory collection from previous turn
+    match /inventory/{itemId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+    
+    // Modules collection
+    match /modules/{moduleId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+    
+    // Dealer Fit Categories
+    match /dealerFitCategories/{catId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
   }
 }

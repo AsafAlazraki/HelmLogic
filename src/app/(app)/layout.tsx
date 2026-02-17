@@ -2,7 +2,7 @@
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Header } from "@/components/header";
-import FirebaseClientProvider from "@/firebase/client-provider";
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 import dynamic from "next/dynamic";
 import { SidebarSkeleton } from "@/components/sidebar-skeleton";
 import { useUser } from "@/firebase/auth/use-user";
