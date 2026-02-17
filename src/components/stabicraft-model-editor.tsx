@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
+import { Label } from './ui/label';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -606,16 +607,17 @@ function MotorConfigurationsCard({ control }: { control: any }) {
 }
 
 function ImageUploadSlot({ name, label, model }: { name: string; label: string; model: any; }) {
-    const { control } = useFormContext();
+    const { control, setValue } = useFormContext();
     const { field } = useController({ control, name });
     const imageUrl = useWatch({ control, name });
     const storage = useStorage();
     const { toast } = useToast();
     const [isUploading, setIsUploading] = React.useState(false);
+    const inputId = React.useMemo(() => name.replace(/\./g, '-'), [name]);
 
     return (
         <div className="space-y-2">
-            <FormLabel className="text-xs text-center block font-semibold">{label}</FormLabel>
+            <Label htmlFor={inputId} className="text-xs text-center block font-semibold">{label}</Label>
             <div className="relative aspect-square w-full overflow-hidden rounded-md group border">
                 {isUploading && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
@@ -636,11 +638,11 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
                         </Button>
                     </>
                 ) : (
-                    <label htmlFor={name} className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-secondary hover:bg-muted">
+                    <label htmlFor={inputId} className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-secondary hover:bg-muted">
                         <Upload className="w-6 h-6 text-muted-foreground" />
                         <FormControl>
                             <Input
-                                id={name}
+                                id={inputId}
                                 type="file"
                                 className="hidden"
                                 accept="image/*"
@@ -652,7 +654,7 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
                                         try {
                                             const path = `data-warehouse/models/${model.id}/udek/${name.split('.').pop()}-${Date.now()}-${file.name}`;
                                             const downloadURL = await uploadFileWithProgress(storage, file, path, () => {});
-                                            field.onChange(downloadURL);
+                                            setValue(name, downloadURL);
                                         } catch (err) {
                                             toast({ variant: 'destructive', title: 'Upload Failed' });
                                         } finally {
@@ -705,6 +707,7 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
     const storage = useStorage();
     const { toast } = useToast();
     const [isUploading, setIsUploading] = React.useState(false);
+    const inputId = React.useMemo(() => `paint-option-${category}-${index}-upload`, [category, index]);
 
     return (
         <Card className="p-2 bg-background/50">
@@ -729,11 +732,11 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
                             </Button>
                         </>
                     ) : (
-                        <label htmlFor={`${namePrefix}-upload`} className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-secondary hover:bg-muted">
+                        <label htmlFor={inputId} className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-secondary hover:bg-muted">
                             <Upload className="w-6 h-6 text-muted-foreground" />
                             <FormControl>
                                 <Input
-                                    id={`${namePrefix}-upload`}
+                                    id={inputId}
                                     type="file"
                                     className="hidden"
                                     accept="image/*"
@@ -765,7 +768,7 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
                             name={`${namePrefix}.paint`}
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs">Paint</FormLabel>
+                                    <Label>Paint</Label>
                                     <FormControl><Input {...field} value={field.value ?? ''} placeholder="e.g., Blue" /></FormControl>
                                 </FormItem>
                             )}
@@ -775,7 +778,7 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
                             name={`${namePrefix}.graphics`}
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs">Graphics</FormLabel>
+                                    <Label>Graphics</Label>
                                     <FormControl><Input {...field} value={field.value ?? ''} placeholder="e.g., Red" /></FormControl>
                                 </FormItem>
                             )}
@@ -859,7 +862,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
     const getSafeDefaultValues = (modelData: any): ModelFormData => {
         const data = modelData || {};
-        const specs = data.specifications || {};
+        
         const packageLevels = data.packageLevels || [];
 
         const optionalFeatures = (data.optionalFeatures || []).map((f: any) => {
@@ -881,10 +884,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             cost: data.cost ?? null,
             sellPriceExclGst: data.sellPriceExclGst ?? null,
             freightCostExclGst: data.freightCostExclGst ?? null,
-            specifications: {
-                motorConfigurations: specs.motorConfigurations ?? [],
-                otherSpecs: specs.otherSpecs ?? [],
-            },
+            specifications: data.specifications ?? { motorConfigurations: [], otherSpecs: []},
             standardFeatures: data.standardFeatures ?? [],
             optionalFeatures: optionalFeatures,
             packageLevels: (data.packageLevels || []).map((p: any) => ({
@@ -1071,7 +1071,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         {/* --- LEFT COLUMN --- */}
                         <div className="lg:col-span-4 space-y-8">
-                             <Collapsible asChild>
+                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null})}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
@@ -1086,7 +1086,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                             <Collapsible asChild>
+                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications" />
                                     <CollapsibleContent>
@@ -1106,7 +1106,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                             <MotorConfigurationsCard control={form.control} />
-                            <Collapsible asChild>
+                            <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -1163,7 +1163,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                             
-                             <Collapsible asChild>
+                             <Collapsible asChild defaultOpen>
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>
