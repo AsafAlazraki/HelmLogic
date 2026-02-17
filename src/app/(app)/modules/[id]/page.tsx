@@ -853,11 +853,23 @@ export default function ModuleDetailsPage() {
                     </DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('bmt')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><Wrench className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Configuration</p></CardContent>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                                <Wrench className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
+                                <p className="font-semibold text-xl">Configuration</p>
+                            </CardContent>
+                        </Card>
                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Quotation</p></CardContent>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                                <FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
+                                <p className="font-semibold text-xl">Quotation</p>
+                            </CardContent>
+                        </Card>
                          <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Operations</p></CardContent>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                                <ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
+                                <p className="font-semibold text-xl">Operations</p>
+                            </CardContent>
+                        </Card>
                     </div>
                 </DialogContent>
             </Dialog>
