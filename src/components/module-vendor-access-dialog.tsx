@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Vendor {
     id: string;
@@ -61,11 +62,6 @@ export function ModuleVendorAccessDialog({
         return allVendors.filter(v => module.associatedVendorIds?.includes(v.id));
     }, [module, allVendors]);
 
-    // Main vendor and Motor brands are always accessible
-    const motorVendorIds = useMemo(() => 
-        associatedVendors.filter(v => v.vendorType === 'Motor Brand').map(v => v.id),
-    [associatedVendors]);
-
     const handleToggle = (vendorId: string, checked: boolean) => {
         const newValue = checked 
             ? [...currentAllowedVendorIds, vendorId]
@@ -107,18 +103,30 @@ export function ModuleVendorAccessDialog({
                         <p className="text-xs text-muted-foreground mb-2">Select which additional vendors this organisation can access.</p>
                         <div className="grid gap-2">
                             {associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').length > 0 ? (
-                                associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').map(vendor => (
-                                    <div key={vendor.id} className="flex items-center space-x-3 p-2 rounded-md border hover:bg-muted/50 transition-colors">
-                                        <Checkbox 
-                                            id={`vendor-${vendor.id}`} 
-                                            checked={currentAllowedVendorIds.includes(vendor.id)}
-                                            onCheckedChange={(checked) => handleToggle(vendor.id, !!checked)}
-                                        />
-                                        <Label htmlFor={`vendor-${vendor.id}`} className="font-normal text-sm cursor-pointer flex-1">
-                                            {vendor.name}
-                                        </Label>
-                                    </div>
-                                ))
+                                associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').map(vendor => {
+                                    const isChecked = currentAllowedVendorIds.includes(vendor.id);
+                                    return (
+                                        <div 
+                                            key={vendor.id} 
+                                            className={cn(
+                                                "flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-all cursor-pointer",
+                                                isChecked ? "bg-secondary/50 border-primary/20" : "hover:bg-muted/50 opacity-60"
+                                            )}
+                                            onClick={() => handleToggle(vendor.id, !isChecked)}
+                                        >
+                                            <div className="flex-1 flex items-center gap-2">
+                                                {isChecked ? <Check className="h-4 w-4 text-green-600" /> : <div className="w-4 h-4" />}
+                                                <span className={cn(isChecked ? "font-medium" : "")}>{vendor.name}</span>
+                                            </div>
+                                            <Checkbox 
+                                                id={`vendor-${vendor.id}`} 
+                                                checked={isChecked}
+                                                onCheckedChange={(checked) => handleToggle(vendor.id, !!checked)}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                    );
+                                })
                             ) : (
                                 <p className="text-sm text-muted-foreground py-4 text-center border-2 border-dashed rounded-md">No optional associated vendors for this module.</p>
                             )}

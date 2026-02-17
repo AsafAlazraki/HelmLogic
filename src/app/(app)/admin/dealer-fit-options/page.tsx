@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -10,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, Trash2, Wrench } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Wrench, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Dialog,
@@ -172,9 +171,17 @@ export default function DealerFitOptionsPage() {
        <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Deleting "{categoryToDelete?.name}" is permanent. Organisations assigned this category will lose access to it and all their configured items within it.
+            <div className="flex items-center gap-2 text-destructive mb-2">
+                <AlertTriangle className="h-6 w-6" />
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="space-y-3">
+              <p>Deleting <strong className="text-foreground">"{categoryToDelete?.name}"</strong> is permanent and has significant risks:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li><strong className="text-foreground">Loss of Access:</strong> Every organisation currently using this card will lose it immediately.</li>
+                <li><strong className="text-foreground">Data Deletion:</strong> Any items or packages configured by organisations within this card will be permanently removed.</li>
+                <li><strong className="text-foreground">Quoting Impact:</strong> Existing quotes using selections from this card may lose their specific configuration data.</li>
+              </ul>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -183,7 +190,7 @@ export default function DealerFitOptionsPage() {
               onClick={handleDeleteCategory}
               className="bg-destructive hover:bg-destructive/90"
             >
-              Delete
+              I understand, delete it
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

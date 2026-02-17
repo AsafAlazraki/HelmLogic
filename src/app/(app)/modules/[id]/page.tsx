@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { createSlug, cn } from '@/lib/utils';
 import { ModuleVendorAccessDialog } from '@/components/module-vendor-access-dialog';
+import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 
 interface Vendor {
     id: string;
@@ -41,6 +42,7 @@ interface Organisation {
     name: string;
     enabledModuleSubscriptions?: string[];
     moduleAssociatedVendorAccess?: Record<string, string[]>;
+    dealerFitCategories?: string[];
 }
 
 interface Range {
@@ -60,6 +62,11 @@ interface Model {
   order?: number;
   packageLevels?: { id: string; name: string }[];
   [key: string]: any;
+}
+
+interface DealerFitCategory {
+    id: string;
+    name: string;
 }
 
 const formSchema = z.object({
@@ -186,6 +193,7 @@ export default function ModuleDetailsPage() {
     const [isSavingModule, setIsSavingModule] = useState(false);
     const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
     const [activeVendorConfigOrg, setActiveVendorConfigOrg] = useState<Organisation | null>(null);
+    const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 
     const { user, loading: userLoading } = useUser();
     const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string }>(user ? `/users/${user.uid}` : null);
@@ -203,6 +211,7 @@ export default function ModuleDetailsPage() {
     
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
     const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>('organisations');
+    const { data: allDealerFitCategories, loading: catsLoading } = useCollection<DealerFitCategory>('dealerFitCategories');
     
     const mainVendor = useMemo(() => allVendors?.find(v => v.id === moduleData?.mainVendorId), [allVendors, moduleData]);
         
@@ -213,6 +222,10 @@ export default function ModuleDetailsPage() {
         if (!allOrganisations || !moduleData) return [];
         return allOrganisations.filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id));
     }, [allOrganisations, moduleData]);
+
+    const activeConfigOrg = useMemo(() => 
+        selectedOrgId ? allOrganisations?.find(o => o.id === selectedOrgId) : null,
+    [selectedOrgId, allOrganisations]);
 
     const [tempSubscribedOrgIds, setTempSubscribedOrgs] = useState<string[]>([]);
 
@@ -291,16 +304,29 @@ export default function ModuleDetailsPage() {
     };
 
     const handleUpdateOrgVendorAccess = async (moduleId: string, vendorIds: string[]) => {
-        if (!activeVendorConfigOrg) return;
+        const targetOrgId = selectedOrgId || activeVendorConfigOrg?.id;
+        if (!targetOrgId) return;
         try {
-            const orgRef = doc(firestore, 'organisations', activeVendorConfigOrg.id);
-            const currentAccess = activeVendorConfigOrg.moduleAssociatedVendorAccess || {};
+            const orgRef = doc(firestore, 'organisations', targetOrgId);
             await updateDoc(orgRef, {
                 [`moduleAssociatedVendorAccess.${moduleId}`]: vendorIds
             });
             toast({ title: "Vendor access updated." });
         } catch (error) {
             toast({ variant: "destructive", title: "Failed to update access." });
+        }
+    };
+
+    const handleUpdateOrgCategories = async (catIds: string[]) => {
+        if (!selectedOrgId) return;
+        try {
+            const orgRef = doc(firestore, 'organisations', selectedOrgId);
+            await updateDoc(orgRef, {
+                dealerFitCategories: catIds
+            });
+            toast({ title: "Dealer fit options updated." });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Failed to update categories." });
         }
     };
 
@@ -330,7 +356,7 @@ export default function ModuleDetailsPage() {
         }
     };
     
-    const loading = moduleLoading || vendorsLoading || orgsLoading || userLoading || profileLoading;
+    const loading = moduleLoading || vendorsLoading || orgsLoading || userLoading || profileLoading || catsLoading;
     const defaultTab = isAdmin ? 'bmt' : 'dashboard';
 
     if (loading) {
@@ -441,19 +467,29 @@ export default function ModuleDetailsPage() {
                        <Card>
                             <CardHeader>
                                 <CardTitle>Subscribed Organisations</CardTitle>
-                                <CardDescription>Managing organisations subscribed to {moduleData.name}.</CardDescription>
+                                <CardDescription>Managing organisations subscribed to {moduleData.name}. Click an organisation to configure their access.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {subscribedOrgs.length > 0 ? (
+                                {selectedOrgId && activeConfigOrg ? (
+                                    <OrganisationModuleConfig 
+                                        organisation={activeConfigOrg}
+                                        module={moduleData}
+                                        allVendors={allVendors || []}
+                                        allDealerFitCategories={allDealerFitCategories || []}
+                                        onBack={() => setSelectedOrgId(null)}
+                                        onUpdateVendors={(vids) => handleUpdateOrgVendorAccess(moduleData.id, vids)}
+                                        onUpdateCategories={handleUpdateOrgCategories}
+                                    />
+                                ) : subscribedOrgs.length > 0 ? (
                                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         {subscribedOrgs.map(org => (
-                                            <Card key={org.id} className="relative group">
+                                            <Card key={org.id} className="relative group hover:border-primary transition-colors cursor-pointer" onClick={() => setSelectedOrgId(org.id)}>
                                                 <div className="p-4 flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center"><Building className="h-5 w-5 text-muted-foreground" /></div>
                                                         <div className="font-medium text-sm">{org.name}</div>
                                                     </div>
-                                                    <Button variant="ghost" size="icon" onClick={() => setActiveVendorConfigOrg(org)}><Settings2 className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon"><Settings2 className="h-4 w-4" /></Button>
                                                 </div>
                                             </Card>
                                         ))}
