@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, collection, query, where, writeBatch, orderBy } from 'firebase/firestore';
-import { Loader2, Save, Sailboat, ChevronRight, Wrench, FileText } from 'lucide-react';
+import { Loader2, Save, Sailboat, ChevronRight, Wrench, FileText, ClipboardList } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -171,17 +171,17 @@ function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Ve
     );
 }
 
-function ModuleConfigurationBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: 'ranges' | 'models' | 'config' | 'quote', onBreadcrumbClick: (level: 'ranges' | 'models') => void }) {
+function ModuleConfigurationBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: 'ranges' | 'models' | 'config' | 'quote' | 'operations', onBreadcrumbClick: (level: 'ranges' | 'models') => void }) {
     return (
         <div className="flex items-center text-sm text-muted-foreground mt-2">
             <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
-            {range && (view === 'models' || view === 'config' || view === 'quote') && (
+            {range && (view === 'models' || view === 'config' || view === 'quote' || view === 'operations') && (
                 <>
                     <ChevronRight className="h-4 w-4 mx-1" />
                     <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('models')}>{range.name}</button>
                 </>
             )}
-            {model && (view === 'config' || view === 'quote') && (
+            {model && (view === 'config' || view === 'quote' || view === 'operations') && (
                 <>
                     <ChevronRight className="h-4 w-4 mx-1" />
                     <span className="font-medium text-foreground">{model.name}</span>
@@ -200,7 +200,7 @@ export default function ModuleDetailsPage() {
     const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
     
     // State for configuration flow
-    const [view, setView] = useState<'ranges' | 'models' | 'config' | 'quote'>('ranges');
+    const [view, setView] = useState<'ranges' | 'models' | 'config' | 'quote' | 'operations'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [isChoiceDialogOpen, setIsChoiceDialogOpen] = useState(false);
@@ -263,7 +263,7 @@ export default function ModuleDetailsPage() {
         setIsChoiceDialogOpen(true);
     };
 
-    const handleChoiceSelect = (choice: 'config' | 'quote') => {
+    const handleChoiceSelect = (choice: 'config' | 'quote' | 'operations') => {
         setView(choice);
         setIsChoiceDialogOpen(false);
     };
@@ -386,11 +386,11 @@ export default function ModuleDetailsPage() {
                                     {view === 'config' && selectedModel && selectedRange && mainVendor && (
                                         <ModelConfigurationEditor model={selectedModel} docPath={`/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} vendor={mainVendor} module={moduleData} />
                                     )}
-                                    {view === 'quote' && (
+                                    {(view === 'quote' || view === 'operations') && (
                                         <div className="flex h-96 w-full items-center justify-center rounded-lg border-2 border-dashed">
                                             <div className="text-center">
                                                 <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-                                                <p className="mt-4 text-muted-foreground">Preparing quotation engine...</p>
+                                                <p className="mt-4 text-muted-foreground capitalize">Preparing {view} engine...</p>
                                             </div>
                                         </div>
                                     )}
@@ -486,22 +486,28 @@ export default function ModuleDetailsPage() {
                 )}
             </Tabs>
              <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
-                <DialogContent className="sm:max-w-md bg-transparent border-none shadow-none">
+                <DialogContent className="sm:max-w-3xl bg-transparent border-none shadow-none text-primary-foreground">
                      <DialogHeader className="text-center mb-6">
-                        <DialogTitle className="text-2xl font-semibold text-white">{selectedModel?.name}</DialogTitle>
+                        <DialogTitle className="text-2xl font-semibold">{selectedModel?.name}</DialogTitle>
                         <DialogDescription className="text-lg text-muted-foreground">What would you like to do with this model?</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('config')}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/10 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('config')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
                                 <Wrench className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
                                 <p className="font-semibold text-xl">Configuration</p>
                             </CardContent>
                         </Card>
-                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
+                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/10 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
                                 <FileText className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
                                 <p className="font-semibold text-xl">Quotation</p>
+                            </CardContent>
+                        </Card>
+                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/10 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                                <ClipboardList className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
+                                <p className="font-semibold text-xl">Operations</p>
                             </CardContent>
                         </Card>
                     </div>
