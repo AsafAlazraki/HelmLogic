@@ -495,10 +495,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 const productGroupKey = findKey(['Product Group', 'ProductGroup']);
                 const subCategoryKey = findKey(['Sub Catagory', 'SubCategory', 'category']);
                 
-                const imageUrlKey = findKey([
-                    'SummaryImage', 'Primary Image URL', 'imageUrl', 'image_url', 'image',
-                    'Logo URL', 'logoUrl', 'logo_url', 'logo'
-                ]);
+                const imageUrlKey = 'SummaryImage';
                 
                 const colorsKey = findKey(['colors', 'available_colors', 'availableColors']);
 
@@ -516,7 +513,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     columnConfig = allKeys.filter(k => k !== 'id').slice(0, 3).map(k => ({ key: k, label: k }));
                 }
 
-                setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey: imageUrlKey ?? null, colorsKey: colorsKey ?? null });
+                setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey: imageUrlKey, colorsKey: colorsKey ?? null });
             } else {
                 const findKey = (potentials: string[]) => allKeys.find(k => potentials.includes(k.toLowerCase()));
 
@@ -607,7 +604,9 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                         {filteredData.map((item) => {
                                             let itemImageUrl = imageUrlKey && item[imageUrlKey] ? item[imageUrlKey] : null;
                                             if (vendor.slug === 'yamaha' && itemImageUrl && !itemImageUrl.startsWith('http')) {
-                                                itemImageUrl = `https://www.yamaha-motor.com.au${itemImageUrl}`;
+                                                const baseUrl = 'https://www.yamaha-motor.com.au';
+                                                const path = itemImageUrl.startsWith('/') ? itemImageUrl : `/${itemImageUrl}`;
+                                                itemImageUrl = `${baseUrl}${path}`;
                                             }
                                             const itemColors = colorsKey && Array.isArray(item[colorsKey]) ? item[colorsKey] : [];
                                             
@@ -629,8 +628,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                         <div className="space-y-1 text-sm text-muted-foreground">
                                                             {infoKeys.map((key) => (
                                                                 <div key={key} className="flex justify-between items-start gap-2">
-                                                                    <span className="font-medium capitalize truncate text-xs">{key.replace(/_/g, ' ')}:</span>
-                                                                    <span className="truncate text-right text-xs text-foreground">{String(item[key])}</span>
+                                                                    <span className="font-medium capitalize truncate text-xs">{key.replace(/_/g, ' ')}:</span>\n                                                                    <span className="truncate text-right text-xs text-foreground">{String(item[key])}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
