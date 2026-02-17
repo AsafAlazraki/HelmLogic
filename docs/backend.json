@@ -140,6 +140,58 @@
         "slug"
       ]
     },
+    "Quote": {
+      "title": "Quote",
+      "description": "Represents a sales quote for a boat package.",
+      "type": "object",
+      "properties": {
+        "quoteNumber": {
+          "type": "string",
+          "description": "A unique identifier for the quote."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Draft",
+            "Sent",
+            "Accepted",
+            "Declined"
+          ],
+          "description": "The current status of the quote."
+        },
+        "customerName": {
+          "type": "string"
+        },
+        "createdById": {
+          "type": "string",
+          "description": "The ID of the user who created the quote."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "organisationId": {
+          "type": "string",
+          "description": "The ID of the organisation this quote belongs to."
+        },
+        "modelConfiguration": {
+          "type": "object",
+          "description": "A snapshot of the configured model and options at the time of quoting.",
+          "additionalProperties": true
+        },
+        "pricingSummary": {
+          "type": "object",
+          "description": "A summary of the costs and final price.",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "quoteNumber",
+        "status",
+        "createdById",
+        "organisationId"
+      ]
+    },
     "Vendor": {
       "title": "Vendor",
       "description": "Represents a vendor for data connection.",
@@ -735,6 +787,12 @@
         "$ref": "#/backend/entities/Organisation"
       },
       "description": "Organisation documents, keyed by a unique ID."
+    },
+    "/organisations/{organisationId}/quotes/{quoteId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Quote"
+      },
+      "description": "Quotes created by an organisation."
     },
     "/data-warehouse/{vendorId}": {
       "schema": {

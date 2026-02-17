@@ -17,6 +17,17 @@ service cloud.firestore {
              'organisationId' in userDoc.data &&
              userDoc.data.organisationId == organisationId;
     }
+    
+    function isParentOfOrganisation(childOrganisationId) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let childOrgDoc = get(/databases/$(database)/documents/organisations/$(childOrganisationId));
+      return request.auth != null &&
+             userDoc.data != null &&
+             'organisationId' in userDoc.data &&
+             childOrgDoc.data != null &&
+             'parentOrganisationId' in childOrgDoc.data &&
+             childOrgDoc.data.parentOrganisationId == userDoc.data.organisationId;
+    }
 
     match /users/{userId} {
       // A user can create their own user document.
@@ -41,6 +52,11 @@ service cloud.firestore {
                       (request.auth != null && 
                        request.resource.data.parentOrganisationId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId);
       allow update, delete: if isHelmLogicAdmin() || isMemberOfOrganisation(organisationId);
+      
+      match /quotes/{quoteId} {
+        allow read: if isMemberOfOrganisation(organisationId) || isParentOfOrganisation(organisationId) || isHelmLogicAdmin();
+        allow create, update, delete: if isMemberOfOrganisation(organisationId) || isHelmLogicAdmin();
+      }
     }
 
     match /data-warehouse/{vendorId} {
