@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { uploadFileToStorage } from '@/firebase/storage';
+import { uploadFileWithProgress } from '@/firebase/storage';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
 import { Label } from './ui/label';
+import { Progress } from './ui/progress';
 
 // Schemas for validation
 const specSchema = z.object({
@@ -100,6 +101,7 @@ const modelSchema = z.object({
     paintAndGraphicOptions: z.object({
         standardGloss: z.array(paintOptionSchema).default([]),
         standardMetallic: z.array(paintOptionSchema).default([]),
+        powderCoating: z.array(paintOptionSchema).default([]),
     }).optional(),
 });
 
@@ -321,6 +323,8 @@ function OptionalFeatureEditDialog({
   const storage = useStorage();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState(0);
+
   const dialogForm = useForm({
     resolver: zodResolver(
       z.object({
@@ -375,8 +379,9 @@ function OptionalFeatureEditDialog({
                     <FormLabel className="sr-only">Feature Image</FormLabel>
                     <div className="relative aspect-square w-full overflow-hidden rounded-md group border">
                         {isUploading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-                                <Loader2 className="h-6 w-6 animate-spin text-white" />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-20 text-white">
+                                <Loader2 className="h-6 w-6 animate-spin" />
+                                <Progress value={uploadProgress} className="w-4/5 h-1 mt-2 bg-white/30" />
                             </div>
                         )}
                         {imageUrl ? (
@@ -417,10 +422,11 @@ function OptionalFeatureEditDialog({
                                 const file = e.target.files?.[0];
                                 if (file && storage && model) {
                                     setIsUploading(true);
+                                    setUploadProgress(0);
                                     try {
-                                    const path = `data-warehouse/models/${model.id}/features/${featureIndex}-${Date.now()}-${file.name}`;
-                                    const downloadURL = await uploadFileToStorage(storage, file, path);
-                                    field.onChange(downloadURL);
+                                        const path = `data-warehouse/models/${model.id}/features/${featureIndex}-${Date.now()}-${file.name}`;
+                                        const downloadURL = await uploadFileWithProgress(storage, file, path, setUploadProgress);
+                                        field.onChange(downloadURL);
                                     } catch (err) {
                                         console.error("Upload failed", err);
                                         toast({ variant: 'destructive', title: 'Upload Failed'});
@@ -615,15 +621,17 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
     const storage = useStorage();
     const { toast } = useToast();
     const [isUploading, setIsUploading] = React.useState(false);
-    const inputId = React.useMemo(() => name.replace(/\./g, '-'), [name]);
+    const [uploadProgress, setUploadProgress] = React.useState(0);
+    const inputId = React.useMemo(() => `udek-${name.replace(/\./g, '-')}`, [name]);
 
     return (
         <div className="space-y-2">
             <Label htmlFor={inputId} className="text-xs text-center block font-semibold">{label}</Label>
             <div className="relative aspect-square w-full overflow-hidden rounded-md group border">
-                {isUploading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-                        <Loader2 className="h-6 w-6 animate-spin text-white" />
+                 {isUploading && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-20 text-white">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <Progress value={uploadProgress} className="w-4/5 h-1 mt-2 bg-white/30" />
                     </div>
                 )}
                 {imageUrl ? (
@@ -653,9 +661,10 @@ function ImageUploadSlot({ name, label, model }: { name: string; label: string; 
                                     const file = e.target.files?.[0];
                                     if (file && storage && model) {
                                         setIsUploading(true);
+                                        setUploadProgress(0);
                                         try {
                                             const path = `data-warehouse/models/${model.id}/udek/${name.split('.').pop()}-${Date.now()}-${file.name}`;
-                                            const downloadURL = await uploadFileToStorage(storage, file, path);
+                                            const downloadURL = await uploadFileWithProgress(storage, file, path, setUploadProgress);
                                             setValue(name, downloadURL);
                                         } catch (err) {
                                             console.error("Upload failed", err);
@@ -703,13 +712,14 @@ function UDekFlooringCard({model}: {model: any}) {
     );
 }
 
-function PaintOptionItem({ category, index, remove, model }: { category: 'standardGloss' | 'standardMetallic'; index: number; remove: (index: number) => void; model: any; }) {
+function PaintOptionItem({ category, index, remove, model }: { category: 'standardGloss' | 'standardMetallic' | 'powderCoating'; index: number; remove: (index: number) => void; model: any; }) {
     const { control, setValue } = useFormContext<ModelFormData>();
     const namePrefix = `paintAndGraphicOptions.${category}.${index}` as const;
     const imageUrl = useWatch({ control, name: `${namePrefix}.imageUrl` });
     const storage = useStorage();
     const { toast } = useToast();
     const [isUploading, setIsUploading] = React.useState(false);
+    const [uploadProgress, setUploadProgress] = React.useState(0);
     const inputId = React.useMemo(() => `paint-option-${category}-${index}-upload`, [category, index]);
 
     return (
@@ -717,8 +727,9 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
             <div className="space-y-2">
                 <div className="relative aspect-video w-full overflow-hidden rounded-md group border">
                     {isUploading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-                            <Loader2 className="h-6 w-6 animate-spin text-white" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-20 text-white">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                            <Progress value={uploadProgress} className="w-4/5 h-1 mt-2 bg-white/30" />
                         </div>
                     )}
                     {imageUrl ? (
@@ -748,9 +759,10 @@ function PaintOptionItem({ category, index, remove, model }: { category: 'standa
                                         const file = e.target.files?.[0];
                                         if (file && storage && model) {
                                             setIsUploading(true);
+                                            setUploadProgress(0);
                                             try {
                                                 const path = `data-warehouse/models/${model.id}/paint/${category}-${index}-${Date.now()}-${file.name}`;
-                                                const downloadURL = await uploadFileToStorage(storage, file, path);
+                                                const downloadURL = await uploadFileWithProgress(storage, file, path, setUploadProgress);
                                                 setValue(`${namePrefix}.imageUrl`, downloadURL);
                                             } catch (err) {
                                                 console.error("Upload failed", err);
@@ -801,6 +813,8 @@ function PaintAndGraphicOptionsCard({model}: {model: any}) {
     const { control } = useFormContext<ModelFormData>();
     const { fields: glossFields, append: appendGloss, remove: removeGloss } = useFieldArray({ control, name: 'paintAndGraphicOptions.standardGloss' });
     const { fields: metallicFields, append: appendMetallic, remove: removeMetallic } = useFieldArray({ control, name: 'paintAndGraphicOptions.standardMetallic' });
+    const { fields: powderCoatingFields, append: appendPowderCoating, remove: removePowderCoating } = useFieldArray({ control, name: 'paintAndGraphicOptions.powderCoating' });
+
 
     return (
         <Collapsible asChild>
@@ -840,6 +854,22 @@ function PaintAndGraphicOptionsCard({model}: {model: any}) {
                                 </Button>
                             </CollapsibleContent>
                         </Collapsible>
+                        <Collapsible>
+                            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border p-4 font-semibold">
+                                <span>Powder Coating</span>
+                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-4 pt-4">
+                               <div className="grid grid-cols-2 gap-4">
+                                    {powderCoatingFields.map((field, index) => (
+                                        <PaintOptionItem key={field.id} category="powderCoating" index={index} remove={removePowderCoating} model={model} />
+                                    ))}
+                                </div>
+                                <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendPowderCoating({ id: `powder-${Date.now()}`, imageUrl: null, paint: '', graphics: '' })}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Powder Coating Option
+                                </Button>
+                            </CollapsibleContent>
+                        </Collapsible>
                     </CardContent>
                 </CollapsibleContent>
             </Card>
@@ -853,7 +883,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isGalleryUploading, setIsGalleryUploading] = useState(false);
-    const [isCoverUploading, setIsCoverUploading] = useState(false);
+    const [coverUploadProgress, setCoverUploadProgress] = useState(0);
+    const [galleryUploadProgress, setGalleryUploadProgress] = useState(0);
     const [standardBulkFeatures, setStandardBulkFeatures] = useState('');
     const [categoryBulkFeatures, setCategoryBulkFeatures] = useState<Record<string, string>>({});
 
@@ -899,7 +930,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             })),
             colorStages: data.colorStages ?? { stage0: false, stage1: false, stage2: false, stage3: false },
             uDekOptions: data.uDekOptions ?? { blackOnWinterGrey: null, teakOnBlack: null, steelGreyOnWinterGrey: null, winterGreyOnSteelGrey: null },
-            paintAndGraphicOptions: data.paintAndGraphicOptions ?? { standardGloss: [], standardMetallic: [] },
+            paintAndGraphicOptions: data.paintAndGraphicOptions ?? { standardGloss: [], standardMetallic: [], powderCoating: [] },
         };
     };
 
@@ -1075,7 +1106,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         {/* --- LEFT COLUMN --- */}
                         <div className="lg:col-span-4 space-y-8">
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Package Levels" description="Define the different package levels for this model.">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendPackageLevel({ id: `pkg-lvl-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null})}><PlusCircle className="mr-2 h-4 w-4"/>Add Package Level</Button>
@@ -1090,7 +1121,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications" />
                                     <CollapsibleContent>
@@ -1110,7 +1141,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                             <MotorConfigurationsCard control={form.control} />
-                            <Collapsible asChild defaultOpen>
+                            <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Standard Features">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
@@ -1138,7 +1169,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
 
                         {/* --- RIGHT COLUMN --- */}
                         <div className="lg:col-span-3 space-y-8">
-                           <Collapsible asChild defaultOpen>
+                           <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Pricing" />
                                     <CollapsibleContent>
@@ -1167,7 +1198,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                 </Card>
                             </Collapsible>
                             
-                             <Collapsible asChild defaultOpen>
+                             <Collapsible asChild>
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>
@@ -1176,9 +1207,10 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                             <FormItem>
                                                 <FormLabel className="sr-only">Cover Image</FormLabel>
                                                     <div className="relative aspect-video w-full overflow-hidden rounded-md group border">
-                                                        {isCoverUploading && (
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-                                                                <Loader2 className="h-8 w-8 animate-spin text-white" />
+                                                        {coverUploadProgress > 0 && coverUploadProgress < 100 && (
+                                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-20 text-white">
+                                                                <Loader2 className="h-8 w-8 animate-spin" />
+                                                                <Progress value={coverUploadProgress} className="w-4/5 h-1 mt-2 bg-white/30" />
                                                             </div>
                                                         )}
                                                         {coverImageUrl ? (
@@ -1201,19 +1233,19 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                     <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
                                                                 </div>
                                                                 <FormControl>
-                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" disabled={isCoverUploading} onChange={async (e) => {
+                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" disabled={coverUploadProgress > 0 && coverUploadProgress < 100} onChange={async (e) => {
                                                                         const file = e.target.files?.[0];
                                                                         if (file && model) {
-                                                                            setIsCoverUploading(true);
+                                                                            setCoverUploadProgress(0);
                                                                             try {
                                                                                 const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
-                                                                                const downloadURL = await uploadFileToStorage(storage, file, path);
+                                                                                const downloadURL = await uploadFileWithProgress(storage, file, path, setCoverUploadProgress);
                                                                                 field.onChange(downloadURL);
                                                                             } catch (err) {
                                                                                 console.error("Upload failed", err);
                                                                                 toast({ variant: 'destructive', title: 'Upload Failed' });
                                                                             } finally {
-                                                                                setIsCoverUploading(false);
+                                                                                setCoverUploadProgress(100);
                                                                             }
                                                                         }
                                                                     }} />
@@ -1266,7 +1298,7 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                             for (const file of files) {
                                                                                 if (model) {
                                                                                     const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
-                                                                                    const downloadURL = await uploadFileToStorage(storage, file, path);
+                                                                                    const downloadURL = await uploadFileWithProgress(storage, file, path, (p) => setGalleryUploadProgress(p));
                                                                                     appendGalleryImage(downloadURL);
                                                                                 }
                                                                             }
@@ -1277,7 +1309,12 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                                                             setIsGalleryUploading(false);
                                                                         }
                                                                     }}/>
-                                                                    {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/> : <Plus className="h-6 w-6 text-muted-foreground"/>}
+                                                                    {isGalleryUploading ? (
+                                                                        <div className="flex flex-col items-center justify-center text-white">
+                                                                            <Loader2 className="h-6 w-6 animate-spin" />
+                                                                            <Progress value={galleryUploadProgress} className="w-4/5 h-1 mt-2 bg-white/30" />
+                                                                        </div>
+                                                                    ) : <Plus className="h-6 w-6 text-muted-foreground"/>}
                                                                 </label>
                                                             </div>
                                                         </div>

@@ -429,6 +429,117 @@
             ]
           }
         },
+        "colorStages": {
+          "type": "object",
+          "description": "Available color stages for a Stabicraft model.",
+          "properties": {
+            "stage0": {
+              "type": "boolean"
+            },
+            "stage1": {
+              "type": "boolean"
+            },
+            "stage2": {
+              "type": "boolean"
+            },
+            "stage3": {
+              "type": "boolean"
+            }
+          }
+        },
+        "uDekOptions": {
+          "type": "object",
+          "description": "U-Dek flooring image URLs.",
+          "properties": {
+            "blackOnWinterGrey": {
+              "type": "string"
+            },
+            "teakOnBlack": {
+              "type": "string"
+            },
+            "steelGreyOnWinterGrey": {
+              "type": "string"
+            },
+            "winterGreyOnSteelGrey": {
+              "type": "string"
+            }
+          }
+        },
+        "paintAndGraphicOptions": {
+          "type": "object",
+          "description": "Paint and graphic options for a Stabicraft model.",
+          "properties": {
+            "standardGloss": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "standardMetallic": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "powderCoating": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
         "specifications": {
           "type": "object",
           "properties": {
