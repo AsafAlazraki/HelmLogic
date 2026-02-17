@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fileToDataUri } from '@/firebase/storage-utils';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,7 +48,9 @@ const optionalFeatureSchema = z.object({
     name: z.string().min(1, 'Feature name is required'),
     imageUrl: z.string().nullable().optional(),
     category: z.string().optional(),
-    packageStatus: z.record(z.string(), z.enum(['standard', 'optional'])).default({}),
+    cost: z.coerce.number().nullable().optional(),
+    sellPriceExclGst: z.coerce.number().nullable().optional(),
+    packageStatus: z.record(z.string(), z.enum(['standard', 'optional', 'na'])).default({}),
 });
 
 const packageLevelSchema = z.object({
@@ -230,13 +232,65 @@ const CollapsibleCardHeader = ({ title, description, children }: { title: string
     </CardHeader>
 );
 
-function SimpleOptionalFeatureItem({ form, index, remove }: { form: any; index: number; remove: (index: number) => void; }) {
-    const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
-    const { control } = form;
+function PackageStatusToggle({ control, featureIndex, packageId }: { control: any, featureIndex: number, packageId: string }) {
+    const { field } = useController({
+        control,
+        name: `optionalFeatures.${featureIndex}.packageStatus.${packageId}`,
+        defaultValue: 'optional'
+    });
+
+    const toggleStatus = () => {
+        if (field.value === 'optional') {
+            field.onChange('standard');
+        } else if (field.value === 'standard') {
+            field.onChange('na');
+        } else { // 'na' or any other value
+            field.onChange('optional');
+        }
+    };
+
+    const getVariant = (): "default" | "secondary" | "outline" => {
+        switch (field.value) {
+            case 'standard': return 'default';
+            case 'na': return 'outline';
+            default: return 'secondary';
+        }
+    };
+    
+    const getLabel = () => {
+        switch (field.value) {
+            case 'standard': return 'Standard';
+            case 'na': return 'N/A';
+            default: return 'Optional';
+        }
+    };
 
     return (
-        <Card className="bg-muted/50 overflow-hidden p-4">
-            <div className="flex gap-4 items-start">
+        <Button
+            type="button"
+            variant={getVariant()}
+            className={cn(
+                "w-28", 
+                field.value === 'standard' && 'bg-blue-600 hover:bg-blue-700', 
+                field.value === 'na' && 'border-dashed text-muted-foreground'
+            )}
+            size="sm"
+            onClick={toggleStatus}
+        >
+            {getLabel()}
+        </Button>
+    );
+}
+
+
+function OptionalFeatureCard({ form, index, remove, categories, onCategoryChangeRequest }: { form: any; index: number; remove: (index: number) => void; categories: string[]; onCategoryChangeRequest: (featureIndex: number, category?: string) => void; }) {
+    const { control } = form;
+    const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
+    const packageLevels = useWatch({ control, name: 'packageLevels' });
+
+    return (
+        <Card className="overflow-hidden">
+            <div className="p-4 flex gap-4">
                 <FormField
                     control={control}
                     name={`optionalFeatures.${index}.imageUrl`}
@@ -270,111 +324,54 @@ function SimpleOptionalFeatureItem({ form, index, remove }: { form: any; index: 
                         </FormItem>
                     )}
                 />
-                <div className="flex-1 space-y-3">
-                     <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
-                        <FormItem>
-                            <FormLabel className="sr-only">Feature Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Feature Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem> 
-                    )} />
-                </div>
-                <div className="flex-shrink-0 self-start">
-                   <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
+                <div className="flex-1 space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                        <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
+                            <FormItem className="flex-1">
+                                <FormControl><Input placeholder="Feature Name" {...field} value={field.value ?? ''} /></FormControl>
+                                <FormMessage />
+                            </FormItem> 
+                        )} />
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 self-start shrink-0"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                        <DropdownMenuItem onClick={() => onCategoryChangeRequest(index, undefined)}>Uncategorized</DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        {categories.map((cat) => (
+                                            <DropdownMenuItem key={cat} onClick={() => onCategoryChangeRequest(index, cat)}>{cat}</DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => remove(index)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell Price" />
+                    </div>
                 </div>
             </div>
+            {packageLevels && packageLevels.length > 0 && (
+                <CardFooter className="bg-muted/50 p-4 grid grid-cols-3 gap-4">
+                     {packageLevels.map((pkg: any) => (
+                        <div key={pkg.id} className="flex flex-col items-center gap-2">
+                             <FormLabel className="text-sm font-medium">{pkg.name}</FormLabel>
+                             <PackageStatusToggle control={control} featureIndex={index} packageId={pkg.id} />
+                        </div>
+                    ))}
+                </CardFooter>
+            )}
         </Card>
-    );
-}
-
-function PackageStatusPill({ control, featureIndex, packageId }: { control: any, featureIndex: number, packageId: string }) {
-    const { field } = useController({
-        control,
-        name: `optionalFeatures.${featureIndex}.packageStatus.${packageId}`,
-        defaultValue: 'optional'
-    });
-
-    const isStandard = field.value === 'standard';
-
-    const toggleStatus = () => {
-        field.onChange(isStandard ? 'optional' : 'standard');
-    };
-
-    return (
-        <Button
-            type="button"
-            variant={isStandard ? 'default' : 'secondary'}
-            className={cn("w-28", isStandard && 'bg-blue-600 hover:bg-blue-700')}
-            size="sm"
-            onClick={toggleStatus}
-        >
-            {isStandard ? 'Standard' : 'Optional'}
-        </Button>
-    );
-}
-
-function OptionalFeatureDetailsCell({ form, index, remove, categories, onCategoryChangeRequest }: { form: any; index: number; remove: (index: number) => void; categories: string[]; onCategoryChangeRequest: (featureIndex: number, category?: string) => void; }) {
-    const imageUrl = useWatch({ control: form.control, name: `optionalFeatures.${index}.imageUrl` });
-
-    return (
-        <div className="flex gap-2 items-center min-w-[300px]">
-            <FormField
-                control={form.control}
-                name={`optionalFeatures.${index}.imageUrl`}
-                render={({ field }) => (
-                    <FormItem className="w-20 flex-shrink-0">
-                        {imageUrl ? (
-                            <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                                <Image src={imageUrl} alt="Feature" fill className="object-cover" />
-                                <Button type="button" variant="outline" size="icon" className="absolute top-0.5 right-0.5 h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
-                            </div>
-                        ) : (
-                             <label htmlFor={`table-feature-upload-${index}`} className="flex aspect-square w-full items-center justify-center rounded-lg border-2 border-dashed cursor-pointer hover:bg-muted">
-                                <Upload className="w-5 h-5 text-muted-foreground" />
-                                <FormControl>
-                                    <Input id={`table-feature-upload-${index}`} type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) field.onChange(await fileToDataUri(file));
-                                    }} />
-                                </FormControl>
-                            </label>
-                        )}
-                    </FormItem>
-                )}
-            />
-            <div className="flex-1">
-                <FormField control={form.control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
-                    <FormItem>
-                        <FormControl><Input placeholder="Feature Name" {...field} value={field.value ?? ''} /></FormControl>
-                        <FormMessage />
-                    </FormItem> 
-                )} />
-            </div>
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 self-start"><MoreHorizontal className="h-4 w-4" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                            <DropdownMenuItem onClick={() => onCategoryChangeRequest(index, undefined)}>Uncategorized</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {categories.map((cat) => (
-                                <DropdownMenuItem key={cat} onClick={() => onCategoryChangeRequest(index, cat)}>{cat}</DropdownMenuItem>
-                            ))}
-                        </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive" onClick={() => remove(index)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
     );
 }
 
@@ -503,7 +500,10 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [bulkFeatures, setBulkFeatures] = useState('');
+    const [standardBulkFeatures, setStandardBulkFeatures] = useState('');
+    const [categoryBulkFeatures, setCategoryBulkFeatures] = useState<Record<string, string>>({});
+    const [uncategorizedBulkFeatures, setUncategorizedBulkFeatures] = useState('');
+
 
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -620,10 +620,10 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         }
     }
     
-    const handleBulkAddFeatures = () => {
-        const features = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
+    const handleBulkAddStandardFeatures = () => {
+        const features = standardBulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
         replaceFeatures(features.map(f => f));
-        setBulkFeatures('');
+        setStandardBulkFeatures('');
     };
 
     const handleAddCategory = () => {
@@ -648,6 +648,36 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
         const currentFeature = watchedOptionalFeatures[featureIndex];
         updateOptionalFeature(featureIndex, { ...currentFeature, category: newCategory });
     };
+    
+    const handleBulkAddOptionalFeatures = (category?: string) => {
+        const textToParse = category ? categoryBulkFeatures[category] : uncategorizedBulkFeatures;
+        if (!textToParse) return;
+
+        const features = textToParse.split('\n').map(f => f.trim()).filter(Boolean);
+        const packageLevels = getValues('packageLevels') || [];
+
+        features.forEach(featureName => {
+            const newFeature = {
+                id: `feat-${Date.now()}-${Math.random()}`,
+                name: featureName,
+                imageUrl: null,
+                category: category,
+                cost: null,
+                sellPriceExclGst: null,
+                packageStatus: packageLevels.reduce((acc: any, pkg: any) => {
+                    acc[pkg.id] = 'optional';
+                    return acc;
+                }, {}),
+            };
+            appendOptionalFeature(newFeature);
+        });
+
+        if (category) {
+            setCategoryBulkFeatures(prev => ({...prev, [category]: ''}));
+        } else {
+            setUncategorizedBulkFeatures('');
+        }
+    };
 
     const handleAddNewFeature = (category?: string) => {
         const packageLevels = getValues('packageLevels') || [];
@@ -656,6 +686,8 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
             name: '',
             imageUrl: null,
             category,
+            cost: null,
+            sellPriceExclGst: null,
             packageStatus: packageLevels.reduce((acc: any, pkg: any) => {
                 acc[pkg.id] = 'optional';
                 return acc;
@@ -698,123 +730,13 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                                         <CardContent>
                                             <div className="space-y-2">
                                                 <FormLabel>Bulk Add Features</FormLabel>
-                                                <Textarea placeholder="One feature per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddFeatures} disabled={!bulkFeatures.trim()}>Add from Text</Button>
+                                                <Textarea placeholder="One feature per line..." value={standardBulkFeatures} onChange={(e) => setStandardBulkFeatures(e.target.value)} />
+                                                <Button type="button" variant="secondary" size="sm" onClick={handleBulkAddStandardFeatures} disabled={!standardBulkFeatures.trim()}>Add from Text</Button>
                                             </div>
                                         </CardContent>
                                     </CollapsibleContent>
                                 </Card>
                             </Collapsible>
-                            
-                             {packageLevelFields.length === 0 ? (
-                                <Collapsible asChild defaultOpen>
-                                    <Card>
-                                        <CollapsibleCardHeader title="Optional Features">
-                                            <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
-                                        </CollapsibleCardHeader>
-                                        <CollapsibleContent>
-                                            <CardContent className="space-y-4">
-                                                {optionalFeatureFields.map((field, index) => (
-                                                    <SimpleOptionalFeatureItem key={field.id} form={form} index={index} remove={removeOptionalFeature} />
-                                                ))}
-                                                {optionalFeatureFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No optional features added.</p>}
-                                            </CardContent>
-                                        </CollapsibleContent>
-                                    </Card>
-                                </Collapsible>
-                             ) : (
-                                <Collapsible asChild defaultOpen>
-                                    <Card>
-                                        <CollapsibleCardHeader title="Cover Image" />
-                                        <CollapsibleContent>
-                                            <CardContent>
-                                                {/* Cover Image and Gallery FormField */}
-                                                <FormField control={form.control} name="coverImageUrl" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                            {coverImageUrl ? (
-                                                                <div className="relative aspect-video w-full overflow-hidden rounded-md group">
-                                                                    <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" />
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="icon"
-                                                                        className="absolute right-1 top-1 z-10 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                                                                        onClick={() => field.onChange(null)}
-                                                                    >
-                                                                        <X className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center justify-center w-full">
-                                                                    <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
-                                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                                            <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
-                                                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
-                                                                        </div>
-                                                                        <FormControl>
-                                                                            <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                                                const file = e.target.files?.[0];
-                                                                                if (file) field.onChange(await fileToDataUri(file));
-                                                                            }} />
-                                                                        </FormControl>
-                                                                    </label>
-                                                                </div> 
-                                                            )}
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )} />
-                                                <div className="pt-6">
-                                                    <Collapsible>
-                                                        <CollapsibleTrigger className="flex w-full items-center justify-between border-b border-t py-2 text-sm font-medium data-[state=open]:border-b-0">
-                                                            <span>Image Gallery ({galleryImageFields.length})</span>
-                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                                        </CollapsibleTrigger>
-                                                        <CollapsibleContent className="border-b">
-                                                            <div className="p-4 bg-muted/20">
-                                                                <div className="grid grid-cols-3 gap-2">
-                                                                    {galleryImageFields.map((item, index) => (
-                                                                        <div key={item.id} className="group relative aspect-square">
-                                                                            <FormField
-                                                                                control={form.control}
-                                                                                name={`galleryImageUrls.${index}`}
-                                                                                render={({ field }) => (
-                                                                                    <>
-                                                                                        <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="rounded-md object-cover" />
-                                                                                        <Button
-                                                                                            type="button"
-                                                                                            variant="destructive"
-                                                                                            size="icon"
-                                                                                            className="absolute right-1 top-1 z-10 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                                                                                            onClick={() => removeGalleryImage(index)}
-                                                                                        >
-                                                                                            <Trash2 className="h-4 w-4" />
-                                                                                        </Button>
-                                                                                    </>
-                                                                                )}
-                                                                            />
-                                                                        </div>
-                                                                    ))}
-                                                                    <label htmlFor="gallery-image-upload" className={cn(
-                                                                        "flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed bg-background hover:bg-secondary"
-                                                                    )}>
-                                                                        <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                                                            const files = Array.from(e.target.files || []);
-                                                                            const dataUris = await Promise.all(files.map(fileToDataUri));
-                                                                            dataUris.forEach(uri => appendGalleryImage(uri));
-                                                                        }}/>
-                                                                        <Plus className="h-6 w-6 text-muted-foreground"/>
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        </CollapsibleContent>
-                                                    </Collapsible>
-                                                </div>
-                                            </CardContent>
-                                        </CollapsibleContent>
-                                    </Card>
-                                </Collapsible>
-                             )}
                         </div>
 
                         {/* --- RIGHT COLUMN --- */}
@@ -917,100 +839,79 @@ export function StabicraftModelEditor({ model, docPath }: { model: any; docPath:
                         </div>
                         
                         {/* --- FULL WIDTH PACKAGE SECTION --- */}
-                        {packageLevelFields.length > 0 && (
-                            <div className="lg:col-span-7 space-y-8">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Optional Features & Packages</CardTitle>
-                                        <CardDescription>
-                                            Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
-                                            <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>Add Category</Button>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <Collapsible defaultOpen>
+                        <div className="lg:col-span-7 space-y-8">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Optional Features & Packages</CardTitle>
+                                    <CardDescription>
+                                        Manage optional features and specify if they are 'Standard' or 'Optional' for each package.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="max-w-xs"/>
+                                        <Button type="button" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>Add Category</Button>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {categorizedFeatures.map(({ name, items }) => (
+                                            <Collapsible key={name} defaultOpen>
                                                 <div className="flex items-center justify-between border-b px-2 py-2">
-                                                    <CollapsibleTrigger asChild>
-                                                        <div className="w-full text-left cursor-pointer flex items-center">
-                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
-                                                            <h3 className="font-semibold">Uncategorized</h3>
-                                                        </div>
+                                                    <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
+                                                        <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
+                                                        <h3 className="font-semibold">{name}</h3>
                                                     </CollapsibleTrigger>
-                                                    <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                                    <div className='flex items-center'>
+                                                        <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature(name)}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCategoryToDelete(name)}><Trash2 className="h-4 w-4"/></Button>
+                                                    </div>
                                                 </div>
-                                                <CollapsibleContent className="p-2">
-                                                    {uncategorizedFeatures.length > 0 ? (
-                                                        <div className="overflow-x-auto">
-                                                            <Table>
-                                                                <TableHeader>
-                                                                    <TableRow>
-                                                                        <TableHead>Optional Feature</TableHead>
-                                                                        {packageLevelFields.map((pkg, i) => <TableHead key={pkg.id} className="text-center">{watchedPackageLevels?.[i]?.name || `Package ${i+1}`}</TableHead>)}
-                                                                    </TableRow>
-                                                                </TableHeader>
-                                                                <TableBody>
-                                                                    {uncategorizedFeatures.map(({ field, index }) => (
-                                                                        <TableRow key={field.id}>
-                                                                            <TableCell>
-                                                                                <OptionalFeatureDetailsCell form={form} index={index} remove={removeOptionalFeature} categories={categories} onCategoryChangeRequest={handleCategoryChange} />
-                                                                            </TableCell>
-                                                                            {packageLevelFields.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
-                                                                        </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        </div>
-                                                    ) : <p className="text-sm text-muted-foreground text-center py-4">No uncategorized features.</p>}
+                                                <CollapsibleContent className="p-2 space-y-4">
+                                                    {items.map(({ field, index }) => (
+                                                        <OptionalFeatureCard key={field.id} form={form} index={index} remove={removeOptionalFeature} categories={categories} onCategoryChangeRequest={handleCategoryChange}/>
+                                                    ))}
+                                                    <Collapsible>
+                                                        <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center text-sm text-muted-foreground p-2 hover:bg-muted rounded-md">
+                                                            <Plus className="h-4 w-4 mr-2"/> Bulk Add to {name}
+                                                        </CollapsibleTrigger>
+                                                        <CollapsibleContent className="p-4 bg-muted/20 rounded-md mt-2">
+                                                            <div className="space-y-2">
+                                                                <Textarea placeholder="One feature per line..." value={categoryBulkFeatures[name] || ''} onChange={(e) => setCategoryBulkFeatures(prev => ({...prev, [name]: e.target.value}))}/>
+                                                                <Button type="button" size="sm" onClick={() => handleBulkAddOptionalFeatures(name)} disabled={!categoryBulkFeatures[name]?.trim()}>Add Features from Text</Button>
+                                                            </div>
+                                                        </CollapsibleContent>
+                                                    </Collapsible>
                                                 </CollapsibleContent>
                                             </Collapsible>
-                                            
-                                            {categorizedFeatures.map(({ name, items }) => (
-                                                <Collapsible key={name} defaultOpen>
-                                                    <div className="flex items-center justify-between border-b px-2 py-2">
-                                                        <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
-                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
-                                                            <h3 className="font-semibold">{name}</h3>
-                                                        </CollapsibleTrigger>
-                                                        <div className='flex items-center'>
-                                                            <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature(name)}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
-                                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCategoryToDelete(name)}><Trash2 className="h-4 w-4"/></Button>
+                                        ))}
+                                        <Collapsible defaultOpen>
+                                            <div className="flex items-center justify-between border-b px-2 py-2">
+                                                <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center">
+                                                    <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200" />
+                                                    <h3 className="font-semibold">Uncategorized</h3>
+                                                </CollapsibleTrigger>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => handleAddNewFeature()}><PlusCircle className="mr-2 h-4 w-4"/>Add Feature</Button>
+                                            </div>
+                                            <CollapsibleContent className="p-2 space-y-4">
+                                                 {uncategorizedFeatures.map(({ field, index }) => (
+                                                     <OptionalFeatureCard key={field.id} form={form} index={index} remove={removeOptionalFeature} categories={categories} onCategoryChangeRequest={handleCategoryChange}/>
+                                                 ))}
+                                                <Collapsible>
+                                                    <CollapsibleTrigger className="w-full text-left cursor-pointer flex items-center text-sm text-muted-foreground p-2 hover:bg-muted rounded-md">
+                                                        <Plus className="h-4 w-4 mr-2"/> Bulk Add to Uncategorized
+                                                    </CollapsibleTrigger>
+                                                    <CollapsibleContent className="p-4 bg-muted/20 rounded-md mt-2">
+                                                        <div className="space-y-2">
+                                                            <Textarea placeholder="One feature per line..." value={uncategorizedBulkFeatures} onChange={(e) => setUncategorizedBulkFeatures(e.target.value)}/>
+                                                            <Button type="button" size="sm" onClick={() => handleBulkAddOptionalFeatures()} disabled={!uncategorizedBulkFeatures.trim()}>Add Features from Text</Button>
                                                         </div>
-                                                    </div>
-                                                    <CollapsibleContent className="p-2">
-                                                        {items.length > 0 ? (
-                                                            <div className="overflow-x-auto">
-                                                                <Table>
-                                                                    <TableHeader>
-                                                                        <TableRow>
-                                                                            <TableHead>Optional Feature</TableHead>
-                                                                            {packageLevelFields.map((pkg: any, i) => <TableHead key={pkg.id} className="text-center">{watchedPackageLevels?.[i]?.name || `Package ${i+1}`}</TableHead>)}
-                                                                        </TableRow>
-                                                                    </TableHeader>
-                                                                    <TableBody>
-                                                                        {items.map(({ field, index }) => (
-                                                                            <TableRow key={field.id}>
-                                                                                <TableCell>
-                                                                                    <OptionalFeatureDetailsCell form={form} index={index} remove={removeOptionalFeature} categories={categories} onCategoryChangeRequest={handleCategoryChange} />
-                                                                                </TableCell>
-                                                                                {packageLevelFields.map((pkg: any) => <TableCell key={pkg.id} className="text-center"><PackageStatusPill control={form.control} featureIndex={index} packageId={pkg.id} /></TableCell>)}
-                                                                            </TableRow>
-                                                                        ))}
-                                                                    </TableBody>
-                                                                </Table>
-                                                            </div>
-                                                        ) : <p className="text-sm text-muted-foreground text-center py-4">No features in this category.</p>}
                                                     </CollapsibleContent>
                                                 </Collapsible>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        )}
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 </form>
             </Form>
