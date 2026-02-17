@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronRight } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
@@ -207,7 +207,7 @@ const CollapsibleCardHeader = ({ title, description, children, count }: { title:
             {children}
             <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="icon">
-                    <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    <ChevronRight className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                 </Button>
             </CollapsibleTrigger>
         </div>
@@ -332,7 +332,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                             const currentConfig = isChecked ? fields[fieldIndex] as any : null;
 
                             return (
-                                <Collapsible key={option.id} asChild>
+                                <Collapsible key={option.id} asChild className="group">
                                     <div className="p-4 border rounded-lg">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-3">
@@ -348,7 +348,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                                             {isChecked && (
                                                 <CollapsibleTrigger asChild>
                                                     <Button variant="ghost" size="icon">
-                                                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                                        <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                                                     </Button>
                                                 </CollapsibleTrigger>
                                             )}
@@ -854,7 +854,7 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                             </CardContent>
                         </Card>
 
-                        <Collapsible asChild>
+                        <Collapsible asChild className="group">
                             <Card>
                                 <CollapsibleCardHeader title="Cover Image" />
                                 <CollapsibleContent>
@@ -912,11 +912,11 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                                         </FormItem>
                                     )} />
                                         <div className="pt-6">
-                                            <Collapsible>
+                                            <Collapsible className="group">
                                                 <CollapsibleTrigger asChild>
                                                     <Button type="button" variant="ghost" className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
                                                         <span>Image Gallery ({galleryImageFields.length})</span>
-                                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                                        <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                                                     </Button>
                                                 </CollapsibleTrigger>
                                                 <CollapsibleContent className="border-b">

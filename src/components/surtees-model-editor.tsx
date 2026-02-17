@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronDown, MoreHorizontal, Plus } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, Trash2, Upload, Image as ImageIcon, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -229,8 +229,8 @@ function PackageItem({
     const formattedPrice = formatCurrency(sellPrice);
     
     return (
-        <Collapsible>
-            <Card className="overflow-hidden">
+        <Collapsible asChild>
+            <Card className="overflow-hidden group">
                 <div className="p-4 flex items-center">
                     <div className="flex-1 pr-4">
                         <FormField control={control} name={`packages.${index}.name`} render={({ field }) => ( 
@@ -269,7 +269,7 @@ function PackageItem({
                         </DropdownMenu>
                         <CollapsibleTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:-rotate-180" />
+                                <ChevronRight className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                             </Button>
                         </CollapsibleTrigger>
                     </div>
@@ -301,7 +301,7 @@ const CollapsibleCardHeader = ({ title, description, children, count }: { title:
             {children}
             <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="icon">
-                    <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    <ChevronRight className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                 </Button>
             </CollapsibleTrigger>
         </div>
@@ -351,7 +351,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                             const currentConfig = isChecked ? fields[fieldIndex] as any : null;
 
                             return (
-                                <Collapsible key={option.id} asChild>
+                                <Collapsible key={option.id} asChild className="group">
                                     <div className="p-4 border rounded-lg">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-3">
@@ -367,7 +367,7 @@ function MotorConfigurationsCard({ control }: { control: any }) {
                                             {isChecked && (
                                                 <CollapsibleTrigger asChild>
                                                     <Button variant="ghost" size="icon">
-                                                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                                        <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                                                     </Button>
                                                 </CollapsibleTrigger>
                                             )}
@@ -737,12 +737,12 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                                 <Separator className="my-4" />
                                                 <div className="space-y-4">
                                                     {categorizedPackages.map(({ name, items }) => (
-                                                        <Collapsible key={name} asChild>
+                                                        <Collapsible key={name} asChild className="group">
                                                             <div className="border rounded-lg">
                                                                 <div className="flex items-center justify-between p-4">
                                                                     <CollapsibleTrigger asChild>
                                                                         <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
-                                                                            <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                                            <ChevronRight className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                                                                             <h3 className="font-semibold text-lg">{name}</h3>
                                                                             <span className="text-muted-foreground font-normal ml-2">({items.length})</span>
                                                                         </button>
@@ -767,12 +767,12 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                                             </div>
                                                         </Collapsible>
                                                     ))}
-                                                    <Collapsible asChild>
+                                                    <Collapsible asChild className="group">
                                                         <div className="border rounded-lg">
                                                              <div className="flex items-center justify-between p-4">
                                                                 <CollapsibleTrigger asChild>
                                                                     <button type="button" className="flex items-center cursor-pointer group flex-1 text-left">
-                                                                        <ChevronDown className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                                                        <ChevronRight className="h-4 w-4 mr-2 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                                                                         <h3 className="font-semibold text-lg">Uncategorized</h3>
                                                                         <span className="text-muted-foreground font-normal ml-2">({uncategorizedPackages.length})</span>
                                                                     </button>
@@ -802,7 +802,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                         </div>
 
                         <div className="lg:col-span-3 space-y-8">
-                             <Collapsible asChild>
+                             <Collapsible asChild className="group">
                                 <Card>
                                     <CollapsibleCardHeader title="Cover Image" />
                                     <CollapsibleContent>
@@ -852,11 +852,11 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                             </FormItem>
                                         )} />
                                         <div className="pt-6">
-                                                <Collapsible>
+                                                <Collapsible className="group">
                                                     <CollapsibleTrigger asChild>
                                                         <Button type="button" variant="ghost" className="w-full flex justify-between items-center text-sm font-medium py-2 border-t border-b data-[state=open]:border-b-0">
                                                             <span>Image Gallery ({galleryImageFields.length})</span>
-                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                                            <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                                                         </Button>
                                                     </CollapsibleTrigger>
                                                     <CollapsibleContent className="border-b">
@@ -924,7 +924,7 @@ export function SurteesModelEditor({ model, docPath }: { model: any; docPath: st
                                 </Card>
                             </Collapsible>
                             
-                             <Collapsible asChild>
+                             <Collapsible asChild className="group">
                                 <Card>
                                     <CollapsibleCardHeader title="Specifications">
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button>
