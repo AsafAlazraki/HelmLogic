@@ -79,7 +79,7 @@ const documentSchema = z.object({
   url: z.string().min(1, "Document URL is required"),
 });
 
-const highfieldModelSchema = z.object({
+export const highfieldModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     specifications: z.object({
@@ -788,13 +788,6 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
                 console.error("Form errors", errors);
                 toast({ variant: "destructive", title: "Validation Error", description: "Please check the form for errors." });
             })} className="space-y-6">
-                <div className="flex justify-end gap-2">
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Changes
-                    </Button>
-                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                     <div className="lg:col-span-4 space-y-8">
@@ -1028,5 +1021,3 @@ export function HighfieldModelEditor({ model, docPath }: { model: any; docPath: 
         </FormProvider>
     );
 }
-
-    

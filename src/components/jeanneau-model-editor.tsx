@@ -68,7 +68,7 @@ const documentSchema = z.object({
   url: z.string().min(1, "Document URL is required"),
 });
 
-const modelSchema = z.object({
+export const jeanneauModelSchema = z.object({
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     cost: z.coerce.number().nullable().optional(),
@@ -84,7 +84,7 @@ const modelSchema = z.object({
     documents: z.array(documentSchema).default([]),
 });
 
-type ModelFormData = z.infer<typeof modelSchema>;
+type ModelFormData = z.infer<typeof jeanneauModelSchema>;
 
 const GST_RATE = 0.10;
 
@@ -668,7 +668,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     }, []);
 
     const form = useForm<ModelFormData>({
-        resolver: zodResolver(modelSchema),
+        resolver: zodResolver(jeanneauModelSchema),
         defaultValues: getSafeDefaultValues(model),
     });
     
@@ -686,7 +686,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
     const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
     
     const watchedPackages = useWatch({ control, name: 'packages' });
-    const watchedColors = useWatch({ control, name: 'colors' });
     const coverImageUrl = useWatch({ control, name: "coverImageUrl" });
 
     const { uncategorizedPackages, categorizedPackages, allCategories } = useMemo(() => {
@@ -785,12 +784,6 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
         <FormProvider {...form}>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmitting}>
-                           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save Changes
-                        </Button>
-                    </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                         <div className="lg:col-span-4 space-y-8">
@@ -905,36 +898,30 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                             <FormField control={control} name="coverImageUrl" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel className="sr-only">Cover Image</FormLabel>
-                                                    <div className="relative aspect-video w-full overflow-hidden rounded-md group bg-background border">
-                                                        {isCoverUploading && (
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-                                                                <Loader2 className="h-8 w-8 animate-spin text-white" />
-                                                            </div>
-                                                        )}
-                                                        {coverImageUrl ? (
-                                                            <>
-                                                                <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="icon"
-                                                                    className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                                                                    onClick={() => field.onChange(null)}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            </>
-                                                        ) : (
-                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 cursor-pointer hover:bg-secondary/50">
+                                                    {coverImageUrl ? (
+                                                        <div className="relative aspect-video w-full overflow-hidden rounded-md group">
+                                                            <Image src={coverImageUrl} alt="Cover image" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 border-background/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                                                                onClick={() => field.onChange(null)}
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-center w-full">
+                                                            <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted">
                                                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                                     <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
                                                                     <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Upload Cover Image</span></p>
                                                                 </div>
                                                                 <FormControl>
-                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" disabled={isCoverUploading} onChange={async (e) => {
-                                                                        const file = e.target.files?.[0];
+                                                                    <Input id="cover-image-upload" type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                                         const file = e.target.files?.[0];
                                                                         if (file && model && storage) {
-                                                                            setIsCoverUploading(true);
                                                                             try {
                                                                                 const path = `data-warehouse/models/${model.id}/cover/${Date.now()}-${file.name}`;
                                                                                 const url = await uploadFileWithProgress(storage, file, path, () => {});
@@ -942,15 +929,13 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                             } catch (err) {
                                                                                 console.error("Upload failed", err);
                                                                                 toast({ variant: "destructive", title: "Upload Failed" });
-                                                                            } finally {
-                                                                                setIsCoverUploading(false);
                                                                             }
                                                                         }
                                                                     }} />
                                                                 </FormControl>
                                                             </label>
-                                                        )} 
-                                                    </div>
+                                                        </div> 
+                                                    )}
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
@@ -972,7 +957,7 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                             name={`galleryImageUrls.${index}`}
                                                                             render={({ field }) => (
                                                                                 <>
-                                                                                    {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" sizes="(max-width: 768px) 33vw, 15vw" /> }
+                                                                                    {field.value && <Image src={field.value} alt={`Gallery image ${index + 1}`} fill className="object-cover rounded-md" />}
                                                                                     <Button
                                                                                         type="button"
                                                                                         variant="destructive"
@@ -987,11 +972,10 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                         />
                                                                     </div>
                                                                 ))}
-                                                                <label htmlFor="gallery-image-upload" className={cn("aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary", isGalleryUploading && "bg-muted/50 cursor-not-allowed")}>
-                                                                    <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" disabled={isGalleryUploading} onChange={async (e) => {
+                                                                <label htmlFor="gallery-image-upload" className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-secondary">
+                                                                    <Input id="gallery-image-upload" type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
                                                                         const files = Array.from(e.target.files || []);
                                                                         if (files.length > 0 && model && storage) {
-                                                                            setIsGalleryUploading(true);
                                                                             try {
                                                                                 for (const file of files) {
                                                                                     const path = `data-warehouse/models/${model.id}/gallery/${Date.now()}-${file.name}`;
@@ -1000,13 +984,10 @@ export function JeanneauModelEditor({ model, docPath }: { model: any; docPath: s
                                                                                 }
                                                                             } catch (err) {
                                                                                 console.error("Gallery upload failed", err);
-                                                                                toast({ variant: "destructive", title: "Gallery Upload Failed" });
-                                                                            } finally {
-                                                                                setIsGalleryUploading(false);
                                                                             }
                                                                         }
                                                                     }}/>
-                                                                    {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/> : <Plus className="h-6 w-6 text-muted-foreground"/>}
+                                                                    <Plus className="h-6 w-6 text-muted-foreground"/>
                                                                 </label>
                                                             </div>
                                                         </div>
