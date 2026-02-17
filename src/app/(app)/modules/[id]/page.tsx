@@ -3,12 +3,15 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import { Loader2, ChevronRight, Wrench, FileText, ClipboardList } from 'lucide-react';
+import { collection, query, where, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -17,8 +20,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import ManageOrganisationPage from "@/components/manage-organisation-page";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { createSlug, cn } from '@/lib/utils';
+import { ModuleVendorAccessDialog } from '@/components/module-vendor-access-dialog';
 
 interface Vendor {
     id: string;
@@ -32,6 +40,7 @@ interface Organisation {
     id: string;
     name: string;
     enabledModuleSubscriptions?: string[];
+    moduleAssociatedVendorAccess?: Record<string, string[]>;
 }
 
 interface Range {
@@ -53,6 +62,11 @@ interface Model {
   [key: string]: any;
 }
 
+const formSchema = z.object({
+  name: z.string().min(1, { message: 'Module name is required.' }),
+  mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
+  associatedVendorIds: z.array(z.string()).default([]),
+});
 
 function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
@@ -130,31 +144,6 @@ function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Ve
                             <p className="font-semibold text-center line-clamp-2">{model.name}</p>
                         </CardContent>
                     </div>
-
-                    {vendor.slug === 'stabicraft' && (
-                        <div className="p-3 border-t">
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
-                                </div>
-                                <div className="space-y-1 min-h-[108px] flex flex-col">
-                                    {(model.packageLevels && model.packageLevels.length > 0) ? (
-                                        <div className="flex-grow space-y-1">
-                                        {model.packageLevels.map(pkg => (
-                                            <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full h-full">
-                                                <span className="font-medium truncate pr-2">{pkg.name}</span>
-                                            </div>
-                                        ))}
-                                        </div>
-                                    ) : (
-                                        <div className="flex-grow flex items-center justify-center text-xs text-muted-foreground">
-                                            <p>No packages defined.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </Card>
             ))}
         </div>
@@ -186,14 +175,17 @@ export default function ModuleDetailsPage() {
     const router = useRouter();
     const params = useParams();
     const slugOrId = params.id as string;
-    
-    // State for configuration flow
+    const { toast } = useToast();
+    const firestore = useFirestore();
+
     const [view, setView] = useState<'ranges' | 'models' | 'bmt' | 'quote' | 'operations'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [isChoiceDialogOpen, setIsChoiceDialogOpen] = useState(false);
-
-    const firestore = useFirestore();
+    
+    const [isSavingModule, setIsSavingModule] = useState(false);
+    const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
+    const [activeVendorConfigOrg, setActiveVendorConfigOrg] = useState<Organisation | null>(null);
 
     const { user, loading: userLoading } = useUser();
     const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string }>(user ? `/users/${user.uid}` : null);
@@ -209,12 +201,109 @@ export default function ModuleDetailsPage() {
     const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
     const moduleLoading = slugLoading || idLoading;
     
-    const { data: mainVendor, loading: mainVendorLoading } = useDoc<Vendor>(moduleData ? `/data-warehouse/${moduleData.mainVendorId}` : null);
+    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
+    const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>('organisations');
+    
+    const mainVendor = useMemo(() => allVendors?.find(v => v.id === moduleData?.mainVendorId), [allVendors, moduleData]);
         
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
     const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
     
-    // NEW handlers for the configuration flow
+    const subscribedOrgs = useMemo(() => {
+        if (!allOrganisations || !moduleData) return [];
+        return allOrganisations.filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id));
+    }, [allOrganisations, moduleData]);
+
+    const [tempSubscribedOrgIds, setTempSubscribedOrgs] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (subscribedOrgs.length > 0) {
+            setTempSubscribedOrgs(subscribedOrgs.map(o => o.id));
+        }
+    }, [subscribedOrgs]);
+
+    const settingsForm = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: { name: '', mainVendorId: '', associatedVendorIds: [] },
+    });
+
+    useEffect(() => {
+        if (moduleData) {
+            settingsForm.reset({
+                name: moduleData.name,
+                mainVendorId: moduleData.mainVendorId,
+                associatedVendorIds: moduleData.associatedVendorIds || [],
+            });
+        }
+    }, [moduleData, settingsForm]);
+
+    async function onSettingsSubmit(values: z.infer<typeof formSchema>) {
+        if (!moduleData) return;
+        setIsSavingModule(true);
+        try {
+            const moduleRef = doc(firestore, 'modules', moduleData.id);
+            const vendor = allVendors?.find(v => v.id === values.mainVendorId);
+            const dataToUpdate = {
+                name: values.name,
+                slug: createSlug(values.name),
+                mainVendorId: values.mainVendorId,
+                associatedVendorIds: values.associatedVendorIds,
+                logoUrl: vendor?.logoUrl || null,
+            };
+
+            await updateDoc(moduleRef, dataToUpdate);
+            toast({ title: 'Module Updated' });
+            if (dataToUpdate.slug !== slugOrId) {
+                router.replace(`/modules/${dataToUpdate.slug}`);
+            }
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Update Failed' });
+        } finally {
+            setIsSavingModule(false);
+        }
+    }
+
+    const handleSaveSubscriptions = async () => {
+        if (!allOrganisations || !moduleData) return;
+        setIsSavingSubscriptions(true);
+        const batch = writeBatch(firestore);
+
+        allOrganisations.forEach(org => {
+            const orgRef = doc(firestore, 'organisations', org.id);
+            const currentSubs = org.enabledModuleSubscriptions || [];
+            const shouldBeSubscribed = tempSubscribedOrgIds.includes(org.id);
+            
+            if (shouldBeSubscribed && !currentSubs.includes(moduleData.id)) {
+                batch.update(orgRef, { enabledModuleSubscriptions: [...currentSubs, moduleData.id] });
+            } else if (!shouldBeSubscribed && currentSubs.includes(moduleData.id)) {
+                batch.update(orgRef, { enabledModuleSubscriptions: currentSubs.filter(id => id !== moduleData.id) });
+            }
+        });
+
+        try {
+            await batch.commit();
+            toast({ title: "Subscriptions updated." });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Failed to save subscriptions." });
+        } finally {
+            setIsSavingSubscriptions(false);
+        }
+    };
+
+    const handleUpdateOrgVendorAccess = async (moduleId: string, vendorIds: string[]) => {
+        if (!activeVendorConfigOrg) return;
+        try {
+            const orgRef = doc(firestore, 'organisations', activeVendorConfigOrg.id);
+            const currentAccess = activeVendorConfigOrg.moduleAssociatedVendorAccess || {};
+            await updateDoc(orgRef, {
+                [`moduleAssociatedVendorAccess.${moduleId}`]: vendorIds
+            });
+            toast({ title: "Vendor access updated." });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Failed to update access." });
+        }
+    };
+
     const handleRangeSelect = (range: Range) => {
         setSelectedRange(range);
         setView('models');
@@ -241,7 +330,7 @@ export default function ModuleDetailsPage() {
         }
     };
     
-    const loading = moduleLoading || mainVendorLoading || userLoading || profileLoading;
+    const loading = moduleLoading || vendorsLoading || orgsLoading || userLoading || profileLoading;
     const defaultTab = isAdmin ? 'bmt' : 'dashboard';
 
     if (loading) {
@@ -249,7 +338,7 @@ export default function ModuleDetailsPage() {
     }
     
     if (!moduleData) {
-        return <Card><CardHeader><CardTitle>Module Not Found</CardTitle></CardHeader><CardContent><p>The requested module could not be found.</p></CardContent></Card>;
+        return <Card><CardHeader><CardTitle>Module Not Found</CardTitle></CardHeader></Card>;
     }
     
     const breadcrumbParts = [
@@ -286,36 +375,13 @@ export default function ModuleDetailsPage() {
                     <TabsContent value="dashboard">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-1 flex flex-col gap-6">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>In Stock</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-muted-foreground">Stock information will be displayed here.</p>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>On Order</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-muted-foreground">Ordered items will be displayed here.</p>
-                                    </CardContent>
-                                </Card>
+                                <Card><CardHeader><CardTitle>In Stock</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Stock information will be displayed here.</p></CardContent></Card>
+                                <Card><CardHeader><CardTitle>On Order</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Ordered items will be displayed here.</p></CardContent></Card>
                             </div>
                             <div className="lg:col-span-2">
                                 <Card className="h-full flex flex-col">
-                                    <CardHeader>
-                                        <CardTitle>Quotes</CardTitle>
-                                        <CardDescription>A list of recently created quotes.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="flex-grow">
-                                        <ScrollArea className="h-[500px]">
-                                            <div className="flex items-center justify-center h-full p-8 text-muted-foreground">
-                                                <p>Quotes list will appear here.</p>
-                                            </div>
-                                        </ScrollArea>
-                                    </CardContent>
+                                    <CardHeader><CardTitle>Quotes</CardTitle><CardDescription>A list of recently created quotes.</CardDescription></CardHeader>
+                                    <CardContent className="flex-grow"><ScrollArea className="h-[500px]"><div className="flex items-center justify-center h-full p-8 text-muted-foreground"><p>Quotes list will appear here.</p></div></ScrollArea></CardContent>
                                 </Card>
                             </div>
                         </div>
@@ -326,9 +392,7 @@ export default function ModuleDetailsPage() {
                    {view === 'ranges' || view === 'models' ? (
                         <Card>
                             <CardHeader>
-                                <CardTitle>
-                                    {view === 'ranges' ? 'Select a Product Range' : `Models in ${selectedRange?.name}`}
-                                </CardTitle>
+                                <CardTitle>{view === 'ranges' ? 'Select a Product Range' : `Models in ${selectedRange?.name}`}</CardTitle>
                                 <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />
                             </CardHeader>
                             <CardContent>
@@ -338,7 +402,7 @@ export default function ModuleDetailsPage() {
                                         {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} />}
                                     </>
                                 ) : (
-                                    <p className="text-muted-foreground">This module's main vendor is not a boat brand. No configuration view available.</p>
+                                    <p className="text-muted-foreground">No configuration view available for this vendor type.</p>
                                 )}
                             </CardContent>
                         </Card>
@@ -350,15 +414,7 @@ export default function ModuleDetailsPage() {
                                     docPath={`/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} 
                                     vendor={mainVendor} 
                                     module={moduleData} 
-                                    breadcrumbs={
-                                        <ModuleConfigurationBreadcrumbs
-                                            module={moduleData}
-                                            range={selectedRange}
-                                            model={selectedModel}
-                                            view={view}
-                                            onBreadcrumbClick={handleBreadcrumbClick}
-                                        />
-                                    }
+                                    breadcrumbs={<ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
                                     user={user}
                                     isAdmin={isAdmin}
                                     organisationId={userProfile?.organisationId}
@@ -377,53 +433,114 @@ export default function ModuleDetailsPage() {
                 </TabsContent>
 
                 <TabsContent value="operations">
-                    <Card>
-                         <CardHeader><CardTitle>Operations</CardTitle><CardDescription>Placeholder for operations functionality.</CardDescription></CardHeader>
-                        <CardContent><p className="text-muted-foreground">This section will contain operations-related features for the {moduleData.name} module.</p></CardContent>
-                    </Card>
+                    <Card><CardHeader><CardTitle>Operations</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Operations features coming soon.</p></CardContent></Card>
                 </TabsContent>
 
                  {isAdmin && (
                     <TabsContent value="organisations">
-                       <ManageOrganisationPage orgId={moduleData.mainVendorId} />
+                       <Card>
+                            <CardHeader>
+                                <CardTitle>Subscribed Organisations</CardTitle>
+                                <CardDescription>Managing organisations subscribed to {moduleData.name}.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {subscribedOrgs.length > 0 ? (
+                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                        {subscribedOrgs.map(org => (
+                                            <Card key={org.id} className="relative group">
+                                                <div className="p-4 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center"><Building className="h-5 w-5 text-muted-foreground" /></div>
+                                                        <div className="font-medium text-sm">{org.name}</div>
+                                                    </div>
+                                                    <Button variant="ghost" size="icon" onClick={() => setActiveVendorConfigOrg(org)}><Settings2 className="h-4 w-4" /></Button>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg"><Building className="h-12 w-12 mx-auto mb-4 opacity-20"/><p>No organisations are currently subscribed to this module.</p></div>
+                                )}
+                            </CardContent>
+                       </Card>
                     </TabsContent>
                 )}
 
                 {isAdmin && (
-                    <TabsContent value="settings" className="space-y-4">
-                       <ManageOrganisationPage orgId={moduleData.mainVendorId} />
+                    <TabsContent value="settings" className="space-y-6">
+                        <Form {...settingsForm}>
+                            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div><CardTitle>Module Configuration</CardTitle></div>
+                                        <Button type="submit" disabled={isSavingModule}>{isSavingModule ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}Save Settings</Button>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <FormField control={settingsForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Module Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={settingsForm.control} name="mainVendorId" render={({ field }) => ( <FormItem><FormLabel>Main Vendor</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select main vendor" /></SelectTrigger></FormControl><SelectContent>{allVendors?.map(v => (<SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>))}</SelectContent></Select></FormItem> )} />
+                                        <FormField control={settingsForm.control} name="associatedVendorIds" render={() => (
+                                            <FormItem>
+                                                <FormLabel>Associated Vendors</FormLabel>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-2">
+                                                    {allVendors?.map((vendor) => (
+                                                        <FormField key={vendor.id} control={settingsForm.control} name="associatedVendorIds" render={({ field }) => (
+                                                            <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md"><FormControl><Checkbox checked={field.value?.includes(vendor.id)} onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), vendor.id]) : field.onChange(field.value?.filter(v => v !== vendor.id))}/></FormControl><FormLabel className="font-normal">{vendor.name}</FormLabel></FormItem>
+                                                        )} />
+                                                    ))}
+                                                </div>
+                                            </FormItem>
+                                        )} />
+                                    </CardContent>
+                                </Card>
+                            </form>
+                        </Form>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div><CardTitle>Organisation Access</CardTitle><CardDescription>Select which organisations can use this module.</CardDescription></div>
+                                <Button onClick={handleSaveSubscriptions} disabled={isSavingSubscriptions}>{isSavingSubscriptions ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}Save Subscriptions</Button>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {allOrganisations?.map(org => (
+                                    <div key={org.id} className="flex items-center space-x-3 p-3 border rounded-md">
+                                        <Checkbox id={`org-sub-${org.id}`} checked={tempSubscribedOrgIds.includes(org.id)} onCheckedChange={(checked) => checked ? setTempSubscribedOrgs(prev => [...prev, org.id]) : setTempSubscribedOrgs(prev => prev.filter(id => id !== org.id))} />
+                                        <label htmlFor={`org-sub-${org.id}`} className="font-normal text-sm cursor-pointer">{org.name}</label>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
                     </TabsContent>
                 )}
             </Tabs>
              <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
                 <DialogContent className="sm:max-w-3xl">
                     <DialogHeader>
-                        <DialogTitle className="text-center text-2xl font-semibold text-card-foreground">{selectedModel?.name}</DialogTitle>
-                        <DialogDescription className="text-center text-lg text-muted-foreground">What would you like to do with this model?</DialogDescription>
+                        <DialogTitle className="text-center text-2xl font-semibold">{selectedModel?.name}</DialogTitle>
+                        <DialogDescription className="text-center text-lg">What would you like to do with this model?</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
-                        <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('bmt')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
-                                <Wrench className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
-                                <p className="font-semibold text-xl">Configuration</p>
-                            </CardContent>
+                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('bmt')}>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><Wrench className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Configuration</p></CardContent>
                         </Card>
-                        <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
-                                <FileText className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
-                                <p className="font-semibold text-xl">Quotation</p>
-                            </CardContent>
+                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Quotation</p></CardContent>
                         </Card>
-                         <Card className="group cursor-pointer bg-card text-card-foreground hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
-                                <ClipboardList className="h-12 w-12 text-primary transition-transform group-hover:scale-110" />
-                                <p className="font-semibold text-xl">Operations</p>
-                            </CardContent>
+                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4"><ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" /><p className="font-semibold text-xl">Operations</p></CardContent>
                         </Card>
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {activeVendorConfigOrg && moduleData && (
+                <ModuleVendorAccessDialog 
+                    isOpen={!!activeVendorConfigOrg}
+                    setIsOpen={(open) => !open && setActiveVendorConfigOrg(null)}
+                    module={moduleData}
+                    organisation={activeVendorConfigOrg as any}
+                    allVendors={allVendors || []}
+                    onUpdate={handleUpdateOrgVendorAccess}
+                />
+            )}
         </div>
     );
 }
-    

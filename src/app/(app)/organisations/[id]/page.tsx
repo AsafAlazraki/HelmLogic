@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -33,15 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogClose,
-} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -50,7 +40,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
+import { cn, createSlug } from '@/lib/utils';
+import { ModuleVendorAccessDialog } from '@/components/module-vendor-access-dialog';
 
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
@@ -84,6 +75,7 @@ const formSchema = z.object({
   dataWarehouseSubscriptions: z.array(z.string()).optional(),
   enabledModuleSubscriptions: z.array(z.string()).optional(),
   moduleAssociatedVendorAccess: z.record(z.string(), z.array(z.string())).optional(),
+  dealerFitCategories: z.array(z.string()).optional(),
   parentOrganisationId: z.string().nullable().optional(),
 });
 
@@ -111,11 +103,10 @@ interface Module {
     associatedVendorIds?: string[];
 }
 
-const createSlug = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '');
+interface DealerFitCategory {
+    id: string;
+    name: string;
+}
 
 const permissionsConfig = [
     { id: 'viewFinancials', label: 'View Financials' },
@@ -123,104 +114,6 @@ const permissionsConfig = [
     { id: 'manageUsers', label: 'Manage Users' },
     { id: 'manageDataSources', label: 'Manage Data Sources' },
 ];
-
-function ModuleVendorAccessDialog({ 
-    isOpen, 
-    setIsOpen, 
-    module, 
-    organisation, 
-    allVendors,
-    onUpdate
-}: { 
-    isOpen: boolean; 
-    setIsOpen: (open: boolean) => void; 
-    module: Module; 
-    organisation: OrganisationFormData;
-    allVendors: Vendor[];
-    onUpdate: (moduleId: string, vendorIds: string[]) => void;
-}) {
-    const currentAllowedVendorIds = useMemo(() => 
-        organisation.moduleAssociatedVendorAccess?.[module.id] || [], 
-    [organisation, module]);
-
-    const associatedVendors = useMemo(() => {
-        if (!module.associatedVendorIds || !allVendors) return [];
-        return allVendors.filter(v => module.associatedVendorIds?.includes(v.id));
-    }, [module, allVendors]);
-
-    // Main vendor and Motor brands are always accessible
-    const motorVendorIds = useMemo(() => 
-        associatedVendors.filter(v => v.vendorType === 'Motor Brand').map(v => v.id),
-    [associatedVendors]);
-
-    const handleToggle = (vendorId: string, checked: boolean) => {
-        const newValue = checked 
-            ? [...currentAllowedVendorIds, vendorId]
-            : currentAllowedVendorIds.filter(id => id !== vendorId);
-        onUpdate(module.id, newValue);
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Configure Vendor Access for {module.name}</DialogTitle>
-                    <DialogDescription>
-                        Grant or revoke access to specific vendors for this organisation within this module.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Auto-Granted Access</h4>
-                        <p className="text-xs text-muted-foreground mb-2">These vendors are always available within the module.</p>
-                        <div className="space-y-2">
-                            {allVendors?.find(v => v.id === module.mainVendorId) && (
-                                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/50 border text-sm opacity-70">
-                                    <Check className="h-4 w-4 text-green-600" />
-                                    <span>Main Vendor: {allVendors.find(v => v.id === module.mainVendorId)?.name}</span>
-                                </div>
-                            )}
-                            {associatedVendors.filter(v => v.vendorType === 'Motor Brand').map(v => (
-                                <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/50 border text-sm opacity-70">
-                                    <Check className="h-4 w-4 text-green-600" />
-                                    <span>Motor Brand: {v.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Optional Associated Vendors</h4>
-                        <p className="text-xs text-muted-foreground mb-2">Select which additional vendors this organisation can access.</p>
-                        <div className="grid gap-2">
-                            {associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').length > 0 ? (
-                                associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').map(vendor => (
-                                    <div key={vendor.id} className="flex items-center space-x-3 p-2 rounded-md border hover:bg-muted/50 transition-colors">
-                                        <Checkbox 
-                                            id={`vendor-${vendor.id}`} 
-                                            checked={currentAllowedVendorIds.includes(vendor.id)}
-                                            onCheckedChange={(checked) => handleToggle(vendor.id, !!checked)}
-                                        />
-                                        <Label htmlFor={`vendor-${vendor.id}`} className="font-normal text-sm cursor-pointer flex-1">
-                                            {vendor.name}
-                                        </Label>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-sm text-muted-foreground py-4 text-center border-2 border-dashed rounded-md">No optional associated vendors for this module.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button type="button">Close</Button>
-                    </DialogClose>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 export default function OrganisationDetailsPage() {
     const params = useParams();
@@ -251,6 +144,7 @@ export default function OrganisationDetailsPage() {
 
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
     const { data: allModules, loading: modulesLoading } = useCollection<Module>('modules');
+    const { data: allDealerFitCategories, loading: catsLoading } = useCollection<DealerFitCategory>('dealerFitCategories');
 
     const subDealersQuery = useMemo(() => {
         if (!organisation) return null;
@@ -288,6 +182,7 @@ export default function OrganisationDetailsPage() {
                 dataWarehouseSubscriptions: organisation.dataWarehouseSubscriptions || [],
                 enabledModuleSubscriptions: organisation.enabledModuleSubscriptions || [],
                 moduleAssociatedVendorAccess: organisation.moduleAssociatedVendorAccess || {},
+                dealerFitCategories: organisation.dealerFitCategories || [],
             });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
@@ -296,12 +191,11 @@ export default function OrganisationDetailsPage() {
 
     const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
         if (!organisation) return [];
-        const parts: BreadcrumbPart[] = [
+        return [
             { href: '/admin', label: 'Admin' },
             { href: '/organisations', label: 'Organisations' },
             { href: `/organisations/${organisation.slug || organisation.id}`, label: organisation.name },
         ];
-        return parts;
     }, [organisation]);
 
     async function onInviteSubmit(values: InviteFormData) {
@@ -310,11 +204,7 @@ export default function OrganisationDetailsPage() {
         
         const roleName = organisation.roles?.find(r => r.id === values.roleId)?.name;
         if (!roleName) {
-            toast({
-                variant: "destructive",
-                title: "Invalid Role",
-                description: "The selected role could not be found."
-            });
+            toast({ variant: "destructive", title: "Invalid Role" });
             setIsInviting(false);
             return;
         }
@@ -329,20 +219,13 @@ export default function OrganisationDetailsPage() {
             });
     
             if (result.success) {
-                toast({
-                    title: "Invite Sent",
-                    description: result.message
-                });
+                toast({ title: "Invite Sent", description: result.message });
                 inviteForm.reset();
             } else {
                 throw new Error(result.message);
             }
         } catch (error: any) {
-            toast({
-                variant: "destructive",
-                title: "Failed to Send Invite",
-                description: error.message || "An unexpected error occurred."
-            });
+            toast({ variant: "destructive", title: "Failed to Send Invite", description: error.message });
         } finally {
             setIsInviting(false);
         }
@@ -370,6 +253,7 @@ export default function OrganisationDetailsPage() {
                 dataWarehouseSubscriptions: values.dataWarehouseSubscriptions || [],
                 enabledModuleSubscriptions: values.enabledModuleSubscriptions || [],
                 moduleAssociatedVendorAccess: values.moduleAssociatedVendorAccess || {},
+                dealerFitCategories: values.dealerFitCategories || [],
             };
             
             if (values.primaryLogo instanceof File && storage) {
@@ -377,8 +261,6 @@ export default function OrganisationDetailsPage() {
                 dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
             } else if (values.primaryLogoUrl === '') {
                 dataToUpdate.primaryLogoUrl = null;
-            } else {
-                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl || null;
             }
             
             if (values.secondaryLogo instanceof File && storage) {
@@ -386,8 +268,6 @@ export default function OrganisationDetailsPage() {
                 dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
             } else if (values.secondaryLogoUrl === '') {
                 dataToUpdate.secondaryLogoUrl = null;
-            } else {
-                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl || null;
             }
 
             await updateDoc(orgDocRef, dataToUpdate)
@@ -396,17 +276,17 @@ export default function OrganisationDetailsPage() {
                         path: orgDocRef.path, operation: 'update', requestResourceData: dataToUpdate,
                     });
                     errorEmitter.emit('permission-error', permissionError);
-                    throw serverError; // Re-throw
+                    throw serverError;
                 });
 
-            toast({ title: 'Organisation updated', description: `${values.name} has been updated successfully.` });
+            toast({ title: 'Organisation updated' });
             if (dataToUpdate.slug !== slugOrId) {
                 router.replace(`/organisations/${dataToUpdate.slug}`);
             }
 
         } catch (error: any) {
             console.error("Failed to update organisation:", error);
-            toast({ variant: 'destructive', title: 'Failed to update organisation', description: error.message || 'An unexpected error occurred.' });
+            toast({ variant: 'destructive', title: 'Failed to update organisation', description: error.message });
         } finally {
             setIsSubmitting(false);
         }
@@ -421,11 +301,11 @@ export default function OrganisationDetailsPage() {
                 errorEmitter.emit('permission-error', permissionError);
                 throw serverError;
             });
-            toast({ title: 'Organisation deleted', description: `${organisation.name} has been permanently removed.` });
+            toast({ title: 'Organisation deleted' });
             window.location.href = '/organisations';
         } catch (error) {
             console.error("Failed to delete organisation:", error);
-            toast({ variant: 'destructive', title: 'Deletion failed', description: 'Could not delete the organisation.' });
+            toast({ variant: 'destructive', title: 'Deletion failed' });
             setIsDeleteDialogOpen(false);
         }
     };
@@ -489,7 +369,7 @@ export default function OrganisationDetailsPage() {
                                 <div className="grid gap-8 lg:grid-cols-3">
                                     <div className="lg:col-span-2 space-y-8">
                                         <Card>
-                                            <CardHeader><CardTitle>Organisation Details</CardTitle><CardDescription>Primary details for the organisation.</CardDescription></CardHeader>
+                                            <CardHeader><CardTitle>Organisation Details</CardTitle></CardHeader>
                                             <CardContent className="space-y-6">
                                                 <FormField control={form.control} name="name" render={({ field }) => (
                                                     <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
@@ -508,7 +388,7 @@ export default function OrganisationDetailsPage() {
                                             </CardContent>
                                         </Card>
                                         <Card>
-                                            <CardHeader><CardTitle>Role Hierarchy</CardTitle><CardDescription>Build the organisation's role structure.</CardDescription></CardHeader>
+                                            <CardHeader><CardTitle>Role Hierarchy</CardTitle></CardHeader>
                                             <CardContent>
                                                 <FormField control={form.control} name="roles" render={({ field }) => (<RoleHierarchyChart value={field.value || []} onChange={field.onChange} />)} />
                                             </CardContent>
@@ -516,7 +396,7 @@ export default function OrganisationDetailsPage() {
                                     </div>
                                     <div className="lg:col-span-1 space-y-8">
                                         <Card>
-                                            <CardHeader><CardTitle>Organisation Branding</CardTitle><CardDescription>Customize the look and feel.</CardDescription></CardHeader>
+                                            <CardHeader><CardTitle>Organisation Branding</CardTitle></CardHeader>
                                             <CardContent className="space-y-6">
                                                 <ColorFormField name="primaryColor" label="Primary Color" description="The main brand color."/>
                                                 <ColorFormField name="accentColor" label="Accent Color" description="Color for highlights and links."/>
@@ -547,7 +427,7 @@ export default function OrganisationDetailsPage() {
                                                             field.onChange(file);
                                                             setPrimaryLogoPreview(file ? URL.createObjectURL(file) : null);
                                                         }} /></FormControl>
-                                                        <FormDescription>Upload a new logo to replace the existing one.</FormDescription><FormMessage />
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="secondaryLogo" render={({ field }) => (
@@ -575,7 +455,7 @@ export default function OrganisationDetailsPage() {
                                                             field.onChange(file);
                                                             setSecondaryLogoPreview(file ? URL.createObjectURL(file) : null);
                                                         }} /></FormControl>
-                                                        <FormDescription>An icon or alternative brand mark.</FormDescription><FormMessage />
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
                                             </CardContent>
@@ -584,7 +464,7 @@ export default function OrganisationDetailsPage() {
                                 </div>
                                 <Card className="border-destructive">
                                     <CardHeader><CardTitle className="text-destructive">Danger Zone</CardTitle></CardHeader>
-                                    <CardContent><p className="text-sm text-muted-foreground">Deleting this organisation is permanent and cannot be undone. All associated data will be lost.</p></CardContent>
+                                    <CardContent><p className="text-sm text-muted-foreground">Deleting this organisation is permanent and cannot be undone.</p></CardContent>
                                     <CardFooter>
                                         <Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete Organisation</Button>
                                     </CardFooter>
@@ -593,62 +473,24 @@ export default function OrganisationDetailsPage() {
                             
                             <TabsContent value="users">
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle>Users &amp; Permissions</CardTitle>
-                                        <CardDescription>Invite new users, manage existing members, and configure role-based permissions.</CardDescription>
-                                    </CardHeader>
+                                    <CardHeader><CardTitle>Users &amp; Permissions</CardTitle></CardHeader>
                                     <CardContent>
                                         <Tabs defaultValue="manage-users">
-                                            <TabsList>
-                                                <TabsTrigger value="manage-users">Manage Users</TabsTrigger>
-                                                <TabsTrigger value="manage-permissions">Manage Permissions</TabsTrigger>
-                                            </TabsList>
+                                            <TabsList><TabsTrigger value="manage-users">Manage Users</TabsTrigger><TabsTrigger value="manage-permissions">Manage Permissions</TabsTrigger></TabsList>
                                             <TabsContent value="manage-users" className="pt-6">
                                                 <h3 className="text-lg font-medium">Invite New User</h3>
                                                 <Form {...inviteForm}>
                                                     <div className="mt-4 space-y-4 max-w-lg">
-                                                        <FormField control={inviteForm.control} name="email" render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Email Address</FormLabel>
-                                                                <FormControl><Input placeholder="name@example.com" {...field} /></FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )} />
-                                                        <FormField control={inviteForm.control} name="roleId" render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Role</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select a role to assign" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {organisation.roles && organisation.roles.length > 0 ? (
-                                                                            organisation.roles.map(role => (
-                                                                                <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
-                                                                            ))
-                                                                        ) : (
-                                                                            <SelectItem value="no-roles" disabled>No roles defined for this organisation</SelectItem>
-                                                                        )}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )} />
+                                                        <FormField control={inviteForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="name@example.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                        <FormField control={inviteForm.control} name="roleId" render={({ field }) => ( <FormItem><FormLabel>Role</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a role to assign" /></SelectTrigger></FormControl><SelectContent>{organisation.roles?.map(role => (<SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )} />
                                                         <Button type="button" disabled={isInviting} onClick={inviteForm.handleSubmit(onInviteSubmit)}>
                                                             {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                             <Mail className="mr-2 h-4 w-4" /> Send Invite
                                                         </Button>
                                                     </div>
                                                 </Form>
-                                                <Separator className="my-6" />
-                                                <h3 className="text-lg font-medium">Existing Users</h3>
-                                                <p className="text-sm text-muted-foreground mt-2">A list of existing users will be displayed here once the feature is implemented.</p>
                                             </TabsContent>
                                             <TabsContent value="manage-permissions" className="pt-6">
-                                                <h3 className="text-lg font-medium">Role Permissions</h3>
-                                                <p className="text-sm text-muted-foreground mt-2">Define what each role can see and do. Changes are saved with the rest of the form.</p>
                                                 <div className="mt-4 rounded-md border">
                                                     <Table>
                                                         <TableHeader>
@@ -658,35 +500,18 @@ export default function OrganisationDetailsPage() {
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {watchedRoles && watchedRoles.length > 0 ? watchedRoles.map((role) => (
+                                                            {watchedRoles?.map((role) => (
                                                                 <TableRow key={role.id}>
                                                                     <TableCell className="font-medium">{role.name}</TableCell>
                                                                     {permissionsConfig.map(permission => (
                                                                         <TableCell key={permission.id} className="text-center">
-                                                                            <FormField
-                                                                                control={form.control}
-                                                                                name={`permissions.${role.id}.${permission.id}`}
-                                                                                render={({ field }) => (
-                                                                                    <FormItem className="flex justify-center p-0 m-0">
-                                                                                        <FormControl>
-                                                                                            <Checkbox
-                                                                                                checked={field.value || false}
-                                                                                                onCheckedChange={field.onChange}
-                                                                                            />
-                                                                                        </FormControl>
-                                                                                    </FormItem>
-                                                                                )}
-                                                                            />
+                                                                            <FormField control={form.control} name={`permissions.${role.id}.${permission.id}`} render={({ field }) => (
+                                                                                <FormItem className="flex justify-center p-0 m-0"><FormControl><Checkbox checked={field.value || false} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                                                            )} />
                                                                         </TableCell>
                                                                     ))}
                                                                 </TableRow>
-                                                            )) : (
-                                                                <TableRow>
-                                                                    <TableCell colSpan={permissionsConfig.length + 1} className="h-24 text-center">
-                                                                        No roles defined. Add roles in the 'Company Details' tab.
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            )}
+                                                            ))}
                                                         </TableBody>
                                                     </Table>
                                                 </div>
@@ -699,175 +524,85 @@ export default function OrganisationDetailsPage() {
                             <TabsContent value="access">
                                 <div className="space-y-8">
                                     <Card>
-                                        <CardHeader>
-                                            <CardTitle>Sub Dealer Module</CardTitle>
-                                            <CardDescription>Enable or disable the Sub Dealers module for this organisation.</CardDescription>
-                                        </CardHeader>
+                                        <CardHeader><CardTitle>Dealer Fit Subscriptions</CardTitle></CardHeader>
                                         <CardContent>
-                                            <FormField
-                                                control={form.control}
-                                                name="subDealersEnabled"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                        <div className="space-y-0.5">
-                                                            <FormLabel className="text-base">Enable Sub Dealers</FormLabel>
-                                                            <FormDescription>
-                                                                Allow this organisation to manage their own sub dealers.
-                                                            </FormDescription>
-                                                        </div>
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={field.value}
-                                                                onCheckedChange={field.onChange}
-                                                            />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Data Warehouse Subscriptions</CardTitle>
-                                            <CardDescription>Select which data sources this organisation can access.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {vendorsLoading ? (
+                                            {catsLoading ? (
                                                 <Loader2 className="h-6 w-6 animate-spin" />
                                             ) : (
-                                                <FormField
-                                                    control={form.control}
-                                                    name="dataWarehouseSubscriptions"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            {allVendors && allVendors.length > 0 ? (
-                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                                                    {allVendors.map((vendor) => {
-                                                                        const isSubscribed = field.value?.includes(vendor.id);
-                                                                        
-                                                                        const handleToggle = () => {
-                                                                            if (isSubscribed) {
-                                                                                setVendorToUnsubscribe(vendor);
-                                                                            } else {
-                                                                                const newValue = [...(field.value || []), vendor.id];
-                                                                                field.onChange(newValue);
-                                                                            }
-                                                                        };
-
-                                                                        return (
-                                                                            <Card 
-                                                                                key={vendor.id}
-                                                                                onClick={handleToggle}
-                                                                                className={cn(
-                                                                                    "cursor-pointer transition-all duration-200 ease-in-out hover:shadow-md hover:-translate-y-1 relative overflow-hidden",
-                                                                                    isSubscribed ? "border-primary ring-2 ring-primary" : "border-border"
-                                                                                )}
-                                                                            >
-                                                                                {isSubscribed && (
-                                                                                    <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5 z-10">
-                                                                                        <Check className="h-3 w-3" />
-                                                                                    </div>
-                                                                                )}
-                                                                                <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
-                                                                                    {vendor.logoUrl ? (
-                                                                                        <div className="relative h-full w-full">
-                                                                                            <Image src={vendor.logoUrl} alt={`${vendor.name} logo`} fill className="object-contain" sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw" />
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <Building className="h-8 w-8 text-muted-foreground"/>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div className="p-3 text-center">
-                                                                                    <p className="text-sm font-medium truncate">{vendor.name}</p>
-                                                                                </div>
-                                                                            </Card>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            ) : (
-                                                                <p className="text-sm text-muted-foreground">No data warehouse vendors found. Add vendors in the Data Warehouse section.</p>
-                                                            )}
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                                <FormField control={form.control} name="dealerFitCategories" render={({ field }) => (
+                                                    <FormItem className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                        {allDealerFitCategories?.map(cat => (
+                                                            <div key={cat.id} className="flex items-center space-x-3 p-3 border rounded-md">
+                                                                <Checkbox 
+                                                                    checked={field.value?.includes(cat.id)}
+                                                                    onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), cat.id]) : field.onChange(field.value?.filter(id => id !== cat.id))}
+                                                                />
+                                                                <label className="text-sm font-medium">{cat.name}</label>
+                                                            </div>
+                                                        ))}
+                                                    </FormItem>
+                                                )} />
                                             )}
                                         </CardContent>
                                     </Card>
                                     <Card>
-                                        <CardHeader>
-                                            <CardTitle>Module Subscriptions</CardTitle>
-                                            <CardDescription>Select modules and configure organisation-specific vendor access for each.</CardDescription>
-                                        </CardHeader>
+                                        <CardHeader><CardTitle>Sub Dealer Module</CardTitle></CardHeader>
+                                        <CardContent>
+                                            <FormField control={form.control} name="subDealersEnabled" render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5"><FormLabel className="text-base">Enable Sub Dealers</FormLabel><FormDescription>Allow this organisation to manage their own sub dealers.</FormDescription></div>
+                                                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                </FormItem>
+                                            )} />
+                                        </CardContent>
+                                    </Card>
+                                    <Card>
+                                        <CardHeader><CardTitle>Data Warehouse Subscriptions</CardTitle></CardHeader>
+                                        <CardContent>
+                                            {vendorsLoading ? (
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                            ) : (
+                                                <FormField control={form.control} name="dataWarehouseSubscriptions" render={({ field }) => (
+                                                    <FormItem className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                        {allVendors?.map((vendor) => {
+                                                            const isSubscribed = field.value?.includes(vendor.id);
+                                                            return (
+                                                                <Card key={vendor.id} onClick={() => isSubscribed ? setVendorToUnsubscribe(vendor) : field.onChange([...(field.value || []), vendor.id])} className={cn("cursor-pointer transition-all border-border relative", isSubscribed && "border-primary ring-2 ring-primary")}>
+                                                                    {isSubscribed && <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5 z-10"><Check className="h-3 w-3" /></div>}
+                                                                    <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
+                                                                        {vendor.logoUrl ? <div className="relative h-full w-full"><Image src={vendor.logoUrl} alt={vendor.name} fill className="object-contain" sizes="100px" /></div> : <Building className="h-8 w-8 text-muted-foreground"/>}
+                                                                    </div>
+                                                                    <div className="p-3 text-center"><p className="text-sm font-medium truncate">{vendor.name}</p></div>
+                                                                </Card>
+                                                            );
+                                                        })}
+                                                    </FormItem>
+                                                )} />
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                    <Card>
+                                        <CardHeader><CardTitle>Module Subscriptions</CardTitle></CardHeader>
                                         <CardContent>
                                             {modulesLoading ? (
                                                 <Loader2 className="h-6 w-6 animate-spin" />
                                             ) : (
-                                                <FormField
-                                                    control={form.control}
-                                                    name="enabledModuleSubscriptions"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            {allModules && allModules.length > 0 ? (
-                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                                    {allModules.map((module) => {
-                                                                        const isSubscribed = field.value?.includes(module.id);
-                                                                        
-                                                                        const handleToggle = () => {
-                                                                            const newValue = isSubscribed
-                                                                                ? field.value?.filter((id) => id !== module.id)
-                                                                                : [...(field.value || []), module.id];
-                                                                            field.onChange(newValue);
-                                                                        };
-
-                                                                        return (
-                                                                            <Card 
-                                                                                key={module.id}
-                                                                                className={cn(
-                                                                                    "transition-all duration-200 ease-in-out relative overflow-hidden flex flex-col",
-                                                                                    isSubscribed ? "border-primary ring-1 ring-primary" : "border-border"
-                                                                                )}
-                                                                            >
-                                                                                <div className="flex items-start justify-between p-4 bg-muted/30">
-                                                                                    <div className="flex items-center gap-3">
-                                                                                        <Checkbox 
-                                                                                            checked={isSubscribed}
-                                                                                            onCheckedChange={handleToggle}
-                                                                                        />
-                                                                                        <span className="font-medium text-sm">{module.name}</span>
-                                                                                    </div>
-                                                                                    {isSubscribed && (
-                                                                                        <Button 
-                                                                                            type="button" 
-                                                                                            variant="ghost" 
-                                                                                            size="icon" 
-                                                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                                                            onClick={() => setActiveVendorConfigModule(module)}
-                                                                                        >
-                                                                                            <Settings2 className="h-4 w-4" />
-                                                                                        </Button>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div className="h-20 bg-muted/10 flex items-center justify-center p-2">
-                                                                                    {module.logoUrl ? (
-                                                                                        <div className="relative h-full w-full">
-                                                                                            <Image src={module.logoUrl} alt={`${module.name} logo`} fill className="object-contain" sizes="(max-width: 640px) 100vw, 20vw" />
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <Building className="h-8 w-8 text-muted-foreground/30"/>
-                                                                                    )}
-                                                                                </div>
-                                                                            </Card>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            ) : (
-                                                                <p className="text-sm text-muted-foreground">No modules found. Add modules in the Admin section.</p>
-                                                            )}
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                                <FormField control={form.control} name="enabledModuleSubscriptions" render={({ field }) => (
+                                                    <FormItem className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {allModules?.map((module) => {
+                                                            const isSubscribed = field.value?.includes(module.id);
+                                                            return (
+                                                                <Card key={module.id} className={cn("transition-all relative overflow-hidden flex flex-col", isSubscribed && "border-primary ring-1 ring-primary")}>
+                                                                    <div className="flex items-start justify-between p-4 bg-muted/30">
+                                                                        <div className="flex items-center gap-3"><Checkbox checked={isSubscribed} onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), module.id]) : field.onChange(field.value?.filter(id => id !== module.id))} /><span className="font-medium text-sm">{module.name}</span></div>
+                                                                        {isSubscribed && <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setActiveVendorConfigModule(module)}><Settings2 className="h-4 w-4" /></Button>}
+                                                                    </div>
+                                                                    <div className="h-20 bg-muted/10 flex items-center justify-center p-2">{module.logoUrl ? <div className="relative h-full w-full"><Image src={module.logoUrl} alt={module.name} fill className="object-contain" sizes="100px" /></div> : <Building className="h-8 w-8 text-muted-foreground/30"/>}</div>
+                                                                </Card>
+                                                            );
+                                                        })}
+                                                    </FormItem>
+                                                )} />
                                             )}
                                         </CardContent>
                                     </Card>
@@ -878,55 +613,23 @@ export default function OrganisationDetailsPage() {
                                 <TabsContent value="sub-dealers">
                                     <Card>
                                         <CardHeader className="flex-row items-center justify-between">
-                                            <div>
-                                                <CardTitle>Sub Dealers</CardTitle>
-                                                <CardDescription>Manage sub dealers associated with this organisation.</CardDescription>
-                                            </div>
-                                            <Button asChild>
-                                                <Link href={`/organisations/${organisation.slug || organisation.id}/add-sub-dealer`}>
-                                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                                    Add Sub Dealer
-                                                </Link>
-                                            </Button>
+                                            <div><CardTitle>Sub Dealers</CardTitle></div>
+                                            <Button asChild><Link href={`/organisations/${organisation.slug || organisation.id}/add-sub-dealer`}><PlusCircle className="mr-2 h-4 w-4" />Add Sub Dealer</Link></Button>
                                         </CardHeader>
                                         <CardContent>
                                             {subDealersLoading ? (
                                                 <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                                             ) : subDealers && subDealers.length > 0 ? (
                                                 <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead>Name</TableHead>
-                                                            <TableHead>Address</TableHead>
-                                                            <TableHead>Phone</TableHead>
-                                                            <TableHead className="text-right">Actions</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
+                                                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Address</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                                     <TableBody>
                                                         {subDealers.map(sd => (
-                                                            <TableRow key={sd.id}>
-                                                                <TableCell className="font-medium">{sd.name}</TableCell>
-                                                                <TableCell>{sd.address || 'N/A'}</TableCell>
-                                                                <TableCell>{sd.phoneNumber || 'N/A'}</TableCell>
-                                                                <TableCell className="text-right">
-                                                                    <Button variant="ghost" size="sm" asChild>
-                                                                        <Link href={`/organisations/${sd.slug || sd.id}`}>Manage</Link>
-                                                                    </Button>
-                                                                </TableCell>
-                                                            </TableRow>
+                                                            <TableRow key={sd.id}><TableCell className="font-medium">{sd.name}</TableCell><TableCell>{sd.address || 'N/A'}</TableCell><TableCell className="text-right"><Button variant="ghost" size="sm" asChild><Link href={`/organisations/${sd.slug || sd.id}`}>Manage</Link></Button></TableCell></TableRow>
                                                         ))}
                                                     </TableBody>
                                                 </Table>
                                             ) : (
-                                                <div className="text-center py-12 text-muted-foreground">
-                                                    <p>No sub dealers have been added yet.</p>
-                                                    <Button asChild variant="secondary" className="mt-4">
-                                                        <Link href={`/organisations/${organisation.slug || organisation.id}/add-sub-dealer`}>
-                                                            <PlusCircle className="mr-2 h-4 w-4" />
-                                                            Add First Sub Dealer
-                                                        </Link>
-                                                    </Button>
-                                                </div>
+                                                <div className="text-center py-12 text-muted-foreground"><p>No sub dealers have been added yet.</p></div>
                                             )}
                                         </CardContent>
                                     </Card>
@@ -936,61 +639,33 @@ export default function OrganisationDetailsPage() {
                     </form>
                 </Form>
             ) : (
-                <Card><CardHeader><CardTitle>Organisation not found</CardTitle></CardHeader><CardContent><p>The requested organisation could not be found.</p></CardContent></Card>
+                <Card><CardHeader><CardTitle>Organisation not found</CardTitle></CardHeader></Card>
             )}
 
-            {organisation && (
-                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete <strong>{organisation.name}</strong> and all its data. This action cannot be undone.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-                            Yes, delete it
-                        </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete <strong>{organisation?.name}</strong> and all its data.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             
-            {vendorToUnsubscribe && (
-                <AlertDialog open={!!vendorToUnsubscribe} onOpenChange={(open) => !open && setVendorToUnsubscribe(null)}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Confirm Unsubscription</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Are you sure you want to remove access to <strong>{vendorToUnsubscribe.name}</strong> for this organisation? This may affect their data access immediately.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setVendorToUnsubscribe(null)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                                onClick={() => {
-                                    const currentSubs = form.getValues('dataWarehouseSubscriptions') || [];
-                                    const newValue = currentSubs.filter((id) => id !== vendorToUnsubscribe.id);
-                                    form.setValue('dataWarehouseSubscriptions', newValue, { shouldDirty: true });
-                                    setVendorToUnsubscribe(null);
-                                }}
-                                className="bg-destructive hover:bg-destructive/90"
-                            >
-                                Yes, Unsubscribe
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
+            <AlertDialog open={!!vendorToUnsubscribe} onOpenChange={(open) => !open && setVendorToUnsubscribe(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Confirm Unsubscription</AlertDialogTitle><AlertDialogDescription>Remove access to <strong>{vendorToUnsubscribe?.name}</strong> for this organisation?</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel onClick={() => setVendorToUnsubscribe(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => {
+                        const currentSubs = form.getValues('dataWarehouseSubscriptions') || [];
+                        form.setValue('dataWarehouseSubscriptions', currentSubs.filter((id) => id !== vendorToUnsubscribe?.id), { shouldDirty: true });
+                        setVendorToUnsubscribe(null);
+                    }} className="bg-destructive hover:bg-destructive/90">Yes, Unsubscribe</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-            {activeVendorConfigModule && (
+            {activeVendorConfigModule && organisation && (
                 <ModuleVendorAccessDialog 
                     isOpen={!!activeVendorConfigModule}
                     setIsOpen={(open) => !open && setActiveVendorConfigModule(null)}
                     module={activeVendorConfigModule}
-                    organisation={form.getValues()}
+                    organisation={organisation as any}
                     allVendors={allVendors || []}
                     onUpdate={handleUpdateModuleVendorAccess}
                 />
