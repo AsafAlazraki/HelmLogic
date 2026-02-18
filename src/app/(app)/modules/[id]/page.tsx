@@ -209,12 +209,6 @@ export default function ModuleDetailsPage() {
     
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
-    useEffect(() => {
-        if (!profileLoading && userProfile && !isAdmin) {
-            setViewContextOrgId(userProfile.organisationId || null);
-        }
-    }, [userProfile, profileLoading, isAdmin]);
-
     const moduleQueryBySlug = useMemoFirebase(() => {
         if (!slugOrId) return null;
         return query(collection(firestore, 'modules'), where('slug', '==', slugOrId));
@@ -237,44 +231,24 @@ export default function ModuleDetailsPage() {
     
     const mainVendor = useMemo(() => allVendors?.find(v => v.id === moduleData?.mainVendorId), [allVendors, moduleData]);
         
-    const subscribedOrgs = useMemo(() => {
-        if (!allOrganisations || !moduleData) return [];
-        return allOrganisations.filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id) && !org.parentOrganisationId);
-    }, [allOrganisations, moduleData]);
-
-    const activeConfigOrg = useMemo(() => 
-        selectedOrgId ? allOrganisations?.find(o => o.id === selectedOrgId) : null,
-    [selectedOrgId, allOrganisations]);
-
-    const activeOrgSubDealers = useMemo(() => {
-        if (!selectedOrgId || !allOrganisations) return [];
-        return allOrganisations.filter(org => org.parentOrganisationId === selectedOrgId);
-    }, [selectedOrgId, allOrganisations]);
-
-    const memberSubDealers = useMemo(() => {
-        if (!userProfile?.organisationId || !allOrganisations) return [];
-        return allOrganisations.filter(org => org.parentOrganisationId === userProfile.organisationId);
-    }, [userProfile?.organisationId, allOrganisations]);
-
     const currentMemberOrg = useMemo(() => 
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
-    const parentOrg = useMemo(() => 
-        currentMemberOrg?.parentOrganisationId ? allOrganisations?.find(o => o.id === currentMemberOrg.parentOrganisationId) : null,
-    [currentMemberOrg, allOrganisations]);
-
-    // Dashboard Context Data
     const dashboardOrg = useMemo(() => 
         viewContextOrgId ? allOrganisations?.find(o => o.id === viewContextOrgId) : currentMemberOrg,
     [viewContextOrgId, allOrganisations, currentMemberOrg]);
+
+    const isViewingOrg = !!dashboardOrg;
+
+    const parentOrg = useMemo(() => 
+        dashboardOrg?.parentOrganisationId ? allOrganisations?.find(o => o.id === dashboardOrg.parentOrganisationId) : null,
+    [dashboardOrg, allOrganisations]);
 
     const dashboardSubDealers = useMemo(() => {
         if (!dashboardOrg || !allOrganisations) return [];
         return allOrganisations.filter(o => o.parentOrganisationId === dashboardOrg.id);
     }, [dashboardOrg, allOrganisations]);
-
-    const showStockFilter = dashboardSubDealers.length > 0;
 
     // Permissions logic
     const userPermissions = useMemo(() => {
@@ -284,6 +258,7 @@ export default function ModuleDetailsPage() {
             can_edit_boat_data: true,
             can_view_subdealers: true,
             can_see_parent_inventory: true,
+            can_access_settings: true,
         };
         const roleId = userProfile?.organisationRole;
         if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return {
@@ -292,6 +267,7 @@ export default function ModuleDetailsPage() {
             can_edit_boat_data: false,
             can_view_subdealers: false,
             can_see_parent_inventory: false,
+            can_access_settings: false,
         };
         return currentMemberOrg.permissions[roleId];
     }, [isAdmin, userProfile, currentMemberOrg]);
@@ -307,17 +283,25 @@ export default function ModuleDetailsPage() {
                 contexts.push({ id: myOrg.id, name: `My Org: ${myOrg.name}` });
             }
             if (userPermissions.can_view_subdealers) {
-                memberSubDealers.forEach(sd => contexts.push({ id: sd.id, name: `Sub Dealer: ${sd.name}` }));
+                const subDealers = allOrganisations?.filter(org => org.parentOrganisationId === userProfile.organisationId) || [];
+                subDealers.forEach(sd => contexts.push({ id: sd.id, name: `Sub Dealer: ${sd.name}` }));
             }
         }
         return contexts;
-    }, [isAdmin, allOrganisations, userProfile, memberSubDealers, userPermissions]);
+    }, [isAdmin, allOrganisations, userProfile, userPermissions]);
+
+    // Tab control state
+    const [activeTab, setActiveTab] = useState('dashboard');
 
     useEffect(() => {
-        if (subscribedOrgs.length > 0) {
-            setTempSubscribedOrgIds(subscribedOrgs.map(o => o.id));
+        if (isAdmin) {
+            if (viewContextOrgId) {
+                setActiveTab('dashboard');
+            } else {
+                setActiveTab('bmt');
+            }
         }
-    }, [subscribedOrgs]);
+    }, [viewContextOrgId, isAdmin]);
 
     const settingsForm = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -459,7 +443,6 @@ export default function ModuleDetailsPage() {
     };
     
     const loading = moduleLoading || vendorsLoading || orgsLoading || userLoading || profileLoading || catsLoading;
-    const defaultTab = (isAdmin && !viewContextOrgId) ? 'bmt' : 'dashboard';
 
     if (loading) {
       return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
@@ -481,8 +464,10 @@ export default function ModuleDetailsPage() {
 
     const currentContextLabel = availableContexts.find(c => c.id === (viewContextOrgId || 'master'))?.name || 'Master Data';
     const isImpersonating = viewContextOrgId !== null && (isAdmin || viewContextOrgId !== userProfile?.organisationId);
-    const isViewingOrg = viewContextOrgId !== null || !isAdmin;
     
+    const showSubDealersTab = isViewingOrg && dashboardOrg?.subDealersEnabled && userPermissions.can_view_subdealers;
+    const tabGridCols = (isAdmin && !viewContextOrgId) ? "grid-cols-4" : showSubDealersTab ? "grid-cols-5" : "grid-cols-4";
+
     return (
         <div className="space-y-4">
              <div className="flex items-start justify-between">
@@ -523,76 +508,76 @@ export default function ModuleDetailsPage() {
                     <BreadcrumbNav parts={breadcrumbParts.filter(p => isAdmin || p.label !== 'Modules')} />
                 </div>
             </div>
-             <Tabs defaultValue={defaultTab}>
-                 <TabsList className={cn("grid w-full", (isAdmin && !viewContextOrgId) ? "grid-cols-4" : (currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers) ? "grid-cols-5" : "grid-cols-4")}>
+             <Tabs value={activeTab} onValueChange={setActiveTab}>
+                 <TabsList className={cn("grid w-full", tabGridCols)}>
                     {isViewingOrg && <TabsTrigger value="dashboard"><LayoutDashboard className="h-4 w-4 mr-2" /> Dashboard</TabsTrigger>}
-                    <TabsTrigger value="bmt">BMT</TabsTrigger>
-                    <TabsTrigger value="operations">Operations</TabsTrigger>
-                    {isAdmin && !viewContextOrgId && <TabsTrigger value="organisations">Organisations</TabsTrigger>}
-                    {isAdmin && !viewContextOrgId && <TabsTrigger value="settings">Settings</TabsTrigger>}
-                    {isViewingOrg && currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
+                    <TabsTrigger value="bmt"><Wrench className="h-4 w-4 mr-2" /> BMT</TabsTrigger>
+                    <TabsTrigger value="operations"><ClipboardList className="h-4 w-4 mr-2" /> Operations</TabsTrigger>
+                    {isAdmin && !viewContextOrgId && <TabsTrigger value="organisations"><Building className="h-4 w-4 mr-2" /> Organisations</TabsTrigger>}
+                    {isAdmin && !viewContextOrgId && <TabsTrigger value="settings"><Settings2 className="h-4 w-4 mr-2" /> Settings</TabsTrigger>}
+                    {showSubDealersTab && <TabsTrigger value="sub-dealers"><Users className="h-4 w-4 mr-2" /> Sub Dealers</TabsTrigger>}
                 </TabsList>
                 
                 {isViewingOrg && (
                     <TabsContent value="dashboard">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-1 flex flex-col gap-6">
-                                {userPermissions.can_see_parent_inventory && parentOrg && (
-                                    <>
-                                        <Card className="border-accent/30 bg-accent/5">
-                                            <CardHeader className="pb-2">
-                                                <div className="flex items-center gap-2 text-accent">
-                                                    <ArrowRightLeft className="h-4 w-4" />
-                                                    <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} In Stock</CardTitle>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <InventoryList 
-                                                    organisation={parentOrg as any} 
-                                                    subDealers={[]} 
-                                                    parentOrg={null} 
-                                                    moduleId={moduleData.id}
-                                                    filterOrgId="local"
-                                                />
-                                            </CardContent>
-                                        </Card>
-                                        <Card className="border-accent/30 bg-accent/5">
-                                            <CardHeader className="pb-2">
-                                                <div className="flex items-center gap-2 text-accent">
-                                                    <ArrowRightLeft className="h-4 w-4" />
-                                                    <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} On Order</CardTitle>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <VesselOnOrderList 
-                                                    organisation={dashboardOrg as any}
-                                                    parentOrg={parentOrg as any}
-                                                    moduleId={moduleData.id}
-                                                />
-                                            </CardContent>
-                                        </Card>
-                                    </>
-                                )}
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                        <CardTitle className="text-lg">Local In Stock</CardTitle>
-                                        {showStockFilter && (
-                                            <Select value={inStockFilter} onValueChange={setInStockFilter}>
-                                                <SelectTrigger className="w-[160px] h-8 text-xs">
-                                                    <SelectValue placeholder="Filter Stock" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Network Stock</SelectItem>
-                                                    <SelectItem value="local">{dashboardOrg?.name}</SelectItem>
-                                                    {dashboardSubDealers.map(sd => (
-                                                        <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        )}
-                                    </CardHeader>
-                                    <CardContent>
-                                        {dashboardOrg && (
+                        {dashboardOrg ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-1 flex flex-col gap-6">
+                                    {userPermissions.can_see_parent_inventory && parentOrg && (
+                                        <>
+                                            <Card className="border-accent/30 bg-accent/5">
+                                                <CardHeader className="pb-2">
+                                                    <div className="flex items-center gap-2 text-accent">
+                                                        <ArrowRightLeft className="h-4 w-4" />
+                                                        <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} In Stock</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <InventoryList 
+                                                        organisation={parentOrg as any} 
+                                                        subDealers={[]} 
+                                                        parentOrg={null} 
+                                                        moduleId={moduleData.id}
+                                                        filterOrgId="local"
+                                                    />
+                                                </CardContent>
+                                            </Card>
+                                            <Card className="border-accent/30 bg-accent/5">
+                                                <CardHeader className="pb-2">
+                                                    <div className="flex items-center gap-2 text-accent">
+                                                        <ArrowRightLeft className="h-4 w-4" />
+                                                        <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} On Order</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <VesselOnOrderList 
+                                                        organisation={dashboardOrg as any}
+                                                        parentOrg={parentOrg as any}
+                                                        moduleId={moduleData.id}
+                                                    />
+                                                </CardContent>
+                                            </Card>
+                                        </>
+                                    )}
+                                    <Card>
+                                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                            <CardTitle className="text-lg">Local In Stock</CardTitle>
+                                            {dashboardSubDealers.length > 0 && (
+                                                <Select value={inStockFilter} onValueChange={setInStockFilter}>
+                                                    <SelectTrigger className="w-[160px] h-8 text-xs">
+                                                        <SelectValue placeholder="Filter Stock" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="all">All Network Stock</SelectItem>
+                                                        <SelectItem value="local">{dashboardOrg?.name}</SelectItem>
+                                                        {dashboardSubDealers.map(sd => (
+                                                            <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        </CardHeader>
+                                        <CardContent>
                                             <InventoryList 
                                                 organisation={dashboardOrg as any}
                                                 subDealers={dashboardSubDealers as any[]}
@@ -600,31 +585,31 @@ export default function ModuleDetailsPage() {
                                                 moduleId={moduleData.id}
                                                 filterOrgId={inStockFilter}
                                             />
-                                        )}
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>On Order</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        {dashboardOrg && (
+                                        </CardContent>
+                                    </Card>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>On Order</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
                                             <VesselOnOrderList 
                                                 organisation={dashboardOrg as any}
                                                 parentOrg={parentOrg as any}
                                                 moduleId={moduleData.id}
                                             />
-                                        )}
-                                    </CardContent>
-                                </Card>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                                <div className="lg:col-span-2">
+                                    <Card className="h-full flex flex-col">
+                                        <CardHeader><CardTitle>Quotes</CardTitle><CardDescription>Recent quotes for {dashboardOrg.name}</CardDescription></CardHeader>
+                                        <CardContent className="flex-grow"><ScrollArea className="h-[500px]"><div className="flex items-center justify-center h-full p-8 text-muted-foreground"><p>Quotes list will appear here.</p></div></ScrollArea></CardContent>
+                                    </Card>
+                                </div>
                             </div>
-                            <div className="lg:col-span-2">
-                                <Card className="h-full flex flex-col">
-                                    <CardHeader><CardTitle>Quotes</CardTitle><CardDescription>Recent quotes for {currentContextLabel}</CardDescription></CardHeader>
-                                    <CardContent className="flex-grow"><ScrollArea className="h-[500px]"><div className="flex items-center justify-center h-full p-8 text-muted-foreground"><p>Quotes list will appear here.</p></div></ScrollArea></CardContent>
-                                </Card>
-                            </div>
-                        </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                        )}
                     </TabsContent>
                 )}
 
@@ -660,7 +645,7 @@ export default function ModuleDetailsPage() {
                                     breadcrumbs={<ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
                                     user={user}
                                     isAdmin={isAdmin && !viewContextOrgId}
-                                    organisationId={viewContextOrgId || undefined}
+                                    organisationId={dashboardOrg?.id}
                                     permissions={userPermissions as any}
                                 />
                             )}
@@ -688,10 +673,10 @@ export default function ModuleDetailsPage() {
                                 <CardDescription>Managing organisations subscribed to {moduleData.name}. Click an organisation to configure their access or impersonate their view.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {selectedOrgId && activeConfigOrg ? (
+                                {selectedOrgId && (allOrganisations?.find(o => o.id === selectedOrgId)) ? (
                                     <OrganisationModuleConfig 
-                                        organisation={activeConfigOrg}
-                                        subDealers={activeOrgSubDealers}
+                                        organisation={allOrganisations.find(o => o.id === selectedOrgId)!}
+                                        subDealers={allOrganisations.filter(org => org.parentOrganisationId === selectedOrgId)}
                                         module={moduleData}
                                         allVendors={allVendors || []}
                                         allDealerFitCategories={allDealerFitCategories || []}
@@ -701,19 +686,19 @@ export default function ModuleDetailsPage() {
                                         onToggleSubDealerAccess={handleToggleModuleAccess}
                                         onUpdateSubDealerVendors={handleUpdateOrgVendorAccess}
                                     />
-                                ) : subscribedOrgs.length > 0 ? (
+                                ) : allOrganisations?.filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id) && !org.parentOrganisationId).length! > 0 ? (
                                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                        {subscribedOrgs.map(org => (
+                                        {allOrganisations?.filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id) && !org.parentOrganisationId).map(org => (
                                             <Card key={org.id} className="relative group hover:border-primary transition-colors flex flex-col">
                                                 <div className="p-4 flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border">
+                                                        <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center border">
                                                             <Building className="h-5 w-5 text-muted-foreground" />
                                                         </div>
                                                         <div className="font-medium text-sm">{org.name}</div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <Button variant="ghost" size="icon" title="View Module As" onClick={() => { setViewContextOrgId(org.id); setView('dashboard'); }}><Eye className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" title="View Module As" onClick={() => { setViewContextOrgId(org.id); setActiveTab('dashboard'); }}><Eye className="h-4 w-4" /></Button>
                                                         <Button variant="ghost" size="icon" onClick={() => setSelectedOrgId(org.id)}><Settings2 className="h-4 w-4" /></Button>
                                                     </div>
                                                 </div>
@@ -728,7 +713,7 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
                 )}
 
-                {isViewingOrg && currentMemberOrg?.subDealersEnabled && userPermissions.can_view_subdealers && (
+                {showSubDealersTab && (
                     <TabsContent value="sub-dealers">
                         <Card>
                             <CardHeader>
@@ -746,17 +731,17 @@ export default function ModuleDetailsPage() {
                                         onUpdateVendors={(vids) => handleUpdateOrgVendorAccess(selectedOrgId, vids)}
                                         onUpdateCategories={(cids) => handleUpdateOrgCategories(selectedOrgId, cids)}
                                     />
-                                ) : memberSubDealers.length > 0 ? (
+                                ) : dashboardSubDealers.length > 0 ? (
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                            {memberSubDealers.map(sd => {
+                                            {dashboardSubDealers.map(sd => {
                                                 const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all flex flex-col", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden border">
+                                                                    <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center border">
                                                                         <Building className="h-5 w-5 text-muted-foreground" />
                                                                     </div>
                                                                     <div className="font-semibold text-sm">{sd.name}</div>
@@ -767,13 +752,13 @@ export default function ModuleDetailsPage() {
                                                                         checked={hasAccess} 
                                                                         onCheckedChange={(checked) => handleToggleModuleAccess(sd.id, !!checked)} 
                                                                     />
-                                                                    <label htmlFor={`sd-access-${sd.id}`} className="text-xs text-muted-foreground cursor-pointer">Module Access</label>
+                                                                    <label htmlFor={`sd-access-${sd.id}`} className="text-xs text-muted-foreground cursor-pointer">Access</label>
                                                                 </div>
                                                             </div>
                                                             {hasAccess && (
                                                                 <div className="flex gap-2">
-                                                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => { setViewContextOrgId(sd.id); setView('dashboard'); }}>
-                                                                        <Eye className="mr-2 h-4 w-4" /> View View
+                                                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => { setViewContextOrgId(sd.id); setActiveTab('dashboard'); }}>
+                                                                        <Eye className="mr-2 h-4 w-4" /> View
                                                                     </Button>
                                                                     <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedOrgId(sd.id)}>
                                                                         <Settings2 className="mr-2 h-4 w-4" /> Config
@@ -789,7 +774,7 @@ export default function ModuleDetailsPage() {
                                 ) : (
                                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                                         <Users className="h-12 w-12 mx-auto mb-4 opacity-20"/>
-                                        <p>No sub dealers found for your organisation.</p>
+                                        <p>No sub dealers found for this organisation.</p>
                                     </div>
                                 )}
                             </CardContent>
