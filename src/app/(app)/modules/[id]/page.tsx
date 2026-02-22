@@ -11,7 +11,27 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { Loader2, ChevronRight, Wrench, FileText, ClipboardList, Save, Building, Settings2, Check, UserPlus, Users, Eye, ArrowRightLeft, X, LayoutDashboard } from 'lucide-react';
+import { 
+    Loader2, 
+    ChevronRight, 
+    Wrench, 
+    FileText, 
+    ClipboardList, 
+    Save, 
+    Building, 
+    Settings2, 
+    Check, 
+    UserPlus, 
+    Users, 
+    Eye, 
+    ArrowRightLeft, 
+    X, 
+    LayoutDashboard,
+    PlusCircle,
+    Pencil,
+    Trash2,
+    Plus
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -19,7 +39,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -29,6 +49,7 @@ import { createSlug, cn } from '@/lib/utils';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { InventoryList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
+import { Label } from '@/components/ui/label';
 
 interface Vendor {
     id: string;
@@ -74,11 +95,220 @@ interface DealerFitCategory {
     name: string;
 }
 
-const formSchema = z.object({
-  name: z.string().min(1, { message: 'Module name is required.' }),
-  mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
-  associatedVendorIds: z.array(z.string()).default([]),
+const packageFormSchema = z.object({
+    name: z.string().min(1, { message: "Package name is required." }),
 });
+type PackageFormData = z.infer<typeof packageFormSchema>;
+
+function PackageDialog({
+    isOpen,
+    setIsOpen,
+    onSave,
+    editingPackage
+}: {
+    isOpen: boolean,
+    setIsOpen: (isOpen: boolean) => void,
+    onSave: (data: PackageFormData) => void,
+    editingPackage: { id: string; name: string } | null
+}) {
+    const form = useForm<PackageFormData>({
+        resolver: zodResolver(packageFormSchema),
+        defaultValues: { name: '' },
+    });
+    
+    useEffect(() => {
+        if (isOpen) {
+            form.reset({ name: editingPackage?.name || '' });
+        }
+    }, [isOpen, editingPackage, form]);
+
+    const handleSave = (data: PackageFormData) => {
+        onSave(data);
+        setIsOpen(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{editingPackage ? 'Edit Package' : 'Add New Package'}</DialogTitle>
+                </DialogHeader>
+                 <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleSave)}>
+                        <div className="grid gap-4 py-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <Label htmlFor="name">Package Name</Label>
+                                        <FormControl>
+                                            <Input id="name" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit">Save</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; isAdmin: boolean }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const modelsQuery = useMemoFirebase(() => {
+        if (!vendor?.id || !range?.id) return null;
+        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
+    }, [firestore, vendor.id, range.id]);
+    
+    const { data: models, loading: modelsLoading } = useCollection<Model>(modelsQuery);
+
+    const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
+    const [selectedModelForPackage, setSelectedModelForPackage] = useState<Model | null>(null);
+    const [editingPackage, setEditingPackage] = useState<{ id: string; name: string } | null>(null);
+    
+    if (modelsLoading) {
+        return <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    }
+    
+    if (!models || models.length === 0) {
+        return <p className="text-muted-foreground text-center py-8">No models found for {range.name}.</p>;
+    }
+
+    const handleOpenAddPackageDialog = (model: Model, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedModelForPackage(model);
+        setEditingPackage(null);
+        setIsPackageDialogOpen(true);
+    };
+
+    const handleOpenEditPackageDialog = (model: Model, pkg: {id: string, name: string}, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedModelForPackage(model);
+        setEditingPackage(pkg);
+        setIsPackageDialogOpen(true);
+    };
+
+    const handleSavePackage = async (data: PackageFormData) => {
+        if (!selectedModelForPackage) return;
+        
+        let updatedPackages;
+        const currentPackages = selectedModelForPackage.packageLevels || [];
+        if (editingPackage) {
+            updatedPackages = currentPackages.map(p => p.id === editingPackage.id ? { ...p, name: data.name } : p);
+        } else {
+            const newPackage = { id: `pkg-lvl-${Date.now()}`, name: data.name };
+            updatedPackages = [...currentPackages, newPackage];
+        }
+
+        try {
+            const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${selectedModelForPackage.id}`;
+            await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
+            toast({ title: editingPackage ? 'Package Updated' : 'Package Added' });
+        } catch(error) {
+            console.error('Failed to save package:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save package.' });
+        }
+    };
+
+    const handleDeletePackage = async (model: Model, packageId: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const updatedPackages = model.packageLevels?.filter(p => p.id !== packageId) || [];
+        try {
+            const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
+            await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
+            toast({ title: 'Package Deleted' });
+        } catch(error) {
+            console.error('Failed to delete package:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete package.' });
+        }
+    };
+    
+    return (
+        <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {models.map(model => (
+                    <Card key={model.id} className="group overflow-hidden flex flex-col h-full transition-all duration-300 ease-in-out hover:border-primary hover:shadow-xl hover:-translate-y-1 cursor-pointer" onClick={() => onModelSelect(model)}>
+                        <div className="flex-grow">
+                            <div className="h-52 bg-secondary relative">
+                                    {model.coverImageUrl ? (
+                                    <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center">
+                                        <Wrench className="h-12 w-12 text-muted-foreground" />
+                                    </div>
+                                )}
+                            </div>
+                            <CardContent className="p-3 h-20 flex items-center justify-center">
+                                <p className="font-semibold text-center line-clamp-2">{model.name}</p>
+                            </CardContent>
+                        </div>
+
+                        {vendor.slug === 'stabicraft' && (
+                            <div className="p-3 border-t">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">Packages</h4>
+                                        {isAdmin && (
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenAddPackageDialog(model, e)}>
+                                                <PlusCircle className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1 min-h-[80px] flex flex-col">
+                                        {(model.packageLevels && model.packageLevels.length > 0) ? (
+                                            <div className="flex-grow space-y-1">
+                                            {model.packageLevels.map(pkg => (
+                                                <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full">
+                                                    <span className="font-medium truncate pr-2">{pkg.name}</span>
+                                                    {isAdmin && (
+                                                        <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenEditPackageDialog(model, pkg, e)}>
+                                                                <Pencil className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(model, pkg.id, e)}>
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex-grow flex items-center justify-center text-[10px] text-muted-foreground border border-dashed rounded-md">
+                                                <p>No packages defined.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </Card>
+                ))}
+            </div>
+            
+            <PackageDialog
+                isOpen={isPackageDialogOpen}
+                setIsOpen={setIsPackageDialogOpen}
+                onSave={handleSavePackage}
+                editingPackage={editingPackage}
+            />
+        </>
+    );
+}
 
 function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
@@ -121,46 +351,11 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
     );
 }
 
-function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void }) {
-    const firestore = useFirestore();
-    const modelsQuery = useMemoFirebase(() => {
-        if (!vendor?.id || !range?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
-    }, [firestore, vendor.id, range.id]);
-    
-    const { data: models, loading: modelsLoading } = useCollection<Model>(modelsQuery);
-    
-    if (modelsLoading) {
-        return <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-    }
-    
-    if (!models || models.length === 0) {
-        return <p className="text-muted-foreground text-center py-8">No models found for {range.name}.</p>;
-    }
-    
-    return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {models.map(model => (
-                 <Card key={model.id} className="group overflow-hidden flex flex-col h-full transition-all duration-300 ease-in-out hover:border-primary hover:shadow-xl hover:-translate-y-1 cursor-pointer" onClick={() => onModelSelect(model)}>
-                    <div className="flex-grow">
-                        <div className="h-52 bg-secondary relative">
-                                {model.coverImageUrl ? (
-                                <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
-                            ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                    <Wrench className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                            )}
-                        </div>
-                        <CardContent className="p-3 h-20 flex items-center justify-center">
-                            <p className="font-semibold text-center line-clamp-2">{model.name}</p>
-                        </CardContent>
-                    </div>
-                </Card>
-            ))}
-        </div>
-    );
-}
+const formSchema = z.object({
+  name: z.string().min(1, { message: 'Module name is required.' }),
+  mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
+  associatedVendorIds: z.array(z.string()).default([]),
+});
 
 function ModuleConfigurationBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: 'ranges' | 'models' | 'bmt' | 'quote' | 'operations', onBreadcrumbClick: (level: 'ranges' | 'models') => void }) {
     return (
@@ -627,7 +822,7 @@ export default function ModuleDetailsPage() {
                                 {mainVendor && (mainVendor.vendorType === 'Boat Brand') ? (
                                     <>
                                         {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
-                                        {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} />}
+                                        {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} isAdmin={isAdmin && !viewContextOrgId} />}
                                     </>
                                 ) : (
                                     <p className="text-muted-foreground">No configuration view available for this vendor type.</p>
@@ -793,7 +988,10 @@ export default function ModuleDetailsPage() {
                                     </CardHeader>
                                     <CardContent className="space-y-6">
                                         <FormField control={settingsForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Module Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                        <FormField control={settingsForm.control} name="mainVendorId" render={({ field }) => ( <FormItem><FormLabel>Main Vendor</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select main vendor" /></SelectTrigger></FormControl><SelectContent>{allVendors?.map(v => (<SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>))}</SelectContent></Select></FormItem> )} />
+                                        <FormField control={settingsForm.control} name="mainVendorId" render={({ field }) => ( <FormItem><FormLabel>Main Vendor</FormLabel><Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select main vendor" /></SelectTrigger></FormControl>
+                                            <SelectContent>{allVendors?.map(v => (<SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>))}</SelectContent>
+                                        </Select></FormItem> )} />
                                         <FormField control={settingsForm.control} name="associatedVendorIds" render={() => (
                                             <FormItem>
                                                 <FormLabel>Associated Vendors</FormLabel>
