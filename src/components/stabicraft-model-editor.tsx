@@ -14,6 +14,7 @@ import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Loader2, PlusCircle, Trash2, ChevronRight, X, Image as ImageIcon, Plus, Upload, Palette, Layers, Grid3X3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
