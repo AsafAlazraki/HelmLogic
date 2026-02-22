@@ -14,7 +14,7 @@ import type { User } from 'firebase/auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Wrench } from 'lucide-react';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor, jeanneauModelSchema } from '@/components/jeanneau-model-editor';
@@ -219,7 +219,11 @@ export function ModelConfigurationEditor({
     }, [model, vendor?.slug, reset]);
 
     const onSubmit = async (values: any) => {
-        if (!permissions.can_edit_boat_data && !isAdmin) {
+        // HelmLogic Admins can ALWAYS edit the master boat data.
+        // Organisation users need explicit permission.
+        const canEdit = isAdmin || permissions.can_edit_boat_data;
+
+        if (!canEdit) {
             toast({ variant: "destructive", title: "Access Denied", description: "You do not have permission to edit boat data." });
             return;
         }
@@ -258,12 +262,14 @@ export function ModelConfigurationEditor({
 
             const sanitizedValues = sanitizeDataForFirestore(finalValues);
 
+            // Admins update the master data in the warehouse
             if (isAdmin) {
                 const modelDocRef = doc(firestore, docPath);
                 await setDoc(modelDocRef, sanitizedValues, { merge: true });
-                toast({ title: "Model Updated", description: "Master configuration has been saved." });
+                toast({ title: "Master Configuration Updated", description: "Changes have been saved to the Data Warehouse." });
             } else {
-                if (!organisationId || !user) throw new Error("Missing user context");
+                // Organisations save a local "Quote" or "Draft" of the configuration
+                if (!organisationId || !user) throw new Error("Missing context for organization save");
                 const quotesColRef = collection(firestore, `organisations/${organisationId}/quotes`);
                 await addDoc(quotesColRef, {
                     quoteNumber: `CONFIG-${Date.now()}`,
@@ -275,7 +281,7 @@ export function ModelConfigurationEditor({
                     customerName: 'Local Configuration',
                     pricingSummary: {},
                 });
-                toast({ title: "Configuration Saved", description: "Saved to your organization's collection." });
+                toast({ title: "Local Configuration Saved", description: "Successfully saved to your organisation workspace." });
             }
         } catch (e: any) {
             console.error("Save failed:", e);
@@ -303,63 +309,76 @@ export function ModelConfigurationEditor({
             case 'stacer': return <StacerModelEditor model={model} />;
             case 'stabicraft': return <StabicraftModelEditor model={model} />;
             case 'surtees': return <SurteesModelEditor model={model} />;
-            default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor.</CardContent></Card>;
+            default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor brand.</CardContent></Card>;
         }
     };
+
+    const canEdit = isAdmin || permissions.can_edit_boat_data;
 
     return (
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            {breadcrumbs}
-                            <div className="flex items-center gap-2">
-                                {(permissions.can_create_quotes || isAdmin) && (
-                                    <Button type="button" variant="outline" onClick={() => {}}>
-                                        Start Quote
-                                    </Button>
-                                )}
-                                {(permissions.can_edit_boat_data || isAdmin) && (
-                                    <Button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        <Save className="mr-2 h-4 w-4" />
-                                        Save Changes
-                                    </Button>
-                                )}
+                <div className="space-y-6">
+                    <Card className="border-primary/20 bg-primary/5">
+                        <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 bg-primary text-primary-foreground rounded-md flex items-center justify-center shadow-sm">
+                                        <Wrench className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold">{model.name}</h2>
+                                        {breadcrumbs}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {(permissions.can_create_quotes || isAdmin) && (
+                                        <Button type="button" variant="outline" onClick={() => {}}>
+                                            Create Quote
+                                        </Button>
+                                    )}
+                                    {canEdit && (
+                                        <Button type="submit" disabled={isSubmitting}>
+                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            <Save className="mr-2 h-4 w-4" />
+                                            {isAdmin ? 'Save Master Changes' : 'Save Configuration'}
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <Tabs defaultValue="boat" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4">
-                                <TabsTrigger value="boat">Boat</TabsTrigger>
-                                <TabsTrigger value="motor">Motor</TabsTrigger>
-                                <TabsTrigger value="trailer">Trailer</TabsTrigger>
-                                <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
-                            </TabsList>
-                            <TabsContent value="boat" className="mt-6">
-                                {getModelEditor()}
-                            </TabsContent>
-                            <TabsContent value="motor" className="mt-6">
-                                <MotorOptions model={model} module={module} />
-                            </TabsContent>
-                            <TabsContent value="trailer" className="mt-6">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Trailer Options</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-muted-foreground">Trailer configuration options will be available here soon.</p>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                            <TabsContent value="dealer-fit" className="mt-6">
-                                <DealerFitOptions module={module} organisationId={organisationId} />
-                            </TabsContent>
-                        </Tabs>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+
+                    <Tabs defaultValue="boat" className="w-full">
+                        <TabsList className="grid w-full grid-cols-4">
+                            <TabsTrigger value="boat">Boat Details</TabsTrigger>
+                            <TabsTrigger value="motor">Motor Options</TabsTrigger>
+                            <TabsTrigger value="trailer">Trailer Options</TabsTrigger>
+                            <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="boat" className="mt-6">
+                            {getModelEditor()}
+                        </TabsContent>
+                        <TabsContent value="motor" className="mt-6">
+                            <MotorOptions model={model} module={module} />
+                        </TabsContent>
+                        <TabsContent value="trailer" className="mt-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Trailer Options</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg text-muted-foreground">
+                                        <p>Trailer configuration coming soon.</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="dealer-fit" className="mt-6">
+                            <DealerFitOptions module={module} organisationId={organisationId} />
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </form>
         </FormProvider>
     );

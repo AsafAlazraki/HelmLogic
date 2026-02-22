@@ -639,12 +639,12 @@ export default function ModuleDetailsPage() {
                             {view === 'bmt' && selectedModel && selectedRange && mainVendor && (
                                 <ModelConfigurationEditor 
                                     model={selectedModel} 
-                                    docPath={`/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} 
+                                    docPath={`data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} 
                                     vendor={mainVendor} 
                                     module={moduleData} 
                                     breadcrumbs={<ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
                                     user={user}
-                                    isAdmin={isAdmin && !viewContextOrgId}
+                                    isAdmin={isAdmin}
                                     organisationId={dashboardOrg?.id}
                                     permissions={userPermissions as any}
                                 />

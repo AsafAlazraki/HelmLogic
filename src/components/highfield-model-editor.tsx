@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Progress } from './ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Separator } from './ui/separator';
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -89,14 +90,6 @@ type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
 const GST_RATE = 0.10;
 
-const motorConfigOptions = [
-    { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
-    { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
-    { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
-    { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
-    { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
-];
-
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field, fieldState } = useController({ control, name, defaultValue: null });
     const valueExcl = field.value;
@@ -142,18 +135,16 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
 }
 
 const CollapsibleCardHeader = ({ title, description, count }: { title: string, description?: string, count?: number }) => (
-    <CardHeader className="flex flex-row items-start justify-between">
-        <div className="flex-1 space-y-1.5">
-            <div className="flex items-center gap-2">
-                <CardTitle>{title}</CardTitle>
-                {count !== undefined && <span className="text-sm font-normal text-muted-foreground group-data-[state=closed]:inline hidden">({count})</span>}
+    <CardHeader className="flex flex-row items-start justify-between cursor-pointer" asChild>
+        <CollapsibleTrigger>
+            <div className="flex-1 space-y-1.5">
+                <div className="flex items-center gap-2">
+                    <CardTitle>{title}</CardTitle>
+                    {count !== undefined && <span className="text-sm font-normal text-muted-foreground">({count})</span>}
+                </div>
+                {description && <CardDescription>{description}</CardDescription>}
             </div>
-            {description && <CardDescription>{description}</CardDescription>}
-        </div>
-        <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon">
-                <ChevronRight className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-            </Button>
+            <ChevronRight className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
         </CollapsibleTrigger>
     </CardHeader>
 );
@@ -259,8 +250,8 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
             <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-3 border rounded-md bg-background"><h4 className="font-medium text-xs mb-2">HYP Pricing</h4><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
-            <div className="p-3 border rounded-md bg-background"><h4 className="font-medium text-xs mb-2">PVC Pricing</h4><GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" /></div>
+            <div className="p-3 border rounded-md bg-background"><h4 className="font-medium text-xs mb-2 text-muted-foreground">HYP Pricing</h4><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
+            <div className="p-3 border rounded-md bg-background"><h4 className="font-medium text-xs mb-2 text-muted-foreground">PVC Pricing</h4><GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" /></div>
           </div>
         </div>
       </div>
@@ -269,7 +260,7 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
 }
 
 export function HighfieldModelEditor({ model }: { model: any }) {
-    const { control } = useFormContext<ModelFormData>();
+    const { control, watch, setValue } = useFormContext<ModelFormData>();
     const storage = useStorage();
     const [isCoverUploading, setIsCoverUploading] = useState(false);
     const [isGalleryUploading, setIsGalleryUploading] = useState(false);
@@ -279,9 +270,10 @@ export function HighfieldModelEditor({ model }: { model: any }) {
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
     const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
-    const { fields: galleryImageFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
+    const { fields: galleryFields, append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
     
-    const coverImageUrl = useWatch({ control, name: "coverImageUrl" });
+    const coverImageUrl = watch("coverImageUrl");
+    const galleryUrls = watch("galleryImageUrls") || [];
 
     return (
         <div className="space-y-6">
@@ -289,14 +281,14 @@ export function HighfieldModelEditor({ model }: { model: any }) {
                 <div className="lg:col-span-4 space-y-8">
                     <Collapsible asChild className="group" defaultOpen>
                         <Card>
-                            <CollapsibleCardHeader title="Specifications" count={specFields.length} />
+                            <CollapsibleCardHeader title="General Specifications" count={specFields.length} />
                             <CollapsibleContent>
                                 <CardContent className="space-y-4">
                                     <div className="flex justify-end"><Button type="button" variant="outline" size="sm" onClick={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Spec</Button></div>
                                     {specFields.map((field, index) => (
                                         <div key={field.id} className="flex items-end gap-2">
-                                            <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" {...field} /></FormControl></FormItem> )} />
+                                            <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label (e.g. Beam)" {...field} /></FormControl></FormItem> )} />
+                                            <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value (e.g. 2.5m)" {...field} /></FormControl></FormItem> )} />
                                             <Button type="button" variant="ghost" size="icon" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                         </div>
                                     ))}
@@ -310,8 +302,8 @@ export function HighfieldModelEditor({ model }: { model: any }) {
                             <CollapsibleCardHeader title="Standard Features" count={featureFields.length} />
                             <CollapsibleContent>
                                 <CardContent className="space-y-4">
-                                    <div className="flex justify-end"><Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add</Button></div>
-                                    <div className="max-h-64 overflow-y-auto space-y-2">
+                                    <div className="flex justify-end"><Button type="button" variant="outline" size="sm" onClick={() => appendFeature('')}><PlusCircle className="mr-2 h-4 w-4" />Add Item</Button></div>
+                                    <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
                                         {featureFields.map((field, index) => (
                                             <div key={field.id} className="flex items-center gap-2">
                                                 <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl></FormItem> )} />
@@ -321,9 +313,13 @@ export function HighfieldModelEditor({ model }: { model: any }) {
                                     </div>
                                     <Separator />
                                     <div className="space-y-2">
-                                        <FormLabel>Bulk Add</FormLabel>
-                                        <Textarea placeholder="One per line..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                                        <Button type="button" variant="secondary" size="sm" onClick={() => { replaceFeatures(bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean)); setBulkFeatures(''); }}>Replace All</Button>
+                                        <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">Bulk Import Features</FormLabel>
+                                        <Textarea placeholder="Paste one feature per line here..." value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                                        <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => { 
+                                            const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
+                                            replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
+                                            setBulkFeatures(''); 
+                                        }}>Append Bulk Items</Button>
                                     </div>
                                 </CardContent>
                             </CollapsibleContent>
@@ -333,27 +329,26 @@ export function HighfieldModelEditor({ model }: { model: any }) {
 
                 <div className="lg:col-span-3 space-y-8">
                     <Card>
-                        <CardHeader><CardTitle>Cover Image</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>Main Cover Image</CardTitle></CardHeader>
                         <CardContent>
-                            <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-background group">
+                            <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted/30 group">
                                 {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                                 {coverImageUrl ? (
                                     <>
-                                        <Image src={coverImageUrl} alt="Cover" fill className="object-cover" />
-                                        <FormField control={control} name="coverImageUrl" render={({ field }) => (
-                                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-7 w-7" onClick={() => field.onChange(null)}><X className="h-4 w-4" /></Button>
-                                        )} />
+                                        <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-2" />
+                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-7 w-7 shadow-lg" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
                                     </>
                                 ) : (
-                                    <label className="flex flex-col items-center justify-center w-full h-48 cursor-pointer hover:bg-secondary/50">
+                                    <label className="flex flex-col items-center justify-center w-full h-48 cursor-pointer hover:bg-secondary/50 transition-colors">
                                         <ImageIcon className="w-10 h-10 mb-2 text-muted-foreground" />
+                                        <span className="text-sm font-medium text-muted-foreground">Upload Boat Render</span>
                                         <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                             const file = e.target.files?.[0];
                                             if (file && storage) {
                                                 setIsCoverUploading(true);
                                                 try {
                                                     const url = await uploadFileWithProgress(storage, file, `models/${model.id}/cover-${Date.now()}`, () => {});
-                                                    control._fields.coverImageUrl?._f.onChange(url);
+                                                    setValue('coverImageUrl', url);
                                                 } finally { setIsCoverUploading(false); }
                                             }
                                         }} /></FormControl>
@@ -364,27 +359,27 @@ export function HighfieldModelEditor({ model }: { model: any }) {
                     </Card>
                     <Collapsible asChild className="group">
                         <Card>
-                            <CollapsibleCardHeader title="Image Gallery" count={galleryImageFields.length} />
+                            <CollapsibleCardHeader title="Image Gallery" count={galleryUrls.length} />
                             <CollapsibleContent>
                                 <CardContent className="grid grid-cols-3 gap-2">
-                                    {galleryImageFields.map((item, index) => (
-                                        <div key={item.id} className="relative aspect-square group">
-                                            <Image src={item.id} alt="Gallery" fill className="object-cover rounded-md" />
-                                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    {galleryUrls.map((url, index) => (
+                                        <div key={index} className="relative aspect-square group rounded-md overflow-hidden border">
+                                            <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" />
+                                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
                                         </div>
                                     ))}
-                                    <label className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-secondary">
+                                    <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-secondary transition-colors">
                                         <Input type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
                                             const files = Array.from(e.target.files || []);
                                             setIsGalleryUploading(true);
                                             try {
                                                 for (const file of files) {
-                                                    const url = await uploadFileWithProgress(storage!, file, `gallery/${Date.now()}-${file.name}`, () => {});
+                                                    const url = await uploadFileWithProgress(storage!, file, `models/${model.id}/gallery/${Date.now()}-${file.name}`, () => {});
                                                     appendGalleryImage(url);
                                                 }
                                             } finally { setIsGalleryUploading(false); }
                                         }}/>
-                                        {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
+                                        {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Plus className="h-6 w-6 text-muted-foreground" />}
                                     </label>
                                 </CardContent>
                             </CollapsibleContent>
@@ -394,15 +389,21 @@ export function HighfieldModelEditor({ model }: { model: any }) {
             </div>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Color Variants & Pricing</CardTitle>
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}><PlusCircle className="mr-2 h-4 w-4" />Add Color</Button>
+                    <div>
+                        <CardTitle>Material & Color Pricing</CardTitle>
+                        <CardDescription>Configure pricing for HYP and PVC material variants across available colors.</CardDescription>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}><PlusCircle className="mr-2 h-4 w-4" />Add Color Variant</Button>
                 </CardHeader>
                 <CardContent className="space-y-4">{colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}</CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Optional Features</CardTitle>
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Feature</Button>
+                    <div>
+                        <CardTitle>Brand Options & Accessories</CardTitle>
+                        <CardDescription>Configure brand-specific optional features available for this model.</CardDescription>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Add Option</Button>
                 </CardHeader>
                 <CardContent className="space-y-4">{optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}</CardContent>
             </Card>
