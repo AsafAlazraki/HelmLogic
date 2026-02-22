@@ -99,7 +99,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             <FormLabel>{label}</FormLabel>
             <div className="grid grid-cols-2 gap-2 mt-2">
                 <FormItem><FormLabel className="text-xs font-normal text-muted-foreground">excl. GST</FormLabel><FormControl><Input type="number" step="0.01" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl></FormItem>
-                <FormItem><FormLabel className="text-xs font-normal text-muted-foreground">inc. GST</FormLabel><FormControl><Input type="number" step="0.01" value={valueIncl display ?? ''} onChange={handleInclChange} /></FormControl></FormItem>
+                <FormItem><FormLabel className="text-xs font-normal text-muted-foreground">inc. GST</FormLabel><FormControl><Input type="number" step="0.01" value={valueIncl ?? ''} onChange={handleInclChange} /></FormControl></FormItem>
             </div>
         </div>
     );
