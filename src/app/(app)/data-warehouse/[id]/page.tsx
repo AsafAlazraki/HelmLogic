@@ -12,7 +12,7 @@ import * as XLSX from 'xlsx';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore, useStorage } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -418,7 +418,7 @@ function MasterDataSetEditorDialog({
             <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Edit Item</DialogTitle>
-                    <DialogDescription>Make changes to the item below and click save.</DialogDescription>
+                    <DialogDescription>Maryland changes to the item below and click save.</DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form className="space-y-4 overflow-y-auto px-1">
@@ -453,8 +453,12 @@ function MasterDataSetEditorDialog({
 }
 
 function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
-    const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
-    const { data: masterDataSet, loading: masterDataLoading, error } = useCollection(masterDataSetPath);
+    const firestore = useFirestore();
+    const masterDataSetQuery = useMemoFirebase(() => {
+        if (!vendor.id) return null;
+        return collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
+    }, [firestore, vendor.id]);
+    const { data: masterDataSet, loading: masterDataLoading, error } = useCollection(masterDataSetQuery);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
@@ -687,13 +691,18 @@ export default function VendorDetailsPage() {
     const firestore = useFirestore();
     const storage = useStorage();
 
-    const vendorQueryBySlug = useMemo(() => {
+    const vendorQueryBySlug = useMemoFirebase(() => {
         if (!slugOrId) return null;
         return query(collection(firestore, 'data-warehouse'), where('slug', '==', slugOrId));
     }, [firestore, slugOrId]);
     
     const { data: vendorsBySlug, loading: slugLoading } = useCollection<VendorFormData>(vendorQueryBySlug);
-    const { data: vendorById, loading: idLoading } = useDoc<VendorFormData>(slugOrId ? `/data-warehouse/${slugOrId}`: null);
+    
+    const vendorByIdRef = useMemoFirebase(() => {
+        if (!slugOrId) return null;
+        return doc(firestore, 'data-warehouse', slugOrId);
+    }, [firestore, slugOrId]);
+    const { data: vendorById, loading: idLoading } = useDoc<VendorFormData>(vendorByIdRef);
     
     const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
     const vendorLoading = slugLoading || idLoading;
