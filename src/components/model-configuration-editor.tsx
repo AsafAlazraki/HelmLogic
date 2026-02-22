@@ -219,8 +219,6 @@ export function ModelConfigurationEditor({
     }, [model, vendor?.slug, reset]);
 
     const onSubmit = async (values: any) => {
-        // HelmLogic Admins can ALWAYS edit the master boat data.
-        // Organisation users need explicit permission.
         const canEdit = isAdmin || permissions.can_edit_boat_data;
 
         if (!canEdit) {
@@ -233,7 +231,6 @@ export function ModelConfigurationEditor({
         try {
             let finalValues = values;
 
-            // Specialized transformations for database storage
             if (vendor.slug === 'highfield' && values.colors) {
                 const colorsForDb = values.colors.map((color: any) => ({
                     id: color.id,
@@ -262,13 +259,11 @@ export function ModelConfigurationEditor({
 
             const sanitizedValues = sanitizeDataForFirestore(finalValues);
 
-            // Admins update the master data in the warehouse
             if (isAdmin) {
                 const modelDocRef = doc(firestore, docPath);
                 await setDoc(modelDocRef, sanitizedValues, { merge: true });
                 toast({ title: "Master Configuration Updated", description: "Changes have been saved to the Data Warehouse." });
             } else {
-                // Organisations save a local "Quote" or "Draft" of the configuration
                 if (!organisationId || !user) throw new Error("Missing context for organization save");
                 const quotesColRef = collection(firestore, `organisations/${organisationId}/quotes`);
                 await addDoc(quotesColRef, {
@@ -298,7 +293,20 @@ export function ModelConfigurationEditor({
 
     const onInvalid = (errors: any) => {
         console.error("Form Validation Errors:", errors);
-        toast({ variant: "destructive", title: "Validation Error", description: "Please check the form for errors. See console for details." });
+        const errorEntries = Object.entries(errors);
+        let errorMsg = "Please check the required fields.";
+        
+        if (errorEntries.length > 0) {
+            const [field, error]: [string, any] = errorEntries[0];
+            const message = error.message || (error.root ? error.root.message : 'Invalid value');
+            errorMsg = `Field "${field}" failed: ${message}`;
+        }
+
+        toast({ 
+            variant: "destructive", 
+            title: "Validation Error", 
+            description: errorMsg 
+        });
     };
 
     const getModelEditor = () => {

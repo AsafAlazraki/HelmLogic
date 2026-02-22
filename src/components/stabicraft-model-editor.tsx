@@ -20,8 +20,8 @@ import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const GST_RATE = 0.10;
 
@@ -179,7 +179,7 @@ function UdekUploader({ patternId, label }: { patternId: string, label: string }
                 ) : (
                     <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
                         <Upload className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-[10px] text-muted-foreground mt-1">Upload Render</span>
+                        <span className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Swatch</span>
                         <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file && storage) {
@@ -357,7 +357,7 @@ export function StabicraftModelEditor({ model }: { model: any }) {
                             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent className="p-0">
-                            <div className="relative aspect-[16/10] w-full bg-secondary group">
+                            <div className="relative h-64 w-full bg-secondary group">
                                 {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                                 {coverImageUrl ? (
                                     <div className="h-full w-full flex items-center justify-center relative">
