@@ -9,9 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore, useStorage } from '@/firebase/provider';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -133,22 +131,32 @@ export default function OrganisationDetailsPage() {
 
     const [activeVendorConfigModule, setActiveVendorConfigModule] = useState<Module | null>(null);
 
-    const orgQueryBySlug = useMemo(() => {
+    const orgQueryBySlug = useMemoFirebase(() => {
         if (!slugOrId) return null;
         return query(collection(firestore, 'organisations'), where('slug', '==', slugOrId));
     }, [firestore, slugOrId]);
 
     const { data: organisationsBySlug, loading: slugLoading } = useCollection<OrganisationFormData>(orgQueryBySlug);
-    const { data: organisationById, loading: idLoading } = useDoc<OrganisationFormData>(slugOrId ? `/organisations/${slugOrId}` : null);
+    
+    const organisationByIdRef = useMemoFirebase(() => {
+        if (!slugOrId) return null;
+        return doc(firestore, 'organisations', slugOrId);
+    }, [firestore, slugOrId]);
+    
+    const { data: organisationById, loading: idLoading } = useDoc<OrganisationFormData>(organisationByIdRef);
 
     const organisation = useMemo(() => organisationsBySlug?.[0] || organisationById, [organisationsBySlug, organisationById]);
     const orgLoading = slugLoading || idLoading;
 
-    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
-    const { data: allModules, loading: modulesLoading } = useCollection<Module>('modules');
-    const { data: allDealerFitCategories, loading: catsLoading } = useCollection<DealerFitCategory>('dealerFitCategories');
+    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
+    const modulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
+    const categoriesQuery = useMemoFirebase(() => collection(firestore, 'dealerFitCategories'), [firestore]);
 
-    const subDealersQuery = useMemo(() => {
+    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
+    const { data: allModules, loading: modulesLoading } = useCollection<Module>(modulesQuery);
+    const { data: allDealerFitCategories, loading: catsLoading } = useCollection<DealerFitCategory>(categoriesQuery);
+
+    const subDealersQuery = useMemoFirebase(() => {
         if (!organisation) return null;
         return query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', organisation.id));
     }, [firestore, organisation]);

@@ -1,17 +1,13 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { useUser } from '@/firebase/auth/use-user';
-import { useFirestore } from '@/firebase/provider';
+import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2, AlertCircle, PlusCircle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 
 interface DealerFitCategory {
@@ -40,9 +36,18 @@ interface DealerFitSelection {
 export function DealerFitOptions({ module, organisationId }: { module: any; organisationId?: string }) {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
-  const { data: organisation, loading: orgLoading } = useDoc<Organisation>(organisationId ? `/organisations/${organisationId}` : null);
-  const { data: allCategories, loading: categoriesLoading } = useCollection<DealerFitCategory>('dealerFitCategories');
-  const { data: selections, loading: selectionsLoading } = useCollection<DealerFitSelection>(organisationId ? `/organisations/${organisationId}/dealerFitSelections` : null);
+  
+  const orgRef = useMemoFirebase(() => organisationId ? doc(firestore, 'organisations', organisationId) : null, [firestore, organisationId]);
+  const { data: organisation, loading: orgLoading } = useDoc<Organisation>(orgRef);
+  
+  const categoriesQuery = useMemoFirebase(() => collection(firestore, 'dealerFitCategories'), [firestore]);
+  const { data: allCategories, loading: categoriesLoading } = useCollection<DealerFitCategory>(categoriesQuery);
+  
+  const selectionsQuery = useMemoFirebase(() => {
+    if (!organisationId) return null;
+    return collection(firestore, `organisations/${organisationId}/dealerFitSelections`);
+  }, [firestore, organisationId]);
+  const { data: selections, loading: selectionsLoading } = useCollection<DealerFitSelection>(selectionsQuery);
 
   const [isBrowserOpen, setIsBrowserOpen] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);

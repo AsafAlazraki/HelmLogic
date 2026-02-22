@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2, AlertCircle, MoreHorizontal, Pencil, Trash2, PlusCircle, Star } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -121,7 +122,10 @@ function MotorCard({ motor }: { motor: Motor }) {
 
 export function MotorOptions({ model, module }: { model: any, module: any }) {
     const { watch } = useFormContext();
-    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
+    const firestore = useFirestore();
+    
+    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
+    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
     
     const motorConfigurations = watch('specifications.motorConfigurations') || model.specifications?.motorConfigurations || [];
 
@@ -139,9 +143,12 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         );
     }, [allVendors, module]);
 
-    const { data: motorDataSet, loading: motorsLoading } = useCollection<Motor>(
-        motorVendor ? `data-warehouse/${motorVendor.id}/masterDataSet` : null
-    );
+    const motorDataSetQuery = useMemoFirebase(() => {
+        if (!motorVendor) return null;
+        return collection(firestore, 'data-warehouse', motorVendor.id, 'masterDataSet');
+    }, [firestore, motorVendor]);
+
+    const { data: motorDataSet, loading: motorsLoading } = useCollection<Motor>(motorDataSetQuery);
     
     const getHpFromMotor = (motor: Motor): number | null => {
         const allKeys = Object.keys(motor);

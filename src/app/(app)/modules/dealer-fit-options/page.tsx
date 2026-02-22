@@ -1,9 +1,7 @@
-
 'use client';
 
 import { useState } from 'react';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore } from '@/firebase/provider';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -43,7 +41,8 @@ interface DealerFitCategory {
 
 export default function DealerFitOptionsPage() {
   const firestore = useFirestore();
-  const { data: categories, loading } = useCollection<DealerFitCategory>('dealerFitCategories');
+  const categoriesQuery = useMemoFirebase(() => collection(firestore, 'dealerFitCategories'), [firestore]);
+  const { data: categories, loading } = useCollection<DealerFitCategory>(categoriesQuery);
   const { toast } = useToast();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

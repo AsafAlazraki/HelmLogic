@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
+import { collection } from 'firebase/firestore';
 
 interface Vendor {
   id: string;
@@ -56,11 +56,18 @@ export function MasterDataBrowserDialog({
   categoryId: string;
   onSave: (selection: Omit<DealerFitSelection, 'id'>) => void;
 }) {
-  const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
+  const firestore = useFirestore();
+  const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
+  const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
+  
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-  const { data: masterData, loading: dataLoading } = useCollection(
-    selectedVendorId ? `data-warehouse/${selectedVendorId}/masterDataSet` : null
-  );
+  
+  const masterDataQuery = useMemoFirebase(() => {
+    if (!selectedVendorId) return null;
+    return collection(firestore, 'data-warehouse', selectedVendorId, 'masterDataSet');
+  }, [firestore, selectedVendorId]);
+  
+  const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
 
   const [stagedItems, setStagedItems] = useState<{ vendorId: string; vendorName: string; row: any }[]>([]);
   const [packageName, setPackageName] = useState('');
@@ -233,4 +240,3 @@ export function MasterDataBrowserDialog({
     </Dialog>
   );
 }
-

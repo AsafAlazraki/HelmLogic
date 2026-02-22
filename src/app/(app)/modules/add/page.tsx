@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -26,7 +26,6 @@ import AdminGuard from '@/components/admin-guard';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCollection } from '@/firebase/firestore/use-collection';
 import { createSlug } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -48,7 +47,8 @@ export default function AddModulePage() {
     const { toast } = useToast();
     const firestore = useFirestore();
 
-    const { data: vendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
+    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
+    const { data: vendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
