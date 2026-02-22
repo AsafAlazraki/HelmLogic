@@ -3,10 +3,10 @@
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRightLeft, PackagePlus } from 'lucide-react';
+import { Loader2, ArrowRightLeft, PackagePlus, Trash2 } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -24,6 +24,7 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
+import { ScrollArea } from './ui/scroll-area';
 
 interface InventoryItem {
     id: string;
@@ -45,13 +46,15 @@ export function InventoryList({
     subDealers, 
     parentOrg, 
     moduleId,
-    filterOrgId 
+    filterOrgId,
+    isAdmin = false
 }: { 
     organisation: Organisation; 
     subDealers: Organisation[]; 
     parentOrg: Organisation | null;
     moduleId: string;
     filterOrgId: string | 'all' | 'local';
+    isAdmin?: boolean;
 }) {
     const firestore = useFirestore();
     
@@ -120,6 +123,15 @@ export function InventoryList({
         }
     };
 
+    const handleDeleteItem = async (itemId: string) => {
+        try {
+            await deleteDoc(doc(firestore, 'inventory', itemId));
+            toast({ title: "Item deleted." });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Delete failed." });
+        }
+    };
+
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
     return (
@@ -133,25 +145,41 @@ export function InventoryList({
                 </div>
             ) : (
                 <div className="space-y-2">
-                    {inventory.map(item => (
-                        <div key={item.id} className="flex items-center justify-between p-3 border rounded-md bg-background group hover:border-primary transition-colors">
-                            <div>
-                                <p className="font-semibold text-sm">{item.name}</p>
-                                <p className="text-xs text-muted-foreground">{item.stockNumber}</p>
-                            </div>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => setSelectedItem(item)}
-                            >
-                                <ArrowRightLeft className="h-4 w-4 mr-2" />
-                                Assign
-                            </Button>
+                    <ScrollArea className="h-[300px] w-full pr-2">
+                        <div className="space-y-2">
+                            {inventory.map(item => (
+                                <div key={item.id} className="flex items-center justify-between p-3 border rounded-md bg-background group hover:border-primary transition-colors">
+                                    <div>
+                                        <p className="font-semibold text-sm">{item.name}</p>
+                                        <p className="text-xs text-muted-foreground">{item.stockNumber}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            onClick={() => setSelectedItem(item)}
+                                            className="h-8 px-2"
+                                        >
+                                            <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                            Assign
+                                        </Button>
+                                        {isAdmin && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/5"
+                                                onClick={() => handleDeleteItem(item.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    </ScrollArea>
                     <div className="pt-2">
-                        <Button variant="ghost" size="sm" className="w-full text-xs" onClick={handleAddTestStock}>
+                        <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground" onClick={handleAddTestStock}>
                             + Add More Test Stock
                         </Button>
                     </div>

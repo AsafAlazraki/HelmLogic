@@ -216,7 +216,7 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
         try {
             const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${selectedModelForPackage.id}`;
             await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
-            toast({ title: editingPackage ? 'Package Updated' : 'Package Added' });
+            toast({ title: "Package Updated" });
         } catch(error) {
             console.error('Failed to save package:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not save package.' });
@@ -734,6 +734,7 @@ export default function ModuleDetailsPage() {
                                                         parentOrg={null} 
                                                         moduleId={moduleData.id}
                                                         filterOrgId="local"
+                                                        isAdmin={isAdmin}
                                                     />
                                                 </CardContent>
                                             </Card>
@@ -749,6 +750,7 @@ export default function ModuleDetailsPage() {
                                                         organisation={dashboardOrg as any}
                                                         parentOrg={parentOrg as any}
                                                         moduleId={moduleData.id}
+                                                        isAdmin={isAdmin}
                                                     />
                                                 </CardContent>
                                             </Card>
@@ -779,6 +781,7 @@ export default function ModuleDetailsPage() {
                                                 parentOrg={parentOrg as any}
                                                 moduleId={moduleData.id}
                                                 filterOrgId={inStockFilter}
+                                                isAdmin={isAdmin}
                                             />
                                         </CardContent>
                                     </Card>
@@ -791,14 +794,21 @@ export default function ModuleDetailsPage() {
                                                 organisation={dashboardOrg as any}
                                                 parentOrg={parentOrg as any}
                                                 moduleId={moduleData.id}
+                                                isAdmin={isAdmin}
                                             />
                                         </CardContent>
                                     </Card>
                                 </div>
                                 <div className="lg:col-span-2">
-                                    <Card className="h-full flex flex-col">
+                                    <Card className="h-full flex flex-col min-h-[600px]">
                                         <CardHeader><CardTitle>Quotes</CardTitle><CardDescription>Recent quotes for {dashboardOrg.name}</CardDescription></CardHeader>
-                                        <CardContent className="flex-grow"><ScrollArea className="h-[500px]"><div className="flex items-center justify-center h-full p-8 text-muted-foreground"><p>Quotes list will appear here.</p></div></ScrollArea></CardContent>
+                                        <CardContent className="flex-grow">
+                                            <ScrollArea className="h-[500px] w-full rounded-md border p-4 bg-muted/5">
+                                                <div className="flex items-center justify-center h-full text-muted-foreground italic">
+                                                    <p>Quotes list will appear here.</p>
+                                                </div>
+                                            </ScrollArea>
+                                        </CardContent>
                                     </Card>
                                 </div>
                             </div>

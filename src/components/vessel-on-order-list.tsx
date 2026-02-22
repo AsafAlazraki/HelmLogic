@@ -1,14 +1,13 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
-import { collection, query, where, doc, updateDoc, addDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ship, Clock, CheckCircle2, XCircle, Send, PlusCircle } from 'lucide-react';
+import { Loader2, Ship, Clock, CheckCircle2, XCircle, Send, PlusCircle, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
     Dialog,
@@ -23,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from './ui/badge';
+import { ScrollArea } from './ui/scroll-area';
 
 interface Vessel {
     id: string;
@@ -53,11 +53,13 @@ interface Organisation {
 export function VesselOnOrderList({ 
     organisation, 
     parentOrg, 
-    moduleId 
+    moduleId,
+    isAdmin = false
 }: { 
     organisation: Organisation; 
     parentOrg: Organisation | null;
     moduleId: string;
+    isAdmin?: boolean;
 }) {
     const firestore = useFirestore();
     const { user } = useUser();
@@ -189,6 +191,15 @@ export function VesselOnOrderList({
         }
     };
 
+    const handleDeleteVessel = async (vesselId: string) => {
+        try {
+            await deleteDoc(doc(firestore, 'vessels', vesselId));
+            toast({ title: "Vessel deleted." });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Delete failed." });
+        }
+    };
+
     if (vesselsLoading || resLoading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
     return (
@@ -202,53 +213,69 @@ export function VesselOnOrderList({
                 </div>
             ) : (
                 <div className="space-y-3">
-                    {vessels.map(vessel => {
-                        const reservation = reservations?.find(r => r.vesselId === vessel.id && r.status !== 'Cancelled');
-                        return (
-                            <div key={vessel.id} className="flex items-center justify-between p-4 border rounded-md bg-background group hover:border-primary transition-all">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center">
-                                        <Ship className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-sm">{vessel.name}</p>
-                                        <p className="text-xs text-muted-foreground">SN: {vessel.serialNumber}</p>
-                                        {reservation?.status === 'Declined' && (
-                                            <p className="text-[10px] text-destructive mt-1 font-medium italic">Declined: {reservation.declineNote}</p>
-                                        )}
-                                    </div>
-                                </div>
+                    <ScrollArea className="h-[300px] w-full pr-2">
+                        <div className="space-y-3">
+                            {vessels.map(vessel => {
+                                const reservation = reservations?.find(r => r.vesselId === vessel.id && r.status !== 'Cancelled');
+                                return (
+                                    <div key={vessel.id} className="flex items-center justify-between p-4 border rounded-md bg-background group hover:border-primary transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-10 w-10 bg-secondary rounded-full flex items-center justify-center">
+                                                <Ship className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm">{vessel.name}</p>
+                                                <p className="text-xs text-muted-foreground">SN: {vessel.serialNumber}</p>
+                                                {reservation?.status === 'Declined' && (
+                                                    <p className="text-[10px] text-destructive mt-1 font-medium italic">Declined: {reservation.declineNote}</p>
+                                                )}
+                                            </div>
+                                        </div>
 
-                                <div className="flex items-center gap-3">
-                                    {reservation && reservation.status !== 'Declined' ? (
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant={reservation.status === 'Approved' ? 'default' : 'secondary'} className="gap-1 px-2 py-1">
-                                                {reservation.status === 'Approved' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                                                {reservation.status}
-                                            </Badge>
-                                            
-                                            {!isSubDealer && reservation.status === 'Awaiting Confirmation' && (
-                                                <div className="flex gap-1">
-                                                    <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleProcessReservation(reservation, true)}>
-                                                        Approve
-                                                    </Button>
-                                                    <Button size="sm" variant="outline" className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => setResToDecline(reservation)}>
-                                                        Decline
-                                                    </Button>
+                                        <div className="flex items-center gap-3">
+                                            {reservation && reservation.status !== 'Declined' ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant={reservation.status === 'Approved' ? 'default' : 'secondary'} className="gap-1 px-2 py-1">
+                                                        {reservation.status === 'Approved' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        {reservation.status}
+                                                    </Badge>
+                                                    
+                                                    {!isSubDealer && reservation.status === 'Awaiting Confirmation' && (
+                                                        <div className="flex gap-1">
+                                                            <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleProcessReservation(reservation, true)}>
+                                                                Approve
+                                                            </Button>
+                                                            <Button size="sm" variant="outline" className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => setResToDecline(reservation)}>
+                                                                Decline
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    {isSubDealer && (
+                                                        <Button variant="outline" size="sm" onClick={() => setSelectedVessel(vessel)}>
+                                                            Reserve
+                                                        </Button>
+                                                    )}
+                                                    {isAdmin && (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/5"
+                                                            onClick={() => handleDeleteVessel(vessel.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
-                                    ) : (
-                                        isSubDealer && (
-                                            <Button variant="outline" size="sm" onClick={() => setSelectedVessel(vessel)}>
-                                                Reserve
-                                            </Button>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </ScrollArea>
                     <div className="pt-2">
                         <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground" onClick={handleAddTestOnOrderBoat}>
                             + Seed Test Data
