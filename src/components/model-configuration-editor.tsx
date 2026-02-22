@@ -375,7 +375,11 @@ export function ModelConfigurationEditor({
                             </Card>
                         </TabsContent>
                         <TabsContent value="dealer-fit" className="mt-6">
-                            <DealerFitOptions module={module} organisationId={organisationId} />
+                            <DealerFitOptions 
+                                module={module} 
+                                organisationId={organisationId} 
+                                isAdmin={isAdmin} 
+                            />
                         </TabsContent>
                     </Tabs>
                 </div>
