@@ -194,150 +194,46 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     );
 }
 
-function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
-    const { control, watch, setValue } = useFormContext<ModelFormData>();
-    const storage = useStorage();
-    const [isCoverUploading, setIsCoverUploading] = useState(false);
-    const [isGalleryUploading, setIsGalleryUploading] = useState(false);
-    
-    const coverImageUrl = watch("coverImageUrl");
-    const galleryUrls = watch("galleryImageUrls") || [];
-    const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
+function PricingSummary({ pricing }: { pricing: any }) {
+    const renderPrice = (material: 'HYP' | 'PVC') => {
+        const p = pricing?.[material];
+        if (!p) return null;
+        
+        const sell = p.sellPriceExclGst;
+        const cost = p.cost;
+
+        if (sell !== null && sell !== undefined && sell !== '') {
+            return (
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-tighter">{material}</span>
+                    <span className="text-xs font-black text-primary">${Number(sell).toLocaleString()}</span>
+                </div>
+            );
+        }
+        if (cost !== null && cost !== undefined && cost !== '') {
+            return (
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-tighter">{material}</span>
+                    <div className="flex items-center gap-1 bg-amber-500/10 px-1 rounded">
+                        <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Cost</span>
+                        <span className="text-xs font-black text-amber-600">${Number(cost).toLocaleString()}</span>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const hyp = renderPrice('HYP');
+    const pvc = renderPrice('PVC');
+
+    if (!hyp && !pvc) return null;
 
     return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader title={isModuleView ? "Visual Config & Renders" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
-            <CollapsibleContent>
-                <div className="space-y-0">
-                    <div className="relative aspect-[16/10] w-full bg-secondary group">
-                        {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
-                        {coverImageUrl ? (
-                            <div className="h-full w-full flex items-center justify-center relative">
-                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" sizes="(max-width: 1024px) 100vw, 50vw" />
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
-                            </div>
-                        ) : (
-                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
-                                <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
-                                <span className="text-sm font-bold text-muted-foreground">Upload Image</span>
-                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file && storage) {
-                                        setIsCoverUploading(true);
-                                        try {
-                                            const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`);
-                                            setValue('coverImageUrl', url);
-                                        } finally { setIsCoverUploading(false); }
-                                    }
-                                }} /></FormControl>
-                            </label>
-                        )}
-                    </div>
-                    
-                    <div className="p-6 space-y-3 bg-card border-t">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Image Gallery</Label>
-                        <div className="grid grid-cols-3 gap-3">
-                            {galleryUrls.map((url, index) => (
-                                <div key={index} className="relative aspect-square group rounded-lg overflow-hidden border bg-muted">
-                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
-                                    </div>
-                                </div>
-                            ))}
-                            <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-all group/add">
-                                <Input type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                    const files = Array.from(e.target.files || []);
-                                    setIsGalleryUploading(true);
-                                    try {
-                                        for (const file of files) {
-                                            const url = await uploadFileToStorage(storage!, file, `models/${model.id}/gallery/${Date.now()}-${file.name}`);
-                                            appendGalleryImage(url);
-                                        }
-                                    } finally { setIsGalleryUploading(false); }
-                                }}/>
-                                {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Plus className="h-6 w-6 text-muted-foreground group-hover/add:scale-110 transition-transform" />}
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function OptionalFeatureItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
-    const { control } = useFormContext<ModelFormData>();
-    const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
-    const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
-    const code = useWatch({ control, name: `optionalFeatures.${index}.code` });
-    const storage = useStorage();
-    const [isUploading, setIsUploading] = useState(false);
-
-    return (
-        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
-                <div className="flex items-center gap-3 min-w-0">
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
-                        </Button>
-                    </CollapsibleTrigger>
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-bold text-xs truncate">{name || 'Unnamed Option'}</span>
-                        {code && <span className="font-mono text-[10px] text-muted-foreground uppercase bg-muted px-1 rounded shrink-0">{code}</span>}
-                    </div>
-                </div>
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => remove(index)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-            </div>
-            <CollapsibleContent>
-                <div className="p-4 space-y-6">
-                    <FormField
-                        control={control}
-                        name={`optionalFeatures.${index}.imageUrl`}
-                        render={({ field }) => (
-                            <div className="relative aspect-video w-full overflow-hidden rounded-md border-2 border-dashed bg-muted/20">
-                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                                {imageUrl ? (
-                                    <>
-                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
-                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
-                                    </>
-                                ) : (
-                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                        <Upload className="w-5 h-5 text-muted-foreground" />
-                                        <span className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Upload Image</span>
-                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file && storage) {
-                                                setIsUploading(true);
-                                                try {
-                                                    const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
-                                                    field.onChange(url);
-                                                } finally { setIsUploading(false); }
-                                            }
-                                        }} /></FormControl>
-                                    </label>
-                                )}
-                            </div>
-                        )}
-                    />
-
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-3">
-                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-10 font-bold" {...field} /></FormControl></FormItem> )} />
-                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-10 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
-                        </div>
-                        <div className="grid grid-cols-1 gap-6">
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
-                        </div>
-                    </div>
-                </div>
-            </CollapsibleContent>
-        </Collapsible>
+        <div className="flex items-center gap-4 ml-auto mr-4 group-data-[state=open]/item:hidden">
+            {hyp}
+            {pvc}
+        </div>
     );
 }
 
@@ -346,31 +242,40 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
   const name = useWatch({ control, name: `colors.${index}.name` });
   const code = useWatch({ control, name: `colors.${index}.code` });
   const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
+  const pricing = useWatch({ control, name: `colors.${index}.pricing` });
   const storage = useStorage();
   const [isUploading, setIsUploading] = useState(false);
 
   return (
-    <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
-        <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
-            <div className="flex items-center gap-3">
+    <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:border-primary/20">
+        <div className="flex items-center p-3 bg-muted/20 border-b">
+            <div className="flex items-center gap-3 flex-grow">
                 <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
                         <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
                     </Button>
                 </CollapsibleTrigger>
+                
                 <div className="flex items-center gap-3">
-                    {imageUrl && (
-                        <div className="relative h-6 w-9 rounded border overflow-hidden bg-background">
+                    <div className="relative h-10 w-14 rounded-md border-2 border-background overflow-hidden bg-background shadow-sm shrink-0">
+                        {imageUrl ? (
                             <Image src={imageUrl} alt="Swatch" fill className="object-cover" />
-                        </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs">{name || 'Unnamed Color Variant'}</span>
-                        {code && <span className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1 rounded">{code}</span>}
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground/30">
+                                <ImageIcon className="h-4 w-4" />
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                        <span className="font-black text-sm tracking-tight text-foreground">{name || 'Unnamed Color Variant'}</span>
+                        {code && <span className="text-[10px] w-fit font-mono font-bold text-muted-foreground uppercase bg-muted/50 px-1.5 rounded">{code}</span>}
                     </div>
                 </div>
+
+                <PricingSummary pricing={pricing} />
             </div>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+            
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-2" onClick={() => remove(index)}>
                 <Trash2 className="h-3.5 w-3.5" />
             </Button>
         </div>
@@ -541,6 +446,81 @@ function MotorConfigurationsSection() {
                     </CardContent>
                 </CollapsibleContent>
             </Card>
+        </Collapsible>
+    );
+}
+
+function OptionalFeatureItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+    const { control } = useFormContext<ModelFormData>();
+    const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
+    const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
+    const code = useWatch({ control, name: `optionalFeatures.${index}.code` });
+    const storage = useStorage();
+    const [isUploading, setIsUploading] = useState(false);
+
+    return (
+        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
+                <div className="flex items-center gap-3 min-w-0">
+                    <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
+                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
+                        </Button>
+                    </CollapsibleTrigger>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold text-xs truncate">{name || 'Unnamed Option'}</span>
+                        {code && <span className="font-mono text-[10px] text-muted-foreground uppercase bg-muted px-1 rounded shrink-0">{code}</span>}
+                    </div>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => remove(index)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+            </div>
+            <CollapsibleContent>
+                <div className="p-4 space-y-6">
+                    <FormField
+                        control={control}
+                        name={`optionalFeatures.${index}.imageUrl`}
+                        render={({ field }) => (
+                            <div className="relative aspect-video w-full overflow-hidden rounded-md border-2 border-dashed bg-muted/20">
+                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                                {imageUrl ? (
+                                    <>
+                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
+                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
+                                    </>
+                                ) : (
+                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                        <Upload className="w-5 h-5 text-muted-foreground" />
+                                        <span className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Upload Image</span>
+                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file && storage) {
+                                                setIsUploading(true);
+                                                try {
+                                                    const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
+                                                    field.onChange(url);
+                                                } finally { setIsUploading(false); }
+                                            }
+                                        }} /></FormControl>
+                                    </label>
+                                )}
+                            </div>
+                        )}
+                    />
+
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-10 font-bold" {...field} /></FormControl></FormItem> )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-10 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
+                        </div>
+                        <div className="grid grid-cols-1 gap-6">
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
+                        </div>
+                    </div>
+                </div>
+            </CollapsibleContent>
         </Collapsible>
     );
 }
