@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -371,58 +371,83 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
             </Button>
         </div>
         <CollapsibleContent>
-            <div className="p-6">
-                <div className="flex flex-col sm:flex-row gap-8 items-start">
-                    <FormField
-                    control={control}
-                    name={`colors.${index}.imageUrl`}
-                    render={({ field }) => (
-                        <FormItem className="w-48 flex-shrink-0">
-                        <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/20">
-                            {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                            {imageUrl ? (
-                                <>
-                                <Image src={imageUrl} alt="Color" fill className="object-cover" />
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-4 w-4" /></Button>
-                                </>
-                            ) : (
-                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                    <Upload className="w-5 h-5 text-muted-foreground" />
-                                    <span className="text-[10px] text-muted-foreground mt-1 font-bold uppercase">Swatch</span>
-                                    <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file && storage) {
-                                            setIsUploading(true);
-                                            try {
-                                                const url = await uploadFileToStorage(storage, file, `colors/${Date.now()}-${file.name}`);
-                                                field.onChange(url);
-                                            } finally { setIsUploading(false); }
-                                        }
-                                    }} /></FormControl>
-                                </label>
+            <div className="p-8">
+                <div className="flex flex-col lg:flex-row gap-10 items-start">
+                    <div className="w-full lg:w-[400px] shrink-0">
+                        <FormField
+                            control={control}
+                            name={`colors.${index}.imageUrl`}
+                            render={({ field }) => (
+                                <div className="space-y-3">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Color Swatch / Render</Label>
+                                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border-4 border-dashed bg-muted/10 group/swatch">
+                                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                                        {imageUrl ? (
+                                            <>
+                                                <Image src={imageUrl} alt="Color" fill className="object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/swatch:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Button type="button" variant="destructive" size="sm" onClick={() => field.onChange(null)}>Remove Swatch</Button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50 transition-colors">
+                                                <div className="p-4 rounded-full bg-background shadow-sm mb-3">
+                                                    <Upload className="w-6 h-6 text-primary" />
+                                                </div>
+                                                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter">Upload Swatch</span>
+                                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file && storage) {
+                                                        setIsUploading(true);
+                                                        try {
+                                                            const url = await uploadFileToStorage(storage, file, `colors/${Date.now()}-${file.name}`);
+                                                            field.onChange(url);
+                                                        } finally { setIsUploading(false); }
+                                                    }
+                                                }} /></FormControl>
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
                             )}
-                        </div>
-                        </FormItem>
-                    )}
-                    />
-                    <div className="flex-1 space-y-8 w-full">
-                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="max-w-md"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant Name</FormLabel><FormControl><Input placeholder="Color Name" className="h-11 font-bold" {...field} /></FormControl></FormItem> )} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="p-6 border rounded-2xl bg-muted/5 space-y-6">
-                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary flex items-center gap-2">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                    HYP Material
+                        />
+                    </div>
+
+                    <div className="flex-1 space-y-10 w-full">
+                        <FormField 
+                            control={control} 
+                            name={`colors.${index}.name`} 
+                            render={({ field }) => ( 
+                                <FormItem className="max-w-md">
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Variant Name</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g., Storm Grey" className="h-14 text-lg font-black border-2 bg-muted/5 focus-visible:ring-primary/10 focus-visible:border-primary" {...field} />
+                                    </FormControl>
+                                </FormItem> 
+                            )} 
+                        />
+                        
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                            <div className="p-8 border-2 rounded-3xl bg-muted/5 space-y-8 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                                <h4 className="font-black text-sm uppercase tracking-tighter text-primary flex items-center gap-3">
+                                    HYP Material Configuration
                                 </h4>
-                                <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" />
-                                <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" />
+                                <div className="space-y-8">
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Factory Cost" />
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Retail Sell Price" />
+                                </div>
                             </div>
-                            <div className="p-6 border rounded-2xl bg-muted/5 space-y-6">
-                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary flex items-center gap-2">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                    PVC Material
+                            
+                            <div className="p-8 border-2 rounded-3xl bg-muted/5 space-y-8 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                                <h4 className="font-black text-sm uppercase tracking-tighter text-primary flex items-center gap-3">
+                                    PVC Material Configuration
                                 </h4>
-                                <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" />
-                                <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" />
+                                <div className="space-y-8">
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Factory Cost" />
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Retail Sell Price" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -580,10 +605,25 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
 
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
+            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                <Card className="border-none shadow-none rounded-none">
+                    <CollapsibleCardHeader 
+                        title="Material & Color Pricing" 
+                        count={colorFields.length}
+                        onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
+                    />
+                    <CollapsibleContent>
+                        <CardContent className="space-y-6 pt-8">
+                            {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
+                        </CardContent>
+                    </CollapsibleContent>
+                </Card>
+            </Collapsible>
+
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className="lg:col-span-4 lg:order-1 space-y-8">
-                    <SpecsSection />
                     <FeaturesSection />
+                    <SpecsSection />
                     <MotorConfigurationsSection />
                 </div>
                 <div className="lg:col-span-3 lg:order-2 space-y-8">
@@ -602,20 +642,6 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                                             {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                                         </div>
                                     </ScrollArea>
-                                </CardContent>
-                            </CollapsibleContent>
-                        </Card>
-                    </Collapsible>
-                    <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                        <Card className="border-none shadow-none rounded-none">
-                            <CollapsibleCardHeader 
-                                title="Material & Color Pricing" 
-                                count={colorFields.length}
-                                onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
-                            />
-                            <CollapsibleContent>
-                                <CardContent className="space-y-6 pt-8">
-                                    {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
                                 </CardContent>
                             </CollapsibleContent>
                         </Card>
