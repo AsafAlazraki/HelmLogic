@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useStorage } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, doc, setDoc, query, where } from 'firebase/firestore';
 import { useRouter, useParams } from 'next/navigation';
@@ -77,13 +77,18 @@ export default function AddSubDealerPage() {
   const params = useParams();
   const parentOrgSlugOrId = params.id as string;
 
-  const orgQueryBySlug = useMemo(() => {
+  const orgQueryBySlug = useMemoFirebase(() => {
     if (!parentOrgSlugOrId) return null;
     return query(collection(firestore, 'organisations'), where('slug', '==', parentOrgSlugOrId));
   }, [firestore, parentOrgSlugOrId]);
 
   const { data: orgsBySlug, loading: slugLoading } = useCollection<{id: string, name: string, slug?: string}>(orgQueryBySlug);
-  const { data: orgById, loading: idLoading } = useDoc<{id: string, name: string, slug?: string}>(parentOrgSlugOrId ? `/organisations/${parentOrgSlugOrId}` : null);
+  
+  const orgByIdRef = useMemoFirebase(() => 
+    parentOrgSlugOrId ? doc(firestore, 'organisations', parentOrgSlugOrId) : null,
+  [firestore, parentOrgSlugOrId]);
+  
+  const { data: orgById, loading: idLoading } = useDoc<{id: string, name: string, slug?: string}>(orgByIdRef);
 
   const parentOrganisation = useMemo(() => orgsBySlug?.[0] || orgById, [orgsBySlug, orgById]);
   const parentOrgLoading = slugLoading || idLoading;
