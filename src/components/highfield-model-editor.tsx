@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -69,8 +68,8 @@ const optionalFeatureSchema = z.object({
     name: z.string().min(1, 'Feature name is required'),
     code: z.string().optional(),
     imageUrl: z.string().nullable().optional(),
-    cost: z.coerce.number().min(0).default(0),
-    sellPriceExclGst: z.coerce.number().min(0).default(0),
+    cost: looseNumber,
+    sellPriceExclGst: looseNumber,
 });
 
 const documentSchema = z.object({
@@ -121,48 +120,32 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
 
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field, fieldState } = useController({ control, name, defaultValue: null });
-    
-    // Decouple inputs from the calculation loop using local string state.
-    // This prevents the jumpy behavior and decimal stripping while typing.
     const [exclInput, setExclInput] = useState<string>('');
     const [inclInput, setInclInput] = useState<string>('');
+    const activeInput = useRef<'excl' | 'incl' | null>(null);
 
-    // Sync state on mount and whenever form value changes externally
+    // Initial sync and external updates
     useEffect(() => {
+        if (activeInput.current) return;
+
         const val = field.value;
         if (val === null || val === undefined || val === '') {
-            if (exclInput !== '' || inclInput !== '') {
-                setExclInput('');
-                setInclInput('');
-            }
+            setExclInput('');
+            setInclInput('');
             return;
         }
 
         const num = parseFloat(val);
-        const currentExclNum = parseFloat(exclInput);
-        const currentInclNum = parseFloat(inclInput);
-        
-        // Calculate expected Incl based on Val
-        const expectedInclNum = Math.round((num * (1 + GST_RATE)) * 100) / 100;
-
-        // Check if strings are numerically out of sync with the current form value
-        const isExclSync = !isNaN(currentExclNum) && Math.abs(num - currentExclNum) < 0.001;
-        const isInclSync = !isNaN(currentInclNum) && Math.abs(expectedInclNum - currentInclNum) < 0.001;
-
-        if (!isExclSync) {
-            setExclInput(num.toString());
-            setInclInput(expectedInclNum.toString());
-        } else if (!isInclSync) {
-            setInclInput(expectedInclNum.toString());
-        }
-    }, [field.value, exclInput, inclInput]);
+        setExclInput(num.toString());
+        setInclInput((num * (1 + GST_RATE)).toFixed(2));
+    }, [field.value]);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        // Allow numeric entry including a single decimal point
         if (val !== '' && !/^\d*\.?\d*$/.test(val)) return;
         
         setExclInput(val);
+        activeInput.current = 'excl';
         
         if (val === '' || val === '.') {
             field.onChange(null);
@@ -171,8 +154,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 field.onChange(num);
-                const calculatedIncl = Math.round((num * (1 + GST_RATE)) * 100) / 100;
-                setInclInput(calculatedIncl.toString());
+                setInclInput((num * (1 + GST_RATE)).toFixed(2));
             }
         }
     };
@@ -182,6 +164,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
         if (val !== '' && !/^\d*\.?\d*$/.test(val)) return;
         
         setInclInput(val);
+        activeInput.current = 'incl';
         
         if (val === '' || val === '.') {
             field.onChange(null);
@@ -189,10 +172,20 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
         } else {
             const num = parseFloat(val);
             if (!isNaN(num)) {
-                const calculatedExcl = Math.round((num / (1 + GST_RATE)) * 100) / 100;
-                field.onChange(calculatedExcl);
-                setExclInput(calculatedExcl.toString());
+                const excl = Math.round((num / (1 + GST_RATE)) * 100) / 100;
+                field.onChange(excl);
+                setExclInput(excl.toString());
             }
+        }
+    };
+
+    const handleBlur = () => {
+        activeInput.current = null;
+        const val = field.value;
+        if (val !== null && val !== undefined && !isNaN(parseFloat(val))) {
+            const num = parseFloat(val);
+            setExclInput(num.toFixed(2));
+            setInclInput((num * (1 + GST_RATE)).toFixed(2));
         }
     };
 
@@ -213,7 +206,8 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                                 placeholder="0.00" 
                                 className="h-9 pl-5 text-xs font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
                                 value={exclInput} 
-                                onChange={handleExclChange} 
+                                onChange={handleExclChange}
+                                onBlur={handleBlur}
                             />
                         </FormControl>
                     </div>
@@ -229,7 +223,8 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                                 placeholder="0.00" 
                                 className="h-9 pl-5 text-xs font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
                                 value={inclInput} 
-                                onChange={handleInclChange} 
+                                onChange={handleInclChange}
+                                onBlur={handleBlur}
                             />
                         </FormControl>
                     </div>
@@ -741,7 +736,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                             <CollapsibleCardHeader 
                                 title="Factory Options" 
                                 count={optionalFeatureFields.length}
-                                onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null, code: '' })}
+                                onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '' })}
                             />
                             <CollapsibleContent>
                                 <CardContent className="pt-6">
