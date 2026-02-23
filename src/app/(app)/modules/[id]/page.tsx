@@ -334,7 +334,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
                     <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:shadow-xl hover:-translate-y-1">
                         <div className="h-40 bg-secondary relative">
                             {range.imageUrl ? (
-                                Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" sizes="(max-width: 768px) 50vw, 25vw" />
+                                <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" sizes="(max-width: 768px) 50vw, 25vw" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center">
                                     <Wrench className="h-12 w-12 text-muted-foreground" />
@@ -1060,7 +1060,6 @@ export default function ModuleDetailsPage() {
                                 <FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
                                 <p className="font-semibold text-xl">Quotation</p>
                             </CardContent>
-                        </Card>
                          <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
                                 <ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />

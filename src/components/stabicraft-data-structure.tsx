@@ -318,12 +318,7 @@ export function StabicraftDataStructure({ vendorId, vendorSlugOrId }: { vendorId
                                 <FormItem><Label>Range Name</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={editForm.control} name="image" render={({ field }) => (
-                                <FormItem>
-                                    <Label>Range Image</Label>
-                                    <FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl>
-                                    <FormDescription>Upload a new image to replace the existing one.</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
+                                <FormItem><Label>Range Image</Label><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormDescription>Upload a new image to replace the existing one.</FormDescription><FormMessage /></FormItem>
                             )} />
                             <DialogFooter>
                                 <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>

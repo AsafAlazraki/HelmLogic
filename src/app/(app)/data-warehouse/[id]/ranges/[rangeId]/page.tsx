@@ -421,7 +421,7 @@ export default function RangeDetailsPage() {
     const { data: rangesBySlug, loading: rangeSlugLoading } = useCollection<Range>(rangeQueryBySlug);
     
     const rangeByIdRef = useMemoFirebase(() => 
-        vendor && rangeSlugOrId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', rangeSlugOrId) : null,
+        vendor && rangeSlugOrId ? doc(firestore, `data-warehouse/${vendor.id}/ranges`, rangeSlugOrId) : null,
     [firestore, vendor, rangeSlugOrId]);
     
     const { data: rangeById, loading: rangeIdLoading } = useDoc<Range>(rangeByIdRef);
