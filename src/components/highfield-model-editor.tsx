@@ -331,8 +331,8 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
                             <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-10 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
                         </div>
                         <div className="grid grid-cols-1 gap-6">
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" />
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell Price" />
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
                         </div>
                     </div>
                 </div>
@@ -583,22 +583,8 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className="lg:col-span-4 lg:order-1 space-y-8">
                     <SpecsSection />
-                    <MotorConfigurationsSection />
                     <FeaturesSection />
-                    <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                        <Card className="border-none shadow-none rounded-none">
-                            <CollapsibleCardHeader 
-                                title="Material & Color Pricing" 
-                                count={colorFields.length}
-                                onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
-                            />
-                            <CollapsibleContent>
-                                <CardContent className="space-y-6 pt-8">
-                                    {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
-                                </CardContent>
-                            </CollapsibleContent>
-                        </Card>
-                    </Collapsible>
+                    <MotorConfigurationsSection />
                 </div>
                 <div className="lg:col-span-3 lg:order-2 space-y-8">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
@@ -616,6 +602,20 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                                             {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                                         </div>
                                     </ScrollArea>
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
+                    <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                        <Card className="border-none shadow-none rounded-none">
+                            <CollapsibleCardHeader 
+                                title="Material & Color Pricing" 
+                                count={colorFields.length}
+                                onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
+                            />
+                            <CollapsibleContent>
+                                <CardContent className="space-y-6 pt-8">
+                                    {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
                                 </CardContent>
                             </CollapsibleContent>
                         </Card>
