@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -120,22 +120,27 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field, fieldState } = useController({ control, name, defaultValue: null });
     const valueExcl = field.value;
-    const calculateIncl = (val: string | number | null) => {
+    const calculateIncl = (val: any) => {
         if (val === '' || val === null || val === undefined) return '';
         const num = typeof val === 'string' ? parseFloat(val) : val;
         if (isNaN(num)) return '';
         return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
     };
     const valueInclDisplay = calculateIncl(valueExcl);
+
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        field.onChange(val === '' ? null : val);
+        if (val === '') field.onChange(null);
+        else {
+            const num = parseFloat(val);
+            if (!isNaN(num)) field.onChange(num);
+        }
     };
+
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        if (val === '') {
-            field.onChange(null);
-        } else {
+        if (val === '') field.onChange(null);
+        else {
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 const excl = num / (1 + GST_RATE);
@@ -143,20 +148,48 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             }
         }
     };
+
     return (
-        <div>
-            <FormLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</FormLabel>
-            <div className="grid grid-cols-2 gap-2 mt-1.5">
-                <FormItem className="space-y-1">
-                    <FormLabel className="text-[9px] font-medium text-muted-foreground uppercase">excl.</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-8 text-xs" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
-                </FormItem>
-                <FormItem className="space-y-1">
-                    <FormLabel className="text-[9px] font-medium text-muted-foreground uppercase">inc.</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-8 text-xs" value={valueInclDisplay} onChange={handleInclChange} /></FormControl>
-                </FormItem>
+        <div className="space-y-3">
+            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80 flex items-center gap-2">
+                <div className="h-1 w-1 rounded-full bg-primary" />
+                {label}
+            </FormLabel>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-muted-foreground/50 uppercase ml-1">Excl. GST</Label>
+                    <div className="relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-sm font-bold">$</div>
+                        <FormControl>
+                            <Input 
+                                type="number" 
+                                step="any" 
+                                placeholder="0.00" 
+                                className="h-12 pl-8 text-sm font-black bg-background border-2 border-muted hover:border-primary/30 transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
+                                value={valueExcl ?? ''} 
+                                onChange={handleExclChange} 
+                            />
+                        </FormControl>
+                    </div>
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-muted-foreground/50 uppercase ml-1">Incl. GST</Label>
+                    <div className="relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-sm font-bold">$</div>
+                        <FormControl>
+                            <Input 
+                                type="number" 
+                                step="any" 
+                                placeholder="0.00" 
+                                className="h-12 pl-8 text-sm font-black bg-background border-2 border-muted hover:border-primary/30 transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
+                                value={valueInclDisplay} 
+                                onChange={handleInclChange} 
+                            />
+                        </FormControl>
+                    </div>
+                </div>
             </div>
-             <FormMessage className="text-[10px]">{fieldState.error && String(fieldState.error.message)}</FormMessage>
+             <FormMessage className="text-[10px] font-semibold">{fieldState.error && String(fieldState.error.message)}</FormMessage>
         </div>
     );
 }
@@ -247,7 +280,7 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
                 <div className="flex items-center gap-3 min-w-0">
                     <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
-                            <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
+                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
                         </Button>
                     </CollapsibleTrigger>
                     <div className="flex items-center gap-2 min-w-0">
@@ -260,7 +293,7 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
                 </Button>
             </div>
             <CollapsibleContent>
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-6">
                     <FormField
                         control={control}
                         name={`optionalFeatures.${index}.imageUrl`}
@@ -292,14 +325,14 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
                         )}
                     />
 
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <div className="grid grid-cols-2 gap-3">
-                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-8 text-xs font-mono uppercase" {...field} /></FormControl></FormItem> )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-10 font-bold" {...field} /></FormControl></FormItem> )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-10 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
+                        <div className="grid grid-cols-1 gap-6">
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" />
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell Price" />
                         </div>
                     </div>
                 </div>
@@ -339,12 +372,12 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
         </div>
         <CollapsibleContent>
             <div className="p-6">
-                <div className="flex flex-col sm:flex-row gap-6 items-start">
+                <div className="flex flex-col sm:flex-row gap-8 items-start">
                     <FormField
                     control={control}
                     name={`colors.${index}.imageUrl`}
                     render={({ field }) => (
-                        <FormItem className="w-36 flex-shrink-0">
+                        <FormItem className="w-48 flex-shrink-0">
                         <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/20">
                             {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                             {imageUrl ? (
@@ -372,14 +405,26 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
                         </FormItem>
                     )}
                     />
-                    <div className="flex-1 space-y-5 w-full">
-                    <div className="flex items-center gap-3">
-                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant Name</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">HYP Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
-                        <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">PVC Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" /></div>
-                    </div>
+                    <div className="flex-1 space-y-8 w-full">
+                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="max-w-md"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant Name</FormLabel><FormControl><Input placeholder="Color Name" className="h-11 font-bold" {...field} /></FormControl></FormItem> )} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="p-6 border rounded-2xl bg-muted/5 space-y-6">
+                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                    HYP Material
+                                </h4>
+                                <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" />
+                                <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" />
+                            </div>
+                            <div className="p-6 border rounded-2xl bg-muted/5 space-y-6">
+                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                    PVC Material
+                                </h4>
+                                <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" />
+                                <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';

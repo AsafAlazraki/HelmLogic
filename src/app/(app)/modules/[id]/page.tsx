@@ -945,7 +945,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all flex flex-col", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
@@ -1054,19 +1054,19 @@ export default function ModuleDetailsPage() {
                     </DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('bmt')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4 text-center">
                                 <Wrench className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
                                 <p className="font-semibold text-xl">Configuration</p>
                             </CardContent>
                         </Card>
                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4 text-center">
                                 <FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
                                 <p className="font-semibold text-xl">Quotation</p>
                             </CardContent>
                          </Card>
                          <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
-                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
+                            <CardContent className="flex flex-col items-center justify-center p-8 gap-4 text-center">
                                 <ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
                                 <p className="font-semibold text-xl">Operations</p>
                             </CardContent>
