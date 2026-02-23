@@ -130,6 +130,7 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
                 return {
                     id: color.id,
                     name: color.name,
+                    code: color.code ?? '',
                     imageUrl: color.imageUrl ?? color.imageUrls?.[0] ?? null,
                     pricing: {
                         HYP: { cost: prices.HYP?.cost ?? null, sellPriceExclGst: prices.HYP?.sellPriceExclGst ?? null },
@@ -249,6 +250,7 @@ export function ModelConfigurationEditor({
                 const colorsForDb = values.colors.map((color: any) => ({
                     id: color.id,
                     name: color.name,
+                    code: color.code,
                     imageUrl: color.imageUrl,
                 }));
                 

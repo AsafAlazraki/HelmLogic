@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, Type } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -36,7 +36,8 @@ const priceSchema = z.object({
 
 const colorVariantFormSchema = z.object({
     id: z.string(),
-    name: z.string().min(1, 'Color name is required'),
+    name: z.string().min(1, 'Display name is required'),
+    code: z.string().optional().nullable(),
     imageUrl: z.string().nullable().optional(),
     pricing: z.object({
         HYP: priceSchema.default({}),
@@ -150,38 +151,37 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     };
 
     return (
-        <div className="space-y-3">
-            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80 flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-primary" />
+        <div className="space-y-2">
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1">
                 {label}
-            </FormLabel>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-muted-foreground/50 uppercase ml-1">Excl. GST</Label>
-                    <div className="relative group">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-sm font-bold">$</div>
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                    <Label className="text-[9px] font-bold text-muted-foreground/40 uppercase ml-0.5">Excl.</Label>
+                    <div className="relative">
+                        <div className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-[10px] font-bold">$</div>
                         <FormControl>
                             <Input 
                                 type="number" 
                                 step="any" 
                                 placeholder="0.00" 
-                                className="h-12 pl-8 text-sm font-black bg-background border-2 border-muted hover:border-primary/30 transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
+                                className="h-9 pl-5 text-xs font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
                                 value={valueExcl ?? ''} 
                                 onChange={handleExclChange} 
                             />
                         </FormControl>
                     </div>
                 </div>
-                <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-muted-foreground/50 uppercase ml-1">Incl. GST</Label>
-                    <div className="relative group">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-sm font-bold">$</div>
+                <div className="space-y-1">
+                    <Label className="text-[9px] font-bold text-muted-foreground/40 uppercase ml-0.5">Incl.</Label>
+                    <div className="relative">
+                        <div className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-[10px] font-bold">$</div>
                         <FormControl>
                             <Input 
                                 type="number" 
                                 step="any" 
                                 placeholder="0.00" 
-                                className="h-12 pl-8 text-sm font-black bg-background border-2 border-muted hover:border-primary/30 transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
+                                className="h-9 pl-5 text-xs font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
                                 value={valueInclDisplay} 
                                 onChange={handleInclChange} 
                             />
@@ -189,7 +189,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                     </div>
                 </div>
             </div>
-             <FormMessage className="text-[10px] font-semibold">{fieldState.error && String(fieldState.error.message)}</FormMessage>
+             <FormMessage className="text-[9px] font-semibold">{fieldState.error && String(fieldState.error.message)}</FormMessage>
         </div>
     );
 }
@@ -344,57 +344,59 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
 function ColorVariantItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
   const { control } = useFormContext<ModelFormData>();
   const name = useWatch({ control, name: `colors.${index}.name` });
+  const code = useWatch({ control, name: `colors.${index}.code` });
   const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
   const storage = useStorage();
   const [isUploading, setIsUploading] = useState(false);
 
   return (
     <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
-        <div className="flex items-center justify-between p-4 bg-muted/20 border-b">
+        <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
             <div className="flex items-center gap-3">
                 <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
                         <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
                     </Button>
                 </CollapsibleTrigger>
                 <div className="flex items-center gap-3">
                     {imageUrl && (
-                        <div className="relative h-8 w-12 rounded border overflow-hidden bg-background">
+                        <div className="relative h-6 w-9 rounded border overflow-hidden bg-background">
                             <Image src={imageUrl} alt="Swatch" fill className="object-cover" />
                         </div>
                     )}
-                    <span className="font-bold text-sm">{name || 'Unnamed Color Variant'}</span>
+                    <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs">{name || 'Unnamed Color Variant'}</span>
+                        {code && <span className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1 rounded">{code}</span>}
+                    </div>
                 </div>
             </div>
-            <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                <Trash2 className="h-4 w-4" />
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                <Trash2 className="h-3.5 w-3.5" />
             </Button>
         </div>
         <CollapsibleContent>
-            <div className="p-8">
-                <div className="flex flex-col lg:flex-row gap-10 items-start">
-                    <div className="w-full lg:w-[400px] shrink-0">
+            <div className="p-4">
+                <div className="flex flex-row gap-6 items-start">
+                    <div className="w-[200px] shrink-0">
                         <FormField
                             control={control}
                             name={`colors.${index}.imageUrl`}
                             render={({ field }) => (
-                                <div className="space-y-3">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Color Swatch / Render</Label>
-                                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border-4 border-dashed bg-muted/10 group/swatch">
-                                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                                <div className="space-y-2">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Swatch / Render</Label>
+                                    <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/10 group/swatch">
+                                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                                         {imageUrl ? (
                                             <>
                                                 <Image src={imageUrl} alt="Color" fill className="object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/swatch:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <Button type="button" variant="destructive" size="sm" onClick={() => field.onChange(null)}>Remove Swatch</Button>
+                                                    <Button type="button" variant="destructive" size="xs" className="h-6 text-[10px] px-2" onClick={() => field.onChange(null)}>Remove</Button>
                                                 </div>
                                             </>
                                         ) : (
                                             <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50 transition-colors">
-                                                <div className="p-4 rounded-full bg-background shadow-sm mb-3">
-                                                    <Upload className="w-6 h-6 text-primary" />
-                                                </div>
-                                                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter">Upload Swatch</span>
+                                                <Upload className="w-4 h-4 text-primary mb-1" />
+                                                <span className="text-[8px] text-muted-foreground font-black uppercase">Upload</span>
                                                 <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (file && storage) {
@@ -413,40 +415,48 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
                         />
                     </div>
 
-                    <div className="flex-1 space-y-10 w-full">
-                        <FormField 
-                            control={control} 
-                            name={`colors.${index}.name`} 
-                            render={({ field }) => ( 
-                                <FormItem className="max-w-md">
-                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Variant Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., Storm Grey" className="h-14 text-lg font-black border-2 bg-muted/5 focus-visible:ring-primary/10 focus-visible:border-primary" {...field} />
-                                    </FormControl>
-                                </FormItem> 
-                            )} 
-                        />
+                    <div className="flex-1 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField 
+                                control={control} 
+                                name={`colors.${index}.name`} 
+                                render={({ field }) => ( 
+                                    <FormItem>
+                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Color Variant Display Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Storm Grey" className="h-9 text-xs font-bold border-muted focus-visible:ring-primary/10" {...field} />
+                                        </FormControl>
+                                    </FormItem> 
+                                )} 
+                            />
+                            <FormField 
+                                control={control} 
+                                name={`colors.${index}.code`} 
+                                render={({ field }) => ( 
+                                    <FormItem>
+                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Color Code</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., SG-01" className="h-9 text-xs font-mono font-bold uppercase border-muted focus-visible:ring-primary/10" value={field.value ?? ''} onChange={field.onChange} />
+                                        </FormControl>
+                                    </FormItem> 
+                                )} 
+                            />
+                        </div>
                         
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                            <div className="p-8 border-2 rounded-3xl bg-muted/5 space-y-8 relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                                <h4 className="font-black text-sm uppercase tracking-tighter text-primary flex items-center gap-3">
-                                    HYP Material Configuration
-                                </h4>
-                                <div className="space-y-8">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 border-l-2 border-primary bg-muted/5 space-y-3">
+                                <h4 className="font-black text-[10px] uppercase tracking-tighter text-primary">HYP Material</h4>
+                                <div className="grid grid-cols-1 gap-3">
                                     <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Factory Cost" />
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Retail Sell Price" />
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Retail Sell" />
                                 </div>
                             </div>
                             
-                            <div className="p-8 border-2 rounded-3xl bg-muted/5 space-y-8 relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                                <h4 className="font-black text-sm uppercase tracking-tighter text-primary flex items-center gap-3">
-                                    PVC Material Configuration
-                                </h4>
-                                <div className="space-y-8">
+                            <div className="p-3 border-l-2 border-primary bg-muted/5 space-y-3">
+                                <h4 className="font-black text-[10px] uppercase tracking-tighter text-primary">PVC Material</h4>
+                                <div className="grid grid-cols-1 gap-3">
                                     <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Factory Cost" />
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Retail Sell Price" />
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Retail Sell" />
                                 </div>
                             </div>
                         </div>
@@ -610,10 +620,10 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                     <CollapsibleCardHeader 
                         title="Material & Color Pricing" 
                         count={colorFields.length}
-                        onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
+                        onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', code: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
                     />
                     <CollapsibleContent>
-                        <CardContent className="space-y-6 pt-8">
+                        <CardContent className="space-y-4 pt-6">
                             {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
                         </CardContent>
                     </CollapsibleContent>
