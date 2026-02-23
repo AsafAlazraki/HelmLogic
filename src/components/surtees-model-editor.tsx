@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -75,50 +74,6 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         </div>
     </div>
 );
-
-function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
-    const { field, fieldState } = useController({ control, name, defaultValue: null });
-    const valueExcl = field.value;
-    const calculateIncl = (val: string | number | null) => {
-        if (val === '' || val === null || val === undefined) return '';
-        const num = typeof val === 'string' ? parseFloat(val) : val;
-        if (isNaN(num)) return '';
-        return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
-    };
-    const valueInclDisplay = calculateIncl(valueExcl);
-    const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        field.onChange(val === '' ? null : val);
-    };
-    const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        if (val === '') {
-            field.onChange(null);
-        } else {
-            const num = parseFloat(val);
-            if (!isNaN(num)) {
-                const excl = num / (1 + GST_RATE);
-                field.onChange(Math.round(excl * 100) / 100);
-            }
-        }
-    };
-    return (
-        <div>
-            <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</FormLabel>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-                <FormItem className="space-y-1">
-                    <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">excl. GST</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
-                </FormItem>
-                <FormItem className="space-y-1">
-                    <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">inc. GST</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueInclDisplay} onChange={handleInclChange} /></FormControl>
-                </FormItem>
-            </div>
-             <FormMessage>{fieldState.error && String(fieldState.error.message)}</FormMessage>
-        </div>
-    );
-}
 
 function VisualAssetsCard({ model }: { model: any }) {
     const { control, watch, setValue } = useFormContext<ModelFormData>();
