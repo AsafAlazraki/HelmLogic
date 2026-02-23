@@ -286,9 +286,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                                      <Button variant="ghost" size="icon" className="h-7 w-7">
                                                         <Star className="h-4 w-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => {}}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
                                                 </div>
                                                 <CardContent className="p-4 flex items-center justify-center gap-4">
                                                     {combo.map((motor, motorIndex) => (

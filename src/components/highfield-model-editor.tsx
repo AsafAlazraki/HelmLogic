@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,7 +5,7 @@ import { useFieldArray, useWatch, useController, useFormContext } from 'react-ho
 import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage } from '@/firebase/provider';
-import { uploadFileWithProgress } from '@/firebase/storage';
+import { uploadFileToStorage } from '@/firebase/storage';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,7 +179,7 @@ function VisualAssetsCard({ model }: { model: any }) {
                         {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                         {coverImageUrl ? (
                             <div className="h-full w-full flex items-center justify-center relative">
-                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" />
+                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" sizes="(max-width: 1024px) 100vw, 50vw" />
                                 <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
                             </div>
                         ) : (
@@ -192,7 +191,7 @@ function VisualAssetsCard({ model }: { model: any }) {
                                     if (file && storage) {
                                         setIsCoverUploading(true);
                                         try {
-                                            const url = await uploadFileWithProgress(storage, file, `models/${model.id}/cover-${Date.now()}`, () => {});
+                                            const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`);
                                             setValue('coverImageUrl', url);
                                         } finally { setIsCoverUploading(false); }
                                     }
@@ -206,7 +205,7 @@ function VisualAssetsCard({ model }: { model: any }) {
                         <div className="grid grid-cols-3 gap-3">
                             {galleryUrls.map((url, index) => (
                                 <div key={index} className="relative aspect-square group rounded-lg overflow-hidden border bg-muted">
-                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" />
+                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                         <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
@@ -218,7 +217,7 @@ function VisualAssetsCard({ model }: { model: any }) {
                                     setIsGalleryUploading(true);
                                     try {
                                         for (const file of files) {
-                                            const url = await uploadFileWithProgress(storage!, file, `models/${model.id}/gallery/${Date.now()}-${file.name}`, () => {});
+                                            const url = await uploadFileToStorage(storage!, file, `models/${model.id}/gallery/${Date.now()}-${file.name}`);
                                             appendGalleryImage(url);
                                         }
                                     } finally { setIsGalleryUploading(false); }
@@ -448,7 +447,7 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
                             if (file && storage) {
                                 setIsUploading(true);
                                 try {
-                                    const url = await uploadFileWithProgress(storage, file, `colors/${Date.now()}-${file.name}`, () => {});
+                                    const url = await uploadFileToStorage(storage, file, `colors/${Date.now()}-${file.name}`);
                                     field.onChange(url);
                                 } finally { setIsUploading(false); }
                             }
@@ -507,7 +506,7 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
                                             if (file && storage) {
                                                 setIsUploading(true);
                                                 try {
-                                                    const url = await uploadFileWithProgress(storage, file, `features/${Date.now()}-${file.name}`, () => {});
+                                                    const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
                                                     field.onChange(url);
                                                 } finally { setIsUploading(false); }
                                             }
