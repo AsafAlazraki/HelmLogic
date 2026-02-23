@@ -5,10 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, orderBy, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, Pencil, Trash2, PlusCircle, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,12 @@ import { Label } from '@/components/ui/label';
 import { createSlug } from '@/lib/utils';
 import Link from 'next/link';
 import { useUser } from '@/firebase/auth/use-user';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 
 interface Model {
@@ -70,7 +76,6 @@ interface Vendor {
 
 function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendor: Vendor; range: Range; model: Model; index: number; totalModels: number; onMove: (index: number, direction: 'up' | 'down') => void; }) {
     const firestore = useFirestore();
-    const router = useRouter();
     const { toast } = useToast();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -121,12 +126,26 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                     </CardContent>
                 </Link>
                 <CardFooter className="p-2 pt-0 border-t bg-muted/5 flex justify-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onMove(index, 'up')} disabled={index === 0}>
-                        <ArrowUp className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
-                        <ArrowDown className="h-3 w-3" />
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onMove(index, 'up')} disabled={index === 0}>
+                                    <ArrowUp className="h-3 w-3" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Move Up</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
+                                    <ArrowDown className="h-3 w-3" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Move Down</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </CardFooter>
             </Card>
 
@@ -154,7 +173,6 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
 
 export default function RangeDetailsPage() {
     const params = useParams();
-    const router = useRouter();
     const vendorSlugOrId = params?.id as string | undefined;
     const rangeSlugOrId = params?.rangeId as string | undefined;
     const firestore = useFirestore();
@@ -385,12 +403,26 @@ export default function RangeDetailsPage() {
                                                                 </Link>
                                                             </Button>
                                                             <div className="flex gap-1">
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
-                                                                    <ArrowUp className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
-                                                                    <ArrowDown className="h-4 w-4" />
-                                                                </Button>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
+                                                                                <ArrowUp className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>Move Up</TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
+                                                                                <ArrowDown className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>Move Down</TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
                                                             </div>
                                                         </div>
                                                     </TableCell>

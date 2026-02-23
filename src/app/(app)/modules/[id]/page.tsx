@@ -20,8 +20,6 @@ import {
     Save, 
     Building, 
     Settings2, 
-    Check, 
-    UserPlus, 
     Users, 
     Eye, 
     ArrowRightLeft, 
@@ -29,8 +27,7 @@ import {
     LayoutDashboard,
     PlusCircle,
     Pencil,
-    Trash2,
-    Plus
+    Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
@@ -42,7 +39,7 @@ import { ModelConfigurationEditor } from '@/components/model-configuration-edito
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createSlug, cn } from '@/lib/utils';
