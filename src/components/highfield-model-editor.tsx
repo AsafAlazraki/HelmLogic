@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, Type } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -124,7 +124,6 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     const [inclInput, setInclInput] = useState<string>('');
     const activeInput = useRef<'excl' | 'incl' | null>(null);
 
-    // Initial sync and external updates
     useEffect(() => {
         if (activeInput.current) return;
 
@@ -646,31 +645,26 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
     );
 }
 
-export function HighfieldModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
-    const { control, watch } = useFormContext<ModelFormData>();
-    const [bulkFeatures, setBulkFeatures] = useState('');
+function SpecsSection() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
 
-    const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
-    const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
-    const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
-    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
-
-    const SpecsSection = () => (
+    return (
         <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <Card className="border-none shadow-none rounded-none">
                 <CollapsibleCardHeader 
                     title="General Specifications" 
-                    count={specFields.length} 
-                    onAdd={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}
+                    count={fields.length} 
+                    onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })}
                 />
                 <CollapsibleContent>
                     <CardContent className="space-y-4 pt-6">
                         <div className="grid gap-3">
-                            {specFields.map((field, index) => (
+                            {fields.map((field, index) => (
                                 <div key={field.id} className="flex items-center gap-2 group/field">
                                     <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
                                     <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                 </div>
                             ))}
                         </div>
@@ -679,22 +673,28 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
             </Card>
         </Collapsible>
     );
+}
 
-    const FeaturesSection = () => (
+function FeaturesSection() {
+    const { control, watch } = useFormContext<ModelFormData>();
+    const { fields, append, remove, replace } = useFieldArray({ control, name: "standardFeatures" });
+    const [bulkFeatures, setBulkFeatures] = useState('');
+
+    return (
         <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <Card className="border-none shadow-none rounded-none">
                 <CollapsibleCardHeader 
                     title="Standard Features" 
-                    count={featureFields.length} 
-                    onAdd={() => appendFeature('')}
+                    count={fields.length} 
+                    onAdd={() => append('')}
                 />
                 <CollapsibleContent>
                     <CardContent className="space-y-4 pt-6">
                         <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
-                            {featureFields.map((field, index) => (
+                            {fields.map((field, index) => (
                                 <div key={field.id} className="flex items-center gap-2 group/feat">
                                     <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                 </div>
                             ))}
                         </div>
@@ -704,7 +704,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                             <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
                             <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
                                 const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-                                replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
+                                replace([...(watch('standardFeatures') || []), ...newFeatures]); 
                                 setBulkFeatures(''); 
                             }}>Append Bulk Items</Button>
                         </div>
@@ -713,6 +713,12 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
             </Card>
         </Collapsible>
     );
+}
+
+export function HighfieldModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
+    const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
 
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
