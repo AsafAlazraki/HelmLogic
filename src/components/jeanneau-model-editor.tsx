@@ -72,7 +72,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         <div className="flex items-center gap-3">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted transition-colors">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -110,7 +110,13 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field } = useController({ control, name, defaultValue: null });
     const valueExcl = field.value;
-    const valueIncl = valueExcl !== null && valueExcl !== undefined ? Math.round((valueExcl * (1 + GST_RATE)) * 100) / 100 : null;
+    const calculateIncl = (val: string | number | null) => {
+        if (val === '' || val === null || val === undefined) return '';
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        if (isNaN(num)) return '';
+        return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
+    };
+    const valueInclDisplay = calculateIncl(valueExcl);
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         field.onChange(val === '' ? null : parseFloat(val));
@@ -128,11 +134,11 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             <div className="grid grid-cols-2 gap-2 mt-2">
                 <FormItem className="space-y-1">
                     <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">excl. GST</FormLabel>
-                    <FormControl><Input type="number" step="0.01" className="h-9" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
+                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
                 </FormItem>
                 <FormItem className="space-y-1">
                     <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">inc. GST</FormLabel>
-                    <FormControl><Input type="number" step="0.01" className="h-9" value={valueIncl ?? ''} onChange={handleInclChange} /></FormControl>
+                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueInclDisplay} onChange={handleInclChange} /></FormControl>
                 </FormItem>
             </div>
         </div>
