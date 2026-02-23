@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Wrench } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash } from 'lucide-react';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor, jeanneauModelSchema } from '@/components/jeanneau-model-editor';
@@ -25,7 +25,7 @@ import { StabicraftModelEditor, stabicraftModelSchema } from '@/components/stabi
 import { SurteesModelEditor, surteesModelSchema } from '@/components/surtees-model-editor';
 import { MotorOptions } from './motor-options';
 import { DealerFitOptions } from './dealer-fit-options';
-import { FormField } from '@/components/ui/form';
+import { FormField, FormItem, FormControl } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 
 interface Permissions {
@@ -339,22 +339,28 @@ export function ModelConfigurationEditor({
                                         <Wrench className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-3">
                                             <h2 className="text-xl font-bold">{model.name}</h2>
                                             {isAdmin ? (
-                                                <FormField
-                                                    control={control}
-                                                    name="modelCode"
-                                                    render={({ field }) => (
-                                                        <Input 
-                                                            {...field} 
-                                                            placeholder="Code" 
-                                                            className="h-7 w-24 font-mono text-xs uppercase bg-white/50 focus:bg-white" 
-                                                        />
-                                                    )}
-                                                />
+                                                <div className="flex items-center gap-2 px-3 py-1 bg-white border-2 border-primary/30 rounded-md shadow-sm">
+                                                    <Hash className="h-3 w-3 text-primary" />
+                                                    <span className="text-[10px] font-black uppercase text-muted-foreground mr-1">Code</span>
+                                                    <FormField
+                                                        control={control}
+                                                        name="modelCode"
+                                                        render={({ field }) => (
+                                                            <Input 
+                                                                {...field} 
+                                                                placeholder="REQUIRED" 
+                                                                className="h-6 w-28 font-mono text-xs font-bold uppercase border-none focus-visible:ring-0 p-0" 
+                                                            />
+                                                        )}
+                                                    />
+                                                </div>
                                             ) : (
-                                                <Badge variant="outline" className="font-mono text-xs uppercase bg-white/50">{model.modelCode || 'NO CODE'}</Badge>
+                                                <Badge variant="outline" className="font-mono text-xs uppercase bg-white/50 border-primary/20 px-3">
+                                                    {model.modelCode || 'NO CODE'}
+                                                </Badge>
                                             )}
                                         </div>
                                         {breadcrumbs}
@@ -379,37 +385,45 @@ export function ModelConfigurationEditor({
                     </Card>
 
                     <Tabs defaultValue="boat" className="w-full">
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className={cn("grid w-full", isModuleView ? "grid-cols-4" : "grid-cols-1 max-w-[200px]")}>
                             <TabsTrigger value="boat">Boat Details</TabsTrigger>
-                            <TabsTrigger value="motor">Motor Options</TabsTrigger>
-                            <TabsTrigger value="trailer">Trailer Options</TabsTrigger>
-                            <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
+                            {isModuleView && (
+                                <>
+                                    <TabsTrigger value="motor">Motor Options</TabsTrigger>
+                                    <TabsTrigger value="trailer">Trailer Options</TabsTrigger>
+                                    <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
+                                </>
+                            )}
                         </TabsList>
                         <TabsContent value="boat" className="mt-6">
                             {getModelEditor()}
                         </TabsContent>
-                        <TabsContent value="motor" className="mt-6">
-                            <MotorOptions model={model} module={module} />
-                        </TabsContent>
-                        <TabsContent value="trailer" className="mt-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Trailer Options</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg text-muted-foreground bg-muted/5">
-                                        <p>Trailer configuration coming soon.</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="dealer-fit" className="mt-6">
-                            <DealerFitOptions 
-                                module={module} 
-                                organisationId={organisationId} 
-                                isAdmin={isAdmin} 
-                            />
-                        </TabsContent>
+                        {isModuleView && (
+                            <>
+                                <TabsContent value="motor" className="mt-6">
+                                    <MotorOptions model={model} module={module} />
+                                </TabsContent>
+                                <TabsContent value="trailer" className="mt-6">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Trailer Options</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg text-muted-foreground bg-muted/5">
+                                                <p>Trailer configuration coming soon.</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+                                <TabsContent value="dealer-fit" className="mt-6">
+                                    <DealerFitOptions 
+                                        module={module} 
+                                        organisationId={organisationId} 
+                                        isAdmin={isAdmin} 
+                                    />
+                                </TabsContent>
+                            </>
+                        )}
                     </Tabs>
                 </div>
             </form>

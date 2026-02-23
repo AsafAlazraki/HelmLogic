@@ -106,14 +106,12 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
                 </span>
             )}
         </div>
-        <div className="flex items-center gap-3">
-            {onAdd && (
-                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
-                    <Plus className="mr-1.5 h-3.5 w-3.5" />
-                    Add
-                </Button>
-            )}
-        </div>
+        {onAdd && (
+            <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Add
+            </Button>
+        )}
     </div>
 );
 
@@ -161,7 +159,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     );
 }
 
-function VisualAssetsCard({ model }: { model: any }) {
+function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
     const { control, watch, setValue } = useFormContext<ModelFormData>();
     const storage = useStorage();
     const [isCoverUploading, setIsCoverUploading] = useState(false);
@@ -173,7 +171,7 @@ function VisualAssetsCard({ model }: { model: any }) {
 
     return (
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader title="Media & Gallery" count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
+            <CollapsibleCardHeader title={isModuleView ? "Visual Config & Renders" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
             <CollapsibleContent>
                 <div className="space-y-0">
                     <div className="relative aspect-[16/10] w-full bg-secondary group">
@@ -186,7 +184,7 @@ function VisualAssetsCard({ model }: { model: any }) {
                         ) : (
                             <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
                                 <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
-                                <span className="text-sm font-bold text-muted-foreground">Upload Boat Render</span>
+                                <span className="text-sm font-bold text-muted-foreground">{isModuleView ? "Upload Render" : "Set Primary Brand Image"}</span>
                                 <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (file && storage) {
@@ -364,7 +362,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                 <div className={cn("space-y-8", isModuleView ? "lg:col-span-3 lg:order-1" : "lg:col-span-4 lg:order-1")}>
                     {isModuleView ? (
                         <>
-                            <VisualAssetsCard model={model} />
+                            <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                             <MotorConfigurationCard />
                         </>
                     ) : (
@@ -381,7 +379,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                             <SpecsSection />
                             <FeaturesSection />
                         </>
-                    ) : <VisualAssetsCard model={model} />}
+                    ) : <VisualAssetsCard model={model} isModuleView={!!isModuleView} />}
                 </div>
             </div>
 
@@ -411,9 +409,9 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                         <CardContent className="grid md:grid-cols-2 gap-6 pt-8">
                             {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                         </CardContent>
-                    </CollapsibleContent>
-                </Card>
-            </Collapsible>
+                    </Card>
+                </CollapsibleContent>
+            </Card>
         </div>
     );
 }
@@ -462,7 +460,7 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
         <div className="flex-1 space-y-5 w-full">
           <div className="flex items-center gap-3">
             <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
-            <Button type="button" variant="ghost" size="icon" className="mt-6 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+            <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">HYP Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
