@@ -3,24 +3,23 @@
 import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronRight } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useMemo } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc } from 'firebase/firestore';
-import { HighfieldModelEditor } from '@/components/highfield-model-editor';
-import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
-import { StacerModelEditor } from '@/components/stacer-model-editor';
-import { StabicraftModelEditor } from '@/components/stabicraft-model-editor';
-import { SurteesModelEditor } from '@/components/surtees-model-editor';
+import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
+import { useUser } from '@/firebase/auth/use-user';
 
 interface Model {
     id: string;
     name: string;
+    modelCode?: string;
     slug?: string;
     coverImageUrl?: string;
     rangeId: string;
+    [key: string]: any;
 }
 
 interface Range {
@@ -35,10 +34,10 @@ interface Vendor {
     slug?: string;
 }
 
-
 export default function ModelDetailsPage() {
   const params = useParams();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const vendorSlugOrId = params?.id as string | undefined;
   const rangeSlugOrId = params?.rangeId as string | undefined;
@@ -133,34 +132,15 @@ export default function ModelDetailsPage() {
 
   return (
     <div className="space-y-4">
-        <div>
-            <h1 className="text-2xl font-semibold">{vendor.name} - {range.name} - {model.name}</h1>
-            <BreadcrumbNav parts={breadcrumbParts} />
-        </div>
-        
-        {vendor.slug === 'highfield' ? (
-            <HighfieldModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-        ) : vendor.slug === 'jeanneau' ? (
-            <JeanneauModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-        ) : vendor.slug === 'stacer' ? (
-            <StacerModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-        ) : vendor.slug === 'stabicraft' ? (
-            <StabicraftModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-        ) : vendor.slug === 'surtees' ? (
-            <SurteesModelEditor model={model} docPath={modelDocPath} vendor={vendor} />
-        ) : (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Model Details</CardTitle>
-                    <CardDescription>Details for the {model.name} model will be displayed here.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-center h-64 text-muted-foreground border-2 border-dashed rounded-lg">
-                        <p>Model-specific editor coming soon.</p>
-                    </div>
-                </CardContent>
-            </Card>
-        )}
+        <ModelConfigurationEditor 
+            model={model} 
+            docPath={modelDocPath} 
+            vendor={vendor} 
+            module={{ id: 'master', name: 'Data Warehouse' }}
+            user={user}
+            isAdmin={true}
+            breadcrumbs={<BreadcrumbNav parts={breadcrumbParts} />}
+        />
     </div>
   );
 }
