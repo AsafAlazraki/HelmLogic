@@ -260,17 +260,6 @@ export default function RangeDetailsPage() {
         return [...rawModels].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
     }, [rawModels]);
 
-    useEffect(() => {
-        if (rawRanges && rawRanges.length > 0 && rawRanges.some(r => r.order === undefined)) {
-            const batch = writeBatch(firestore);
-            rawRanges.forEach((range, index) => {
-                const rangeRef = doc(firestore, `data-warehouse/${vendor.id}/ranges`, range.id);
-                batch.update(rangeRef, { order: index });
-            });
-            batch.commit().catch(err => console.error("Failed to update order", err));
-        }
-    }, [rawRanges, firestore, vendorId]);
-
     const handleAddModel = async () => {
         if (!newModelName.trim() || !newModelCode.trim() || !vendor || !range || !sortedModels) return;
         setIsAddingModel(true);
@@ -335,10 +324,10 @@ export default function RangeDetailsPage() {
         const batch = writeBatch(firestore);
         
         const item1Ref = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, item1.id);
-        batch.update(item1Ref, { order: item2.order });
+        batch.update(item1Ref, { order: item2.order ?? newIndex });
 
         const item2Ref = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, item2.id);
-        batch.update(item2Ref, { order: item1.order });
+        batch.update(item2Ref, { order: item1.order ?? index });
 
         try {
             await batch.commit();

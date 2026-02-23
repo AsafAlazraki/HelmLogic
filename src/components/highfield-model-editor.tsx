@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from './ui/separator';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -185,7 +186,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                         ) : (
                             <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
                                 <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
-                                <span className="text-sm font-bold text-muted-foreground">{isModuleView ? "Upload Render" : "Set Primary Brand Image"}</span>
+                                <span className="text-sm font-bold text-muted-foreground">Upload Image</span>
                                 <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (file && storage) {
