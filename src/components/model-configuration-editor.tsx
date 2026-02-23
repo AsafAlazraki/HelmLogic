@@ -15,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck } from 'lucide-react';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
@@ -348,7 +347,7 @@ export function ModelConfigurationEditor({
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {(permissions.can_create_quotes || isAdmin) && (
+                                    {isModuleView && (permissions.can_create_quotes || isAdmin) && (
                                         <Button type="button" variant="outline" onClick={() => {}} className="hover:bg-accent hover:text-accent-foreground transition-colors">
                                             Create Quote
                                         </Button>
