@@ -240,29 +240,37 @@ function PricingSummary({ pricing }: { pricing: any }) {
         const p = pricing?.[material];
         if (!p) return null;
         
-        const sell = p.sellPriceExclGst;
-        const cost = p.cost;
+        const sellExcl = p.sellPriceExclGst;
+        const costExcl = p.cost;
 
-        if (sell !== null && sell !== undefined && sell !== '') {
-            return (
-                <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-tighter">{material}</span>
-                    <span className="text-xs font-black text-primary">${Number(sell).toLocaleString()}</span>
+        const hasSell = sellExcl !== null && sellExcl !== undefined && sellExcl !== '';
+        const hasCost = costExcl !== null && costExcl !== undefined && costExcl !== '';
+
+        if (!hasSell && !hasCost) return null;
+
+        const sellIncl = hasSell ? (Number(sellExcl) * (1 + GST_RATE)) : 0;
+        const costIncl = hasCost ? (Number(costExcl) * (1 + GST_RATE)) : 0;
+
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-tighter">{material}</span>
+                <div className="flex items-center gap-2">
+                    {hasSell && (
+                        <span className="text-xs font-black text-primary">
+                            ${sellIncl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    )}
+                    {hasCost && (
+                        <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                            <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Cost</span>
+                            <span className="text-xs font-black text-amber-600">
+                                ${costIncl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                    )}
                 </div>
-            );
-        }
-        if (cost !== null && cost !== undefined && cost !== '') {
-            return (
-                <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-tighter">{material}</span>
-                    <div className="flex items-center gap-1 bg-amber-500/10 px-1 rounded">
-                        <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Cost</span>
-                        <span className="text-xs font-black text-amber-600">${Number(cost).toLocaleString()}</span>
-                    </div>
-                </div>
-            );
-        }
-        return null;
+            </div>
+        );
     };
 
     const hyp = renderPrice('HYP');
@@ -271,7 +279,7 @@ function PricingSummary({ pricing }: { pricing: any }) {
     if (!hyp && !pvc) return null;
 
     return (
-        <div className="flex items-center gap-4 ml-auto mr-4 group-data-[state=open]/item:hidden">
+        <div className="flex items-center gap-6 ml-auto mr-4 group-data-[state=open]/item:hidden">
             {hyp}
             {pvc}
         </div>
