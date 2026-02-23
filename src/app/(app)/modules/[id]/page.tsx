@@ -948,7 +948,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all flex flex-col", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
@@ -1067,7 +1067,6 @@ export default function ModuleDetailsPage() {
                                 <FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
                                 <p className="font-semibold text-xl">Quotation</p>
                             </CardContent>
-                        </Card>
                          <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
                                 <ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />

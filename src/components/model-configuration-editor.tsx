@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Wrench, Hash } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck } from 'lucide-react';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor, jeanneauModelSchema } from '@/components/jeanneau-model-editor';
@@ -25,8 +25,9 @@ import { StabicraftModelEditor, stabicraftModelSchema } from '@/components/stabi
 import { SurteesModelEditor, surteesModelSchema } from '@/components/surtees-model-editor';
 import { MotorOptions } from './motor-options';
 import { DealerFitOptions } from './dealer-fit-options';
-import { FormField, FormItem, FormControl } from '@/components/ui/form';
+import { FormField, FormItem, FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Permissions {
     can_access_module: boolean;
@@ -115,7 +116,10 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
         });
         return {
             ...base,
-            optionalFeatures: data.optionalFeatures ?? [],
+            optionalFeatures: (data.optionalFeatures ?? []).map((f: any) => ({
+                ...f,
+                code: f.code ?? '',
+            })),
             colors: modelColors.map((color: any) => {
                 const prices = pricingMap.get(color.id) || {};
                 return {
@@ -339,30 +343,7 @@ export function ModelConfigurationEditor({
                                         <Wrench className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-3">
-                                            <h2 className="text-xl font-bold">{model.name}</h2>
-                                            {isAdmin ? (
-                                                <div className="flex items-center gap-2 px-3 py-1 bg-white border-2 border-primary/30 rounded-md shadow-sm">
-                                                    <Hash className="h-3 w-3 text-primary" />
-                                                    <span className="text-[10px] font-black uppercase text-muted-foreground mr-1">Code</span>
-                                                    <FormField
-                                                        control={control}
-                                                        name="modelCode"
-                                                        render={({ field }) => (
-                                                            <Input 
-                                                                {...field} 
-                                                                placeholder="REQUIRED" 
-                                                                className="h-6 w-28 font-mono text-xs font-bold uppercase border-none focus-visible:ring-0 p-0" 
-                                                            />
-                                                        )}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <Badge variant="outline" className="font-mono text-xs uppercase bg-white/50 border-primary/20 px-3">
-                                                    {model.modelCode || 'NO CODE'}
-                                                </Badge>
-                                            )}
-                                        </div>
+                                        <h2 className="text-xl font-bold">{model.name}</h2>
                                         {breadcrumbs}
                                     </div>
                                 </div>
@@ -395,9 +376,54 @@ export function ModelConfigurationEditor({
                                 </>
                             )}
                         </TabsList>
-                        <TabsContent value="boat" className="mt-6">
+                        
+                        <TabsContent value="boat" className="mt-6 space-y-8">
+                            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                                <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
+                                    <div className="flex items-center gap-3">
+                                        <CollapsibleTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                            </Button>
+                                        </CollapsibleTrigger>
+                                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                            <ShieldCheck className="h-5 w-5 text-primary" />
+                                            Internal Details
+                                        </CardTitle>
+                                    </div>
+                                </div>
+                                <CollapsibleContent>
+                                    <CardContent className="pt-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <FormField
+                                                control={control}
+                                                name="modelCode"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-3">
+                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                            <Hash className="h-3 w-3" />
+                                                            Primary Model Code
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input 
+                                                                {...field} 
+                                                                placeholder="Enter master code..." 
+                                                                className="h-10 font-mono font-bold uppercase border-2 focus-visible:ring-primary/20 bg-muted/10" 
+                                                                disabled={!canEdit}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Collapsible>
+
                             {getModelEditor()}
                         </TabsContent>
+
                         {isModuleView && (
                             <>
                                 <TabsContent value="motor" className="mt-6">

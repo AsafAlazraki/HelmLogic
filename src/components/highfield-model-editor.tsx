@@ -61,6 +61,7 @@ const motorConfigSchema = z.object({
 const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
+    code: z.string().optional(),
     imageUrl: z.string().nullable().optional(),
     cost: z.coerce.number().min(0).default(0),
     sellPriceExclGst: z.coerce.number().min(0).default(0),
@@ -341,13 +342,13 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
             <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                 <Card className="border-none shadow-none rounded-none">
                     <CollapsibleCardHeader 
-                        title="Brand Options & Accessories" 
+                        title="Factory Options" 
                         count={optionalFeatureFields.length}
-                        onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null })}
+                        onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null, code: '' })}
                     />
                     <CollapsibleContent>
                         <CardContent className="grid md:grid-cols-2 gap-6 pt-8">
-                            {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
+                            {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                         </CardContent>
                     </CollapsibleContent>
                 </Card>
@@ -436,56 +437,57 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
   );
 }
 
-function OptionalFeatureItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+function FactoryOptionItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
     const { control } = useFormContext<ModelFormData>();
     const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
     const storage = useStorage();
     const [isUploading, setIsUploading] = useState(false);
 
     return (
-        <Card className="relative bg-background overflow-hidden p-5 group/item border hover:border-primary/20 transition-all">
+        <Card className="relative bg-background overflow-hidden group/item border hover:border-primary/20 transition-all flex flex-col">
             <div className="absolute top-2 right-2 z-10">
                 <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
             </div>
-            <div className="flex gap-6 items-start">
-                 <FormField
-                    control={control}
-                    name={`optionalFeatures.${index}.imageUrl`}
-                    render={({ field }) => (
-                        <FormItem className="w-36 flex-shrink-0">
-                            <div className="relative aspect-video w-full overflow-hidden rounded-lg group bg-muted/20 border-2 border-dashed">
-                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                                {imageUrl ? (
-                                    <>
-                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
-                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
-                                    </>
-                                ) : (
-                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                        <Upload className="w-5 h-5 text-muted-foreground" />
-                                        <span className="text-[10px] text-muted-foreground mt-1 font-bold">IMAGE</span>
-                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file && storage) {
-                                                setIsUploading(true);
-                                                try {
-                                                    const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
-                                                    field.onChange(url);
-                                                } finally { setIsUploading(false); }
-                                            }
-                                        }} /></FormControl>
-                                    </label>
-                                )}
-                            </div>
-                        </FormItem>
-                    )}
-                />
-                <div className="flex-1 space-y-4">
-                     <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-xs font-bold uppercase text-muted-foreground">Name</FormLabel><FormControl><Input placeholder="Feature Name" className="h-9 font-medium" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <div className="grid grid-cols-2 gap-6">
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" />
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell Price" />
+            
+            <FormField
+                control={control}
+                name={`optionalFeatures.${index}.imageUrl`}
+                render={({ field }) => (
+                    <div className="relative aspect-video w-full overflow-hidden bg-muted/20 border-b">
+                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                        {imageUrl ? (
+                            <>
+                                <Image src={imageUrl} alt="Feature" fill className="object-cover" />
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 rounded-full shadow-lg opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
+                            </>
+                        ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                <Upload className="w-6 h-6 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground mt-1 font-bold uppercase">Option Image</span>
+                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file && storage) {
+                                        setIsUploading(true);
+                                        try {
+                                            const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
+                                            field.onChange(url);
+                                        } finally { setIsUploading(false); }
+                                    }
+                                }} /></FormControl>
+                            </label>
+                        )}
                     </div>
+                )}
+            />
+
+            <div className="p-5 space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                    <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="col-span-2"><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="e.g. Folding Arch" className="h-9 font-medium" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem className="col-span-1"><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 font-mono uppercase text-xs" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                    <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                    <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
                 </div>
             </div>
         </Card>
