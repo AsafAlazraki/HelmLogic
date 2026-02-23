@@ -67,7 +67,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         <div className="flex items-center gap-3">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted transition-colors">
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -103,19 +103,30 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
 );
 
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
-    const { field } = useController({ control, name, defaultValue: null });
+    const { field, fieldState } = useController({ control, name, defaultValue: null });
     const valueExcl = field.value;
-    const valueIncl = valueExcl !== null && valueExcl !== undefined ? Math.round((valueExcl * (1 + GST_RATE)) * 100) / 100 : null;
+    const calculateIncl = (val: string | number | null) => {
+        if (val === '' || val === null || val === undefined) return '';
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        if (isNaN(num)) return '';
+        return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
+    };
+    const valueInclDisplay = calculateIncl(valueExcl);
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        field.onChange(val === '' ? null : parseFloat(val));
+        field.onChange(val === '' ? null : val);
     };
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        if (val !== '') {
+        if (val === '') {
+            field.onChange(null);
+        } else {
             const num = parseFloat(val);
-            field.onChange(Math.round((num / (1 + GST_RATE)) * 100) / 100);
-        } else field.onChange(null);
+            if (!isNaN(num)) {
+                const excl = num / (1 + GST_RATE);
+                field.onChange(Math.round(excl * 100) / 100);
+            }
+        }
     };
     return (
         <div>
@@ -123,13 +134,14 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             <div className="grid grid-cols-2 gap-2 mt-2">
                 <FormItem className="space-y-1">
                     <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">excl. GST</FormLabel>
-                    <FormControl><Input type="number" step="0.01" className="h-9" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
+                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
                 </FormItem>
                 <FormItem className="space-y-1">
                     <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">inc. GST</FormLabel>
-                    <FormControl><Input type="number" step="0.01" className="h-9" value={valueIncl ?? ''} onChange={handleInclChange} /></FormControl>
+                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueInclDisplay} onChange={handleInclChange} /></FormControl>
                 </FormItem>
             </div>
+             <FormMessage>{fieldState.error && String(fieldState.error.message)}</FormMessage>
         </div>
     );
 }
@@ -548,8 +560,8 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                                     {glossFields.map((field, index) => (
                                         <Card key={field.id} className="p-4 bg-muted/10 relative group/paint">
                                             <div className="grid gap-3">
-                                                <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.paint`} render={({ field }) => <FormItem><FormLabel className="text-[10px] font-bold uppercase">Paint Color</FormLabel><Input {...field} className="h-8" /></FormItem>} />
-                                                <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.graphics`} render={({ field }) => <FormItem><FormLabel className="text-[10px] font-bold uppercase">Graphics</FormLabel><Input {...field} className="h-8" /></FormItem>} />
+                                                <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.paint`} render={({ field }) => <Input {...field} className="h-8" placeholder="Paint Color" />} />
+                                                <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.graphics`} render={({ field }) => <Input {...field} className="h-8" placeholder="Graphics" />} />
                                             </div>
                                         </Card>
                                     ))}
@@ -565,8 +577,8 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                                     {metallicFields.map((field, index) => (
                                         <Card key={field.id} className="p-4 bg-muted/10 relative group/paint">
                                             <div className="grid gap-3">
-                                                <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.paint`} render={({ field }) => <FormItem><FormLabel className="text-[10px] font-bold uppercase">Paint Color</FormLabel><Input {...field} className="h-8" /></FormItem>} />
-                                                <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.graphics`} render={({ field }) => <FormItem><FormLabel className="text-[10px] font-bold uppercase">Graphics</FormLabel><Input {...field} className="h-8" /></FormItem>} />
+                                                <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.paint`} render={({ field }) => <Input {...field} className="h-8" placeholder="Paint Color" />} />
+                                                <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.graphics`} render={({ field }) => <Input {...field} className="h-8" placeholder="Graphics" />} />
                                             </div>
                                         </Card>
                                     ))}
@@ -581,7 +593,7 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {powderFields.map((field, index) => (
                                         <Card key={field.id} className="p-4 bg-muted/10 relative group/paint">
-                                            <FormField control={control} name={`paintAndGraphicOptions.powderCoating.${index}.color`} render={({ field }) => <FormItem><FormLabel className="text-[10px] font-bold uppercase">Color Name</FormLabel><Input {...field} className="h-8" /></FormItem>} />
+                                            <FormField control={control} name={`paintAndGraphicOptions.powderCoating.${index}.color`} render={({ field }) => <Input {...field} className="h-8" placeholder="Color Name" />} />
                                         </Card>
                                     ))}
                                 </div>
