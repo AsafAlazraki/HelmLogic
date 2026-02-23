@@ -207,56 +207,498 @@
         "slug"
       ]
     },
-    "Vessel": {
-      "title": "Vessel",
-      "description": "Represents a maritime vessel managed within the application, including its status and ownership.",
+    "MasterDataRow": {
+      "title": "Master Data Row",
+      "description": "Represents a single row of data from a vendor's master data set.",
       "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "serialNumber": { "type": "string" },
-        "status": { "type": "string", "enum": ["On Order", "In Stock", "Reserved", "Sold", "In Transit"] },
-        "organisationId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "name", "serialNumber", "status", "organisationId"]
+      "additionalProperties": true
     },
-    "VesselReservation": {
-      "title": "Vessel Reservation",
-      "description": "Represents a request by a sub-dealer to reserve an 'on order' vessel for a customer.",
+    "Range": {
+      "title": "Range",
+      "description": "Represents a product range for a vendor.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "vesselId": { "type": "string" },
-        "subDealerOrganisationId": { "type": "string" },
-        "vesselOwnerOrganisationId": { "type": "string" },
-        "requestedByUserId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "description": { "type": "string" },
-        "status": { "type": "string", "enum": ["Awaiting Confirmation", "Approved", "Declined", "Cancelled"] },
-        "requestedAt": { "type": "string", "format": "date-time" },
-        "processedByUserId": { "type": "string" },
-        "processedAt": { "type": "string", "format": "date-time" },
-        "declineNote": { "type": "string" }
+        "name": {
+          "type": "string",
+          "description": "The name of the range."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the range name."
+        },
+        "vendorId": {
+          "type": "string",
+          "description": "The ID of the vendor this range belongs to."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL for the range's image."
+        },
+        "order": {
+          "type": "number",
+          "description": "The display order of the range."
+        }
       },
-      "required": ["id", "vesselId", "subDealerOrganisationId", "vesselOwnerOrganisationId", "requestedByUserId", "customerName", "status", "requestedAt"]
+      "required": [
+        "name",
+        "slug",
+        "vendorId"
+      ]
     },
-    "Notification": {
-      "title": "Notification",
-      "description": "Represents a notification sent to a user within the application.",
+    "Model": {
+      "title": "Model",
+      "description": "Represents a specific model within a product range.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "recipientUserId": { "type": "string" },
-        "type": { "type": "string" },
-        "message": { "type": "string" },
-        "sourceEntityId": { "type": "string" },
-        "sourceEntityType": { "type": "string" },
-        "isRead": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "name": {
+          "type": "string",
+          "description": "The name of the model."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the model name."
+        },
+        "rangeId": {
+          "type": "string",
+          "description": "The ID of the range this model belongs to."
+        },
+        "vendorId": {
+          "type": "string",
+          "description": "The ID of the vendor this model belongs to."
+        },
+        "order": {
+          "type": "number",
+          "description": "The display order of the model."
+        },
+        "coverImageUrl": {
+          "type": "string",
+          "description": "URL for the boat's main cover image."
+        },
+        "galleryImageUrls": {
+          "type": "array",
+          "description": "A list of URLs for the model's image gallery.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cost": {
+          "type": "number",
+          "description": "Base cost of the model."
+        },
+        "sellPriceExclGst": {
+          "type": "number",
+          "description": "Base selling price, excluding GST."
+        },
+        "freightCostExclGst": {
+          "type": "number",
+          "description": "Freight cost, excluding GST."
+        },
+        "colors": {
+          "type": "array",
+          "description": "Available color variants for the model, each with associated images.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "imageUrls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "standardFeatures": {
+          "type": "array",
+          "description": "A list of standard features for the model.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "optionalFeatures": {
+          "type": "array",
+          "description": "A list of optional add-ons for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional feature."
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "packageStatus": {
+                "type": "object",
+                "description": "A map of package IDs to their status ('standard' or 'optional') for this feature.",
+                "additionalProperties": {
+                  "type": "string",
+                  "enum": [
+                    "standard",
+                    "optional"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "packages": {
+          "type": "array",
+          "description": "A list of optional packages for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional package."
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "packageLevels": {
+          "type": "array",
+          "description": "A list of tiered packages for a Stabicraft model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "A description for the package level."
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package level.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "uDekOptions": {
+          "type": "object",
+          "description": "U-Dek flooring image URLs.",
+          "properties": {
+            "blackOnWinterGrey": {
+              "type": "string"
+            },
+            "teakOnBlack": {
+              "type": "string"
+            },
+            "steelGreyOnWinterGrey": {
+              "type": "string"
+            },
+            "winterGreyOnSteelGrey": {
+              "type": "string"
+            }
+          }
+        },
+        "paintAndGraphicOptions": {
+          "type": "object",
+          "description": "Paint and graphic options for a Stabicraft model.",
+          "properties": {
+            "standardGloss": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "standardMetallic": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "powderCoating": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "specifications": {
+          "type": "object",
+          "properties": {
+            "motorConfigurations": {
+              "type": "array",
+              "description": "Defines the supported engine configurations and their respective horsepower ratings.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Single",
+                      "Twin",
+                      "Triple",
+                      "Quad",
+                      "SingleWithAux"
+                    ]
+                  },
+                  "engines": {
+                    "type": "array",
+                    "description": "An array of engine specifications for this configuration.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "description": "A label for the engine (e.g., 'Main Engine', 'Engine 1')."
+                        },
+                        "minHp": {
+                          "type": "number"
+                        },
+                        "maxHp": {
+                          "type": "number"
+                        },
+                        "recommendedHp": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "label"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "type",
+                  "engines"
+                ]
+              }
+            },
+            "otherSpecs": {
+              "type": "array",
+              "description": "A list of other key-value specifications.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "variantPricing": {
+          "type": "array",
+          "description": "Pricing for specific model variants (e.g., by color and material). Highfield specific.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "colorId": {
+                "type": "string"
+              },
+              "colorName": {
+                "type": "string"
+              },
+              "material": {
+                "type": "string",
+                "enum": [
+                  "HYP",
+                  "PVC"
+                ]
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "freightCostExclGst": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "colorId",
+              "material"
+            ]
+          }
+        },
+        "documents": {
+          "type": "array",
+          "description": "A list of documents associated with the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "url"
+            ]
+          }
+        }
       },
-      "required": ["id", "recipientUserId", "type", "message", "isRead", "createdAt"]
+      "required": [
+        "name",
+        "slug",
+        "rangeId",
+        "vendorId"
+      ]
+    },
+    "Module": {
+      "title": "Module",
+      "description": "Represents an application module that connects various vendors and data for an organisation.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the module."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the module name."
+        },
+        "mainVendorId": {
+          "type": "string",
+          "description": "The ID of the main vendor for this module."
+        },
+        "associatedVendorIds": {
+          "type": "array",
+          "description": "A list of IDs for associated vendors.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL for the module's logo, typically inherited from the main vendor."
+        }
+      },
+      "required": [
+        "name",
+        "slug",
+        "mainVendorId"
+      ]
     }
   },
   "auth": {
@@ -289,23 +731,48 @@
       },
       "description": "A collection of individual data rows that make up the vendor's master data set."
     },
-    "/vessels/{vesselId}": {
+    "/data-warehouse/{vendorId}/ranges/{rangeId}": {
       "schema": {
-        "$ref": "#/backend/entities/Vessel"
+        "$ref": "#/backend/entities/Range"
       },
-      "description": "Managed maritime vessels."
+      "description": "Product ranges for a specific vendor."
     },
-    "/vesselReservations/{reservationId}": {
+    "/data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}": {
       "schema": {
-        "$ref": "#/backend/entities/VesselReservation"
+        "$ref": "#/backend/entities/Model"
       },
-      "description": "Vessel reservation requests from sub-dealers."
+      "description": "Specific models within a product range."
     },
-    "/users/{userId}/notifications/{notificationId}": {
+    "/data-warehouse/{vendorId}/masterPriceList/{rowId}": {
       "schema": {
-        "$ref": "#/backend/entities/Notification"
+        "$ref": "#/backend/entities/MasterDataRow"
       },
-      "description": "User-specific notifications."
+      "description": "A collection of individual data rows that make up the vendor's master price list."
+    },
+    "/data-warehouse/{vendorId}/bulkMasterPriceList/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's bulk master price list."
+    },
+    "/modules/{moduleId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Module"
+      },
+      "description": "Application modules."
+    },
+    "/inventory/{itemId}": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "stockNumber": { "type": "string" },
+          "organisationId": { "type": "string" },
+          "moduleId": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      },
+      "description": "Inventory items for organisations."
     }
   }
 }

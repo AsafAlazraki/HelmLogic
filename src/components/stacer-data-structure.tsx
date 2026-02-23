@@ -1,8 +1,4 @@
 
-// This file is functionally identical to the other *-data-structure.tsx files.
-// Any changes to the core logic for adding, editing, or deleting ranges should be
-// replicated across all four files (Highfield, Jeanneau, Stacer, Stabicraft).
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -10,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useStorage } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, writeBatch, doc, setDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useForm } from 'react-hook-form';
@@ -21,12 +17,11 @@ import { createSlug } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, PlusCircle, Trash2, Sailboat, MoreHorizontal, Pencil, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Sailboat, Pencil, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage, FormDescription } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,7 +58,7 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
     const router = useRouter();
     const { toast } = useToast();
 
-    const rangesQuery = useMemo(() => {
+    const rangesQuery = useMemoFirebase(() => {
         if (!vendorId) return null;
         return query(collection(firestore, `data-warehouse/${vendorId}/ranges`));
     }, [firestore, vendorId]);
@@ -306,28 +301,14 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {ranges.map((range, index) => (
                                     <Card key={range.id} className="group relative overflow-hidden flex flex-col h-full transition-all duration-300 ease-in-out hover:border-primary hover:shadow-xl hover:-translate-y-1">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-primary/10 hover:text-primary">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleMoveRange(index, 'up'); }} disabled={index === 0}>
-                                                    <ArrowUp className="mr-2 h-4 w-4" /> Move Up
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleMoveRange(index, 'down'); }} disabled={index === ranges.length - 1}>
-                                                    <ArrowDown className="mr-2 h-4 w-4" /> Move Down
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => { setEditingRange(range); setIsEditDialogOpen(true); }}>
-                                                    <Pencil className="mr-2 h-4 w-4" /> Rename
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={() => { setRangeToDelete(range); setIsDeleteDialogOpen(true); }}>
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/50 hover:bg-primary/10 hover:text-primary" onClick={() => { setEditingRange(range); setIsEditDialogOpen(true); }}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/50 hover:bg-destructive/10 hover:text-destructive" onClick={() => { setRangeToDelete(range); setIsDeleteDialogOpen(true); }}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
 
                                         <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${range.slug || range.id}`} className="block h-full">
                                             <div className="h-40 bg-secondary relative">
