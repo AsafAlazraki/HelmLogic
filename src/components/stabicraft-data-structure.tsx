@@ -1,4 +1,3 @@
-
 // This file is functionally identical to the other *-data-structure.tsx files.
 // Any changes to the core logic for adding, editing, or deleting ranges should be
 // replicated across all four files (Highfield, Jeanneau, Stacer, Stabicraft).
@@ -10,7 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useStorage } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, writeBatch, doc, setDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useForm } from 'react-hook-form';
@@ -62,7 +61,7 @@ export function StabicraftDataStructure({ vendorId, vendorSlugOrId }: { vendorId
     const router = useRouter();
     const { toast } = useToast();
 
-    const rangesQuery = useMemo(() => {
+    const rangesQuery = useMemoFirebase(() => {
         if (!vendorId) return null;
         return query(collection(firestore, `data-warehouse/${vendorId}/ranges`));
     }, [firestore, vendorId]);
