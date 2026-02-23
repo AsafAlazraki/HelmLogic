@@ -332,7 +332,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                             />
                             <CollapsibleContent>
                                 <CardContent className="pt-6">
-                                    <ScrollArea className="h-[600px] pr-4">
+                                    <ScrollArea className="h-[500px] pr-4">
                                         <div className="grid grid-cols-1 gap-4">
                                             {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                                         </div>

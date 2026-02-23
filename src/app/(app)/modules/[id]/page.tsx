@@ -948,7 +948,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all flex flex-col", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
