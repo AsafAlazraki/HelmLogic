@@ -8,7 +8,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, orderBy, writeBatch } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, Pencil, Trash2, ArrowRight, PlusCircle, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, Pencil, Trash2, PlusCircle, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,10 +43,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createSlug } from '@/lib/utils';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { useUser } from '@/firebase/auth/use-user';
 
 
@@ -56,8 +52,6 @@ interface Model {
     modelCode?: string;
     slug?: string;
     coverImageUrl?: string;
-    packages?: { id: string; name: string }[];
-    packageLevels?: { id: string; name: string }[];
     order?: number;
 }
 
@@ -74,86 +68,12 @@ interface Vendor {
     slug?: string;
 }
 
-const packageFormSchema = z.object({
-    name: z.string().min(1, { message: "Package name is required." }),
-});
-type PackageFormData = z.infer<typeof packageFormSchema>;
-
-function PackageDialog({
-    isOpen,
-    setIsOpen,
-    onSave,
-    editingPackage
-}: {
-    isOpen: boolean,
-    setIsOpen: (isOpen: boolean) => void,
-    onSave: (data: PackageFormData) => void,
-    editingPackage: { id: string; name: string } | null
-}) {
-    const form = useForm<PackageFormData>({
-        resolver: zodResolver(packageFormSchema),
-        defaultValues: { name: '' },
-    });
-    
-    useEffect(() => {
-        if (isOpen) {
-            form.reset({ name: editingPackage?.name || '' });
-        }
-    }, [isOpen, editingPackage, form]);
-
-    const handleSave = (data: PackageFormData) => {
-        onSave(data);
-        setIsOpen(false);
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{editingPackage ? 'Edit Package' : 'Add New Package'}</DialogTitle>
-                </DialogHeader>
-                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleSave)}>
-                        <div className="grid gap-4 py-4">
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <Label htmlFor="name">Package Name</Label>
-                                        <FormControl>
-                                            <Input id="name" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button type="button" variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit">Save</Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }: { vendor: Vendor; range: Range; model: Model; index: number; totalModels: number; onMove: (index: number, direction: 'up' | 'down') => void; isAdmin: boolean; }) {
+function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendor: Vendor; range: Range; model: Model; index: number; totalModels: number; onMove: (index: number, direction: 'up' | 'down') => void; }) {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
-    const [newModelName, setNewModelName] = useState(model.name);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [isRenaming, setIsRenaming] = useState(false);
-
-    const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
-    const [editingPackage, setEditingPackage] = useState<{ id: string; name: string } | null>(null);
 
     const modelPath = `/data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
 
@@ -162,73 +82,10 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
         try {
             await deleteDoc(doc(firestore, modelPath));
             toast({ title: 'Model Deleted', description: `"${model.name}" has been deleted.` });
-            router.refresh();
         } catch (error) {
             console.error('Failed to delete model:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not delete model.' });
             setIsDeleting(false);
-        }
-    };
-
-    const handleRename = async () => {
-        if (!newModelName.trim() || newModelName === model.name) {
-            setIsRenameDialogOpen(false);
-            return;
-        }
-        setIsRenaming(true);
-        try {
-            const newSlug = createSlug(newModelName);
-            await updateDoc(doc(firestore, modelPath), { name: newModelName, slug: newSlug });
-            toast({ title: 'Model Renamed', description: `Renamed to "${newModelName}".` });
-            setIsRenameDialogOpen(false);
-            router.refresh(); 
-        } catch (error) {
-            console.error('Failed to rename model:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not rename model.' });
-        } finally {
-            setIsRenaming(false);
-        }
-    };
-
-    const handleOpenAddPackageDialog = (e: React.MouseEvent) => {
-        e.preventDefault();
-        setEditingPackage(null);
-        setIsPackageDialogOpen(true);
-    };
-
-    const handleOpenEditPackageDialog = (pkg: {id: string, name: string}, e: React.MouseEvent) => {
-        e.preventDefault();
-        setEditingPackage(pkg);
-        setIsPackageDialogOpen(true);
-    };
-
-    const handleSavePackage = async (data: PackageFormData) => {
-        let updatedPackages;
-        const currentPackages = model.packageLevels || [];
-        if (editingPackage) {
-            updatedPackages = currentPackages.map(p => p.id === editingPackage.id ? { ...p, name: data.name } : p);
-        } else {
-            const newPackage = { id: `pkg-lvl-${Date.now()}`, name: data.name };
-            updatedPackages = [...currentPackages, newPackage];
-        }
-        try {
-            await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
-            toast({ title: editingPackage ? 'Package Updated' : 'Package Added' });
-        } catch(error) {
-            console.error('Failed to save package:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not save package.' });
-        }
-    };
-
-    const handleDeletePackage = async (packageId: string, e: React.MouseEvent) => {
-        e.preventDefault();
-        const updatedPackages = model.packageLevels?.filter(p => p.id !== packageId) || [];
-        try {
-            await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
-            toast({ title: 'Package Deleted' });
-        } catch(error) {
-            console.error('Failed to delete package:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete package.' });
         }
     };
     
@@ -238,64 +95,39 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
 
     return (
         <>
-            <Card className="relative group overflow-hidden flex flex-col h-full">
-                <div className="flex-grow">
-                    <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block h-full flex flex-col">
-                        <div className="h-52 bg-secondary relative">
-                             {model.coverImageUrl ? (
-                                <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
-                            ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                    <Sailboat className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                            )}
-                        </div>
-                        <CardContent className="p-3 h-24 flex flex-col items-center justify-center gap-1">
-                            <p className="font-semibold text-center line-clamp-2">{model.name}</p>
-                            {model.modelCode && <p className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</p>}
-                        </CardContent>
-                    </Link>
+            <Card className="relative group overflow-hidden flex flex-col h-full transition-all duration-300 hover:border-primary">
+                <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/50 hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
                 </div>
-
-                {vendor.slug === 'stabicraft' && (
-                    <div className="p-3 border-t">
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center mb-2">
-                                <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
-                                {isAdmin && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={handleOpenAddPackageDialog}>
-                                        <PlusCircle className="h-4 w-4" />
-                                    </Button>
-                                )}
+                <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block flex-grow">
+                    <div className="h-52 bg-secondary relative">
+                            {model.coverImageUrl ? (
+                            <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
+                        ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                                <Sailboat className="h-12 w-12 text-muted-foreground" />
                             </div>
-                            <div className="space-y-1 min-h-[108px] flex flex-col">
-                                {(model.packageLevels && model.packageLevels.length > 0) ? (
-                                    <div className="flex-grow space-y-1">
-                                    {model.packageLevels.map(pkg => (
-                                        <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground w-full h-full">
-                                            <span className="font-medium truncate pr-2">{pkg.name}</span>
-                                            {isAdmin && (
-                                                <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={(e) => handleDeletePackage(pkg.id, e)}>
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                    </div>
-                                ) : (
-                                    <div className="flex-grow flex items-center justify-center text-xs text-muted-foreground">
-                                        <p>No packages defined.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        )}
                     </div>
-                )}
+                    <CardContent className="p-3 h-24 flex flex-col items-center justify-center gap-1">
+                        <p className="font-semibold text-center line-clamp-2">{model.name}</p>
+                        {model.modelCode ? (
+                            <p className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</p>
+                        ) : (
+                            <p className="text-[10px] text-destructive uppercase font-bold">No Code Set</p>
+                        )}
+                    </CardContent>
+                </Link>
+                <CardFooter className="p-2 pt-0 border-t bg-muted/5 flex justify-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onMove(index, 'up')} disabled={index === 0}>
+                        <ArrowUp className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
+                        <ArrowDown className="h-3 w-3" />
+                    </Button>
+                </CardFooter>
             </Card>
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -315,36 +147,6 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Rename Model</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right">Name</Label>
-                            <Input id="name" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3" />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button onClick={handleRename} disabled={isRenaming}>
-                            {isRenaming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <PackageDialog
-                isOpen={isPackageDialogOpen}
-                setIsOpen={setIsPackageDialogOpen}
-                onSave={handleSavePackage}
-                editingPackage={editingPackage}
-            />
         </>
     );
 }
@@ -399,15 +201,10 @@ export default function RangeDetailsPage() {
     const rangeLoading = rangeSlugLoading || rangeIdLoading;
 
 
-    const modelsCollectionPath = useMemo(() => {
-        if (!vendor || !range) return null;
-        return `/data-warehouse/${vendor.id}/ranges/${range.id}/models`;
-    }, [vendor, range]);
-
     const modelsQuery = useMemoFirebase(() => {
-        if (!modelsCollectionPath) return null;
-        return query(collection(firestore, modelsCollectionPath));
-    }, [firestore, modelsCollectionPath]);
+        if (!vendor || !range) return null;
+        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`));
+    }, [firestore, vendor, range]);
 
     const { data: rawModels, loading: modelsLoading } = useCollection<Model>(modelsQuery);
 
@@ -553,7 +350,7 @@ export default function RangeDetailsPage() {
                                 {viewMode === 'card' ? (
                                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                         {sortedModels.map((model, index) => (
-                                            <ModelCard key={model.id} vendor={vendor} range={range} model={model} index={index} totalModels={sortedModels.length} onMove={handleMoveModel} isAdmin={isAdmin}/>
+                                            <ModelCard key={model.id} vendor={vendor} range={range} model={model} index={index} totalModels={sortedModels.length} onMove={handleMoveModel}/>
                                         ))}
                                     </div>
                                 ) : (
@@ -574,7 +371,11 @@ export default function RangeDetailsPage() {
                                                         </Link>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {model.modelCode && <span className="font-mono text-xs uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</span>}
+                                                        {model.modelCode ? (
+                                                            <span className="font-mono text-xs uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</span>
+                                                        ) : (
+                                                            <span className="text-[10px] text-destructive uppercase font-bold italic">Missing Code</span>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end items-center gap-2">
@@ -583,16 +384,14 @@ export default function RangeDetailsPage() {
                                                                     View Details
                                                                 </Link>
                                                             </Button>
-                                                            {isAdmin && (
-                                                                <div className="flex gap-1">
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
-                                                                        <ArrowUp className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
-                                                                        <ArrowDown className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            )}
+                                                            <div className="flex gap-1">
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
+                                                                    <ArrowUp className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
+                                                                    <ArrowDown className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>

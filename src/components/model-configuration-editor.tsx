@@ -297,7 +297,6 @@ export function ModelConfigurationEditor({
     };
 
     const onInvalid = (errors: any) => {
-        console.error("Form Validation Errors:", errors);
         const errorEntries = Object.entries(errors);
         let errorMsg = "Please check the required fields.";
         
