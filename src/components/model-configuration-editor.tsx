@@ -143,7 +143,6 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
                 });
                 return { ...f, packageStatus };
             }),
-            colorStages: data.colorStages ?? { stage0: false, stage1: false, stage2: false, stage3: false },
             uDekOptions: data.uDekOptions ?? { blackOnWinterGrey: null, teakOnBlack: null, steelGreyOnWinterGrey: null, winterGreyOnSteelGrey: null },
             paintAndGraphicOptions: data.paintAndGraphicOptions ?? { standardGloss: [], standardMetallic: [], powderCoating: [] },
         };
@@ -204,6 +203,7 @@ export function ModelConfigurationEditor({
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const currentSchema = getVendorSchema(vendor?.slug);
+    const isModuleView = module?.id !== 'master';
 
     const form = useForm({
         resolver: zodResolver(currentSchema),
@@ -294,29 +294,27 @@ export function ModelConfigurationEditor({
     const onInvalid = (errors: any) => {
         console.error("Form Validation Errors:", errors);
         const errorEntries = Object.entries(errors);
-        let errorMsg = "Please check the required fields.";
         
         if (errorEntries.length > 0) {
             const [field, error]: [string, any] = errorEntries[0];
             const message = error.message || (error.root ? error.root.message : 'Invalid value');
-            errorMsg = `Field "${field}" failed: ${message}`;
+            toast({ 
+                variant: "destructive", 
+                title: "Validation Error", 
+                description: `Field "${field}" failed: ${message}` 
+            });
         }
-
-        toast({ 
-            variant: "destructive", 
-            title: "Validation Error", 
-            description: errorMsg 
-        });
     };
 
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
+        const commonProps = { model, isModuleView };
         switch (vendor.slug) {
-            case 'highfield': return <HighfieldModelEditor model={model} />;
-            case 'jeanneau': return <JeanneauModelEditor model={model} />;
-            case 'stacer': return <StacerModelEditor model={model} />;
-            case 'stabicraft': return <StabicraftModelEditor model={model} />;
-            case 'surtees': return <SurteesModelEditor model={model} />;
+            case 'highfield': return <HighfieldModelEditor {...commonProps} />;
+            case 'jeanneau': return <JeanneauModelEditor {...commonProps} />;
+            case 'stacer': return <StacerModelEditor {...commonProps} />;
+            case 'stabicraft': return <StabicraftModelEditor {...commonProps} />;
+            case 'surtees': return <SurteesModelEditor {...commonProps} />;
             default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor brand.</CardContent></Card>;
         }
     };
