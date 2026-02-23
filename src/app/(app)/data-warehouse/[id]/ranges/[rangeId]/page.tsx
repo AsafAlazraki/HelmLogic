@@ -261,17 +261,15 @@ export default function RangeDetailsPage() {
     }, [rawModels]);
 
     useEffect(() => {
-        if (rawModels && rawModels.length > 0 && rawModels.some(m => m.order === undefined)) {
+        if (rawRanges && rawRanges.length > 0 && rawRanges.some(r => r.order === undefined)) {
             const batch = writeBatch(firestore);
-            rawModels.forEach((model, index) => {
-                if (model.order === undefined) {
-                    const modelRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, model.id);
-                    batch.update(modelRef, { order: index });
-                }
+            rawRanges.forEach((range, index) => {
+                const rangeRef = doc(firestore, `data-warehouse/${vendor.id}/ranges`, range.id);
+                batch.update(rangeRef, { order: index });
             });
-            batch.commit().catch(err => console.error("Failed to update model order", err));
+            batch.commit().catch(err => console.error("Failed to update order", err));
         }
-    }, [rawModels, firestore, vendor, range]);
+    }, [rawRanges, firestore, vendorId]);
 
     const handleAddModel = async () => {
         if (!newModelName.trim() || !newModelCode.trim() || !vendor || !range || !sortedModels) return;

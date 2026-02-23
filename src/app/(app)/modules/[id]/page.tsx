@@ -808,7 +808,7 @@ export default function ModuleDetailsPage() {
                                     <Card className="h-full flex flex-col min-h-[600px]">
                                         <CardHeader><CardTitle>Quotes</CardTitle><CardDescription>Recent quotes for {dashboardOrg.name}</CardDescription></CardHeader>
                                         <CardContent className="flex-grow">
-                                            <ScrollArea className="h-[500px] w-full rounded-md border p-4 bg-muted/5">
+                                            <ScrollArea className="h-[500px] w-full rounded-md border p-4 bg-muted/50">
                                                 <div className="flex items-center justify-center h-full text-muted-foreground italic">
                                                     <p>Quotes list will appear here.</p>
                                                 </div>
@@ -945,7 +945,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all flex flex-col", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">

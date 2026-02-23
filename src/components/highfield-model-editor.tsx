@@ -387,6 +387,83 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
   );
 }
 
+function MotorConfigurationsSection() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" });
+
+    const configOptions = [
+        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
+        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
+        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
+        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
+        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
+    ];
+
+    const handleAddConfig = (type: string) => {
+        const option = configOptions.find(o => o.id === type);
+        if (!option) return;
+        append({
+            type,
+            engines: Array.from({ length: option.engineCount }, (_, i) => ({
+                label: option.engineLabels[i],
+                minHp: 0,
+                maxHp: 0,
+                recommendedHp: 0
+            }))
+        });
+    };
+
+    return (
+        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <Card className="border-none shadow-none rounded-none">
+                <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
+                    <div className="flex items-center gap-3">
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </Button>
+                        </CollapsibleTrigger>
+                        <CardTitle className="text-lg font-bold">Motor Configurations</CardTitle>
+                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+                            {fields.length}
+                        </span>
+                    </div>
+                    <Select onValueChange={handleAddConfig}>
+                        <SelectTrigger className="h-8 w-[180px] text-xs">
+                            <SelectValue placeholder="Add Configuration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <CollapsibleContent>
+                    <CardContent className="pt-6 space-y-6">
+                        {fields.map((field, index) => (
+                            <Card key={field.id} className="relative p-4 bg-muted/10">
+                                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                <div className="space-y-4">
+                                    <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
+                                    <div className="grid gap-4">
+                                        {(field as any).engines.map((engine: any, engineIdx: number) => (
+                                            <div key={engineIdx} className="grid grid-cols-4 gap-3 items-end border-t pt-4 first:border-0 first:pt-0">
+                                                <div className="space-y-1"><Label className="text-[10px] uppercase font-bold text-muted-foreground">{engine.label}</Label></div>
+                                                <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                                <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                                <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
+    );
+}
+
 export function HighfieldModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
     const { control, watch } = useFormContext<ModelFormData>();
     const [bulkFeatures, setBulkFeatures] = useState('');
@@ -460,6 +537,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className="lg:col-span-4 lg:order-1 space-y-8">
                     <SpecsSection />
+                    <MotorConfigurationsSection />
                     <FeaturesSection />
                     <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                         <Card className="border-none shadow-none rounded-none">
