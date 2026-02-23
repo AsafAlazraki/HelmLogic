@@ -394,7 +394,8 @@ export default function RangeDetailsPage() {
     const { toast } = useToast();
 
     const { user, loading: userLoading } = useUser();
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(user ? `/users/${user.uid}` : null);
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(userProfileRef);
     const isAdmin = !!userProfile && userProfile.appRole === 'HelmLogic Admin';
 
     const vendorQuery = useMemoFirebase(() => {
@@ -403,7 +404,12 @@ export default function RangeDetailsPage() {
     }, [firestore, vendorSlugOrId]);
     
     const { data: vendorsBySlug, loading: slugLoading } = useCollection<Vendor>(vendorQuery);
-    const { data: vendorById, loading: idLoading } = useDoc<Vendor>(vendorSlugOrId ? `/data-warehouse/${vendorSlugOrId}` : null);
+    
+    const vendorByIdRef = useMemoFirebase(() => 
+        vendorSlugOrId ? doc(firestore, 'data-warehouse', vendorSlugOrId) : null,
+    [firestore, vendorSlugOrId]);
+    
+    const { data: vendorById, loading: idLoading } = useDoc<Vendor>(vendorByIdRef);
     const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
     const vendorLoading = slugLoading || idLoading;
 
@@ -413,7 +419,12 @@ export default function RangeDetailsPage() {
     }, [firestore, vendor, rangeSlugOrId]);
     
     const { data: rangesBySlug, loading: rangeSlugLoading } = useCollection<Range>(rangeQueryBySlug);
-    const { data: rangeById, loading: rangeIdLoading } = useDoc<Range>(vendor && rangeSlugOrId ? `/data-warehouse/${vendor.id}/ranges/${rangeSlugOrId}` : null);
+    
+    const rangeByIdRef = useMemoFirebase(() => 
+        vendor && rangeSlugOrId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', rangeSlugOrId) : null,
+    [firestore, vendor, rangeSlugOrId]);
+    
+    const { data: rangeById, loading: rangeIdLoading } = useDoc<Range>(rangeByIdRef);
     const range = useMemo(() => rangesBySlug?.[0] || rangeById, [rangesBySlug, rangeById]);
     const rangeLoading = rangeSlugLoading || rangeIdLoading;
 

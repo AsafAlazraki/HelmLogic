@@ -192,7 +192,8 @@ export default function ModuleDetailsPage() {
     const firestore = useFirestore();
 
     const { user, loading: userLoading } = useUser();
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(user ? `/users/${user.uid}` : null);
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(userProfileRef);
     
     const moduleQueryBySlug = useMemoFirebase(() => {
         if (!slugOrId) return null;
@@ -200,12 +201,21 @@ export default function ModuleDetailsPage() {
     }, [firestore, slugOrId]);
 
     const { data: modulesBySlug, loading: slugLoading } = useCollection<any>(moduleQueryBySlug);
-    const { data: moduleById, loading: idLoading } = useDoc<any>(slugOrId ? `/modules/${slugOrId}` : null);
+    
+    const moduleByIdRef = useMemoFirebase(() => 
+        slugOrId ? doc(firestore, 'modules', slugOrId) : null,
+    [firestore, slugOrId]);
+    
+    const { data: moduleById, loading: idLoading } = useDoc<any>(moduleByIdRef);
     
     const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
     const moduleLoading = slugLoading || idLoading;
     
-    const { data: mainVendor, loading: mainVendorLoading } = useDoc<Vendor>(moduleData ? `/data-warehouse/${moduleData.mainVendorId}` : null);
+    const mainVendorRef = useMemoFirebase(() => 
+        moduleData ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null,
+    [firestore, moduleData]);
+    
+    const { data: mainVendor, loading: mainVendorLoading } = useDoc<Vendor>(mainVendorRef);
     
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]));
     const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>(useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]));

@@ -10,7 +10,7 @@ import Link from 'next/link';
 
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore, useStorage } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -93,9 +93,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const firestore = useFirestore();
     const storage = useStorage();
 
-    const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(`/organisations/${orgId}`);
+    const orgDocRef = useMemoFirebase(() => doc(firestore, 'organisations', orgId), [firestore, orgId]);
+    const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(orgDocRef);
     
-    const subDealersQuery = useMemo(() => {
+    const subDealersQuery = useMemoFirebase(() => {
         if (!organisation) return null;
         return query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', organisation.id));
     }, [firestore, organisation]);

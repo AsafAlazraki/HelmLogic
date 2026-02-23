@@ -334,7 +334,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
                     <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:shadow-xl hover:-translate-y-1">
                         <div className="h-40 bg-secondary relative">
                             {range.imageUrl ? (
-                                <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" sizes="(max-width: 768px) 50vw, 25vw" />
+                                Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" sizes="(max-width: 768px) 50vw, 25vw" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center">
                                     <Wrench className="h-12 w-12 text-muted-foreground" />
@@ -424,7 +424,11 @@ export default function ModuleDetailsPage() {
     const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>(orgsQuery);
     const { data: allDealerFitCategories, loading: catsLoading } = useCollection<DealerFitCategory>(catsQuery);
     
-    const mainVendor = useMemo(() => allVendors?.find(v => v.id === moduleData?.mainVendorId), [allVendors, moduleData]);
+    const mainVendorRef = useMemoFirebase(() => 
+        moduleData ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null,
+    [firestore, moduleData]);
+    
+    const { data: mainVendor, loading: mainVendorLoading } = useDoc<Vendor>(mainVendorRef);
         
     const currentMemberOrg = useMemo(() => 
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
@@ -637,7 +641,7 @@ export default function ModuleDetailsPage() {
         }
     };
     
-    const loading = moduleLoading || vendorsLoading || orgsLoading || userLoading || profileLoading || catsLoading;
+    const loading = moduleLoading || mainVendorLoading || vendorsLoading || orgsLoading || userLoading || profileLoading || catsLoading;
 
     if (loading) {
       return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;

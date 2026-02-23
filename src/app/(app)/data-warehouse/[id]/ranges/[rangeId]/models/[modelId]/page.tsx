@@ -8,7 +8,7 @@ import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { useMemo } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { HighfieldModelEditor } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
 import { StacerModelEditor } from '@/components/stacer-model-editor';
@@ -53,8 +53,12 @@ export default function ModelDetailsPage() {
   const { data: vendorsBySlug, loading: vendorSlugLoading } = useCollection<Vendor>(vendorQueryBySlug);
   
   const isLikelyAnId = !vendorSlugLoading && (!vendorsBySlug || vendorsBySlug.length === 0);
-  const docPath = isLikelyAnId && vendorSlugOrId ? `/data-warehouse/${vendorSlugOrId}` : null;
-  const { data: vendorById, loading: vendorIdLoading } = useDoc<Vendor>(docPath);
+  
+  const vendorByIdRef = useMemoFirebase(() => 
+    isLikelyAnId && vendorSlugOrId ? doc(firestore, 'data-warehouse', vendorSlugOrId) : null,
+  [firestore, isLikelyAnId, vendorSlugOrId]);
+  
+  const { data: vendorById, loading: vendorIdLoading } = useDoc<Vendor>(vendorByIdRef);
   
   const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
   const vendorLoading = vendorSlugLoading || vendorIdLoading;
@@ -66,7 +70,12 @@ export default function ModelDetailsPage() {
   }, [firestore, vendor, rangeSlugOrId]);
 
   const { data: rangesBySlug, loading: rangeSlugLoading } = useCollection<Range>(rangeQueryBySlug);
-  const { data: rangeById, loading: rangeIdLoading } = useDoc<Range>(vendor?.id && rangeSlugOrId ? `/data-warehouse/${vendor.id}/ranges/${rangeSlugOrId}` : null);
+  
+  const rangeByIdRef = useMemoFirebase(() => 
+    vendor?.id && rangeSlugOrId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', rangeSlugOrId) : null,
+  [firestore, vendor?.id, rangeSlugOrId]);
+  
+  const { data: rangeById, loading: rangeIdLoading } = useDoc<Range>(rangeByIdRef);
   const range = useMemo(() => rangesBySlug?.[0] || rangeById, [rangesBySlug, rangeById]);
   const rangeLoading = rangeSlugLoading || rangeIdLoading;
 
@@ -77,7 +86,12 @@ export default function ModelDetailsPage() {
   }, [firestore, vendor, range, modelSlugOrId]);
   
   const { data: modelsBySlug, loading: modelSlugLoading } = useCollection<Model>(modelQueryBySlug);
-  const { data: modelById, loading: modelIdLoading } = useDoc<Model>(vendor?.id && range?.id && modelSlugOrId ? `/data-warehouse/${vendor.id}/ranges/${range.id}/models/${modelSlugOrId}` : null);
+  
+  const modelByIdRef = useMemoFirebase(() => 
+    vendor?.id && range?.id && modelSlugOrId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', range.id, 'models', modelSlugOrId) : null,
+  [firestore, vendor?.id, range?.id, modelSlugOrId]);
+  
+  const { data: modelById, loading: modelIdLoading } = useDoc<Model>(modelByIdRef);
   const model = useMemo(() => modelsBySlug?.[0] || modelById, [modelsBySlug, modelById]);
   const modelLoading = modelSlugLoading || modelIdLoading;
 
@@ -115,7 +129,7 @@ export default function ModelDetailsPage() {
       );
   }
 
-  const modelDocPath = `/data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
+  const modelDocPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
 
   return (
     <div className="space-y-4">
