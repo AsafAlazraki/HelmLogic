@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -17,7 +16,7 @@ import { createSlug } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, PlusCircle, Trash2, Sailboat, Pencil, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Sailboat, Pencil, X, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage, FormDescription } from '@/components/ui/form';
@@ -55,14 +54,13 @@ const initialRanges = ['Open Boats', 'Prolines', 'Assualt Pros', 'Crossfire', 'O
 export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: string, vendorSlugOrId: string }) {
     const firestore = useFirestore();
     const storage = useStorage();
-    const router = useRouter();
     const { toast } = useToast();
 
     const rangesQuery = useMemoFirebase(() => {
         if (!vendorId) return null;
         return query(collection(firestore, `data-warehouse/${vendorId}/ranges`));
     }, [firestore, vendorId]);
-    const { data: rawRanges, loading: rangesLoading, error } = useCollection<Range>(rangesQuery);
+    const { data: rawRanges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
 
     const [isSeeding, setIsSeeding] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -103,7 +101,6 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
             editForm.reset({ name: editingRange.name });
         }
     }, [editingRange, editForm]);
-
 
     const handleSeedData = async () => {
         setIsSeeding(true);
@@ -173,23 +170,15 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
                 slug: slug,
             };
 
-            let imageWasUpdated = false;
             if (values.image instanceof File && storage) {
                 const path = `data-warehouse/${vendorId}/ranges/${slug}/cover-${Date.now()}-${values.image.name}`;
                 dataToUpdate.imageUrl = await uploadFileToStorage(storage, values.image, path);
-                imageWasUpdated = true;
             }
             
             await updateDoc(rangeDocRef, dataToUpdate);
             toast({ title: 'Range Updated' });
-
-            if (imageWasUpdated) {
-                window.location.reload();
-            } else {
-                setIsEditDialogOpen(false);
-                setEditingRange(null);
-            }
-
+            setIsEditDialogOpen(false);
+            setEditingRange(null);
         } catch (error) {
             console.error('Failed to update range:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not update range.' });
@@ -210,32 +199,6 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
         }
     };
 
-    const handleMoveRange = async (index: number, direction: 'up' | 'down') => {
-        if (!ranges) return;
-
-        const newIndex = direction === 'up' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= ranges.length) return;
-
-        const item1 = ranges[index];
-        const item2 = ranges[newIndex];
-
-        const batch = writeBatch(firestore);
-        
-        const item1Ref = doc(firestore, `data-warehouse/${vendorId}/ranges`, item1.id);
-        batch.update(item1Ref, { order: item2.order });
-
-        const item2Ref = doc(firestore, `data-warehouse/${vendorId}/ranges`, item2.id);
-        batch.update(item2Ref, { order: item1.order });
-
-        try {
-            await batch.commit();
-            toast({ title: 'Order updated' });
-        } catch (error) {
-            console.error("Failed to update order:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not update order.' });
-        }
-    };
-
     if (rangesLoading) {
         return <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     }
@@ -246,15 +209,20 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
                 <Card>
                     <CardHeader>
                          <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Stacer Product Ranges</CardTitle>
-                                <CardDescription>Manage product ranges and models for Stacer boats.</CardDescription>
+                            <div className="flex items-center gap-3">
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-primary/10 hover:text-primary transition-colors group-data-[state=open]:bg-muted">
+                                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <div>
+                                    <CardTitle>Stacer Product Ranges</CardTitle>
+                                    <CardDescription>Manage product ranges and models for Stacer boats.</CardDescription>
+                                </div>
                             </div>
-                            <CollapsibleTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Range
-                                </Button>
-                            </CollapsibleTrigger>
+                            <Button variant="outline" size="sm" onClick={() => setIsAddingOpen(!isAddingOpen)}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Range
+                            </Button>
                         </div>
                     </CardHeader>
                     <CollapsibleContent className="px-6 pb-6 border-b">
@@ -299,7 +267,7 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
                     <CardContent className="pt-6">
                         {ranges && ranges.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {ranges.map((range, index) => (
+                                {ranges.map((range) => (
                                     <Card key={range.id} className="group relative overflow-hidden flex flex-col h-full transition-all duration-300 ease-in-out hover:border-primary hover:shadow-xl hover:-translate-y-1">
                                         <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                             <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/50 hover:bg-primary/10 hover:text-primary" onClick={() => { setEditingRange(range); setIsEditDialogOpen(true); }}>
@@ -340,7 +308,6 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
                 </Card>
             </Collapsible>
 
-            {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -366,7 +333,6 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Alert Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

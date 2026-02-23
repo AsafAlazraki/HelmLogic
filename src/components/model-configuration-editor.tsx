@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -24,6 +23,7 @@ import { StabicraftModelEditor, stabicraftModelSchema } from '@/components/stabi
 import { SurteesModelEditor, surteesModelSchema } from '@/components/surtees-model-editor';
 import { MotorOptions } from './motor-options';
 import { DealerFitOptions } from './dealer-fit-options';
+import { cn } from '@/lib/utils';
 
 interface Permissions {
     can_access_module: boolean;
@@ -295,23 +295,17 @@ export function ModelConfigurationEditor({
     const onInvalid = (errors: any) => {
         console.error("Form Validation Errors:", errors);
         const errorEntries = Object.entries(errors);
+        let errorMsg = "Please check the required fields.";
         
-        if (errorEntries.length === 0) {
-            toast({ 
-                variant: "destructive", 
-                title: "Validation Error", 
-                description: "Please check all fields. Some required data might be missing." 
-            });
-            return;
+        if (errorEntries.length > 0) {
+            const [field, error]: [string, any] = errorEntries[0];
+            errorMsg = `Error in ${field.replace(/_/g, ' ')}: ${error.message || 'Invalid value'}`;
         }
-
-        const [field, error]: [string, any] = errorEntries[0];
-        const message = error.message || (error.root ? error.root.message : 'Invalid value');
         
         toast({ 
             variant: "destructive", 
             title: "Validation Error", 
-            description: `Error in ${field}: ${message}`
+            description: errorMsg
         });
     };
 

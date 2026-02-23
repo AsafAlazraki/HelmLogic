@@ -171,7 +171,7 @@ export default function AddSubDealerPage() {
                 requestResourceData: dataToCreate,
             });
             errorEmitter.emit('permission-error', permissionError);
-            throw serverError; // Re-throw to be caught by the outer catch
+            throw serverError;
         });
 
       toast({
