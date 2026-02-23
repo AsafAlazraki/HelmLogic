@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useStorage } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
