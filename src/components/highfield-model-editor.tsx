@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -123,24 +124,38 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     
     // Decouple inputs from the calculation loop using local string state.
     // This prevents the jumpy behavior and decimal stripping while typing.
-    const [exclInput, setExclInput] = useState<string>(field.value?.toString() || '');
+    const [exclInput, setExclInput] = useState<string>('');
     const [inclInput, setInclInput] = useState<string>('');
 
-    // Sync state on mount and external form resets
+    // Sync state on mount and whenever form value changes externally
     useEffect(() => {
         const val = field.value;
         if (val === null || val === undefined || val === '') {
-            setExclInput('');
-            setInclInput('');
-        } else {
-            const num = parseFloat(val);
-            const currentExclNum = parseFloat(exclInput);
-            if (isNaN(currentExclNum) || Math.abs(num - currentExclNum) > 0.001) {
-                setExclInput(num.toString());
-                setInclInput((Math.round((num * (1 + GST_RATE)) * 100) / 100).toString());
+            if (exclInput !== '' || inclInput !== '') {
+                setExclInput('');
+                setInclInput('');
             }
+            return;
         }
-    }, [field.value]);
+
+        const num = parseFloat(val);
+        const currentExclNum = parseFloat(exclInput);
+        const currentInclNum = parseFloat(inclInput);
+        
+        // Calculate expected Incl based on Val
+        const expectedInclNum = Math.round((num * (1 + GST_RATE)) * 100) / 100;
+
+        // Check if strings are numerically out of sync with the current form value
+        const isExclSync = !isNaN(currentExclNum) && Math.abs(num - currentExclNum) < 0.001;
+        const isInclSync = !isNaN(currentInclNum) && Math.abs(expectedInclNum - currentInclNum) < 0.001;
+
+        if (!isExclSync) {
+            setExclInput(num.toString());
+            setInclInput(expectedInclNum.toString());
+        } else if (!isInclSync) {
+            setInclInput(expectedInclNum.toString());
+        }
+    }, [field.value, exclInput, inclInput]);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -282,7 +297,7 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
         <div className="flex items-center p-3 bg-muted/20 border-b">
             <div className="flex items-center gap-3 flex-grow">
                 <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
                         <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
                     </Button>
                 </CollapsibleTrigger>
