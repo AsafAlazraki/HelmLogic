@@ -20,6 +20,8 @@ import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+const GST_RATE = 0.10;
+
 const looseNumber = z.preprocess(
   (val) => {
     if (val === '' || val === null || val === undefined) return null;
@@ -92,8 +94,6 @@ export const highfieldModelSchema = z.object({
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
-const GST_RATE = 0.10;
-
 const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?: number, onAdd?: () => void }) => (
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
         <div className="flex items-center gap-3">
@@ -120,32 +120,63 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
 
 function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
     const { field, fieldState } = useController({ control, name, defaultValue: null });
-    const valueExcl = field.value;
-    const calculateIncl = (val: any) => {
-        if (val === '' || val === null || val === undefined) return '';
-        const num = typeof val === 'string' ? parseFloat(val) : val;
-        if (isNaN(num)) return '';
-        return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
-    };
-    const valueInclDisplay = calculateIncl(valueExcl);
+    
+    // Decouple inputs from the calculation loop using local string state.
+    // This prevents the jumpy behavior and decimal stripping while typing.
+    const [exclInput, setExclInput] = useState<string>(field.value?.toString() || '');
+    const [inclInput, setInclInput] = useState<string>('');
+
+    // Sync state on mount and external form resets
+    useEffect(() => {
+        const val = field.value;
+        if (val === null || val === undefined || val === '') {
+            setExclInput('');
+            setInclInput('');
+        } else {
+            const num = parseFloat(val);
+            const currentExclNum = parseFloat(exclInput);
+            if (isNaN(currentExclNum) || Math.abs(num - currentExclNum) > 0.001) {
+                setExclInput(num.toString());
+                setInclInput((Math.round((num * (1 + GST_RATE)) * 100) / 100).toString());
+            }
+        }
+    }, [field.value]);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        if (val === '') field.onChange(null);
-        else {
+        // Allow numeric entry including a single decimal point
+        if (val !== '' && !/^\d*\.?\d*$/.test(val)) return;
+        
+        setExclInput(val);
+        
+        if (val === '' || val === '.') {
+            field.onChange(null);
+            setInclInput('');
+        } else {
             const num = parseFloat(val);
-            if (!isNaN(num)) field.onChange(num);
+            if (!isNaN(num)) {
+                field.onChange(num);
+                const calculatedIncl = Math.round((num * (1 + GST_RATE)) * 100) / 100;
+                setInclInput(calculatedIncl.toString());
+            }
         }
     };
 
     const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        if (val === '') field.onChange(null);
-        else {
+        if (val !== '' && !/^\d*\.?\d*$/.test(val)) return;
+        
+        setInclInput(val);
+        
+        if (val === '' || val === '.') {
+            field.onChange(null);
+            setExclInput('');
+        } else {
             const num = parseFloat(val);
             if (!isNaN(num)) {
-                const excl = num / (1 + GST_RATE);
-                field.onChange(Math.round(excl * 100) / 100);
+                const calculatedExcl = Math.round((num / (1 + GST_RATE)) * 100) / 100;
+                field.onChange(calculatedExcl);
+                setExclInput(calculatedExcl.toString());
             }
         }
     };
@@ -162,11 +193,11 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                         <div className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-[10px] font-bold">$</div>
                         <FormControl>
                             <Input 
-                                type="number" 
-                                step="any" 
+                                type="text"
+                                inputMode="decimal"
                                 placeholder="0.00" 
                                 className="h-9 pl-5 text-xs font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
-                                value={valueExcl ?? ''} 
+                                value={exclInput} 
                                 onChange={handleExclChange} 
                             />
                         </FormControl>
@@ -178,11 +209,11 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
                         <div className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-[10px] font-bold">$</div>
                         <FormControl>
                             <Input 
-                                type="number" 
-                                step="any" 
+                                type="text" 
+                                inputMode="decimal"
                                 placeholder="0.00" 
                                 className="h-9 pl-5 text-xs font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
-                                value={valueInclDisplay} 
+                                value={inclInput} 
                                 onChange={handleInclChange} 
                             />
                         </FormControl>
@@ -373,6 +404,78 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
   );
 }
 
+function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
+    const { control, watch, setValue } = useFormContext<ModelFormData>();
+    const storage = useStorage();
+    const [isCoverUploading, setIsCoverUploading] = useState(false);
+    const [isGalleryUploading, setIsGalleryUploading] = useState(false);
+    
+    const coverImageUrl = watch("coverImageUrl");
+    const galleryUrls = watch("galleryImageUrls") || [];
+    const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader title={isModuleView ? "Visual Config & Renders" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
+            <CollapsibleContent>
+                <div className="space-y-0">
+                    <div className="relative aspect-[16/10] w-full bg-secondary group">
+                        {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                        {coverImageUrl ? (
+                            <div className="h-full w-full flex items-center justify-center relative">
+                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" sizes="(max-width: 1024px) 100vw, 50vw" />
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
+                            </div>
+                        ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
+                                <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
+                                <span className="text-sm font-bold text-muted-foreground">{isModuleView ? "Upload Render" : "Set Primary Brand Image"}</span>
+                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file && storage) {
+                                        setIsCoverUploading(true);
+                                        try {
+                                            const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`);
+                                            setValue('coverImageUrl', url);
+                                        } finally { setIsCoverUploading(false); }
+                                    }
+                                }} /></FormControl>
+                            </label>
+                        )}
+                    </div>
+                    
+                    <div className="p-6 space-y-3 bg-card border-t">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Image Gallery</Label>
+                        <div className="grid grid-cols-3 gap-3">
+                            {galleryUrls.map((url, index) => (
+                                <div key={index} className="relative aspect-square group rounded-lg overflow-hidden border bg-muted">
+                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                </div>
+                            ))}
+                            <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-all group/add">
+                                <Input type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                    const files = Array.from(e.target.files || []);
+                                    setIsGalleryUploading(true);
+                                    try {
+                                        for (const file of files) {
+                                            const url = await uploadFileToStorage(storage!, file, `models/${model.id}/gallery/${Date.now()}-${file.name}`);
+                                            appendGalleryImage(url);
+                                        }
+                                    } finally { setIsGalleryUploading(false); }
+                                }}/>
+                                {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Plus className="h-6 w-6 text-muted-foreground group-hover/add:scale-110 transition-transform" />}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
 function MotorConfigurationsSection() {
     const { control } = useFormContext<ModelFormData>();
     const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" });
@@ -517,78 +620,6 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
                         <div className="grid grid-cols-1 gap-6">
                             <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
                             <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
-                        </div>
-                    </div>
-                </div>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
-    const { control, watch, setValue } = useFormContext<ModelFormData>();
-    const storage = useStorage();
-    const [isCoverUploading, setIsCoverUploading] = useState(false);
-    const [isGalleryUploading, setIsGalleryUploading] = useState(false);
-    
-    const coverImageUrl = watch("coverImageUrl");
-    const galleryUrls = watch("galleryImageUrls") || [];
-    const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader title={isModuleView ? "Visual Config & Renders" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
-            <CollapsibleContent>
-                <div className="space-y-0">
-                    <div className="relative aspect-[16/10] w-full bg-secondary group">
-                        {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
-                        {coverImageUrl ? (
-                            <div className="h-full w-full flex items-center justify-center relative">
-                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" sizes="(max-width: 1024px) 100vw, 50vw" />
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
-                            </div>
-                        ) : (
-                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
-                                <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
-                                <span className="text-sm font-bold text-muted-foreground">{isModuleView ? "Upload Render" : "Set Primary Brand Image"}</span>
-                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file && storage) {
-                                        setIsCoverUploading(true);
-                                        try {
-                                            const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`);
-                                            setValue('coverImageUrl', url);
-                                        } finally { setIsCoverUploading(false); }
-                                    }
-                                }} /></FormControl>
-                            </label>
-                        )}
-                    </div>
-                    
-                    <div className="p-6 space-y-3 bg-card border-t">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Image Gallery</Label>
-                        <div className="grid grid-cols-3 gap-3">
-                            {galleryUrls.map((url, index) => (
-                                <div key={index} className="relative aspect-square group rounded-lg overflow-hidden border bg-muted">
-                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
-                                    </div>
-                                </div>
-                            ))}
-                            <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-all group/add">
-                                <Input type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
-                                    const files = Array.from(e.target.files || []);
-                                    setIsGalleryUploading(true);
-                                    try {
-                                        for (const file of files) {
-                                            const url = await uploadFileToStorage(storage!, file, `models/${model.id}/gallery/${Date.now()}-${file.name}`);
-                                            appendGalleryImage(url);
-                                        }
-                                    } finally { setIsGalleryUploading(false); }
-                                }}/>
-                                {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Plus className="h-6 w-6 text-muted-foreground group-hover/add:scale-110 transition-transform" />}
-                            </label>
                         </div>
                     </div>
                 </div>
