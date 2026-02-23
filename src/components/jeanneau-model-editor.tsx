@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -12,7 +12,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, Upload } from 'lucide-react';
+import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, Upload, PlusCircle, Layers } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -201,14 +201,71 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
     );
 }
 
+function JeanneauPackageItem({ index, remove }: { index: number, remove: (index: number) => void }) {
+    const { control } = useFormContext<ModelFormData>();
+    const name = useWatch({ control, name: `packages.${index}.name` });
+
+    return (
+        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex items-center justify-between p-4 bg-muted/20 border-b">
+                <div className="flex items-center gap-3">
+                    <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
+                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
+                        </Button>
+                    </CollapsibleTrigger>
+                    <span className="font-bold text-sm">{name || 'Unnamed Package'}</span>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </div>
+            <CollapsibleContent>
+                <div className="p-6 grid md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                        <GstInputPair control={control} name={`packages.${index}.cost`} label="Factory Cost" />
+                        <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Retail Sell Price" />
+                    </div>
+                    <div className="space-y-3">
+                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Included Features</FormLabel>
+                        <FormField
+                            control={control}
+                            name={`packages.${index}.includedFeatures`}
+                            render={({ field }) => (
+                                <Textarea 
+                                    className="min-h-[120px] bg-background" 
+                                    placeholder="Describe what's in this package..." 
+                                    value={Array.isArray(field.value) ? field.value.join('\n') : field.value}
+                                    onChange={(e) => field.onChange(e.target.value.split('\n').filter(Boolean))}
+                                />
+                            )}
+                        />
+                    </div>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
 export function JeanneauModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
     const { control, watch } = useFormContext<ModelFormData>();
     const [bulkFeatures, setBulkFeatures] = useState('');
+    const [packageCategories, setPackageCategories] = useState<string[]>([]);
+    const [newPackageCategory, setNewPackageCategory] = useState('');
 
     const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
     const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({ control, name: "packages" });
     const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
+
+    const watchedPackages = useWatch({ control, name: 'packages' }) || [];
+
+    useEffect(() => {
+        if (watchedPackages) {
+            const currentCats = [...new Set(watchedPackages.map((p: any) => p.category).filter(Boolean) as string[])];
+            setPackageCategories(currentCats);
+        }
+    }, [watchedPackages]);
 
     const SpecsSection = () => (
         <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
@@ -274,9 +331,7 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className={cn("space-y-8", isModuleView ? "lg:col-span-3 lg:order-1" : "lg:col-span-4 lg:order-1")}>
                     {isModuleView ? (
-                        <>
-                            <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                        </>
+                        <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     ) : (
                         <>
                             <SpecsSection />
@@ -298,29 +353,42 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
                 <Card className="border-none shadow-none rounded-none">
                     <CollapsibleCardHeader 
                         title="Model Packages" 
-                        count={packageFields.length}
-                        onAdd={() => appendPackage({ id: `pkg-${Date.now()}`, name: '', includedFeatures: [] })}
+                        count={watchedPackages?.length || 0}
                     />
                     <CollapsibleContent>
-                        <CardContent className="pt-8 space-y-6">
-                            {packageFields.map((field, index) => (
-                                <Card key={field.id} className="border-2 bg-muted/5 overflow-hidden">
-                                    <div className="flex items-center justify-between p-4 border-b bg-muted/20">
-                                        <FormField control={control} name={`packages.${index}.name`} render={({ field }) => <Input {...field} className="font-bold border-none shadow-none bg-transparent max-w-md h-9 text-base" placeholder="Package Name (e.g. Trim Level 1)" />} />
-                                        <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removePackage(index)}><Trash2 className="h-4 w-4" /></Button>
-                                    </div>
-                                    <div className="p-6 grid md:grid-cols-2 gap-8">
-                                        <div className="space-y-6">
-                                            <GstInputPair control={control} name={`packages.${index}.cost`} label="Factory Cost" />
-                                            <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Retail Sell Price" />
+                        <CardContent className="space-y-10 pt-8">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="flex gap-2 p-1 bg-muted rounded-md">
+                                    <Input placeholder="New Category Name" value={newPackageCategory} onChange={(e) => setNewPackageCategory(e.target.value)} className="w-48 h-8 text-xs bg-background" />
+                                    <Button type="button" size="sm" className="h-8 text-xs hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { if(newPackageCategory) { setPackageCategories([...packageCategories, newPackageCategory]); setNewPackageCategory(''); }}}>Add Category</Button>
+                                </div>
+                            </div>
+                            
+                            {packageCategories.length > 0 ? packageCategories.map(cat => (
+                                <Collapsible key={cat} className="space-y-4" defaultOpen>
+                                    <div className="flex justify-between items-center bg-muted/30 p-3 rounded-lg border-l-4 border-primary">
+                                        <div className="flex items-center gap-2">
+                                            <CollapsibleTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent hover:text-accent-foreground transition-colors">
+                                                    <ChevronDown className="h-4 w-4" />
+                                                </Button>
+                                            </CollapsibleTrigger>
+                                            <h3 className="font-black text-sm uppercase tracking-tighter">{cat}</h3>
                                         </div>
-                                        <div className="space-y-3">
-                                            <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Included Features</FormLabel>
-                                            <Textarea className="min-h-[120px] bg-background" placeholder="Describe what's in this package..." />
-                                        </div>
+                                        <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] font-bold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: '', category: cat, includedFeatures: [] })}><PlusCircle className="h-3 w-3 mr-1.5" />Add Package</Button>
                                     </div>
-                                </Card>
-                            ))}
+                                    <CollapsibleContent className="space-y-4 pt-2">
+                                        {packageFields.map((field, index) => watchedPackages[index]?.category === cat && (
+                                            <JeanneauPackageItem key={field.id} index={index} remove={removePackage} />
+                                        ))}
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            )) : (
+                                <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-muted/5">
+                                    <Layers className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                                    <p className="text-sm font-medium text-muted-foreground">No package categories defined. Add one above to get started.</p>
+                                </div>
+                            )}
                         </CardContent>
                     </CollapsibleContent>
                 </Card>

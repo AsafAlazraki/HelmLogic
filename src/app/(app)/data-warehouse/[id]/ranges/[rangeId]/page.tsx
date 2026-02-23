@@ -129,7 +129,7 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onMove(index, 'up')} disabled={index === 0}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={() => onMove(index, 'up')} disabled={index === 0}>
                                     <ArrowUp className="h-3 w-3" />
                                 </Button>
                             </TooltipTrigger>
@@ -139,7 +139,7 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
                                     <ArrowDown className="h-3 w-3" />
                                 </Button>
                             </TooltipTrigger>

@@ -232,6 +232,161 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
     );
 }
 
+function OptionalFeatureItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+    const { control } = useFormContext<ModelFormData>();
+    const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
+    const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
+    const code = useWatch({ control, name: `optionalFeatures.${index}.code` });
+    const storage = useStorage();
+    const [isUploading, setIsUploading] = useState(false);
+
+    return (
+        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
+                <div className="flex items-center gap-3 min-w-0">
+                    <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
+                            <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
+                        </Button>
+                    </CollapsibleTrigger>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold text-xs truncate">{name || 'Unnamed Option'}</span>
+                        {code && <span className="font-mono text-[10px] text-muted-foreground uppercase bg-muted px-1 rounded shrink-0">{code}</span>}
+                    </div>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => remove(index)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+            </div>
+            <CollapsibleContent>
+                <div className="p-4 space-y-4">
+                    <FormField
+                        control={control}
+                        name={`optionalFeatures.${index}.imageUrl`}
+                        render={({ field }) => (
+                            <div className="relative aspect-video w-full overflow-hidden rounded-md border-2 border-dashed bg-muted/20">
+                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                                {imageUrl ? (
+                                    <>
+                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
+                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
+                                    </>
+                                ) : (
+                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                        <Upload className="w-5 h-5 text-muted-foreground" />
+                                        <span className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Upload Image</span>
+                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file && storage) {
+                                                setIsUploading(true);
+                                                try {
+                                                    const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
+                                                    field.onChange(url);
+                                                } finally { setIsUploading(false); }
+                                            }
+                                        }} /></FormControl>
+                                    </label>
+                                )}
+                            </div>
+                        )}
+                    />
+
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-8 text-xs font-mono uppercase" {...field} /></FormControl></FormItem> )} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
+                        </div>
+                    </div>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+function ColorVariantItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+  const { control } = useFormContext<ModelFormData>();
+  const name = useWatch({ control, name: `colors.${index}.name` });
+  const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
+  const storage = useStorage();
+  const [isUploading, setIsUploading] = useState(false);
+
+  return (
+    <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="flex items-center justify-between p-4 bg-muted/20 border-b">
+            <div className="flex items-center gap-3">
+                <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
+                    </Button>
+                </CollapsibleTrigger>
+                <div className="flex items-center gap-3">
+                    {imageUrl && (
+                        <div className="relative h-8 w-12 rounded border overflow-hidden bg-background">
+                            <Image src={imageUrl} alt="Swatch" fill className="object-cover" />
+                        </div>
+                    )}
+                    <span className="font-bold text-sm">{name || 'Unnamed Color Variant'}</span>
+                </div>
+            </div>
+            <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                <Trash2 className="h-4 w-4" />
+            </Button>
+        </div>
+        <CollapsibleContent>
+            <div className="p-6">
+                <div className="flex flex-col sm:flex-row gap-6 items-start">
+                    <FormField
+                    control={control}
+                    name={`colors.${index}.imageUrl`}
+                    render={({ field }) => (
+                        <FormItem className="w-36 flex-shrink-0">
+                        <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/20">
+                            {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                            {imageUrl ? (
+                                <>
+                                <Image src={imageUrl} alt="Color" fill className="object-cover" />
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-4 w-4" /></Button>
+                                </>
+                            ) : (
+                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                    <Upload className="w-5 h-5 text-muted-foreground" />
+                                    <span className="text-[10px] text-muted-foreground mt-1 font-bold uppercase">Swatch</span>
+                                    <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file && storage) {
+                                            setIsUploading(true);
+                                            try {
+                                                const url = await uploadFileToStorage(storage, file, `colors/${Date.now()}-${file.name}`);
+                                                field.onChange(url);
+                                            } finally { setIsUploading(false); }
+                                        }
+                                    }} /></FormControl>
+                                </label>
+                            )}
+                        </div>
+                        </FormItem>
+                    )}
+                    />
+                    <div className="flex-1 space-y-5 w-full">
+                    <div className="flex items-center gap-3">
+                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant Name</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">HYP Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
+                        <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">PVC Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" /></div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 export function HighfieldModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
     const { control, watch } = useFormContext<ModelFormData>();
     const [bulkFeatures, setBulkFeatures] = useState('');
@@ -332,9 +487,9 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                             />
                             <CollapsibleContent>
                                 <CardContent className="pt-6">
-                                    <ScrollArea className="h-[400px] pr-4">
+                                    <ScrollArea className="h-[500px] pr-4">
                                         <div className="grid grid-cols-1 gap-4">
-                                            {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
+                                            {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                                         </div>
                                     </ScrollArea>
                                 </CardContent>
@@ -344,160 +499,5 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                 </div>
             </div>
         </div>
-    );
-}
-
-function ColorVariantItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
-  const { control } = useFormContext<ModelFormData>();
-  const name = useWatch({ control, name: `colors.${index}.name` });
-  const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
-  const storage = useStorage();
-  const [isUploading, setIsUploading] = useState(false);
-
-  return (
-    <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
-        <div className="flex items-center justify-between p-4 bg-muted/20 border-b">
-            <div className="flex items-center gap-3">
-                <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
-                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
-                    </Button>
-                </CollapsibleTrigger>
-                <div className="flex items-center gap-3">
-                    {imageUrl && (
-                        <div className="relative h-8 w-12 rounded border overflow-hidden bg-background">
-                            <Image src={imageUrl} alt="Swatch" fill className="object-cover" />
-                        </div>
-                    )}
-                    <span className="font-bold text-sm">{name || 'Unnamed Color Variant'}</span>
-                </div>
-            </div>
-            <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                <Trash2 className="h-4 w-4" />
-            </Button>
-        </div>
-        <CollapsibleContent>
-            <div className="p-6">
-                <div className="flex flex-col sm:flex-row gap-6 items-start">
-                    <FormField
-                    control={control}
-                    name={`colors.${index}.imageUrl`}
-                    render={({ field }) => (
-                        <FormItem className="w-36 flex-shrink-0">
-                        <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/20">
-                            {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                            {imageUrl ? (
-                                <>
-                                <Image src={imageUrl} alt="Color" fill className="object-cover" />
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-4 w-4" /></Button>
-                                </>
-                            ) : (
-                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                    <Upload className="w-5 h-5 text-muted-foreground" />
-                                    <span className="text-[10px] text-muted-foreground mt-1 font-bold uppercase">Swatch</span>
-                                    <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file && storage) {
-                                            setIsUploading(true);
-                                            try {
-                                                const url = await uploadFileToStorage(storage, file, `colors/${Date.now()}-${file.name}`);
-                                                field.onChange(url);
-                                            } finally { setIsUploading(false); }
-                                        }
-                                    }} /></FormControl>
-                                </label>
-                            )}
-                        </div>
-                        </FormItem>
-                    )}
-                    />
-                    <div className="flex-1 space-y-5 w-full">
-                    <div className="flex items-center gap-3">
-                        <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant Name</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">HYP Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
-                        <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">PVC Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" /></div>
-                    </div>
-                    </div>
-                </div>
-            </div>
-        </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
-function FactoryOptionItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
-    const { control } = useFormContext<ModelFormData>();
-    const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
-    const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
-    const code = useWatch({ control, name: `optionalFeatures.${index}.code` });
-    const storage = useStorage();
-    const [isUploading, setIsUploading] = useState(false);
-
-    return (
-        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
-                <div className="flex items-center gap-3 min-w-0">
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
-                            <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
-                        </Button>
-                    </CollapsibleTrigger>
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-bold text-xs truncate">{name || 'Unnamed Option'}</span>
-                        {code && <span className="font-mono text-[10px] text-muted-foreground uppercase bg-muted px-1 rounded shrink-0">{code}</span>}
-                    </div>
-                </div>
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => remove(index)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-            </div>
-            <CollapsibleContent>
-                <div className="p-4 space-y-4">
-                    <FormField
-                        control={control}
-                        name={`optionalFeatures.${index}.imageUrl`}
-                        render={({ field }) => (
-                            <div className="relative aspect-video w-full overflow-hidden rounded-md border-2 border-dashed bg-muted/20">
-                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                                {imageUrl ? (
-                                    <>
-                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
-                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
-                                    </>
-                                ) : (
-                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                        <Upload className="w-5 h-5 text-muted-foreground" />
-                                        <span className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Upload Image</span>
-                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file && storage) {
-                                                setIsUploading(true);
-                                                try {
-                                                    const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
-                                                    field.onChange(url);
-                                                } finally { setIsUploading(false); }
-                                            }
-                                        }} /></FormControl>
-                                    </label>
-                                )}
-                            </div>
-                        )}
-                    />
-
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-8 text-xs font-mono uppercase" {...field} /></FormControl></FormItem> )} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
-                        </div>
-                    </div>
-                </div>
-            </CollapsibleContent>
-        </Collapsible>
     );
 }
