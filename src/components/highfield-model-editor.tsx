@@ -306,6 +306,20 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                     {isModuleView ? (
                         <>
                             <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                                <Card className="border-none shadow-none rounded-none">
+                                    <CollapsibleCardHeader 
+                                        title="Factory Options" 
+                                        count={optionalFeatureFields.length}
+                                        onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null, code: '' })}
+                                    />
+                                    <CollapsibleContent>
+                                        <CardContent className="grid grid-cols-1 gap-6 pt-8">
+                                            {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
                         </>
                     ) : (
                         <>
@@ -320,7 +334,25 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                             <SpecsSection />
                             <FeaturesSection />
                         </>
-                    ) : <VisualAssetsCard model={model} isModuleView={!!isModuleView} />}
+                    ) : (
+                        <>
+                            <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                                <Card className="border-none shadow-none rounded-none">
+                                    <CollapsibleCardHeader 
+                                        title="Factory Options" 
+                                        count={optionalFeatureFields.length}
+                                        onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null, code: '' })}
+                                    />
+                                    <CollapsibleContent>
+                                        <CardContent className="grid grid-cols-1 gap-6 pt-8">
+                                            {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -334,21 +366,6 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                     <CollapsibleContent>
                         <CardContent className="space-y-6 pt-8">
                             {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
-                        </CardContent>
-                    </CollapsibleContent>
-                </Card>
-            </Collapsible>
-
-            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                <Card className="border-none shadow-none rounded-none">
-                    <CollapsibleCardHeader 
-                        title="Factory Options" 
-                        count={optionalFeatureFields.length}
-                        onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null, code: '' })}
-                    />
-                    <CollapsibleContent>
-                        <CardContent className="grid md:grid-cols-2 gap-6 pt-8">
-                            {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                         </CardContent>
                     </CollapsibleContent>
                 </Card>
