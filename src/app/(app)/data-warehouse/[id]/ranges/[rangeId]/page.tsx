@@ -75,7 +75,7 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const modelPath = `/data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
+    const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
 
     const handleDelete = async () => {
         setIsDeleting(true);
@@ -214,7 +214,7 @@ export default function RangeDetailsPage() {
     }, [rawModels]);
 
     useEffect(() => {
-        if (rawModels && rawModels.length > 0 && rawRanges.some(m => m.order === undefined)) {
+        if (rawModels && rawModels.length > 0 && rawModels.some(m => m.order === undefined)) {
             const batch = writeBatch(firestore);
             rawModels.forEach((model, index) => {
                 if (model.order === undefined) {
@@ -424,7 +424,7 @@ export default function RangeDetailsPage() {
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-right">Name</Label>
-                            <Input id="name" value={newRangeName} onChange={(e) => setNewRangeName(e.target.value)} className="col-span-3" placeholder="e.g. 1850 Supercab" />
+                            <Input id="name" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3" placeholder="e.g. 1850 Supercab" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="code" className="text-right">Model Code</Label>
@@ -433,7 +433,7 @@ export default function RangeDetailsPage() {
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-                        <Button onClick={handleAddModel} disabled={isAddingModel || !newRangeName.trim() || !newModelCode.trim()}>
+                        <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim() || !newModelCode.trim()}>
                             {isAddingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Add Model
                         </Button>

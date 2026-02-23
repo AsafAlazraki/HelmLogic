@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash } from 'lucide-react';
+import { Loader2, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Factory } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -144,18 +144,18 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     };
     return (
         <div>
-            <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</FormLabel>
-            <div className="grid grid-cols-2 gap-2 mt-2">
+            <FormLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</FormLabel>
+            <div className="grid grid-cols-2 gap-2 mt-1.5">
                 <FormItem className="space-y-1">
-                    <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">excl. GST</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
+                    <FormLabel className="text-[9px] font-medium text-muted-foreground uppercase">excl.</FormLabel>
+                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-8 text-xs" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
                 </FormItem>
                 <FormItem className="space-y-1">
-                    <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">inc. GST</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueInclDisplay} onChange={handleInclChange} /></FormControl>
+                    <FormLabel className="text-[9px] font-medium text-muted-foreground uppercase">inc.</FormLabel>
+                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-8 text-xs" value={valueInclDisplay} onChange={handleInclChange} /></FormControl>
                 </FormItem>
             </div>
-             <FormMessage>{fieldState.error && String(fieldState.error.message)}</FormMessage>
+             <FormMessage className="text-[10px]">{fieldState.error && String(fieldState.error.message)}</FormMessage>
         </div>
     );
 }
@@ -332,7 +332,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                             />
                             <CollapsibleContent>
                                 <CardContent className="pt-6">
-                                    <ScrollArea className="h-[500px] pr-4">
+                                    <ScrollArea className="h-[400px] pr-4">
                                         <div className="grid grid-cols-1 gap-4">
                                             {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                                         </div>
