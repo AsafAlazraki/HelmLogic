@@ -294,16 +294,19 @@ export function ModelConfigurationEditor({
     const onInvalid = (errors: any) => {
         console.error("Form Validation Errors:", errors);
         const errorEntries = Object.entries(errors);
+        let errorMsg = "Please check the required fields.";
         
         if (errorEntries.length > 0) {
             const [field, error]: [string, any] = errorEntries[0];
             const message = error.message || (error.root ? error.root.message : 'Invalid value');
-            toast({ 
-                variant: "destructive", 
-                title: "Validation Error", 
-                description: `Field "${field}" failed: ${message}` 
-            });
+            errorMsg = `Field "${field}" failed: ${message}`;
         }
+        
+        toast({ 
+            variant: "destructive", 
+            title: "Validation Error", 
+            description: errorMsg
+        });
     };
 
     const getModelEditor = () => {

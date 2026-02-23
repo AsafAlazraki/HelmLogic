@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal, Package, Settings2 } from 'lucide-react';
+import { Loader2, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -96,7 +96,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         <div className="flex items-center gap-3">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -124,7 +124,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
             {onAdd && (
                 <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
-                    {title.includes('Spec') ? 'Add Spec' : title.includes('Feature') ? 'Add Item' : title.includes('Config') ? 'Add Option' : title.includes('Media') ? 'Add Photo' : 'Add'}
+                    Add
                 </Button>
             )}
         </div>

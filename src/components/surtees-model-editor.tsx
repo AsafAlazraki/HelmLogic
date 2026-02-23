@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFieldArray, useWatch, useFormContext } from 'react-hook-form';
+import { useFieldArray, useWatch, useFormContext, useController } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage } from '@/firebase/provider';
@@ -19,6 +19,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+
+const GST_RATE = 0.10;
 
 const motorConfigSchema = z.object({
     type: z.enum(["Single", "Twin", "Triple", "Quad", "SingleWithAux"]),
@@ -52,7 +54,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         <div className="flex items-center gap-3">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -80,7 +82,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
             {onAdd && (
                 <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
-                    {title.includes('Spec') ? 'Add Spec' : title.includes('Feature') ? 'Add Item' : title.includes('Config') ? 'Add Option' : 'Add'}
+                    Add
                 </Button>
             )}
         </div>
