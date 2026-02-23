@@ -12,11 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown } from 'lucide-react';
+import { Loader2, X, PlusCircle, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
 import { Label } from './ui/label';
+import { ScrollArea } from './ui/scroll-area';
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -302,74 +303,46 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-3 lg:order-1" : "lg:col-span-4 lg:order-1")}>
-                    {isModuleView ? (
-                        <>
-                            <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                                <Card className="border-none shadow-none rounded-none">
-                                    <CollapsibleCardHeader 
-                                        title="Factory Options" 
-                                        count={optionalFeatureFields.length}
-                                        onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null, code: '' })}
-                                    />
-                                    <CollapsibleContent>
-                                        <CardContent className="grid grid-cols-1 gap-6 pt-8">
-                                            {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                        </>
-                    ) : (
-                        <>
-                            <SpecsSection />
-                            <FeaturesSection />
-                        </>
-                    )}
+                <div className="lg:col-span-4 lg:order-1 space-y-8">
+                    <SpecsSection />
+                    <FeaturesSection />
+                    <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                        <Card className="border-none shadow-none rounded-none">
+                            <CollapsibleCardHeader 
+                                title="Material & Color Pricing" 
+                                count={colorFields.length}
+                                onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
+                            />
+                            <CollapsibleContent>
+                                <CardContent className="space-y-6 pt-8">
+                                    {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
                 </div>
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-4 lg:order-2" : "lg:col-span-3 lg:order-2")}>
-                    {isModuleView ? (
-                        <>
-                            <SpecsSection />
-                            <FeaturesSection />
-                        </>
-                    ) : (
-                        <>
-                            <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                                <Card className="border-none shadow-none rounded-none">
-                                    <CollapsibleCardHeader 
-                                        title="Factory Options" 
-                                        count={optionalFeatureFields.length}
-                                        onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null, code: '' })}
-                                    />
-                                    <CollapsibleContent>
-                                        <CardContent className="grid grid-cols-1 gap-6 pt-8">
+                <div className="lg:col-span-3 lg:order-2 space-y-8">
+                    <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                    <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                        <Card className="border-none shadow-none rounded-none">
+                            <CollapsibleCardHeader 
+                                title="Factory Options" 
+                                count={optionalFeatureFields.length}
+                                onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: 0, sellPriceExclGst: 0, imageUrl: null, code: '' })}
+                            />
+                            <CollapsibleContent>
+                                <CardContent className="pt-6">
+                                    <ScrollArea className="h-[600px] pr-4">
+                                        <div className="grid grid-cols-1 gap-4">
                                             {optionalFeatureFields.map((field, index) => ( <FactoryOptionItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                        </>
-                    )}
+                                        </div>
+                                    </ScrollArea>
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
                 </div>
             </div>
-
-            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                <Card className="border-none shadow-none rounded-none">
-                    <CollapsibleCardHeader 
-                        title="Material & Color Pricing" 
-                        count={colorFields.length}
-                        onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
-                    />
-                    <CollapsibleContent>
-                        <CardContent className="space-y-6 pt-8">
-                            {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
-                        </CardContent>
-                    </CollapsibleContent>
-                </Card>
-            </Collapsible>
         </div>
     );
 }
@@ -457,56 +430,74 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
 function FactoryOptionItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
     const { control } = useFormContext<ModelFormData>();
     const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
+    const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
+    const code = useWatch({ control, name: `optionalFeatures.${index}.code` });
     const storage = useStorage();
     const [isUploading, setIsUploading] = useState(false);
 
     return (
-        <Card className="relative bg-background overflow-hidden group/item border hover:border-primary/20 transition-all flex flex-col">
-            <div className="absolute top-2 right-2 z-10">
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-            
-            <FormField
-                control={control}
-                name={`optionalFeatures.${index}.imageUrl`}
-                render={({ field }) => (
-                    <div className="relative aspect-video w-full overflow-hidden bg-muted/20 border-b">
-                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                        {imageUrl ? (
-                            <>
-                                <Image src={imageUrl} alt="Feature" fill className="object-cover" />
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 rounded-full shadow-lg opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
-                            </>
-                        ) : (
-                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                <Upload className="w-6 h-6 text-muted-foreground" />
-                                <span className="text-[10px] text-muted-foreground mt-1 font-bold uppercase">Option Image</span>
-                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file && storage) {
-                                        setIsUploading(true);
-                                        try {
-                                            const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
-                                            field.onChange(url);
-                                        } finally { setIsUploading(false); }
-                                    }
-                                }} /></FormControl>
-                            </label>
-                        )}
+        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
+                <div className="flex items-center gap-3 min-w-0">
+                    <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
+                            <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
+                        </Button>
+                    </CollapsibleTrigger>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold text-xs truncate">{name || 'Unnamed Option'}</span>
+                        {code && <span className="font-mono text-[10px] text-muted-foreground uppercase bg-muted px-1 rounded shrink-0">{code}</span>}
                     </div>
-                )}
-            />
-
-            <div className="p-5 space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                    <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="col-span-2"><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="e.g. Folding Arch" className="h-9 font-medium" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem className="col-span-1"><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 font-mono uppercase text-xs" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
-                <div className="grid grid-cols-2 gap-6">
-                    <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                    <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
-                </div>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => remove(index)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                </Button>
             </div>
-        </Card>
+            <CollapsibleContent>
+                <div className="p-4 space-y-4">
+                    <FormField
+                        control={control}
+                        name={`optionalFeatures.${index}.imageUrl`}
+                        render={({ field }) => (
+                            <div className="relative aspect-video w-full overflow-hidden rounded-md border-2 border-dashed bg-muted/20">
+                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                                {imageUrl ? (
+                                    <>
+                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
+                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
+                                    </>
+                                ) : (
+                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                        <Upload className="w-5 h-5 text-muted-foreground" />
+                                        <span className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Upload Image</span>
+                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file && storage) {
+                                                setIsUploading(true);
+                                                try {
+                                                    const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
+                                                    field.onChange(url);
+                                                } finally { setIsUploading(false); }
+                                            }
+                                        }} /></FormControl>
+                                    </label>
+                                )}
+                            </div>
+                        )}
+                    />
+
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-8 text-xs font-mono uppercase" {...field} /></FormControl></FormItem> )} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
+                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
+                        </div>
+                    </div>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
     );
 }

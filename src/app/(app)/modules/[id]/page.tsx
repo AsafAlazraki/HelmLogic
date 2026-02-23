@@ -848,7 +848,7 @@ export default function ModuleDetailsPage() {
                             </CardContent>
                         </Card>
                    ) : (
-                        <>
+                        <div className="space-y-4">
                             {view === 'bmt' && selectedModel && selectedRange && mainVendor && (
                                 <ModelConfigurationEditor 
                                     model={selectedModel} 
@@ -870,7 +870,7 @@ export default function ModuleDetailsPage() {
                                     </div>
                                 </div>
                             )}
-                        </>
+                        </div>
                    )}
                 </TabsContent>
 
@@ -1067,7 +1067,7 @@ export default function ModuleDetailsPage() {
                                 <FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
                                 <p className="font-semibold text-xl">Quotation</p>
                             </CardContent>
-                        </Card>
+                         </Card>
                          <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4">
                                 <ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
