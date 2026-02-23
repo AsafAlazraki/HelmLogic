@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc, updateDoc, collection, query, where, writeBatch, orderBy } from 'firebase/firestore';
 import { Loader2, Save, Sailboat, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -79,7 +79,7 @@ const formSchema = z.object({
 
 function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
-    const rangesQuery = useMemo(() => {
+    const rangesQuery = useMemoFirebase(() => {
         if (!vendor?.id) return null;
         return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
     }, [firestore, vendor.id]);
@@ -120,7 +120,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
 
 function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void }) {
     const firestore = useFirestore();
-    const modelsQuery = useMemo(() => {
+    const modelsQuery = useMemoFirebase(() => {
         if (!vendor?.id || !range?.id) return null;
         return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
     }, [firestore, vendor.id, range.id]);
@@ -159,7 +159,7 @@ function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Ve
     );
 }
 
-function ModuleBreadcrumbs({ module, range, model, onBreadcrumbClick }: { module: Module; range: Range | null; model: Model | null; onBreadcrumbClick: (level: 'module' | 'range') => void }) {
+function ModuleBreadcrumbs({ module, range, model, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; onBreadcrumbClick: (level: 'module' | 'range') => void }) {
     return (
         <div className="flex items-center text-sm text-muted-foreground mt-2">
             <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('module')}>{module.name}</button>
@@ -194,21 +194,21 @@ export default function ModuleDetailsPage() {
     const { user, loading: userLoading } = useUser();
     const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(user ? `/users/${user.uid}` : null);
     
-    const moduleQueryBySlug = useMemo(() => {
+    const moduleQueryBySlug = useMemoFirebase(() => {
         if (!slugOrId) return null;
         return query(collection(firestore, 'modules'), where('slug', '==', slugOrId));
     }, [firestore, slugOrId]);
 
-    const { data: modulesBySlug, loading: slugLoading } = useCollection<Module>(moduleQueryBySlug);
-    const { data: moduleById, loading: idLoading } = useDoc<Module>(slugOrId ? `/modules/${slugOrId}` : null);
+    const { data: modulesBySlug, loading: slugLoading } = useCollection<any>(moduleQueryBySlug);
+    const { data: moduleById, loading: idLoading } = useDoc<any>(slugOrId ? `/modules/${slugOrId}` : null);
     
     const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
     const moduleLoading = slugLoading || idLoading;
     
     const { data: mainVendor, loading: mainVendorLoading } = useDoc<Vendor>(moduleData ? `/data-warehouse/${moduleData.mainVendorId}` : null);
     
-    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>('data-warehouse');
-    const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>('organisations');
+    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]));
+    const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>(useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]));
 
     const [subscribedOrgs, setSubscribedOrgs] = useState<string[]>([]);
     
@@ -335,11 +335,11 @@ export default function ModuleDetailsPage() {
         const modelDocPath = `/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`;
 
         switch (mainVendor.slug) {
-            case 'highfield': return <HighfieldModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            case 'jeanneau': return <JeanneauModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            case 'stacer': return <StacerModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            case 'stabicraft': return <StabicraftModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
-            case 'surtees': return <SurteesModelEditor model={selectedModel} docPath={modelDocPath} vendor={mainVendor} />;
+            case 'highfield': return <HighfieldModelEditor model={selectedModel} isModuleView={true} />;
+            case 'jeanneau': return <JeanneauModelEditor model={selectedModel} isModuleView={true} />;
+            case 'stacer': return <StacerModelEditor model={selectedModel} isModuleView={true} />;
+            case 'stabicraft': return <StabicraftModelEditor model={selectedModel} isModuleView={true} />;
+            case 'surtees': return <SurteesModelEditor model={selectedModel} isModuleView={true} />;
             default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor.</CardContent></Card>;
         }
     };

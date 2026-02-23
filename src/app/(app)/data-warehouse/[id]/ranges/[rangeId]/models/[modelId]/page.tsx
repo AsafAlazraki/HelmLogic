@@ -7,7 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { useMemo } from 'react';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where } from 'firebase/firestore';
 import { HighfieldModelEditor } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor } from '@/components/jeanneau-model-editor';
@@ -45,7 +45,7 @@ export default function ModelDetailsPage() {
   const modelSlugOrId = params?.modelId as string | undefined;
 
   // Fetch Vendor
-  const vendorQueryBySlug = useMemo(() => {
+  const vendorQueryBySlug = useMemoFirebase(() => {
     if (!vendorSlugOrId) return null;
     return query(collection(firestore, 'data-warehouse'), where('slug', '==', vendorSlugOrId));
   }, [firestore, vendorSlugOrId]);
@@ -60,7 +60,7 @@ export default function ModelDetailsPage() {
   const vendorLoading = vendorSlugLoading || vendorIdLoading;
   
   // Fetch Range
-  const rangeQueryBySlug = useMemo(() => {
+  const rangeQueryBySlug = useMemoFirebase(() => {
     if (!vendor?.id || !rangeSlugOrId) return null;
     return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), where('slug', '==', rangeSlugOrId));
   }, [firestore, vendor, rangeSlugOrId]);
@@ -71,7 +71,7 @@ export default function ModelDetailsPage() {
   const rangeLoading = rangeSlugLoading || rangeIdLoading;
 
   // Fetch Model
-  const modelQueryBySlug = useMemo(() => {
+  const modelQueryBySlug = useMemoFirebase(() => {
     if (!vendor?.id || !range?.id || !modelSlugOrId) return null;
     return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), where('slug', '==', modelSlugOrId));
   }, [firestore, vendor, range, modelSlugOrId]);

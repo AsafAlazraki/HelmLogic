@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, orderBy, writeBatch } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight, PlusCircle, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
@@ -397,7 +397,7 @@ export default function RangeDetailsPage() {
     const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(user ? `/users/${user.uid}` : null);
     const isAdmin = !!userProfile && userProfile.appRole === 'HelmLogic Admin';
 
-    const vendorQuery = useMemo(() => {
+    const vendorQuery = useMemoFirebase(() => {
         if (!vendorSlugOrId) return null;
         return query(collection(firestore, 'data-warehouse'), where('slug', '==', vendorSlugOrId));
     }, [firestore, vendorSlugOrId]);
@@ -407,7 +407,7 @@ export default function RangeDetailsPage() {
     const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
     const vendorLoading = slugLoading || idLoading;
 
-    const rangeQueryBySlug = useMemo(() => {
+    const rangeQueryBySlug = useMemoFirebase(() => {
         if (!vendor || !rangeSlugOrId) return null;
         return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), where('slug', '==', rangeSlugOrId));
     }, [firestore, vendor, rangeSlugOrId]);
@@ -423,7 +423,7 @@ export default function RangeDetailsPage() {
         return `/data-warehouse/${vendor.id}/ranges/${range.id}/models`;
     }, [vendor, range]);
 
-    const modelsQuery = useMemo(() => {
+    const modelsQuery = useMemoFirebase(() => {
         if (!modelsCollectionPath) return null;
         return query(collection(firestore, modelsCollectionPath));
     }, [firestore, modelsCollectionPath]);
@@ -642,9 +642,7 @@ export default function RangeDetailsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="outline">Cancel</Button>
-                        </DialogClose>
+                        <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
                         <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim()}>
                             {isAddingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Add Model
