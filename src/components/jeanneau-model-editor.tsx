@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -49,6 +50,7 @@ const packageSchema = z.object({
 });
 
 export const jeanneauModelSchema = z.object({
+    modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     cost: z.coerce.number().nullable().optional(),
@@ -70,7 +72,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
         <div className="flex items-center gap-3">
             <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-primary/10 hover:text-primary transition-colors group-data-[state=open]:bg-muted">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
                     <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </Button>
             </CollapsibleTrigger>
@@ -83,7 +85,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         </div>
         <div className="flex items-center gap-3">
             {onAdd && (
-                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
+                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                     Add
                 </Button>
@@ -224,7 +226,7 @@ function MotorConfigurationCard() {
                                         name={`specifications.motorConfigurations.${index}.type` as any}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger className="w-[200px] h-8 font-bold border-none shadow-none bg-transparent hover:bg-muted transition-colors">
+                                                <SelectTrigger className="w-[200px] h-8 font-bold border-none shadow-none bg-transparent hover:bg-accent hover:text-accent-foreground transition-colors">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -307,7 +309,7 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
                             {featureFields.map((field, index) => (
                                 <div key={field.id} className="flex items-center gap-2 group/feat">
                                     <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
                                 </div>
                             ))}
                         </div>
@@ -315,7 +317,7 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
                         <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                             <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
                             <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9" onClick={() => { 
+                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
                                 const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
                                 replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
                                 setBulkFeatures(''); 
@@ -364,10 +366,10 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
                     <CollapsibleContent>
                         <CardContent className="pt-8 space-y-6">
                             {packageFields.map((field, index) => (
-                                <Card key={field.id} className="border-2 bg-muted/5">
+                                <Card key={field.id} className="border-2 bg-muted/5 overflow-hidden">
                                     <div className="flex items-center justify-between p-4 border-b bg-muted/20">
                                         <FormField control={control} name={`packages.${index}.name`} render={({ field }) => <Input {...field} className="font-bold border-none shadow-none bg-transparent max-w-md h-9 text-base" placeholder="Package Name (e.g. Trim Level 1)" />} />
-                                        <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removePackage(index)}><Trash2 className="h-4 w-4" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removePackage(index)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                     <div className="p-6 grid md:grid-cols-2 gap-8">
                                         <div className="space-y-6">
@@ -402,7 +404,7 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
                                         <div className="flex-1">
                                             <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Upcharge (Sell)" />
                                         </div>
-                                        <Button type="button" variant="ghost" size="icon" className="mb-1 text-destructive" onClick={() => removeColor(index)}><Trash2 className="h-4 w-4" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="mb-1 text-destructive hover:bg-destructive/10" onClick={() => removeColor(index)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                 </Card>
                             ))}

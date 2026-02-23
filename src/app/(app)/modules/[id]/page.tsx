@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -83,6 +84,7 @@ interface Range {
 interface Model {
   id: string;
   name: string;
+  modelCode?: string;
   slug?: string;
   coverImageUrl?: string;
   order?: number;
@@ -252,8 +254,9 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
                                     </div>
                                 )}
                             </div>
-                            <CardContent className="p-3 h-20 flex items-center justify-center">
+                            <CardContent className="p-3 h-24 flex flex-col items-center justify-center gap-1">
                                 <p className="font-semibold text-center line-clamp-2">{model.name}</p>
+                                {model.modelCode && <p className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</p>}
                             </CardContent>
                         </div>
 
@@ -263,7 +266,7 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
                                     <div className="flex justify-between items-center mb-2">
                                         <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">Packages</h4>
                                         {isAdmin && (
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenAddPackageDialog(model, e)}>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={(e) => handleOpenAddPackageDialog(model, e)}>
                                                 <PlusCircle className="h-4 w-4" />
                                             </Button>
                                         )}
@@ -272,14 +275,14 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
                                         {(model.packageLevels && model.packageLevels.length > 0) ? (
                                             <div className="flex-grow space-y-1">
                                             {model.packageLevels.map(pkg => (
-                                                <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full">
+                                                <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground w-full">
                                                     <span className="font-medium truncate pr-2">{pkg.name}</span>
                                                     {isAdmin && (
                                                         <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenEditPackageDialog(model, pkg, e)}>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={(e) => handleOpenEditPackageDialog(model, pkg, e)}>
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(model, pkg.id, e)}>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={(e) => handleDeletePackage(model, pkg.id, e)}>
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </div>
@@ -683,7 +686,7 @@ export default function ModuleDetailsPage() {
                                         value={viewContextOrgId || 'master'} 
                                         onValueChange={(val) => setViewContextOrgId(val === 'master' ? null : val)}
                                     >
-                                        <SelectTrigger className={cn("w-[220px] h-9", isImpersonating && "border-primary ring-1 ring-primary bg-primary/5")}>
+                                        <SelectTrigger className={cn("w-[220px] h-9 hover:bg-accent hover:text-accent-foreground transition-colors", isImpersonating && "border-primary ring-1 ring-primary bg-primary/5")}>
                                             <Eye className="h-4 w-4 mr-2" />
                                             <SelectValue />
                                         </SelectTrigger>
@@ -728,9 +731,9 @@ export default function ModuleDetailsPage() {
                                         <>
                                             <Card className="border-accent/30 bg-accent/5">
                                                 <CardHeader className="pb-2">
-                                                    <div className="flex items-center gap-2 text-accent">
+                                                    <div className="flex items-center gap-2 text-accent font-bold text-sm uppercase tracking-wider">
                                                         <ArrowRightLeft className="h-4 w-4" />
-                                                        <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} In Stock</CardTitle>
+                                                        <span>{parentOrg.name} In Stock</span>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent>
@@ -746,9 +749,9 @@ export default function ModuleDetailsPage() {
                                             </Card>
                                             <Card className="border-accent/30 bg-accent/5">
                                                 <CardHeader className="pb-2">
-                                                    <div className="flex items-center gap-2 text-accent">
+                                                    <div className="flex items-center gap-2 text-accent font-bold text-sm uppercase tracking-wider">
                                                         <ArrowRightLeft className="h-4 w-4" />
-                                                        <CardTitle className="text-sm font-bold uppercase tracking-wider">{parentOrg.name} On Order</CardTitle>
+                                                        <span>{parentOrg.name} On Order</span>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent>
@@ -767,7 +770,7 @@ export default function ModuleDetailsPage() {
                                             <CardTitle className="text-lg">Local In Stock</CardTitle>
                                             {dashboardSubDealers.length > 0 && (
                                                 <Select value={inStockFilter} onValueChange={setInStockFilter}>
-                                                    <SelectTrigger className="w-[160px] h-8 text-xs">
+                                                    <SelectTrigger className="w-[160px] h-8 text-xs hover:bg-accent transition-colors">
                                                         <SelectValue placeholder="Filter Stock" />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -909,8 +912,8 @@ export default function ModuleDetailsPage() {
                                                         <div className="font-medium text-sm">{org.name}</div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <Button variant="ghost" size="icon" title="View Module As" onClick={() => { setViewContextOrgId(org.id); setActiveTab('dashboard'); }}><Eye className="h-4 w-4" /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => setSelectedOrgId(org.id)}><Settings2 className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" title="View Module As" className="hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { setViewContextOrgId(org.id); setActiveTab('dashboard'); }}><Eye className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" className="hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setSelectedOrgId(org.id)}><Settings2 className="h-4 w-4" /></Button>
                                                     </div>
                                                 </div>
                                             </Card>
@@ -946,7 +949,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all flex flex-col", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
@@ -968,10 +971,10 @@ export default function ModuleDetailsPage() {
                                                             </div>
                                                             {hasAccess && (
                                                                 <div className="flex gap-2">
-                                                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => { setViewContextOrgId(sd.id); setActiveTab('dashboard'); }}>
+                                                                    <Button variant="outline" size="sm" className="flex-1 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { setViewContextOrgId(sd.id); setActiveTab('dashboard'); }}>
                                                                         <Eye className="mr-2 h-4 w-4" /> View
                                                                     </Button>
-                                                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedOrgId(sd.id)}>
+                                                                    <Button variant="outline" size="sm" className="flex-1 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setSelectedOrgId(sd.id)}>
                                                                         <Settings2 className="mr-2 h-4 w-4" /> Config
                                                                     </Button>
                                                                 </div>
@@ -1005,7 +1008,7 @@ export default function ModuleDetailsPage() {
                                     <CardContent className="space-y-6">
                                         <FormField control={settingsForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Module Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                         <FormField control={settingsForm.control} name="mainVendorId" render={({ field }) => ( <FormItem><FormLabel>Main Vendor</FormLabel><Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl><SelectTrigger><SelectValue placeholder="Select main vendor" /></SelectTrigger></FormControl>
+                                            <FormControl><SelectTrigger className="hover:bg-accent hover:text-accent-foreground transition-colors"><SelectValue placeholder="Select main vendor" /></SelectTrigger></FormControl>
                                             <SelectContent>{allVendors?.map(v => (<SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>))}</SelectContent>
                                         </Select></FormItem> )} />
                                         <FormField control={settingsForm.control} name="associatedVendorIds" render={() => (
@@ -1045,7 +1048,10 @@ export default function ModuleDetailsPage() {
                 <DialogContent className="sm:max-w-3xl">
                     <DialogHeader>
                         <div className="flex items-center justify-between">
-                            <DialogTitle className="text-2xl font-semibold">{selectedModel?.name}</DialogTitle>
+                            <div className="flex flex-col gap-1">
+                                <DialogTitle className="text-2xl font-semibold">{selectedModel?.name}</DialogTitle>
+                                {selectedModel?.modelCode && <span className="font-mono text-xs text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded w-fit">{selectedModel.modelCode}</span>}
+                            </div>
                             {isImpersonating && <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
                         </div>
                         <DialogDescription className="text-lg">What would you like to do with this model for {currentContextLabel}?</DialogDescription>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -14,6 +15,8 @@ import type { User } from 'firebase/auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, Wrench } from 'lucide-react';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
@@ -23,6 +26,7 @@ import { StabicraftModelEditor, stabicraftModelSchema } from '@/components/stabi
 import { SurteesModelEditor, surteesModelSchema } from '@/components/surtees-model-editor';
 import { MotorOptions } from './motor-options';
 import { DealerFitOptions } from './dealer-fit-options';
+import { FormField } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 
 interface Permissions {
@@ -70,6 +74,7 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
     const specs = data.specifications || {};
     
     const base = {
+        modelCode: data.modelCode ?? '',
         coverImageUrl: data.coverImageUrl ?? null,
         galleryImageUrls: data.galleryImageUrls ?? [],
         cost: data.cost ?? null,
@@ -211,7 +216,7 @@ export function ModelConfigurationEditor({
         defaultValues: getSafeDefaultValues(model, vendor?.slug),
     });
     
-    const { reset } = form;
+    const { reset, control } = form;
 
     useEffect(() => {
         if (model) {
@@ -336,18 +341,35 @@ export function ModelConfigurationEditor({
                                         <Wrench className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold">{model.name}</h2>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-xl font-bold">{model.name}</h2>
+                                            {isAdmin ? (
+                                                <FormField
+                                                    control={control}
+                                                    name="modelCode"
+                                                    render={({ field }) => (
+                                                        <Input 
+                                                            {...field} 
+                                                            placeholder="Code" 
+                                                            className="h-7 w-24 font-mono text-xs uppercase bg-white/50 focus:bg-white" 
+                                                        />
+                                                    )}
+                                                />
+                                            ) : (
+                                                <Badge variant="outline" className="font-mono text-xs uppercase bg-white/50">{model.modelCode || 'NO CODE'}</Badge>
+                                            )}
+                                        </div>
                                         {breadcrumbs}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {(permissions.can_create_quotes || isAdmin) && (
-                                        <Button type="button" variant="outline" onClick={() => {}}>
+                                        <Button type="button" variant="outline" onClick={() => {}} className="hover:bg-accent hover:text-accent-foreground transition-colors">
                                             Create Quote
                                         </Button>
                                     )}
                                     {canEdit && (
-                                        <Button type="submit" disabled={isSubmitting}>
+                                        <Button type="submit" disabled={isSubmitting} className="hover:opacity-90 transition-opacity">
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             <Save className="mr-2 h-4 w-4" />
                                             {isAdmin ? 'Save Master Changes' : 'Save Configuration'}
@@ -377,7 +399,7 @@ export function ModelConfigurationEditor({
                                     <CardTitle>Trailer Options</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg text-muted-foreground">
+                                    <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg text-muted-foreground bg-muted/5">
                                         <p>Trailer configuration coming soon.</p>
                                     </div>
                                 </CardContent>

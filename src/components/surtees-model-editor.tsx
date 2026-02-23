@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -32,6 +33,7 @@ const motorConfigSchema = z.object({
 });
 
 export const surteesModelSchema = z.object({
+    modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     cost: z.number().nullable().optional(),
@@ -52,7 +54,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
         <div className="flex items-center gap-3">
             <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-primary/10 hover:text-primary transition-colors group-data-[state=open]:bg-muted">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
                     <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </Button>
             </CollapsibleTrigger>
@@ -65,7 +67,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         </div>
         <div className="flex items-center gap-3">
             {onAdd && (
-                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
+                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                     Add
                 </Button>
@@ -73,6 +75,50 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         </div>
     </div>
 );
+
+function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
+    const { field, fieldState } = useController({ control, name, defaultValue: null });
+    const valueExcl = field.value;
+    const calculateIncl = (val: string | number | null) => {
+        if (val === '' || val === null || val === undefined) return '';
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        if (isNaN(num)) return '';
+        return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
+    };
+    const valueInclDisplay = calculateIncl(valueExcl);
+    const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        field.onChange(val === '' ? null : val);
+    };
+    const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        if (val === '') {
+            field.onChange(null);
+        } else {
+            const num = parseFloat(val);
+            if (!isNaN(num)) {
+                const excl = num / (1 + GST_RATE);
+                field.onChange(Math.round(excl * 100) / 100);
+            }
+        }
+    };
+    return (
+        <div>
+            <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</FormLabel>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+                <FormItem className="space-y-1">
+                    <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">excl. GST</FormLabel>
+                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
+                </FormItem>
+                <FormItem className="space-y-1">
+                    <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">inc. GST</FormLabel>
+                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueInclDisplay} onChange={handleInclChange} /></FormControl>
+                </FormItem>
+            </div>
+             <FormMessage>{fieldState.error && String(fieldState.error.message)}</FormMessage>
+        </div>
+    );
+}
 
 function VisualAssetsCard({ model }: { model: any }) {
     const { control, watch, setValue } = useFormContext<ModelFormData>();
@@ -168,7 +214,7 @@ function MotorConfigurationCard() {
                                         name={`specifications.motorConfigurations.${index}.type` as any}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger className="w-[200px] h-8 font-bold border-none shadow-none bg-transparent hover:bg-muted transition-colors">
+                                                <SelectTrigger className="w-[200px] h-8 font-bold border-none shadow-none bg-transparent hover:bg-accent hover:text-accent-foreground transition-colors">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -249,7 +295,7 @@ export function SurteesModelEditor({ model, isModuleView }: { model: any, isModu
                             {featureFields.map((field, index) => (
                                 <div key={field.id} className="flex items-center gap-2 group/feat">
                                     <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
                                 </div>
                             ))}
                         </div>
@@ -257,7 +303,7 @@ export function SurteesModelEditor({ model, isModuleView }: { model: any, isModu
                         <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                             <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
                             <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9" onClick={() => { 
+                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
                                 const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
                                 replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
                                 setBulkFeatures(''); 

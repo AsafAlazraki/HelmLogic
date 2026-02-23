@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -74,6 +75,7 @@ const documentSchema = z.object({
 });
 
 export const highfieldModelSchema = z.object({
+    modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     specifications: z.object({
@@ -94,7 +96,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
         <div className="flex items-center gap-3">
             <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-primary/10 hover:text-primary transition-colors group-data-[state=open]:bg-muted">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
                     <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </Button>
             </CollapsibleTrigger>
@@ -107,7 +109,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         </div>
         <div className="flex items-center gap-3">
             {onAdd && (
-                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
+                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                     Add
                 </Button>
@@ -254,7 +256,7 @@ function MotorConfigurationCard() {
                                         name={`specifications.motorConfigurations.${index}.type` as any}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger className="w-[200px] h-8 font-bold border-none shadow-none bg-transparent hover:bg-muted transition-colors">
+                                                <SelectTrigger className="w-[200px] h-8 font-bold border-none shadow-none bg-transparent hover:bg-accent hover:text-accent-foreground transition-colors">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -337,7 +339,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                             {featureFields.map((field, index) => (
                                 <div key={field.id} className="flex items-center gap-2 group/feat">
                                     <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
                                 </div>
                             ))}
                         </div>
@@ -345,7 +347,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                         <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                             <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
                             <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9" onClick={() => { 
+                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
                                 const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
                                 replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
                                 setBulkFeatures(''); 
@@ -461,7 +463,7 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
         <div className="flex-1 space-y-5 w-full">
           <div className="flex items-center gap-3">
             <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
-            <Button type="button" variant="ghost" size="icon" className="mt-6 text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+            <Button type="button" variant="ghost" size="icon" className="mt-6 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">HYP Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
@@ -482,7 +484,7 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
     return (
         <Card className="relative bg-background overflow-hidden p-5 group/item border hover:border-primary/20 transition-all">
             <div className="absolute top-2 right-2 z-10">
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
             </div>
             <div className="flex gap-6 items-start">
                  <FormField

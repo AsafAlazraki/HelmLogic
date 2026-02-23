@@ -254,6 +254,10 @@
           "type": "string",
           "description": "The name of the model."
         },
+        "modelCode": {
+          "type": "string",
+          "description": "A unique identifier or code for the model."
+        },
         "slug": {
           "type": "string",
           "description": "A URL-friendly version of the model name."
@@ -760,19 +764,6 @@
         "$ref": "#/backend/entities/Module"
       },
       "description": "Application modules."
-    },
-    "/inventory/{itemId}": {
-      "schema": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "stockNumber": { "type": "string" },
-          "organisationId": { "type": "string" },
-          "moduleId": { "type": "string" },
-          "status": { "type": "string" }
-        }
-      },
-      "description": "Inventory items for organisations."
     }
   }
 }

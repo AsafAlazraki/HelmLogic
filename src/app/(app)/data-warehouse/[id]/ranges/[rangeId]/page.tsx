@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -8,7 +9,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, updateDoc, deleteDoc, addDoc, orderBy, writeBatch } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, MoreHorizontal, Pencil, Trash2, ArrowRight, PlusCircle, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, Pencil, Trash2, ArrowRight, PlusCircle, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,13 +21,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +54,7 @@ import { useUser } from '@/firebase/auth/use-user';
 interface Model {
     id: string;
     name: string;
+    modelCode?: string;
     slug?: string;
     coverImageUrl?: string;
     packages?: { id: string; name: string }[];
@@ -245,32 +240,6 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
     return (
         <>
             <Card className="relative group overflow-hidden flex flex-col h-full">
-                {isAdmin && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/50 hover:bg-primary/10 hover:text-primary" onClick={(e) => e.preventDefault()}>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()}>
-                            <DropdownMenuItem onClick={() => onMove(index, 'up')} disabled={index === 0}>
-                                <ArrowUp className="mr-2 h-4 w-4" /> Move Up
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onMove(index, 'down')} disabled={index === totalModels - 1}>
-                                <ArrowDown className="mr-2 h-4 w-4" /> Move Down
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => { setNewModelName(model.name); setIsRenameDialogOpen(true); }}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                )}
                 <div className="flex-grow">
                     <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${rangeSlugOrId}/models/${modelSlugOrId}`} className="block h-full flex flex-col">
                         <div className="h-52 bg-secondary relative">
@@ -282,8 +251,9 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
                                 </div>
                             )}
                         </div>
-                        <CardContent className="p-3 h-20 flex items-center justify-center">
+                        <CardContent className="p-3 h-24 flex flex-col items-center justify-center gap-1">
                             <p className="font-semibold text-center line-clamp-2">{model.name}</p>
+                            {model.modelCode && <p className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</p>}
                         </CardContent>
                     </Link>
                 </div>
@@ -294,7 +264,7 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
                             <div className="flex justify-between items-center mb-2">
                                 <h4 className="text-sm font-medium text-muted-foreground">Packages</h4>
                                 {isAdmin && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenAddPackageDialog}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={handleOpenAddPackageDialog}>
                                         <PlusCircle className="h-4 w-4" />
                                     </Button>
                                 )}
@@ -303,14 +273,14 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove, isAdmin }
                                 {(model.packageLevels && model.packageLevels.length > 0) ? (
                                     <div className="flex-grow space-y-1">
                                     {model.packageLevels.map(pkg => (
-                                        <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-secondary/80 w-full h-full">
+                                        <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground w-full h-full">
                                             <span className="font-medium truncate pr-2">{pkg.name}</span>
                                             {isAdmin && (
                                                 <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={(e) => handleOpenEditPackageDialog(pkg, e)}>
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => handleDeletePackage(pkg.id, e)}>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={(e) => handleDeletePackage(pkg.id, e)}>
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>
@@ -390,6 +360,7 @@ export default function RangeDetailsPage() {
     const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
     const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
     const [newModelName, setNewModelName] = useState('');
+    const [newModelCode, setNewModelCode] = useState('');
     const [isAddingModel, setIsAddingModel] = useState(false);
     const { toast } = useToast();
 
@@ -460,12 +431,13 @@ export default function RangeDetailsPage() {
     }, [rawModels, firestore, vendor, range]);
 
     const handleAddModel = async () => {
-        if (!newModelName.trim() || !vendor || !range || !sortedModels) return;
+        if (!newModelName.trim() || !newModelCode.trim() || !vendor || !range || !sortedModels) return;
         setIsAddingModel(true);
         try {
             const modelsCollectionRef = collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`);
             await addDoc(modelsCollectionRef, {
                 name: newModelName,
+                modelCode: newModelCode.toUpperCase(),
                 slug: createSlug(newModelName),
                 rangeId: range.id,
                 vendorId: vendor.id,
@@ -473,6 +445,7 @@ export default function RangeDetailsPage() {
             });
             toast({ title: 'Model Added', description: `${newModelName} was added successfully.` });
             setNewModelName('');
+            setNewModelCode('');
             setIsAddModelDialogOpen(false);
         } catch (error) {
             console.error('Error adding model:', error);
@@ -564,11 +537,11 @@ export default function RangeDetailsPage() {
                                         Add Model
                                     </Button>
                                 )}
-                                <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
+                                <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')} className="hover:bg-accent hover:text-accent-foreground">
                                     <LayoutGrid className="h-4 w-4" />
                                     <span className="sr-only">Card View</span>
                                 </Button>
-                                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')} className="hover:bg-accent hover:text-accent-foreground">
                                     <List className="h-4 w-4" />
                                     <span className="sr-only">List View</span>
                                 </Button>
@@ -589,35 +562,39 @@ export default function RangeDetailsPage() {
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Model Name</TableHead>
+                                                <TableHead>Code</TableHead>
                                                 <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {sortedModels.map((model, index) => (
                                                 <TableRow key={model.id}>
-                                                    <TableCell className="font-medium">{model.name}</TableCell>
+                                                    <TableCell className="font-medium">
+                                                        <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`} className="hover:underline">
+                                                            {model.name}
+                                                        </Link>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {model.modelCode && <span className="font-mono text-xs uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</span>}
+                                                    </TableCell>
                                                     <TableCell className="text-right">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent>
-                                                                <DropdownMenuItem onClick={() => router.push(`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`)}>
-                                                                    <Pencil className="mr-2 h-4 w-4" /> View Details
-                                                                </DropdownMenuItem>
-                                                                {isAdmin && (
-                                                                    <>
-                                                                        <DropdownMenuSeparator />
-                                                                        <DropdownMenuItem onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
-                                                                            <ArrowUp className="mr-2 h-4 w-4" /> Move Up
-                                                                        </DropdownMenuItem>
-                                                                        <DropdownMenuItem onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
-                                                                            <ArrowDown className="mr-2 h-4 w-4" /> Move Down
-                                                                        </DropdownMenuItem>
-                                                                    </>
-                                                                )}
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            <Button variant="ghost" size="sm" asChild className="hover:bg-accent hover:text-accent-foreground">
+                                                                <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`}>
+                                                                    View Details
+                                                                </Link>
+                                                            </Button>
+                                                            {isAdmin && (
+                                                                <div className="flex gap-1">
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
+                                                                        <ArrowUp className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
+                                                                        <ArrowDown className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -643,18 +620,22 @@ export default function RangeDetailsPage() {
                     <DialogHeader>
                         <DialogTitle>Add New Model</DialogTitle>
                         <DialogDescription>
-                            Enter the name for the new model in the {range?.name} range.
+                            Enter the details for the new model in the {range?.name} range.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-right">Name</Label>
-                            <Input id="name" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3" />
+                            <Input id="name" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3" placeholder="e.g. 1850 Supercab" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="code" className="text-right">Model Code</Label>
+                            <Input id="code" value={newModelCode} onChange={(e) => setNewModelCode(e.target.value)} className="col-span-3 font-mono uppercase" placeholder="e.g. 1850SC" />
                         </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-                        <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim()}>
+                        <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim() || !newModelCode.trim()}>
                             {isAddingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Add Model
                         </Button>
