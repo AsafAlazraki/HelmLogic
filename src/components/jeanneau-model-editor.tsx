@@ -72,7 +72,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         <div className="flex items-center gap-3">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted transition-colors">
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -159,38 +159,33 @@ function VisualAssetsCard({ model }: { model: any }) {
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <CollapsibleCardHeader title="Media & Gallery" count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
             <CollapsibleContent>
-                <CardContent className="pt-6 space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Primary Render</Label>
-                        <div className="relative aspect-[16/10] w-full bg-secondary group rounded-lg overflow-hidden border">
-                            {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
-                            {coverImageUrl ? (
-                                <div className="h-full w-full flex items-center justify-center relative">
-                                    <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" />
-                                    <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
-                                </div>
-                            ) : (
-                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
-                                    <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
-                                    <span className="text-sm font-bold text-muted-foreground">Upload Boat Render</span>
-                                    <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file && storage) {
-                                            setIsCoverUploading(true);
-                                            try {
-                                                const url = await uploadFileWithProgress(storage, file, `models/${model.id}/cover-${Date.now()}`, () => {});
-                                                setValue('coverImageUrl', url);
-                                            } finally { setIsCoverUploading(false); }
-                                        }
-                                    }} /></FormControl>
-                                </label>
-                            )}
-                        </div>
+                <div className="space-y-0">
+                    <div className="relative aspect-[16/10] w-full bg-secondary group">
+                        {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                        {coverImageUrl ? (
+                            <div className="h-full w-full flex items-center justify-center relative">
+                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" />
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
+                            </div>
+                        ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
+                                <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
+                                <span className="text-sm font-bold text-muted-foreground">Upload Boat Render</span>
+                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file && storage) {
+                                        setIsCoverUploading(true);
+                                        try {
+                                            const url = await uploadFileWithProgress(storage, file, `models/${model.id}/cover-${Date.now()}`, () => {});
+                                            setValue('coverImageUrl', url);
+                                        } finally { setIsCoverUploading(false); }
+                                    }
+                                }} /></FormControl>
+                            </label>
+                        )}
                     </div>
                     
-                    <Separator />
-
-                    <div className="space-y-3">
+                    <div className="p-6 space-y-3 bg-card border-t">
                         <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Image Gallery</Label>
                         <div className="grid grid-cols-3 gap-3">
                             {galleryUrls.map((url, index) => (
@@ -216,7 +211,7 @@ function VisualAssetsCard({ model }: { model: any }) {
                             </label>
                         </div>
                     </div>
-                </CardContent>
+                </div>
             </CollapsibleContent>
         </Collapsible>
     );
@@ -351,7 +346,12 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className={cn("space-y-8", isModuleView ? "lg:col-span-3 lg:order-1" : "lg:col-span-4 lg:order-1")}>
-                    {isModuleView ? <VisualAssetsCard model={model} /> : (
+                    {isModuleView ? (
+                        <>
+                            <VisualAssetsCard model={model} />
+                            <MotorConfigurationCard />
+                        </>
+                    ) : (
                         <>
                             <SpecsSection />
                             <FeaturesSection />
@@ -364,7 +364,6 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
                         <>
                             <SpecsSection />
                             <FeaturesSection />
-                            <MotorConfigurationCard />
                         </>
                     ) : <VisualAssetsCard model={model} />}
                 </div>

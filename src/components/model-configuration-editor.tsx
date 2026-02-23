@@ -300,9 +300,6 @@ export function ModelConfigurationEditor({
             const [field, error]: [string, any] = errorEntries[0];
             const message = error.message || (error.root ? error.root.message : 'Invalid value');
             errorMsg = `Field "${field}" failed: ${message}`;
-        } else {
-            // Check for hidden or deep validation errors if standard check returns empty
-            errorMsg = "One or more fields failed validation. Please check the entire form.";
         }
         
         toast({ 

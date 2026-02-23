@@ -96,7 +96,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         <div className="flex items-center gap-3">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted transition-colors">
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -189,38 +189,33 @@ function VisualAssetsCard({ model }: { model: any }) {
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <CollapsibleCardHeader title="Media & Gallery" count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
             <CollapsibleContent>
-                <CardContent className="pt-6 space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Primary Render</Label>
-                        <div className="relative aspect-[16/10] w-full bg-secondary group rounded-lg overflow-hidden border">
-                            {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
-                            {coverImageUrl ? (
-                                <div className="h-full w-full flex items-center justify-center relative">
-                                    <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" />
-                                    <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
-                                </div>
-                            ) : (
-                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
-                                    <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
-                                    <span className="text-sm font-bold text-muted-foreground">Upload Boat Render</span>
-                                    <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file && storage) {
-                                            setIsCoverUploading(true);
-                                            try {
-                                                const url = await uploadFileWithProgress(storage, file, `models/${model.id}/cover-${Date.now()}`, () => {});
-                                                setValue('coverImageUrl', url);
-                                            } finally { setIsCoverUploading(false); }
-                                        }
-                                    }} /></FormControl>
-                                </label>
-                            )}
-                        </div>
+                <div className="space-y-0">
+                    <div className="relative aspect-[16/10] w-full bg-secondary group">
+                        {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                        {coverImageUrl ? (
+                            <div className="h-full w-full flex items-center justify-center relative">
+                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" />
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
+                            </div>
+                        ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
+                                <ImageIcon className="w-12 h-12 mb-3 text-muted-foreground/50" />
+                                <span className="text-sm font-bold text-muted-foreground">Upload Boat Render</span>
+                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file && storage) {
+                                        setIsCoverUploading(true);
+                                        try {
+                                            const url = await uploadFileWithProgress(storage, file, `models/${model.id}/cover-${Date.now()}`, () => {});
+                                            setValue('coverImageUrl', url);
+                                        } finally { setIsCoverUploading(false); }
+                                    }
+                                }} /></FormControl>
+                            </label>
+                        )}
                     </div>
                     
-                    <Separator />
-
-                    <div className="space-y-3">
+                    <div className="p-6 space-y-3 bg-card border-t">
                         <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Image Gallery</Label>
                         <div className="grid grid-cols-3 gap-3">
                             {galleryUrls.map((url, index) => (
@@ -246,7 +241,7 @@ function VisualAssetsCard({ model }: { model: any }) {
                             </label>
                         </div>
                     </div>
-                </CardContent>
+                </div>
             </CollapsibleContent>
         </Collapsible>
     );
@@ -307,118 +302,6 @@ function MotorConfigurationCard() {
             </Card>
         </Collapsible>
     );
-}
-
-function OptionalFeatureItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
-    const { control } = useFormContext<ModelFormData>();
-    const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
-    const storage = useStorage();
-    const [isUploading, setIsUploading] = useState(false);
-
-    return (
-        <Card className="relative bg-background overflow-hidden p-5 group/item border hover:border-primary/20 transition-all">
-            <div className="absolute top-2 right-2 z-10">
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-            <div className="flex gap-6 items-start">
-                 <FormField
-                    control={control}
-                    name={`optionalFeatures.${index}.imageUrl`}
-                    render={({ field }) => (
-                        <FormItem className="w-36 flex-shrink-0">
-                            <div className="relative aspect-video w-full overflow-hidden rounded-lg group bg-muted/20 border-2 border-dashed">
-                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                                {imageUrl ? (
-                                    <>
-                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
-                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
-                                    </>
-                                ) : (
-                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                        <Upload className="w-5 h-5 text-muted-foreground" />
-                                        <span className="text-[10px] text-muted-foreground mt-1 font-bold">IMAGE</span>
-                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file && storage) {
-                                                setIsUploading(true);
-                                                try {
-                                                    const url = await uploadFileWithProgress(storage, file, `features/${Date.now()}-${file.name}`, () => {});
-                                                    field.onChange(url);
-                                                } finally { setIsUploading(false); }
-                                            }
-                                        }} /></FormControl>
-                                    </label>
-                                )}
-                            </div>
-                        </FormItem>
-                    )}
-                />
-                <div className="flex-1 space-y-4">
-                     <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-xs font-bold uppercase text-muted-foreground">Name</FormLabel><FormControl><Input placeholder="Feature Name" className="h-9 font-medium" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <div className="grid grid-cols-2 gap-6">
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" />
-                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell Price" />
-                    </div>
-                </div>
-            </div>
-        </Card>
-    );
-}
-
-function ColorVariantItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
-  const { control } = useFormContext<ModelFormData>();
-  const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
-  const storage = useStorage();
-  const [isUploading, setIsUploading] = useState(false);
-
-  return (
-    <Card className="bg-background overflow-hidden p-5 border hover:border-primary/20 transition-all">
-      <div className="flex flex-col sm:flex-row gap-6 items-start">
-        <FormField
-          control={control}
-          name={`colors.${index}.imageUrl`}
-          render={({ field }) => (
-            <FormItem className="w-36 flex-shrink-0">
-              <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/20">
-                  {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                  {imageUrl ? (
-                    <>
-                      <Image src={imageUrl} alt="Color" fill className="object-cover" />
-                      <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-4 w-4" /></Button>
-                    </>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                        <Upload className="w-5 h-5 text-muted-foreground" />
-                        <span className="text-[10px] text-muted-foreground mt-1 font-bold uppercase">Swatch</span>
-                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file && storage) {
-                                setIsUploading(true);
-                                try {
-                                    const url = await uploadFileWithProgress(storage, file, `colors/${Date.now()}-${file.name}`, () => {});
-                                    field.onChange(url);
-                                } finally { setIsUploading(false); }
-                            }
-                        }} /></FormControl>
-                    </label>
-                  )}
-              </div>
-            </FormItem>
-          )}
-        />
-        <div className="flex-1 space-y-5 w-full">
-          <div className="flex items-center gap-3">
-            <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
-            <Button type="button" variant="ghost" size="icon" className="mt-6 text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">HYP Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
-            <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">PVC Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" /></div>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
 }
 
 export function HighfieldModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
@@ -493,7 +376,12 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className={cn("space-y-8", isModuleView ? "lg:col-span-3 lg:order-1" : "lg:col-span-4 lg:order-1")}>
-                    {isModuleView ? <VisualAssetsCard model={model} /> : (
+                    {isModuleView ? (
+                        <>
+                            <VisualAssetsCard model={model} />
+                            <MotorConfigurationCard />
+                        </>
+                    ) : (
                         <>
                             <SpecsSection />
                             <FeaturesSection />
@@ -506,7 +394,6 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                         <>
                             <SpecsSection />
                             <FeaturesSection />
-                            <MotorConfigurationCard />
                         </>
                     ) : <VisualAssetsCard model={model} />}
                 </div>
@@ -542,5 +429,117 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                 </Card>
             </Collapsible>
         </div>
+    );
+}
+
+function ColorVariantItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+  const { control } = useFormContext<ModelFormData>();
+  const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
+  const storage = useStorage();
+  const [isUploading, setIsUploading] = useState(false);
+
+  return (
+    <Card className="bg-background overflow-hidden p-5 border hover:border-primary/20 transition-all">
+      <div className="flex flex-col sm:flex-row gap-6 items-start">
+        <FormField
+          control={control}
+          name={`colors.${index}.imageUrl`}
+          render={({ field }) => (
+            <FormItem className="w-36 flex-shrink-0">
+              <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/20">
+                  {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                  {imageUrl ? (
+                    <>
+                      <Image src={imageUrl} alt="Color" fill className="object-cover" />
+                      <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-4 w-4" /></Button>
+                    </>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                        <Upload className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground mt-1 font-bold uppercase">Swatch</span>
+                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file && storage) {
+                                setIsUploading(true);
+                                try {
+                                    const url = await uploadFileWithProgress(storage, file, `colors/${Date.now()}-${file.name}`, () => {});
+                                    field.onChange(url);
+                                } finally { setIsUploading(false); }
+                            }
+                        }} /></FormControl>
+                    </label>
+                  )}
+              </div>
+            </FormItem>
+          )}
+        />
+        <div className="flex-1 space-y-5 w-full">
+          <div className="flex items-center gap-3">
+            <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color Variant</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
+            <Button type="button" variant="ghost" size="icon" className="mt-6 text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">HYP Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Sell" /></div>
+            <div className="p-4 border rounded-xl bg-muted/10 space-y-4"><h4 className="font-black text-xs uppercase tracking-tighter text-primary">PVC Material</h4><Separator /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Cost" /><GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Sell" /></div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function OptionalFeatureItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+    const { control } = useFormContext<ModelFormData>();
+    const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
+    const storage = useStorage();
+    const [isUploading, setIsUploading] = useState(false);
+
+    return (
+        <Card className="relative bg-background overflow-hidden p-5 group/item border hover:border-primary/20 transition-all">
+            <div className="absolute top-2 right-2 z-10">
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+            <div className="flex gap-6 items-start">
+                 <FormField
+                    control={control}
+                    name={`optionalFeatures.${index}.imageUrl`}
+                    render={({ field }) => (
+                        <FormItem className="w-36 flex-shrink-0">
+                            <div className="relative aspect-video w-full overflow-hidden rounded-lg group bg-muted/20 border-2 border-dashed">
+                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                                {imageUrl ? (
+                                    <>
+                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
+                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
+                                    </>
+                                ) : (
+                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                        <Upload className="w-5 h-5 text-muted-foreground" />
+                                        <span className="text-[10px] text-muted-foreground mt-1 font-bold">IMAGE</span>
+                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file && storage) {
+                                                setIsUploading(true);
+                                                try {
+                                                    const url = await uploadFileWithProgress(storage, file, `features/${Date.now()}-${file.name}`, () => {});
+                                                    field.onChange(url);
+                                                } finally { setIsUploading(false); }
+                                            }
+                                        }} /></FormControl>
+                                    </label>
+                                )}
+                            </div>
+                        </FormItem>
+                    )}
+                />
+                <div className="flex-1 space-y-4">
+                     <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-xs font-bold uppercase text-muted-foreground">Name</FormLabel><FormControl><Input placeholder="Feature Name" className="h-9 font-medium" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <div className="grid grid-cols-2 gap-6">
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" />
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell Price" />
+                    </div>
+                </div>
+            </div>
+        </Card>
     );
 }
