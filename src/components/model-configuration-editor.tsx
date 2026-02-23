@@ -314,7 +314,7 @@ export function ModelConfigurationEditor({
 
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
-        const commonProps = { model, isModuleView };
+        const commonProps = { model, isModuleView: !!isModuleView };
         switch (vendor.slug) {
             case 'highfield': return <HighfieldModelEditor {...commonProps} />;
             case 'jeanneau': return <JeanneauModelEditor {...commonProps} />;

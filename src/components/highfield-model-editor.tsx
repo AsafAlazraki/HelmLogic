@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
 import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -231,63 +230,6 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
     );
 }
 
-function MotorConfigurationCard() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" as any });
-
-    return (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="Motor Configuration Requirements" 
-                    count={fields.length} 
-                    onAdd={() => append({ type: 'Single', engines: [{ label: 'Engine', minHp: 0, maxHp: 0, recommendedHp: 0 }] })} 
-                />
-                <CollapsibleContent>
-                    <CardContent className="space-y-6 pt-6">
-                        {fields.map((field, index) => (
-                            <Card key={field.id} className="p-4 border-2 border-muted bg-muted/5 relative group/item">
-                                <div className="flex items-center justify-between mb-4">
-                                    <FormField
-                                        control={control}
-                                        name={`specifications.motorConfigurations.${index}.type` as any}
-                                        render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger className="w-[200px] h-8 font-bold border-none shadow-none bg-transparent hover:bg-accent hover:text-accent-foreground transition-colors">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Single">Single Engine</SelectItem>
-                                                    <SelectItem value="Twin">Twin Engines</SelectItem>
-                                                    <SelectItem value="Triple">Triple Engines</SelectItem>
-                                                    <SelectItem value="Quad">Quad Engines</SelectItem>
-                                                    <SelectItem value="SingleWithAux">Single with Aux</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        )}
-                                    />
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.0.minHp` as any} render={({ field }) => (
-                                        <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Min HP</FormLabel><FormControl><Input type="number" {...field} className="h-8" /></FormControl></FormItem>
-                                    )} />
-                                    <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.0.maxHp` as any} render={({ field }) => (
-                                        <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Max HP</FormLabel><FormControl><Input type="number" {...field} className="h-8" /></FormControl></FormItem>
-                                    )} />
-                                    <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.0.recommendedHp` as any} render={({ field }) => (
-                                        <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Rec. HP</FormLabel><FormControl><Input type="number" {...field} className="h-8" /></FormControl></FormItem>
-                                    )} />
-                                </div>
-                            </Card>
-                        ))}
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
-        </Collapsible>
-    );
-}
-
 export function HighfieldModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
     const { control, watch } = useFormContext<ModelFormData>();
     const [bulkFeatures, setBulkFeatures] = useState('');
@@ -363,13 +305,11 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                     {isModuleView ? (
                         <>
                             <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                            <MotorConfigurationCard />
                         </>
                     ) : (
                         <>
                             <SpecsSection />
                             <FeaturesSection />
-                            <MotorConfigurationCard />
                         </>
                     )}
                 </div>
@@ -409,9 +349,9 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                         <CardContent className="grid md:grid-cols-2 gap-6 pt-8">
                             {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
                         </CardContent>
-                    </Card>
-                </CollapsibleContent>
-            </Card>
+                    </CollapsibleContent>
+                </Card>
+            </Collapsible>
         </div>
     );
 }
