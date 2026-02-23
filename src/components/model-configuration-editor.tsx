@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag } from 'lucide-react';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor, jeanneauModelSchema } from '@/components/jeanneau-model-editor';
@@ -58,13 +58,18 @@ function sanitizeDataForFirestore(data: any): any {
 }
 
 const getVendorSchema = (slug?: string) => {
+    const base = z.object({
+        name: z.string().min(1, 'Model Name is required'),
+        modelCode: z.string().min(1, 'Model Code is required'),
+    });
+
     switch (slug) {
-        case 'highfield': return highfieldModelSchema;
-        case 'jeanneau': return jeanneauModelSchema;
-        case 'stacer': return stacerModelSchema;
-        case 'stabicraft': return stabicraftModelSchema;
-        case 'surtees': return surteesModelSchema;
-        default: return z.object({});
+        case 'highfield': return base.merge(highfieldModelSchema);
+        case 'jeanneau': return base.merge(jeanneauModelSchema);
+        case 'stacer': return base.merge(stacerModelSchema);
+        case 'stabicraft': return base.merge(stabicraftModelSchema);
+        case 'surtees': return base.merge(surteesModelSchema);
+        default: return base;
     }
 };
 
@@ -73,6 +78,7 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
     const specs = data.specifications || {};
     
     const base = {
+        name: data.name ?? '',
         modelCode: data.modelCode ?? '',
         coverImageUrl: data.coverImageUrl ?? null,
         galleryImageUrls: data.galleryImageUrls ?? [],
@@ -393,7 +399,28 @@ export function ModelConfigurationEditor({
                                 </div>
                                 <CollapsibleContent>
                                     <CardContent className="pt-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <FormField
+                                                control={control}
+                                                name="name"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-3">
+                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                            <Tag className="h-3 w-3" />
+                                                            Model Name
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input 
+                                                                {...field} 
+                                                                placeholder="Enter model name..." 
+                                                                className="h-10 font-bold border-2 focus-visible:ring-primary/20 bg-muted/10" 
+                                                                disabled={!canEdit}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
                                             <FormField
                                                 control={control}
                                                 name="modelCode"

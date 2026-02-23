@@ -5,10 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,7 +74,23 @@ interface Vendor {
     slug?: string;
 }
 
-function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendor: Vendor; range: Range; model: Model; index: number; totalModels: number; onMove: (index: number, direction: 'up' | 'down') => void; }) {
+function ModelCard({ 
+    vendor, 
+    range, 
+    model, 
+    index, 
+    totalModels, 
+    onMove,
+    onEdit 
+}: { 
+    vendor: Vendor; 
+    range: Range; 
+    model: Model; 
+    index: number; 
+    totalModels: number; 
+    onMove: (index: number, direction: 'up' | 'down') => void;
+    onEdit: (model: Model) => void;
+}) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -102,6 +118,9 @@ function ModelCard({ vendor, range, model, index, totalModels, onMove }: { vendo
         <>
             <Card className="relative group overflow-hidden flex flex-col h-full transition-all duration-300 hover:border-primary">
                 <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/50 hover:bg-primary/10 hover:text-primary" onClick={(e) => { e.preventDefault(); onEdit(model); }}>
+                        <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/50 hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -177,10 +196,20 @@ export default function RangeDetailsPage() {
     const rangeSlugOrId = params?.rangeId as string | undefined;
     const firestore = useFirestore();
     const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+    
+    // Add State
     const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
     const [newModelName, setNewModelName] = useState('');
     const [newModelCode, setNewModelCode] = useState('');
     const [isAddingModel, setIsAddingModel] = useState(false);
+
+    // Edit State
+    const [isEditModelDialogOpen, setIsEditModelDialogOpen] = useState(false);
+    const [editingModel, setEditingModel] = useState<Model | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editCode, setEditCode] = useState('');
+    const [isUpdatingModel, setIsUpdatingModel] = useState(false);
+
     const { toast } = useToast();
 
     const { user, loading: userLoading } = useUser();
@@ -266,6 +295,33 @@ export default function RangeDetailsPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not add model.' });
         } finally {
             setIsAddingModel(false);
+        }
+    };
+
+    const handleOpenEdit = (model: Model) => {
+        setEditingModel(model);
+        setEditName(model.name);
+        setEditCode(model.modelCode || '');
+        setIsEditModelDialogOpen(true);
+    };
+
+    const handleUpdateModel = async () => {
+        if (!editingModel || !editName.trim() || !editCode.trim() || !vendor || !range) return;
+        setIsUpdatingModel(true);
+        try {
+            const modelRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, editingModel.id);
+            await updateDoc(modelRef, {
+                name: editName,
+                modelCode: editCode.toUpperCase(),
+                slug: createSlug(editName),
+            });
+            toast({ title: 'Model Updated' });
+            setIsEditModelDialogOpen(false);
+        } catch (error) {
+            console.error('Failed to update model:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update model.' });
+        } finally {
+            setIsUpdatingModel(false);
         }
     };
 
@@ -368,7 +424,16 @@ export default function RangeDetailsPage() {
                                 {viewMode === 'card' ? (
                                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                         {sortedModels.map((model, index) => (
-                                            <ModelCard key={model.id} vendor={vendor} range={range} model={model} index={index} totalModels={sortedModels.length} onMove={handleMoveModel}/>
+                                            <ModelCard 
+                                                key={model.id} 
+                                                vendor={vendor} 
+                                                range={range} 
+                                                model={model} 
+                                                index={index} 
+                                                totalModels={sortedModels.length} 
+                                                onMove={handleMoveModel}
+                                                onEdit={handleOpenEdit}
+                                            />
                                         ))}
                                     </div>
                                 ) : (
@@ -401,6 +466,9 @@ export default function RangeDetailsPage() {
                                                                 <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`}>
                                                                     View Details
                                                                 </Link>
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent" onClick={() => handleOpenEdit(model)}>
+                                                                <Pencil className="h-4 w-4" />
                                                             </Button>
                                                             <div className="flex gap-1">
                                                                 <TooltipProvider>
@@ -445,6 +513,8 @@ export default function RangeDetailsPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Add Dialog */}
             <Dialog open={isAddModelDialogOpen} onOpenChange={setIsAddModelDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -468,6 +538,33 @@ export default function RangeDetailsPage() {
                         <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim() || !newModelCode.trim()}>
                             {isAddingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Add Model
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditModelDialogOpen} onOpenChange={setIsEditModelDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Model: {editingModel?.name}</DialogTitle>
+                        <DialogDescription>Update the name and code for this master boat record.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-name" className="text-right">Name</Label>
+                            <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-code" className="text-right">Model Code</Label>
+                            <Input id="edit-code" value={editCode} onChange={(e) => setEditCode(e.target.value)} className="col-span-3 font-mono uppercase" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+                        <Button onClick={handleUpdateModel} disabled={isUpdatingModel || !editName.trim() || !editCode.trim()}>
+                            {isUpdatingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Update Model
                         </Button>
                     </DialogFooter>
                 </DialogContent>
