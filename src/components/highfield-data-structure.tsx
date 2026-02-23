@@ -210,7 +210,7 @@ export function HighfieldDataStructure({ vendorId, vendorSlugOrId }: { vendorId:
                          <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-primary/10 hover:text-primary transition-colors group-data-[state=open]:bg-muted">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
                                         <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                     </Button>
                                 </CollapsibleTrigger>

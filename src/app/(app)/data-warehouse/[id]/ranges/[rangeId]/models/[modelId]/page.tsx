@@ -51,11 +51,9 @@ export default function ModelDetailsPage() {
   
   const { data: vendorsBySlug, loading: vendorSlugLoading } = useCollection<Vendor>(vendorQueryBySlug);
   
-  const isLikelyAnId = !vendorSlugLoading && (!vendorsBySlug || vendorsBySlug.length === 0);
-  
   const vendorByIdRef = useMemoFirebase(() => 
-    isLikelyAnId && vendorSlugOrId ? doc(firestore, 'data-warehouse', vendorSlugOrId) : null,
-  [firestore, isLikelyAnId, vendorSlugOrId]);
+    vendorSlugOrId ? doc(firestore, 'data-warehouse', vendorSlugOrId) : null,
+  [firestore, vendorSlugOrId]);
   
   const { data: vendorById, loading: vendorIdLoading } = useDoc<Vendor>(vendorByIdRef);
   
