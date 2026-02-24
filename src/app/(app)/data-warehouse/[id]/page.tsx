@@ -50,6 +50,7 @@ import { SamAllenDataViewer } from '@/components/sam-allen-data-viewer';
 import { proxyFetch } from '@/actions/proxy-fetch';
 import { JsonDataVisualizer } from '@/components/json-data-visualizer';
 import { YamahaApiFetcher } from '@/components/yamaha-api-fetcher';
+import { analyzeJson } from '@/ai/flows/analyze-json-flow';
 
 const formSchema = z.object({
   id: z.string(),
@@ -67,6 +68,156 @@ const formSchema = z.object({
 });
 
 type VendorFormData = z.infer<typeof formSchema>;
+
+function HighfieldPoc({ vendorId }: { vendorId: string }) {
+    const [url, setUrl] = useState('');
+    const [jsonData, setJsonData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [instructions, setInstructions] = useState('');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<any>(null);
+    const { toast } = useToast();
+
+    const handleFetchData = async () => {
+        if (!url) {
+            toast({ variant: 'destructive', title: "Error", description: "Please enter a URL." });
+            return;
+        }
+        setIsLoading(true);
+        setJsonData(null);
+        setAnalysisResult(null);
+        try {
+            const result = await proxyFetch(url);
+            if (result.success) {
+                if (typeof result.data === 'string') {
+                    try {
+                        setJsonData(JSON.parse(result.data));
+                    } catch (e) {
+                        setJsonData(result.data);
+                    }
+                } else {
+                    setJsonData(result.data);
+                }
+                toast({ title: 'Success', description: 'JSON data returned successfully.' });
+            } else {
+                toast({ variant: 'destructive', title: 'Fetch Failed', description: result.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleAnalyze = async () => {
+        if (!jsonData) return;
+        setIsAnalyzing(true);
+        try {
+            const result = await analyzeJson({
+                jsonString: typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData, null, 2),
+                instructions
+            });
+            setAnalysisResult(result);
+            toast({ title: 'Analysis Complete' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'AI Analysis Failed', description: e.message });
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleCopy = () => {
+        if (!jsonData) return;
+        navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2));
+        toast({ title: "Copied to clipboard" });
+    };
+
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Highfield POC - API Data Explorer</CardTitle>
+                            <CardDescription>Fetch live JSON data and optionally transform it using AI.</CardDescription>
+                        </div>
+                        {jsonData && (
+                            <Button variant="outline" size="sm" onClick={handleCopy}>
+                                <Replace className="h-4 w-4 mr-2" />
+                                Copy JSON
+                            </Button>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Input
+                            placeholder="https://api.highfield.com/v1/models"
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
+                            disabled={isLoading}
+                        />
+                        <Button onClick={handleFetchData} disabled={isLoading}>
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            <span className="ml-2">Fetch JSON</span>
+                        </Button>
+                    </div>
+
+                    {jsonData && (
+                        <Tabs defaultValue="visualize" className="pt-4 border-t">
+                            <TabsList className="grid w-full grid-cols-3 max-w-[400px]">
+                                <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize</TabsTrigger>
+                                <TabsTrigger value="ai"><Code className="h-4 w-4 mr-2" />AI Transform</TabsTrigger>
+                                <TabsTrigger value="raw"><List className="h-4 w-4 mr-2" />Raw JSON</TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="visualize" className="mt-4">
+                                <div className="max-h-[600px] overflow-auto rounded-md border bg-card">
+                                    <JsonDataVisualizer data={jsonData} />
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="ai" className="mt-4 space-y-4">
+                                <div className="p-4 rounded-lg bg-muted/30 border border-dashed">
+                                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Transformation Instructions</Label>
+                                    <Textarea 
+                                        placeholder="e.g. 'Extract all models into a simple array of {name, price}'..." 
+                                        className="mt-2 bg-background min-h-[100px]"
+                                        value={instructions}
+                                        onChange={(e) => setInstructions(e.target.value)}
+                                    />
+                                    <Button className="mt-4 w-full" onClick={handleAnalyze} disabled={isAnalyzing || !instructions.trim()}>
+                                        {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <TestTube2 className="h-4 w-4 mr-2" />}
+                                        Run AI Transformation
+                                    </Button>
+                                </div>
+
+                                {analysisResult && (
+                                    <Card className="border-primary/20 bg-primary/5">
+                                        <CardHeader className="py-3 px-4 border-b">
+                                            <CardTitle className="text-sm font-bold uppercase tracking-tighter">AI Result: {analysisResult.summary}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-0">
+                                            <div className="max-h-[400px] overflow-auto">
+                                                <JsonDataVisualizer data={analysisResult.restructuredData} />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="raw" className="mt-4">
+                                <pre className="max-h-[600px] overflow-auto rounded-md bg-secondary p-4 text-xs font-mono">
+                                    <code>{JSON.stringify(jsonData, null, 2)}</code>
+                                </pre>
+                            </TabsContent>
+                        </Tabs>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
 
 function ApiDataFetcher() {
     const [url, setUrl] = useState('');
@@ -352,7 +503,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                            </div>
                         </CardContent>
                         <CardFooter>
-                            <Button onClick={handleSaveToMaster} disabled={isSaving || isClearing}>
+                            <Button onClick={handleSaveToMaster} disabled={isSaving || iClearing}>
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 {saveStatus}
                             </Button>
@@ -847,21 +998,7 @@ export default function VendorDetailsPage() {
 
                     {isHighfield && (
                         <TabsContent value="poc">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>POC - Highfield Experimental</CardTitle>
-                                    <CardDescription>Proof of Concept testing area for Highfield-specific data features.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/10">
-                                        <div className="text-center">
-                                            <TestTube2 className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-4" />
-                                            <p className="text-muted-foreground font-medium">Highfield POC workspace is active.</p>
-                                            <p className="text-sm text-muted-foreground">Ready for experimental modules.</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <HighfieldPoc vendorId={vendor.id} />
                         </TabsContent>
                     )}
 
