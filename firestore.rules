@@ -5,106 +5,111 @@ service cloud.firestore {
     /**
      * HELMLOGIC PRICE BOOK SECURITY RULES
      *
-     * Core Philosophy:
-     * This ruleset implements a multi-tenant organization model. Access to sensitive pricing
-     * data is strictly partitioned by Organization ID. Authorization is primarily derived 
-     * from a user's membership within an organization, verified against the organization's 
-     * root document.
-     *
-     * Data Structure:
-     * - /organizations/{organizationId}: The root of the tenant's data.
-     * - /organizations/{organizationId}/priceLevelDefinitions: Custom pricing tiers.
-     * - /organizations/{organizationId}/productPrices: Core product costing (supplier cost, margins).
-     * - /organizations/{organizationId}/productPrices/.../priceLevelValues: Final calculated/manual prices.
-     * - /brands & /products: Global reference data shared across all organizations.
+     * Multi-tenant organization model with global reference data.
      */
 
     // --- GLOBAL HELPER FUNCTIONS ---
 
-    /** @description Checks if the user is authenticated with a valid UID. */
+    /** @description Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the user is a member of a specific organization. */
-    function isOrgMember(orgId) {
-      return isSignedIn() && (
-        (exists(/databases/$(database)/documents/organizations/$(orgId)) && request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.members) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId)
-      );
+    /** @description Checks if the user has the HelmLogic Admin role. */
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
     }
 
-    /** @description Checks if the user is a member and the document being modified exists. */
-    function isExistingOrgMember(orgId) {
-      return isOrgMember(orgId) && resource != null;
+    /** @description Checks if the user is a member of a specific organization or a global admin. */
+    function isOrgMember(orgId) {
+      return isSignedIn() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/organizations/$(orgId)) && 
+         request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.members) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId)
+      );
     }
 
     // --- COLLECTION RULES ---
 
     /**
-     * @description Rules for User Profiles.
+     * @description Rules for User Profiles. Users can manage their own profile.
      */
     match /users/{userId} {
       allow get: if isSignedIn() && request.auth.uid == userId;
       allow create, update: if isSignedIn() && request.auth.uid == userId;
-      allow list, delete: if false;
+      allow list: if isAdmin();
+      
+      // Allow users to have sub-collections like notifications
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     /**
-     * @description Rules for Global Brands. Reference data for all users.
+     * @description Rules for the Data Warehouse. 
+     * Reference data is readable by all signed-in users.
+     * Only Admins can modify master data.
      */
-    match /brands/{brandId} {
+    match /data-warehouse/{vendorId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update, delete: if isAdmin();
+
+      match /{allSubcollections=**} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if isAdmin();
+      }
     }
 
     /**
-     * @description Rules for Global Products. Reference data for all users.
+     * @description Rules for application modules.
      */
-    match /products/{productId} {
+    match /modules/{moduleId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for global dealer fit categories.
+     */
+    match /dealerFitCategories/{catId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
 
     /**
      * @description Rules for Organizations. Root of the multi-tenant hierarchy.
      */
     match /organizations/{organizationId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isOrgMember(organizationId));
-      allow list: if false;
+      allow get: if isOrgMember(organizationId);
+      allow list: if isAdmin();
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && isOrgMember(organizationId);
-      allow delete: if false; 
+      allow update: if isOrgMember(organizationId);
+      allow delete: if isAdmin();
+
+      /**
+       * Sub-collections: priceLevelDefinitions, productPrices, quotes, dealerFitSelections, inventory, vessels, etc.
+       */
+      match /{allSubcollections=**} {
+        allow get, list: if isOrgMember(organizationId);
+        allow create, update, delete: if isOrgMember(organizationId);
+      }
     }
 
     /**
-     * @description Rules for custom Price Level Definitions.
+     * @description Legacy global collections support.
      */
-    match /organizations/{organizationId}/priceLevelDefinitions/{priceLevelDefinitionId} {
-      allow get, list: if isOrgMember(organizationId);
-      allow create: if isOrgMember(organizationId) && request.resource.data.organizationId == organizationId;
-      allow update: if isExistingOrgMember(organizationId) && request.resource.data.organizationId == organizationId;
-      allow delete: if isExistingOrgMember(organizationId);
-    }
-
+    match /brands/{brandId} { allow get, list: if isSignedIn(); }
+    match /products/{productId} { allow get, list: if isSignedIn(); }
+    
     /**
-     * @description Rules for the core Organization Product Prices.
+     * @description Global collections for inventory/vessels if not nested.
      */
-    match /organizations/{organizationId}/productPrices/{organizationProductPriceId} {
-      allow get, list: if isOrgMember(organizationId);
-      allow create: if isOrgMember(organizationId) && request.resource.data.organizationId == organizationId;
-      allow update: if isExistingOrgMember(organizationId) && request.resource.data.organizationId == organizationId;
-      allow delete: if isExistingOrgMember(organizationId);
-    }
-
-    /**
-     * @description Rules for individual Price Level Values.
-     */
-    match /organizations/{organizationId}/productPrices/{organizationProductPriceId}/priceLevelValues/{priceLevelValueId} {
-      allow get, list: if isOrgMember(organizationId);
-      allow create: if isOrgMember(organizationId);
-      allow update: if isExistingOrgMember(organizationId);
-      allow delete: if isExistingOrgMember(organizationId);
-    }
+    match /inventory/{itemId} { allow read, write: if isSignedIn(); }
+    match /vessels/{vesselId} { allow read, write: if isSignedIn(); }
+    match /vesselReservations/{resId} { allow read, write: if isSignedIn(); }
   }
 }
