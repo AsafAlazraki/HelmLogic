@@ -88,6 +88,7 @@ const permissionsConfig = [
     { id: 'can_create_quotes', label: 'Create Quotes' },
     { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
+    { id: 'can_access_price_book', label: 'Access Price Book' },
     { id: 'can_access_settings', label: 'Access Settings' },
 ];
 
@@ -697,7 +698,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                                 <TableCell>{sd.phoneNumber || 'N/A'}</TableCell>
                                                                 <TableCell className="text-right">
                                                                     <Button variant="ghost" size="sm" asChild>
-                                                                        <Link href={`/organisations/${sd.slug || sd.id}`}>Manage</Link>
+                                                                        <Link href={`/sub-dealers/${sd.slug || sd.id}`}>Manage</Link>
                                                                     </Button>
                                                                 </TableCell>
                                                             </TableRow>

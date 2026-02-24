@@ -117,6 +117,7 @@ const permissionsConfig = [
     { id: 'can_create_quotes', label: 'Create Quotes' },
     { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
+    { id: 'can_access_price_book', label: 'Access Price Book' },
     { id: 'can_see_parent_inventory', label: 'Access Parent Inventory' },
     { id: 'can_access_settings', label: 'Access Settings' },
 ];
@@ -808,13 +809,13 @@ export default function OrganisationDetailsPage() {
                                         </CardHeader>
                                         <CardContent>
                                             {subDealersLoading ? (
-                                                <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                                                <div className="flex justify-center items-center py-12"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
                                             ) : subDealers && subDealers.length > 0 ? (
                                                 <Table>
                                                     <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Address</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                                     <TableBody>
                                                         {subDealers.map(sd => (
-                                                            <TableRow key={sd.id}><TableCell className="font-medium">{sd.name}</TableCell><TableCell>{sd.address || 'N/A'}</TableCell><TableCell className="text-right"><Button variant="ghost" size="sm" asChild><Link href={`/organisations/${sd.slug || sd.id}`}>Manage</Link></Button></TableCell></TableRow>
+                                                            <TableRow key={sd.id}><TableCell className="font-medium">{sd.name}</TableCell><TableCell>{sd.address || 'N/A'}</TableCell><TableCell className="text-right"><Button variant="ghost" size="sm" asChild><Link href={`/sub-dealers/${sd.slug || sd.id}`}>Manage</Link></Button></TableCell></TableRow>
                                                         ))}
                                                     </TableBody>
                                                 </Table>
