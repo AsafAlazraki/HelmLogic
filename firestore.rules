@@ -28,8 +28,8 @@ service cloud.firestore {
         isAdmin() ||
         (exists(/databases/$(database)/documents/organisations/$(orgId)) && 
          (
-           ('members' in get(/databases/$(database)/documents/organisations/$(orgId)).data && request.auth.uid in get(/databases/$(database)/documents/organisations/$(orgId)).data.members) ||
-           (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId)
+           (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId) ||
+           ('members' in get(/databases/$(database)/documents/organisations/$(orgId)).data && request.auth.uid in get(/databases/$(database)/documents/organisations/$(orgId)).data.members)
          )
         )
       );
@@ -41,20 +41,19 @@ service cloud.firestore {
      * @description Rules for User Profiles. Users can manage their own profile.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && request.auth.uid == userId;
-      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
       
       // Allow users to have sub-collections like notifications
       match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       }
     }
 
     /**
      * @description Rules for the Data Warehouse. 
      * Reference data is readable by all signed-in users.
-     * Only Admins can modify master data.
      */
     match /data-warehouse/{vendorId} {
       allow get, list: if isSignedIn();
@@ -86,18 +85,18 @@ service cloud.firestore {
      * @description Rules for Organisations. Root of the multi-tenant hierarchy.
      */
     match /organisations/{organisationId} {
-      allow get: if isOrgMember(organisationId);
-      allow list: if isSignedIn(); // Allow signed in users to list for joining/switching
+      // Allow get/list for all signed in users to support slug-based lookups and role switching
+      allow get, list: if isSignedIn(); 
       allow create: if isSignedIn();
-      allow update: if isOrgMember(organisationId);
+      allow update: if isSignedIn() && (isAdmin() || isOrgMember(organisationId));
       allow delete: if isAdmin();
 
       /**
        * Sub-collections: priceLevelDefinitions, productPrices, quotes, dealerFitSelections, inventory, vessels, etc.
+       * These are strictly protected.
        */
       match /{allSubcollections=**} {
-        allow get, list: if isOrgMember(organisationId);
-        allow create, update, delete: if isOrgMember(organisationId);
+        allow read, write: if isSignedIn() && (isAdmin() || isOrgMember(organisationId));
       }
     }
 
@@ -108,10 +107,16 @@ service cloud.firestore {
     match /products/{productId} { allow get, list: if isSignedIn(); }
     
     /**
-     * @description Global collections for inventory/vessels if not nested.
+     * @description Global collections for inventory/vessels.
      */
-    match /inventory/{itemId} { allow read, write: if isSignedIn(); }
-    match /vessels/{vesselId} { allow read, write: if isSignedIn(); }
-    match /vesselReservations/{resId} { allow read, write: if isSignedIn(); }
+    match /inventory/{itemId} { 
+      allow read, write: if isSignedIn() && (isAdmin() || (exists(resource.data.organisationId) && isOrgMember(resource.data.organisationId))); 
+    }
+    match /vessels/{vesselId} { 
+      allow read, write: if isSignedIn() && (isAdmin() || (exists(resource.data.organisationId) && isOrgMember(resource.data.organisationId))); 
+    }
+    match /vesselReservations/{resId} { 
+      allow read, write: if isSignedIn(); 
+    }
   }
 }
