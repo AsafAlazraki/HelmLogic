@@ -1,21 +1,22 @@
+
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Globe, DollarSign } from 'lucide-react';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor, jeanneauModelSchema } from '@/components/jeanneau-model-editor';
@@ -27,12 +28,22 @@ import { DealerFitOptions } from './dealer-fit-options';
 import { FormField, FormItem, FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { formatCurrency, convertCurrency } from '@/lib/currency-utils';
 
 interface Permissions {
     can_access_module: boolean;
     can_create_quotes: boolean;
     can_edit_boat_data: boolean;
     can_view_subdealers: boolean;
+}
+
+interface Organisation {
+    id: string;
+    name: string;
+    tradingCurrency?: string;
+    gstPercentage?: number;
+    brandMargins?: Record<string, number>;
+    moduleMargins?: Record<string, number>;
 }
 
 const motorConfigOptions = [
@@ -217,8 +228,17 @@ export function ModelConfigurationEditor({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
+    // Fetch active organisation data for currency and tax logic
+    const orgRef = useMemoFirebase(() => organisationId ? doc(firestore, 'organisations', organisationId) : null, [firestore, organisationId]);
+    const { data: organisation } = useDoc<Organisation>(orgRef);
+
     const currentSchema = getVendorSchema(vendor?.slug);
     const isModuleView = module?.id !== 'master';
+
+    // Financial context
+    const masterCurrency = vendor?.currency || 'AUD';
+    const tradingCurrency = isAdmin ? masterCurrency : (organisation?.tradingCurrency || 'AUD');
+    const gstPercentage = organisation?.gstPercentage ?? 10;
 
     const form = useForm({
         resolver: zodResolver(currentSchema),
@@ -325,7 +345,13 @@ export function ModelConfigurationEditor({
 
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
-        const commonProps = { model, isModuleView: !!isModuleView };
+        const commonProps = { 
+            model, 
+            isModuleView: !!isModuleView,
+            gstPercentage,
+            tradingCurrency,
+            masterCurrency
+        };
         switch (vendor.slug) {
             case 'highfield': return <HighfieldModelEditor {...commonProps} />;
             case 'jeanneau': return <JeanneauModelEditor {...commonProps} />;
@@ -354,7 +380,20 @@ export function ModelConfigurationEditor({
                                         {breadcrumbs}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-4">
+                                    {isModuleView && (
+                                        <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-background border border-primary/20 shadow-sm">
+                                            <div className="flex items-center gap-1.5">
+                                                <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Master: {masterCurrency}</span>
+                                            </div>
+                                            <div className="h-3 w-px bg-border" />
+                                            <div className="flex items-center gap-1.5">
+                                                <DollarSign className="h-3.5 w-3.5 text-primary" />
+                                                <span className="text-[10px] font-bold uppercase text-primary tracking-tighter">Trading: {tradingCurrency}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                     {isModuleView && (permissions.can_create_quotes || isAdmin) && (
                                         <Button type="button" variant="outline" onClick={() => {}} className="hover:bg-accent hover:text-accent-foreground transition-colors">
                                             Create Quote

@@ -85,6 +85,30 @@
           "type": "string",
           "description": "The ID of the parent organisation, if this is a sub-dealer."
         },
+        "tradingCurrency": {
+          "type": "string",
+          "description": "The currency the organisation trades in.",
+          "default": "AUD"
+        },
+        "gstPercentage": {
+          "type": "number",
+          "description": "The GST percentage for the organisation's region.",
+          "default": 10
+        },
+        "brandMargins": {
+          "type": "object",
+          "description": "Required margin per subscribed brand (vendorId -> margin percentage).",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "moduleMargins": {
+          "type": "object",
+          "description": "Price margins within specific modules (moduleId -> margin percentage).",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
         "roles": {
           "type": "array",
           "description": "A list of roles within the organisation, forming a hierarchy.",
@@ -153,6 +177,11 @@
         "slug": {
           "type": "string",
           "description": "A URL-friendly version of the vendor name."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the information stored in the master data set.",
+          "default": "AUD"
         },
         "vendorType": {
           "type": "string",

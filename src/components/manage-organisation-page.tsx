@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -14,7 +15,7 @@ import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Save, X, Mail, PlusCircle } from 'lucide-react';
+import { Loader2, Save, X, Mail, PlusCircle, DollarSign, Percent, TrendingUp, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
@@ -57,6 +59,12 @@ const formSchema = z.object({
   primaryLogoUrl: z.string().nullable().optional(),
   secondaryLogoUrl: z.string().nullable().optional(),
   subDealersEnabled: z.boolean().optional(),
+  tradingCurrency: z.string().default('AUD'),
+  gstPercentage: z.coerce.number().min(0).max(100).default(10),
+  brandMargins: z.record(z.string(), z.coerce.number()).optional(),
+  moduleMargins: z.record(z.string(), z.coerce.number()).optional(),
+  dataWarehouseSubscriptions: z.array(z.string()).optional(),
+  enabledModuleSubscriptions: z.array(z.string()).optional(),
   parentOrganisationId: z.string().nullable().optional(),
 });
 
@@ -96,6 +104,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const orgDocRef = useMemoFirebase(() => doc(firestore, 'organisations', orgId), [firestore, orgId]);
     const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(orgDocRef);
     
+    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
+    const modulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
+    const { data: allVendors } = useCollection(vendorsQuery);
+    const { data: allModules } = useCollection(modulesQuery);
+
     const subDealersQuery = useMemoFirebase(() => {
         if (!organisation) return null;
         return query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', organisation.id));
@@ -108,7 +121,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         defaultValues: {
             name: '',
             permissions: {},
-            roles: []
+            roles: [],
+            tradingCurrency: 'AUD',
+            gstPercentage: 10,
+            brandMargins: {},
+            moduleMargins: {},
         },
     });
 
@@ -118,6 +135,8 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     });
     
     const watchedRoles = form.watch('roles');
+    const watchedBrandSubscriptions = form.watch('dataWarehouseSubscriptions') || [];
+    const watchedModuleSubscriptions = form.watch('enabledModuleSubscriptions') || [];
 
     useEffect(() => {
         if (organisation) {
@@ -133,6 +152,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 ...organisation, 
                 permissions: initialPermissions,
                 subDealersEnabled: organisation.subDealersEnabled || false,
+                tradingCurrency: organisation.tradingCurrency || 'AUD',
+                gstPercentage: organisation.gstPercentage ?? 10,
+                brandMargins: organisation.brandMargins || {},
+                moduleMargins: organisation.moduleMargins || {},
             });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
@@ -201,6 +224,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 secondaryColor: values.secondaryColor || '',
                 roles: values.roles || [],
                 permissions: values.permissions || {},
+                tradingCurrency: values.tradingCurrency,
+                gstPercentage: values.gstPercentage,
+                brandMargins: values.brandMargins || {},
+                moduleMargins: values.moduleMargins || {},
             };
             
             if (values.primaryLogo instanceof File && storage) {
@@ -285,9 +312,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                         </div>
 
                         <Tabs defaultValue="details" className="space-y-4">
-                            <TabsList className={`grid w-full ${hasSubDealers ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                            <TabsList className={`grid w-full ${hasSubDealers ? 'grid-cols-4' : 'grid-cols-3'}`}>
                                 <TabsTrigger value="details">Company Details</TabsTrigger>
                                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
+                                <TabsTrigger value="margins">Margins</TabsTrigger>
                                 {hasSubDealers && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                             </TabsList>
                             
@@ -321,6 +349,60 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                         </Card>
                                     </div>
                                     <div className="lg:col-span-1 space-y-8">
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Financial Logic</CardTitle>
+                                                <CardDescription>Global financial settings for this organisation.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-6">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="tradingCurrency"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="flex items-center gap-2">
+                                                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                                                Trading Currency
+                                                            </FormLabel>
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <FormControl>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Select currency" />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent>
+                                                                    {SUPPORTED_CURRENCIES.map(curr => (
+                                                                        <SelectItem key={curr.code} value={curr.code}>{curr.label}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <FormDescription>The primary currency used for quoting and local pricing.</FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="gstPercentage"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="flex items-center gap-2">
+                                                                <Percent className="h-4 w-4 text-muted-foreground" />
+                                                                GST / Tax Percentage
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <div className="relative">
+                                                                    <Input type="number" step="0.1" {...field} className="pr-8" />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                                                                </div>
+                                                            </FormControl>
+                                                            <FormDescription>The applicable tax rate for this organisation's region.</FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </CardContent>
+                                        </Card>
                                         <Card>
                                             <CardHeader><CardTitle>Organisation Branding</CardTitle><CardDescription>Customize the look and feel.</CardDescription></CardHeader>
                                             <CardContent className="space-y-6">
@@ -495,6 +577,90 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 </Card>
                             </TabsContent>
 
+                            <TabsContent value="margins">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <Card>
+                                        <CardHeader>
+                                            <div className="flex items-center gap-2">
+                                                <TrendingUp className="h-5 w-5 text-primary" />
+                                                <CardTitle>Required Brand Margins</CardTitle>
+                                            </div>
+                                            <CardDescription>Set the default required margin for each brand this organisation is subscribed to.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {watchedBrandSubscriptions.length > 0 ? (
+                                                <div className="space-y-4">
+                                                    {watchedBrandSubscriptions.map(vendorId => {
+                                                        const vendor = allVendors?.find((v: any) => v.id === vendorId);
+                                                        if (!vendor) return null;
+                                                        return (
+                                                            <FormField
+                                                                key={vendorId}
+                                                                control={form.control}
+                                                                name={`brandMargins.${vendorId}`}
+                                                                render={({ field }) => (
+                                                                    <FormItem className="flex items-center justify-between space-y-0 p-3 border rounded-md">
+                                                                        <FormLabel className="font-medium">{vendor.name}</FormLabel>
+                                                                        <FormControl>
+                                                                            <div className="relative w-24">
+                                                                                <Input type="number" step="0.1" {...field} className="pr-8 h-8 text-right font-bold" />
+                                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
+                                                                            </div>
+                                                                        </FormControl>
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground italic text-center py-8">Subscribe to brands in the admin portal to set margins.</p>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card>
+                                        <CardHeader>
+                                            <div className="flex items-center gap-2">
+                                                <Settings2 className="h-5 w-5 text-primary" />
+                                                <CardTitle>Module Price Margins</CardTitle>
+                                            </div>
+                                            <CardDescription>Apply specific price margins within modules to override defaults.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {watchedModuleSubscriptions.length > 0 ? (
+                                                <div className="space-y-4">
+                                                    {watchedModuleSubscriptions.map(moduleId => {
+                                                        const module = allModules?.find((m: any) => m.id === moduleId);
+                                                        if (!module) return null;
+                                                        return (
+                                                            <FormField
+                                                                key={moduleId}
+                                                                control={form.control}
+                                                                name={`moduleMargins.${moduleId}`}
+                                                                render={({ field }) => (
+                                                                    <FormItem className="flex items-center justify-between space-y-0 p-3 border rounded-md">
+                                                                        <FormLabel className="font-medium">{module.name}</FormLabel>
+                                                                        <FormControl>
+                                                                            <div className="relative w-24">
+                                                                                <Input type="number" step="0.1" {...field} className="pr-8 h-8 text-right font-bold" />
+                                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
+                                                                            </div>
+                                                                        </FormControl>
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground italic text-center py-8">Subscribe to modules in the admin portal to set margins.</p>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </TabsContent>
+
                             {hasSubDealers && (
                                 <TabsContent value="sub-dealers">
                                     <Card>
@@ -512,7 +678,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                         </CardHeader>
                                         <CardContent>
                                             {subDealersLoading ? (
-                                                <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                                                <div className="flex justify-center items-center py-12"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
                                             ) : subDealers && subDealers.length > 0 ? (
                                                 <Table>
                                                     <TableHeader>

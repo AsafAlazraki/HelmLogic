@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -19,8 +20,6 @@ import { Separator } from './ui/separator';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const GST_RATE = 0.10;
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -118,11 +117,12 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
     </div>
 );
 
-function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
+function GstInputPair({ control, name, label, gstPercentage }: { control: any; name: string; label: string, gstPercentage: number }) {
     const { field, fieldState } = useController({ control, name, defaultValue: null });
     const [exclInput, setExclInput] = useState<string>('');
     const [inclInput, setInclInput] = useState<string>('');
     const activeInput = useRef<'excl' | 'incl' | null>(null);
+    const taxRate = gstPercentage / 100;
 
     useEffect(() => {
         if (activeInput.current) return;
@@ -136,8 +136,8 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
 
         const num = parseFloat(val);
         setExclInput(num.toFixed(2));
-        setInclInput((num * (1 + GST_RATE)).toFixed(2));
-    }, [field.value]);
+        setInclInput((num * (1 + taxRate)).toFixed(2));
+    }, [field.value, taxRate]);
 
     const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -153,7 +153,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 field.onChange(num);
-                setInclInput((num * (1 + GST_RATE)).toFixed(2));
+                setInclInput((num * (1 + taxRate)).toFixed(2));
             }
         }
     };
@@ -171,7 +171,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
         } else {
             const num = parseFloat(val);
             if (!isNaN(num)) {
-                const excl = Math.round((num / (1 + GST_RATE)) * 100) / 100;
+                const excl = Math.round((num / (1 + taxRate)) * 100) / 100;
                 field.onChange(excl);
                 setExclInput(excl.toFixed(2));
             }
@@ -184,7 +184,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
         if (val !== null && val !== undefined && !isNaN(parseFloat(val))) {
             const num = parseFloat(val);
             setExclInput(num.toFixed(2));
-            setInclInput((num * (1 + GST_RATE)).toFixed(2));
+            setInclInput((num * (1 + taxRate)).toFixed(2));
         }
     };
 
@@ -234,7 +234,9 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
     );
 }
 
-function PricingSummary({ pricing }: { pricing: any }) {
+function PricingSummary({ pricing, gstPercentage }: { pricing: any, gstPercentage: number }) {
+    const taxRate = gstPercentage / 100;
+    
     const renderPrice = (material: 'HYP' | 'PVC') => {
         const p = pricing?.[material];
         if (!p) return null;
@@ -247,8 +249,8 @@ function PricingSummary({ pricing }: { pricing: any }) {
 
         if (!hasSell && !hasCost) return null;
 
-        const sellIncl = hasSell ? (Number(sellExcl) * (1 + GST_RATE)) : 0;
-        const costIncl = hasCost ? (Number(costExcl) * (1 + GST_RATE)) : 0;
+        const sellIncl = hasSell ? (Number(sellExcl) * (1 + taxRate)) : 0;
+        const costIncl = hasCost ? (Number(costExcl) * (1 + taxRate)) : 0;
 
         return (
             <div className="flex items-center gap-2">
@@ -285,7 +287,7 @@ function PricingSummary({ pricing }: { pricing: any }) {
     );
 }
 
-function ColorVariantItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+function ColorVariantItem({ index, remove, gstPercentage }: { index: number; remove: (index: number) => void; gstPercentage: number }) {
   const { control } = useFormContext<ModelFormData>();
   const name = useWatch({ control, name: `colors.${index}.name` });
   const code = useWatch({ control, name: `colors.${index}.code` });
@@ -320,7 +322,7 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
                     </div>
                 </div>
 
-                <PricingSummary pricing={pricing} />
+                <PricingSummary pricing={pricing} gstPercentage={gstPercentage} />
             </div>
             
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-2" onClick={() => remove(index)}>
@@ -400,16 +402,16 @@ function ColorVariantItem({ index, remove }: { index: number; remove: (index: nu
                             <div className="p-3 border-l-2 border-primary bg-muted/5 space-y-3">
                                 <h4 className="font-black text-[10px] uppercase tracking-tighter text-primary">HYP Material</h4>
                                 <div className="grid grid-cols-1 gap-3">
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Factory Cost" />
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Retail Sell" />
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Retail Sell" gstPercentage={gstPercentage} />
                                 </div>
                             </div>
                             
                             <div className="p-3 border-l-2 border-primary bg-muted/5 space-y-3">
                                 <h4 className="font-black text-[10px] uppercase tracking-tighter text-primary">PVC Material</h4>
                                 <div className="grid grid-cols-1 gap-3">
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Factory Cost" />
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Retail Sell" />
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
+                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Retail Sell" gstPercentage={gstPercentage} />
                                 </div>
                             </div>
                         </div>
@@ -570,7 +572,7 @@ function MotorConfigurationsSection() {
     );
 }
 
-function OptionalFeatureItem({ index, remove }: { index: number; remove: (index: number) => void; }) {
+function OptionalFeatureItem({ index, remove, gstPercentage }: { index: number; remove: (index: number) => void; gstPercentage: number }) {
     const { control } = useFormContext<ModelFormData>();
     const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
     const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
@@ -641,8 +643,8 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
                             </div>
                             
                             <div className="grid grid-cols-1 gap-4">
-                                <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" />
-                                <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell" />
+                                <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
+                                <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell" gstPercentage={gstPercentage} />
                             </div>
                         </div>
                     </div>
@@ -759,7 +761,7 @@ function FeaturesSection() {
     );
 }
 
-export function HighfieldModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
+export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { model: any, isModuleView?: boolean, gstPercentage: number }) {
     const { control } = useFormContext<ModelFormData>();
     const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
@@ -775,7 +777,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                     />
                     <CollapsibleContent>
                         <CardContent className="space-y-4 pt-6">
-                            {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} /> ))}
+                            {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} gstPercentage={gstPercentage} /> ))}
                         </CardContent>
                     </CollapsibleContent>
                 </Card>
@@ -800,7 +802,7 @@ export function HighfieldModelEditor({ model, isModuleView }: { model: any, isMo
                                 <CardContent className="pt-6">
                                     <ScrollArea className="max-h-[500px] pr-4">
                                         <div className="grid grid-cols-1 gap-4">
-                                            {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} /> ))}
+                                            {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} gstPercentage={gstPercentage} /> ))}
                                         </div>
                                     </ScrollArea>
                                 </CardContent>

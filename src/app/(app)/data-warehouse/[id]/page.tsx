@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -16,7 +17,7 @@ import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -51,6 +52,7 @@ import { proxyFetch } from '@/actions/proxy-fetch';
 import { JsonDataVisualizer } from '@/components/json-data-visualizer';
 import { YamahaApiFetcher } from '@/components/yamaha-api-fetcher';
 import { analyzeJson } from '@/ai/flows/analyze-json-flow';
+import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 
 const formSchema = z.object({
   id: z.string(),
@@ -58,6 +60,7 @@ const formSchema = z.object({
   slug: z.string().nullable().optional(),
   vendorType: z.string().min(1, { message: 'Vendor type is required.' }),
   dataSource: z.string().min(1, { message: 'Data source is required.' }),
+  currency: z.string().default('AUD'),
   address: z.string().nullable().optional(),
   abn: z.string().nullable().optional(),
   logo: z.any().optional(),
@@ -895,6 +898,7 @@ export default function VendorDetailsPage() {
                 slug: createSlug(values.name),
                 vendorType: values.vendorType,
                 dataSource: values.dataSource,
+                currency: values.currency,
                 address: values.address || '',
                 abn: values.abn || '',
                 primaryContact: values.primaryContact || '',
@@ -1070,6 +1074,40 @@ export default function VendorDetailsPage() {
                                     </div>
 
                                     <div className="lg:col-span-1 space-y-8">
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Master Data Logic</CardTitle>
+                                                <CardDescription>Financial defaults for this vendor's data.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-6">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="currency"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="flex items-center gap-2">
+                                                                <Globe className="h-4 w-4 text-muted-foreground" />
+                                                                Master Data Currency
+                                                            </FormLabel>
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <FormControl>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Select currency" />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent>
+                                                                    {SUPPORTED_CURRENCIES.map(curr => (
+                                                                        <SelectItem key={curr.code} value={curr.code}>{curr.label}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <FormDescription>The currency used for all prices stored in this vendor's master data set.</FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </CardContent>
+                                        </Card>
                                         <Card>
                                             <CardHeader><CardTitle>Branding</CardTitle></CardHeader>
                                             <CardContent className="space-y-6">
