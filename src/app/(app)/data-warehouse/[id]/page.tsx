@@ -802,6 +802,7 @@ export default function VendorDetailsPage() {
     const isBoatBrand = vendor?.vendorType === 'Boat Brand';
     const isBulkSupplier = (vendor?.vendorType === 'Electronics Supplier' || vendor?.vendorType === 'Parts Wholesaler');
     const isYamaha = vendor?.slug === 'yamaha';
+    const isHighfield = vendor?.slug === 'highfield';
     const defaultTab = isBoatBrand ? "product-ranges" : (isBulkSupplier || isYamaha) ? "master-data" : "details";
     
     return (
@@ -818,6 +819,7 @@ export default function VendorDetailsPage() {
                     </div>
                     <TabsList>
                         {isBoatBrand && <TabsTrigger value="product-ranges">Product Ranges</TabsTrigger>}
+                        {isHighfield && <TabsTrigger value="poc">POC</TabsTrigger>}
                         {(isBulkSupplier || isYamaha) && <TabsTrigger value="master-data">Master Data Set</TabsTrigger>}
                         <TabsTrigger value="data-connection">Data Connection</TabsTrigger>
                         <TabsTrigger value="details">Details</TabsTrigger>
@@ -840,6 +842,26 @@ export default function VendorDetailsPage() {
                                     </CardContent>
                                 </Card>
                             )}
+                        </TabsContent>
+                    )}
+
+                    {isHighfield && (
+                        <TabsContent value="poc">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>POC - Highfield Experimental</CardTitle>
+                                    <CardDescription>Proof of Concept testing area for Highfield-specific data features.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/10">
+                                        <div className="text-center">
+                                            <TestTube2 className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-4" />
+                                            <p className="text-muted-foreground font-medium">Highfield POC workspace is active.</p>
+                                            <p className="text-sm text-muted-foreground">Ready for experimental modules.</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </TabsContent>
                     )}
 
