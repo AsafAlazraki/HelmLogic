@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { 
     Table, 
     TableBody, 
@@ -11,24 +11,16 @@ import {
     TableHeader, 
     TableRow 
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
     Loader2, 
     Search, 
     Plus, 
-    Settings2, 
-    Save, 
     Trash2, 
-    ArrowRightLeft, 
-    Globe, 
     DollarSign,
-    Calculator,
-    ChevronRight,
-    TrendingUp,
-    Percent,
-    AlertCircle
+    Percent
 } from 'lucide-react';
 import { 
     Select, 
@@ -47,11 +39,8 @@ import {
     DialogClose 
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency, getExchangeRate, convertCurrency } from '@/lib/currency-utils';
+import { formatCurrency, getExchangeRate } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { Badge } from './ui/badge';
 
 interface Brand {
     id: string;
@@ -69,7 +58,7 @@ interface Product {
 
 interface PriceLevelDefinition {
     id: string;
-    organizationId: string;
+    organisationId: string;
     name: string;
     calculationMethod: 'manual' | 'percentageOfBase';
     percentageModifier?: number;
@@ -79,7 +68,7 @@ interface PriceLevelDefinition {
 
 interface ProductPrice {
     id: string;
-    organizationId: string;
+    organisationId: string;
     productId: string;
     brandId: string;
     supplierCost: number;
@@ -90,21 +79,11 @@ interface ProductPrice {
     lastUpdated: any;
 }
 
-interface ProductPriceLevelValue {
-    id: string;
-    organizationProductPriceId: string;
-    priceLevelDefinitionId: string;
-    priceValue: number;
-    isManuallyOverridden: boolean;
-    lastUpdated: any;
-}
-
 export function PriceBookTable({ organisation }: { organisation: any }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
     const [isAddLevelOpen, setIsAddLevelOpen] = useState(false);
 
     // level form state
@@ -117,7 +96,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
     const brandsQuery = useMemoFirebase(() => collection(firestore, 'brands'), [firestore]);
     const { data: allBrands } = useCollection<Brand>(brandsQuery);
     
-    const subscribedBrandIds = organisation.subscribedBrandIds || [];
+    const subscribedBrandIds = organisation.dataWarehouseSubscriptions || [];
     const brands = useMemo(() => 
         allBrands?.filter(b => subscribedBrandIds.includes(b.id)) || [], 
     [allBrands, subscribedBrandIds]);
@@ -134,24 +113,24 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
 
     // Org Price Definitions
     const levelsQuery = useMemoFirebase(() => 
-        query(collection(firestore, `organizations/${organisation.id}/priceLevelDefinitions`)),
+        query(collection(firestore, `organisations/${organisation.id}/priceLevelDefinitions`)),
     [firestore, organisation.id]);
     const { data: levelDefinitions } = useCollection<PriceLevelDefinition>(levelsQuery);
 
     // Org Product Pricing
     const productPricesQuery = useMemoFirebase(() => 
-        query(collection(firestore, `organizations/${organisation.id}/productPrices`)),
+        query(collection(firestore, `organisations/${organisation.id}/productPrices`)),
     [firestore, organisation.id]);
     const { data: productPrices } = useCollection<ProductPrice>(productPricesQuery);
 
     // Ensure Sub Dealer Price Level exists if needed
     useEffect(() => {
-        if (organisation.hasSubDealers && levelDefinitions && levelDefinitions.length > 0) {
+        if (organisation.subDealersEnabled && levelDefinitions && levelDefinitions.length > 0) {
             const hasSubDealerLevel = levelDefinitions.some(l => l.isSubDealerPriceLevel);
             if (!hasSubDealerLevel) {
-                const levelsRef = collection(firestore, `organizations/${organisation.id}/priceLevelDefinitions`);
+                const levelsRef = collection(firestore, `organisations/${organisation.id}/priceLevelDefinitions`);
                 addDoc(levelsRef, {
-                    organizationId: organisation.id,
+                    organisationId: organisation.id,
                     name: 'Sub Dealer Price',
                     calculationMethod: 'percentageOfBase',
                     percentageModifier: 1.10,
@@ -165,9 +144,9 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
     const handleCreateLevel = async () => {
         if (!newLevelName.trim()) return;
         try {
-            const levelsRef = collection(firestore, `organizations/${organisation.id}/priceLevelDefinitions`);
+            const levelsRef = collection(firestore, `organisations/${organisation.id}/priceLevelDefinitions`);
             await addDoc(levelsRef, {
-                organizationId: organisation.id,
+                organisationId: organisation.id,
                 name: newLevelName,
                 calculationMethod: newLevelMethod,
                 percentageModifier: newLevelMethod === 'percentageOfBase' ? newLevelPercent / 100 : null,
@@ -184,7 +163,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
 
     const handleDeleteLevel = async (id: string) => {
         try {
-            await deleteDoc(doc(firestore, `organizations/${organisation.id}/priceLevelDefinitions`, id));
+            await deleteDoc(doc(firestore, `organisations/${organisation.id}/priceLevelDefinitions`, id));
             toast({ title: "Price Level Deleted" });
         } catch (e) {
             toast({ variant: 'destructive', title: "Delete Failed" });
@@ -195,19 +174,18 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
         const num = parseFloat(cost);
         const existingPrice = productPrices?.find(p => p.productId === productId);
         const docRef = existingPrice 
-            ? doc(firestore, `organizations/${organisation.id}/productPrices`, existingPrice.id)
-            : doc(collection(firestore, `organizations/${organisation.id}/productPrices`));
+            ? doc(firestore, `organisations/${organisation.id}/productPrices`, existingPrice.id)
+            : doc(collection(firestore, `organisations/${organisation.id}/productPrices`));
 
-        const brand = brands.find(b => b.id === brandId);
-        const sourceCurrency = organisation.defaultCurrency || 'AUD'; // Assuming org or brand logic here
+        const sourceCurrency = organisation.tradingCurrency || 'AUD';
 
         await setDoc(docRef, {
-            organizationId: organisation.id,
+            organisationId: organisation.id,
             productId,
             brandId,
             supplierCost: isNaN(num) ? 0 : num,
             supplierCostCurrency: sourceCurrency,
-            exchangeRateToBaseCurrency: getExchangeRate(sourceCurrency, organisation.defaultCurrency || 'AUD'),
+            exchangeRateToBaseCurrency: 1, // Assuming local entry for now
             baseMarginPercentage: existingPrice?.baseMarginPercentage || 0,
             customCostings: existingPrice?.customCostings || {},
             lastUpdated: serverTimestamp()
@@ -219,7 +197,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
         const existingPrice = productPrices?.find(p => p.productId === productId);
         if (!existingPrice) return;
 
-        const docRef = doc(firestore, `organizations/${organisation.id}/productPrices`, existingPrice.id);
+        const docRef = doc(firestore, `organisations/${organisation.id}/productPrices`, existingPrice.id);
         await setDoc(docRef, {
             baseMarginPercentage: isNaN(num) ? 0 : num,
             lastUpdated: serverTimestamp()
@@ -311,7 +289,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
                                     const price = productPrices?.find(p => p.productId === product.id);
                                     const cost = price?.supplierCost || 0;
                                     const margin = price?.baseMarginPercentage || 0;
-                                    const basePrice = cost / (1 - (margin / 100));
+                                    const basePrice = margin < 100 ? cost / (1 - (margin / 100)) : cost;
 
                                     return (
                                         <TableRow key={product.id} className="hover:bg-muted/20">
@@ -344,7 +322,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right font-black text-primary">
-                                                {formatCurrency(basePrice, organisation.defaultCurrency || 'AUD')}
+                                                {formatCurrency(basePrice, organisation.tradingCurrency || 'AUD')}
                                             </TableCell>
                                             {levelDefinitions?.map(level => {
                                                 let calculatedValue = 0;
@@ -355,7 +333,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
 
                                                 return (
                                                     <TableCell key={level.id} className="text-right font-bold bg-primary/5">
-                                                        {calculatedValue > 0 ? formatCurrency(calculatedValue, organisation.defaultCurrency || 'AUD') : '-'}
+                                                        {calculatedValue > 0 ? formatCurrency(calculatedValue, organisation.tradingCurrency || 'AUD') : '-'}
                                                     </TableCell>
                                                 );
                                             })}
@@ -374,7 +352,6 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
                 </CardContent>
             </Card>
 
-            {/* Level Creation Dialog */}
             <Dialog open={isAddLevelOpen} onOpenChange={setIsAddLevelOpen}>
                 <DialogContent>
                     <DialogHeader>
