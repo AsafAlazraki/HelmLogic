@@ -27,7 +27,8 @@ import {
     LayoutDashboard,
     PlusCircle,
     Pencil,
-    Trash2
+    Trash2,
+    DollarSign
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
@@ -47,6 +48,7 @@ import { OrganisationModuleConfig } from '@/components/organisation-module-confi
 import { InventoryList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { Label } from '@/components/ui/label';
+import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 
 interface Vendor {
     id: string;
@@ -54,6 +56,7 @@ interface Vendor {
     logoUrl?: string;
     vendorType: string;
     slug?: string;
+    currency?: string;
 }
 
 interface Organisation {
@@ -66,6 +69,11 @@ interface Organisation {
     subDealersEnabled?: boolean;
     parentOrganisationId?: string;
     permissions?: Record<string, Record<string, boolean>>;
+    tradingCurrency?: string;
+    gstPercentage?: number;
+    brandMargins?: Record<string, number>;
+    rangeMargins?: Record<string, number>;
+    modelMargins?: Record<string, number>;
 }
 
 interface Range {
@@ -358,7 +366,7 @@ const formSchema = z.object({
   associatedVendorIds: z.array(z.string()).default([]),
 });
 
-function ModuleConfigurationBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: 'ranges' | 'models' | 'bmt' | 'quote' | 'operations', onBreadcrumbClick: (level: 'ranges' | 'models') => void }) {
+function ModuleConfigurationBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: 'ranges' | 'models' | 'bmt' | 'quote' | 'operations' | 'pricing', onBreadcrumbClick: (level: 'ranges' | 'models') => void }) {
     return (
         <div className="flex items-center text-sm text-muted-foreground">
             <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
@@ -386,7 +394,7 @@ export default function ModuleDetailsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
 
-    const [view, setView] = useState<'ranges' | 'models' | 'bmt' | 'quote' | 'operations'>('ranges');
+    const [view, setView] = useState<'ranges' | 'models' | 'bmt' | 'quote' | 'operations' | 'pricing'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [isChoiceDialogOpen, setIsChoiceDialogOpen] = useState(false);
@@ -666,7 +674,7 @@ export default function ModuleDetailsPage() {
     const isImpersonating = viewContextOrgId !== null && (isAdmin || viewContextOrgId !== userProfile?.organisationId);
     
     const showSubDealersTab = isViewingOrg && dashboardOrg?.subDealersEnabled && userPermissions.can_view_subdealers;
-    const tabGridCols = (isAdmin && !viewContextOrgId) ? "grid-cols-4" : showSubDealersTab ? "grid-cols-5" : "grid-cols-4";
+    const tabGridCols = (isAdmin && !viewContextOrgId) ? "grid-cols-5" : showSubDealersTab ? "grid-cols-6" : "grid-cols-5";
 
     return (
         <div className="space-y-4">
@@ -713,6 +721,7 @@ export default function ModuleDetailsPage() {
                     {isViewingOrg && <TabsTrigger value="dashboard"><LayoutDashboard className="h-4 w-4 mr-2" /> Dashboard</TabsTrigger>}
                     <TabsTrigger value="bmt"><Wrench className="h-4 w-4 mr-2" /> BMT</TabsTrigger>
                     <TabsTrigger value="operations"><ClipboardList className="h-4 w-4 mr-2" /> Operations</TabsTrigger>
+                    {isViewingOrg && userPermissions.can_access_settings && <TabsTrigger value="pricing"><DollarSign className="h-4 w-4 mr-2" /> Pricing</TabsTrigger>}
                     {isAdmin && !viewContextOrgId && <TabsTrigger value="organisations"><Building className="h-4 w-4 mr-2" /> Organisations</TabsTrigger>}
                     {isAdmin && !viewContextOrgId && <TabsTrigger value="settings"><Settings2 className="h-4 w-4 mr-2" /> Settings</TabsTrigger>}
                     {showSubDealersTab && <TabsTrigger value="sub-dealers"><Users className="h-4 w-4 mr-2" /> Sub Dealers</TabsTrigger>}
@@ -874,6 +883,20 @@ export default function ModuleDetailsPage() {
                 <TabsContent value="operations">
                     <Card><CardHeader><CardTitle>Operations</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Operations features for {currentContextLabel} coming soon.</p></CardContent></Card>
                 </TabsContent>
+
+                {isViewingOrg && (
+                    <TabsContent value="pricing">
+                        {dashboardOrg && mainVendor ? (
+                            <ModulePricingDashboard 
+                                module={moduleData} 
+                                organisation={dashboardOrg as Organisation} 
+                                vendor={mainVendor} 
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                        )}
+                    </TabsContent>
+                )}
 
                  {isAdmin && !viewContextOrgId && (
                     <TabsContent value="organisations">

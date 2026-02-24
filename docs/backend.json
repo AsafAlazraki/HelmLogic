@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -98,6 +97,20 @@
         "brandMargins": {
           "type": "object",
           "description": "Required margin per subscribed brand (vendorId -> margin percentage).",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "rangeMargins": {
+          "type": "object",
+          "description": "Required margin per range (rangeId -> margin percentage).",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "modelMargins": {
+          "type": "object",
+          "description": "Required margin per model (modelId -> margin percentage).",
           "additionalProperties": {
             "type": "number"
           }
