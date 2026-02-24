@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, PlusCircle, Trash2, Sailboat, Pencil, X, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -260,7 +260,7 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
                                 <div className="w-32 flex-shrink-0">
                                     {addRangeImagePreview ? (
                                         <div className="relative aspect-square w-full overflow-hidden rounded-md group">
-                                             Image src={addRangeImagePreview} alt="New Range Preview" fill className="object-cover" sizes="128px" />
+                                            <Image src={addRangeImagePreview} alt="New Range Preview" fill className="object-cover" sizes="128px" />
                                             <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => { setAddRangeImage(null); setAddRangeImagePreview(null); }}>
                                                 <X className="h-4 w-4" />
                                             </Button>
@@ -370,7 +370,14 @@ export function StacerDataStructure({ vendorId, vendorSlugOrId }: { vendorId: st
                                 <FormItem><Label>Range Name</Label><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={editForm.control} name="image" render={({ field }) => (
-                                <FormItem><Label>Range Image</Label><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormDescription>Upload a new image to replace the existing one.</FormDescription><FormMessage /></FormItem>
+                                <FormItem>
+                                    <Label>Range Image</Label>
+                                    <FormControl>
+                                        <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} />
+                                    </FormControl>
+                                    <FormDescription>Upload a new image to replace the existing one.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
                             )} />
                             <DialogFooter>
                                 <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
