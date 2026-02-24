@@ -135,7 +135,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
         }
 
         const num = parseFloat(val);
-        setExclInput(num.toString());
+        setExclInput(num.toFixed(2));
         setInclInput((num * (1 + GST_RATE)).toFixed(2));
     }, [field.value]);
 
@@ -173,7 +173,7 @@ function GstInputPair({ control, name, label }: { control: any; name: string; la
             if (!isNaN(num)) {
                 const excl = Math.round((num / (1 + GST_RATE)) * 100) / 100;
                 field.onChange(excl);
-                setExclInput(excl.toString());
+                setExclInput(excl.toFixed(2));
             }
         }
     };
@@ -648,6 +648,24 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
 function SpecsSection() {
     const { control } = useFormContext<ModelFormData>();
     const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
+    const [bulkSpecs, setBulkSpecs] = useState('');
+
+    const handleBulkImport = () => {
+        const lines = bulkSpecs.split('\n').filter(line => line.trim() !== '');
+        const newSpecs = lines.map(line => {
+            const separatorIndex = line.indexOf(':');
+            let label = line.trim();
+            let value = '';
+            if (separatorIndex !== -1) {
+                label = line.substring(0, separatorIndex).trim();
+                value = line.substring(separatorIndex + 1).trim();
+            }
+            return { id: `spec-${Date.now()}-${Math.random()}`, label, value };
+        });
+
+        append(newSpecs);
+        setBulkSpecs('');
+    };
 
     return (
         <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
@@ -667,6 +685,25 @@ function SpecsSection() {
                                     <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                 </div>
                             ))}
+                        </div>
+                        <Separator />
+                        <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import Specs</Label>
+                            <Textarea 
+                                placeholder="Paste specs (e.g. Length: 5.4m) one per line..." 
+                                className="bg-background min-h-[100px]" 
+                                value={bulkSpecs} 
+                                onChange={(e) => setBulkSpecs(e.target.value)} 
+                            />
+                            <Button 
+                                type="button" 
+                                variant="secondary" 
+                                size="sm" 
+                                className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" 
+                                onClick={handleBulkImport}
+                            >
+                                Append Bulk Specs
+                            </Button>
                         </div>
                     </CardContent>
                 </CollapsibleContent>
@@ -704,7 +741,7 @@ function FeaturesSection() {
                             <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
                             <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
                                 const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-                                replace([...(watch('standardFeatures') || []), ...newFeatures]); 
+                                append(newFeatures); 
                                 setBulkFeatures(''); 
                             }}>Append Bulk Items</Button>
                         </div>
