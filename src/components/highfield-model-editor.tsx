@@ -598,45 +598,52 @@ function OptionalFeatureItem({ index, remove }: { index: number; remove: (index:
             </div>
             <CollapsibleContent>
                 <div className="p-4 space-y-6">
-                    <FormField
-                        control={control}
-                        name={`optionalFeatures.${index}.imageUrl`}
-                        render={({ field }) => (
-                            <div className="relative aspect-video w-full overflow-hidden rounded-md border-2 border-dashed bg-muted/20">
-                                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                                {imageUrl ? (
-                                    <>
-                                        <Image src={imageUrl} alt="Feature" fill className="object-cover" />
-                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 rounded-full shadow-lg" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button>
-                                    </>
-                                ) : (
-                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                        <Upload className="w-5 h-5 text-muted-foreground" />
-                                        <span className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Upload Image</span>
-                                        <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file && storage) {
-                                                setIsUploading(true);
-                                                try {
-                                                    const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
-                                                    field.onChange(url);
-                                                } finally { setIsUploading(false); }
-                                            }
-                                        }} /></FormControl>
-                                    </label>
+                    <div className="flex flex-row gap-4 items-start">
+                        <div className="w-[120px] shrink-0">
+                            <FormField
+                                control={control}
+                                name={`optionalFeatures.${index}.imageUrl`}
+                                render={({ field }) => (
+                                    <div className="relative aspect-square w-full overflow-hidden rounded-md border-2 border-dashed bg-muted/20 group/feat-img">
+                                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                                        {imageUrl ? (
+                                            <>
+                                                <Image src={imageUrl} alt="Feature" fill className="object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/feat-img:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Button type="button" variant="destructive" size="xs" className="h-6 text-[9px] px-2" onClick={() => field.onChange(null)}>Remove</Button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                                <Upload className="w-4 h-4 text-muted-foreground" />
+                                                <span className="text-[8px] text-muted-foreground mt-1 uppercase font-black">Upload</span>
+                                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file && storage) {
+                                                        setIsUploading(true);
+                                                        try {
+                                                            const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`);
+                                                            field.onChange(url);
+                                                        } finally { setIsUploading(false); }
+                                                    }
+                                                }} /></FormControl>
+                                            </label>
+                                        )}
+                                    </div>
                                 )}
-                            </div>
-                        )}
-                    />
-
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-3">
-                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-10 font-bold" {...field} /></FormControl></FormItem> )} />
-                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-1"><Hash className="h-2 w-2" />Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-10 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
+                            />
                         </div>
-                        <div className="grid grid-cols-1 gap-6">
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Cost" />
-                            <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Sell" />
+
+                        <div className="flex-1 space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-9 text-xs font-bold" {...field} /></FormControl></FormItem> )} />
+                                <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
+                            </div>
+                            
+                            <div className="grid grid-cols-1 gap-4">
+                                <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" />
+                                <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell" />
+                            </div>
                         </div>
                     </div>
                 </div>
