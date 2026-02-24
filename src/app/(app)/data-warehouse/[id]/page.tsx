@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -11,9 +10,7 @@ import Link from 'next/link';
 import * as XLSX from 'xlsx';
 
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -241,13 +238,11 @@ function ApiDataFetcher() {
             const result = await proxyFetch(url);
 
             if (result.success) {
-                // Try parsing if it's a string, might be stringified JSON
                 if (typeof result.data === 'string') {
                     try {
                         const parsed = JSON.parse(result.data);
                         setJsonData(parsed);
                     } catch (e) {
-                        // Not a JSON string, just display as text
                         setJsonData(result.data);
                     }
                 } else {
@@ -399,7 +394,6 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
             const subcollectionRef = collection(firestore, masterDataSetPath);
 
-            // Batch delete old documents
             const oldDocsQuery = query(subcollectionRef);
             const oldDocsSnapshot = await getDocs(oldDocsQuery);
             if (!oldDocsSnapshot.empty) {
@@ -413,7 +407,6 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             }
             
             setSaveStatus('Saving new data...');
-            // Batch write new documents
             const writeBatchSize = 500;
             for (let i = 0; i < parsedData.length; i += writeBatchSize) {
                 const chunk = parsedData.slice(i, i + writeBatchSize);
