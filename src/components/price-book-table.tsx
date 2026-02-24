@@ -1,0 +1,431 @@
+'use client';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, setDoc, addDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { 
+    Table, 
+    TableBody, 
+    TableCell, 
+    TableHead, 
+    TableHeader, 
+    TableRow 
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { 
+    Loader2, 
+    Search, 
+    Plus, 
+    Settings2, 
+    Save, 
+    Trash2, 
+    ArrowRightLeft, 
+    Globe, 
+    DollarSign,
+    Calculator,
+    ChevronRight,
+    TrendingUp,
+    Percent,
+    AlertCircle
+} from 'lucide-react';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogDescription, 
+    DialogFooter, 
+    DialogHeader, 
+    DialogTitle,
+    DialogClose 
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { formatCurrency, getExchangeRate, convertCurrency } from '@/lib/currency-utils';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
+
+interface Brand {
+    id: string;
+    name: string;
+    description?: string;
+}
+
+interface Product {
+    id: string;
+    brandId: string;
+    name: string;
+    sku: string;
+    description?: string;
+}
+
+interface PriceLevelDefinition {
+    id: string;
+    organizationId: string;
+    name: string;
+    calculationMethod: 'manual' | 'percentageOfBase';
+    percentageModifier?: number;
+    basePriceSource?: 'supplierCost' | 'costPlusMargin' | 'totalCostIncludingCustoms';
+    isSubDealerPriceLevel: boolean;
+}
+
+interface ProductPrice {
+    id: string;
+    organizationId: string;
+    productId: string;
+    brandId: string;
+    supplierCost: number;
+    supplierCostCurrency: string;
+    exchangeRateToBaseCurrency: number;
+    baseMarginPercentage: number;
+    customCostings: Record<string, number>;
+    lastUpdated: any;
+}
+
+interface ProductPriceLevelValue {
+    id: string;
+    organizationProductPriceId: string;
+    priceLevelDefinitionId: string;
+    priceValue: number;
+    isManuallyOverridden: boolean;
+    lastUpdated: any;
+}
+
+export function PriceBookTable({ organisation }: { organisation: any }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [isAddLevelOpen, setIsAddLevelOpen] = useState(false);
+
+    // level form state
+    const [newLevelName, setNewLevelName] = useState('');
+    const [newLevelMethod, setNewLevelMethod] = useState<'manual' | 'percentageOfBase'>('manual');
+    const [newLevelPercent, setNewLevelPercent] = useState<number>(100);
+    const [newLevelSource, setNewLevelBaseSource] = useState<PriceLevelDefinition['basePriceSource']>('costPlusMargin');
+
+    // Subscriptions & Brands
+    const brandsQuery = useMemoFirebase(() => collection(firestore, 'brands'), [firestore]);
+    const { data: allBrands } = useCollection<Brand>(brandsQuery);
+    
+    const subscribedBrandIds = organisation.subscribedBrandIds || [];
+    const brands = useMemo(() => 
+        allBrands?.filter(b => subscribedBrandIds.includes(b.id)) || [], 
+    [allBrands, subscribedBrandIds]);
+
+    // Products
+    const productsQuery = useMemoFirebase(() => {
+        if (selectedBrandId === 'all') {
+            if (subscribedBrandIds.length === 0) return null;
+            return query(collection(firestore, 'products'), where('brandId', 'in', subscribedBrandIds));
+        }
+        return query(collection(firestore, 'products'), where('brandId', '==', selectedBrandId));
+    }, [firestore, selectedBrandId, subscribedBrandIds]);
+    const { data: products, loading: productsLoading } = useCollection<Product>(productsQuery);
+
+    // Org Price Definitions
+    const levelsQuery = useMemoFirebase(() => 
+        query(collection(firestore, `organizations/${organisation.id}/priceLevelDefinitions`)),
+    [firestore, organisation.id]);
+    const { data: levelDefinitions } = useCollection<PriceLevelDefinition>(levelsQuery);
+
+    // Org Product Pricing
+    const productPricesQuery = useMemoFirebase(() => 
+        query(collection(firestore, `organizations/${organisation.id}/productPrices`)),
+    [firestore, organisation.id]);
+    const { data: productPrices } = useCollection<ProductPrice>(productPricesQuery);
+
+    // Ensure Sub Dealer Price Level exists if needed
+    useEffect(() => {
+        if (organisation.hasSubDealers && levelDefinitions && levelDefinitions.length > 0) {
+            const hasSubDealerLevel = levelDefinitions.some(l => l.isSubDealerPriceLevel);
+            if (!hasSubDealerLevel) {
+                const levelsRef = collection(firestore, `organizations/${organisation.id}/priceLevelDefinitions`);
+                addDoc(levelsRef, {
+                    organizationId: organisation.id,
+                    name: 'Sub Dealer Price',
+                    calculationMethod: 'percentageOfBase',
+                    percentageModifier: 1.10,
+                    basePriceSource: 'costPlusMargin',
+                    isSubDealerPriceLevel: true
+                });
+            }
+        }
+    }, [organisation, levelDefinitions, firestore]);
+
+    const handleCreateLevel = async () => {
+        if (!newLevelName.trim()) return;
+        try {
+            const levelsRef = collection(firestore, `organizations/${organisation.id}/priceLevelDefinitions`);
+            await addDoc(levelsRef, {
+                organizationId: organisation.id,
+                name: newLevelName,
+                calculationMethod: newLevelMethod,
+                percentageModifier: newLevelMethod === 'percentageOfBase' ? newLevelPercent / 100 : null,
+                basePriceSource: newLevelMethod === 'percentageOfBase' ? newLevelSource : null,
+                isSubDealerPriceLevel: false
+            });
+            toast({ title: "Price Level Created" });
+            setIsAddLevelOpen(false);
+            setNewLevelName('');
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Failed to create price level" });
+        }
+    };
+
+    const handleDeleteLevel = async (id: string) => {
+        try {
+            await deleteDoc(doc(firestore, `organizations/${organisation.id}/priceLevelDefinitions`, id));
+            toast({ title: "Price Level Deleted" });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Delete Failed" });
+        }
+    };
+
+    const updateProductCost = async (productId: string, brandId: string, cost: string) => {
+        const num = parseFloat(cost);
+        const existingPrice = productPrices?.find(p => p.productId === productId);
+        const docRef = existingPrice 
+            ? doc(firestore, `organizations/${organisation.id}/productPrices`, existingPrice.id)
+            : doc(collection(firestore, `organizations/${organisation.id}/productPrices`));
+
+        const brand = brands.find(b => b.id === brandId);
+        const sourceCurrency = organisation.defaultCurrency || 'AUD'; // Assuming org or brand logic here
+
+        await setDoc(docRef, {
+            organizationId: organisation.id,
+            productId,
+            brandId,
+            supplierCost: isNaN(num) ? 0 : num,
+            supplierCostCurrency: sourceCurrency,
+            exchangeRateToBaseCurrency: getExchangeRate(sourceCurrency, organisation.defaultCurrency || 'AUD'),
+            baseMarginPercentage: existingPrice?.baseMarginPercentage || 0,
+            customCostings: existingPrice?.customCostings || {},
+            lastUpdated: serverTimestamp()
+        }, { merge: true });
+    };
+
+    const updateProductMargin = async (productId: string, brandId: string, margin: string) => {
+        const num = parseFloat(margin);
+        const existingPrice = productPrices?.find(p => p.productId === productId);
+        if (!existingPrice) return;
+
+        const docRef = doc(firestore, `organizations/${organisation.id}/productPrices`, existingPrice.id);
+        await setDoc(docRef, {
+            baseMarginPercentage: isNaN(num) ? 0 : num,
+            lastUpdated: serverTimestamp()
+        }, { merge: true });
+    };
+
+    const filteredProducts = useMemo(() => {
+        if (!products) return [];
+        const lower = searchTerm.toLowerCase();
+        return products.filter(p => 
+            p.name.toLowerCase().includes(lower) || 
+            p.sku.toLowerCase().includes(lower)
+        );
+    }, [products, searchTerm]);
+
+    if (productsLoading) {
+        return <div className="flex justify-center p-24"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+    }
+
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle>Master Price Book</CardTitle>
+                            <CardDescription>Manage all product pricing across your subscribed brands.</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={() => setIsAddLevelOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" /> Add Price Level
+                            </Button>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search SKU or Product Name..." 
+                                className="pl-9"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <Select value={selectedBrandId} onValueChange={setSelectedBrandId}>
+                            <SelectTrigger className="w-full md:w-[240px]">
+                                <SelectValue placeholder="All Brands" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Subscribed Brands</SelectItem>
+                                {brands.map(b => (
+                                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="rounded-md border overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="w-[200px]">Product / SKU</TableHead>
+                                    <TableHead className="text-right">Supplier Cost</TableHead>
+                                    <TableHead className="text-right">Margin (%)</TableHead>
+                                    <TableHead className="text-right font-bold">Base Price</TableHead>
+                                    {levelDefinitions?.map(level => (
+                                        <TableHead key={level.id} className="text-right bg-primary/5 group">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <span>{level.name}</span>
+                                                {!level.isSubDealerPriceLevel && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={() => handleDeleteLevel(level.id)}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </TableHead>
+                                    ))}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredProducts.length > 0 ? filteredProducts.map(product => {
+                                    const price = productPrices?.find(p => p.productId === product.id);
+                                    const cost = price?.supplierCost || 0;
+                                    const margin = price?.baseMarginPercentage || 0;
+                                    const basePrice = cost / (1 - (margin / 100));
+
+                                    return (
+                                        <TableRow key={product.id} className="hover:bg-muted/20">
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm truncate">{product.name}</span>
+                                                    <span className="text-[10px] font-mono text-muted-foreground uppercase">{product.sku}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="p-2">
+                                                <div className="relative w-32 ml-auto">
+                                                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                                    <Input 
+                                                        type="number"
+                                                        defaultValue={price?.supplierCost ?? ''}
+                                                        onBlur={(e) => updateProductCost(product.id, product.brandId, e.target.value)}
+                                                        className="h-8 text-right pl-6"
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="p-2">
+                                                <div className="relative w-24 ml-auto">
+                                                    <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                                    <Input 
+                                                        type="number"
+                                                        defaultValue={price?.baseMarginPercentage ?? ''}
+                                                        onBlur={(e) => updateProductMargin(product.id, product.brandId, e.target.value)}
+                                                        className="h-8 text-center pr-6"
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-black text-primary">
+                                                {formatCurrency(basePrice, organisation.defaultCurrency || 'AUD')}
+                                            </TableCell>
+                                            {levelDefinitions?.map(level => {
+                                                let calculatedValue = 0;
+                                                if (level.calculationMethod === 'percentageOfBase') {
+                                                    const baseSource = level.basePriceSource === 'supplierCost' ? cost : basePrice;
+                                                    calculatedValue = baseSource * (level.percentageModifier || 1);
+                                                }
+
+                                                return (
+                                                    <TableCell key={level.id} className="text-right font-bold bg-primary/5">
+                                                        {calculatedValue > 0 ? formatCurrency(calculatedValue, organisation.defaultCurrency || 'AUD') : '-'}
+                                                    </TableCell>
+                                                );
+                                            })}
+                                        </TableRow>
+                                    );
+                                }) : (
+                                    <TableRow>
+                                        <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                                            {productsLoading ? "Loading products..." : "No products found for this selection."}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Level Creation Dialog */}
+            <Dialog open={isAddLevelOpen} onOpenChange={setIsAddLevelOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Create New Price Level</DialogTitle>
+                        <DialogDescription>Add a new pricing tier to your book. This will appear as a column in the table.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Level Name</Label>
+                            <Input placeholder="e.g. Wholesale Tier 1" value={newLevelName} onChange={e => setNewLevelName(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Calculation Method</Label>
+                            <Select value={newLevelMethod} onValueChange={(v: any) => setNewLevelMethod(v)}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="manual">Manual Entry</SelectItem>
+                                    <SelectItem value="percentageOfBase">Percentage of Base</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {newLevelMethod === 'percentageOfBase' && (
+                            <>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Percentage (%)</Label>
+                                        <Input type="number" value={newLevelPercent} onChange={e => setNewLevelPercent(parseFloat(e.target.value))} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Base Source</Label>
+                                        <Select value={newLevelSource} onValueChange={(v: any) => setNewLevelBaseSource(v)}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="supplierCost">Supplier Cost</SelectItem>
+                                                <SelectItem value="costPlusMargin">Cost + Margin (Base Price)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground italic">
+                                    Formula: {newLevelSource === 'supplierCost' ? 'Supplier Cost' : 'Base Price'} x {newLevelPercent}%
+                                </p>
+                            </>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                        <Button onClick={handleCreateLevel} disabled={!newLevelName.trim()}>Create Level</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}

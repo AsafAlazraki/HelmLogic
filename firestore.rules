@@ -17,20 +17,6 @@ service cloud.firestore {
      * - /organizations/{organizationId}/productPrices: Core product costing (supplier cost, margins).
      * - /organizations/{organizationId}/productPrices/.../priceLevelValues: Final calculated/manual prices.
      * - /brands & /products: Global reference data shared across all organizations.
-     *
-     * Key Security Decisions:
-     * - Membership Map: Organization documents are expected to contain a 'members' map 
-     *   (e.g., { 'uid_123': 'admin' }) to control access to the organization's entire tree.
-     * - Read-Only Reference Data: Brands and Products are globally readable by any 
-     *   authenticated user but cannot be modified via the client-side SDK.
-     * - Path-Based Authorization: By nesting all price book data under the organization path, 
-     *   we ensure clear ownership and simplified permission inheritance.
-     *
-     * Denormalization for Authorization:
-     * To support Query-Agnostic Permissions (QAPs) and avoid complex 'get' calls during list operations, 
-     * critical fields like 'organizationId' and 'brandId' are denormalized onto child documents.
-     * This allows the rules to verify that users only query data they are authorized to see 
-     * based on their organization membership.
      */
 
     // --- GLOBAL HELPER FUNCTIONS ---
@@ -40,9 +26,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /** @description Checks if the user is a member of a specific organization by looking up the root document. */
+    /** @description Checks if the user is a member of a specific organization. */
     function isOrgMember(orgId) {
-      return isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.members);
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/organizations/$(orgId)) && request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.members) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId)
+      );
     }
 
     /** @description Checks if the user is a member and the document being modified exists. */
@@ -53,11 +42,16 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     /**
+     * @description Rules for User Profiles.
+     */
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow list, delete: if false;
+    }
+
+    /**
      * @description Rules for Global Brands. Reference data for all users.
-     * @path /brands/{brandId}
-     * @allow (get) Any signed-in user viewing brand details.
-     * @deny (create) Any user trying to add a brand (Admin only via Backend).
-     * @principle Public authenticated read, write restricted to system processes.
      */
     match /brands/{brandId} {
       allow get, list: if isSignedIn();
@@ -66,10 +60,6 @@ service cloud.firestore {
 
     /**
      * @description Rules for Global Products. Reference data for all users.
-     * @path /products/{productId}
-     * @allow (list) A user searching the global product catalog.
-     * @deny (delete) A user attempting to remove a product.
-     * @principle Public authenticated read, write restricted to system processes.
      */
     match /products/{productId} {
       allow get, list: if isSignedIn();
@@ -78,25 +68,17 @@ service cloud.firestore {
 
     /**
      * @description Rules for Organizations. Root of the multi-tenant hierarchy.
-     * @path /organizations/{organizationId}
-     * @allow (get) A member viewing their organization settings.
-     * @deny (list) A user trying to crawl a list of all organizations.
-     * @principle Path-based ownership and restricted discovery.
      */
     match /organizations/{organizationId} {
-      allow get: if isSignedIn() && (request.auth.uid in resource.data.members);
+      allow get: if isSignedIn() && (request.auth.uid == userId || isOrgMember(organizationId));
       allow list: if false;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (request.auth.uid in resource.data.members) && resource != null;
-      allow delete: if false; // Destructive organization deletion is a high-risk operation.
+      allow update: if isSignedIn() && isOrgMember(organizationId);
+      allow delete: if false; 
     }
 
     /**
-     * @description Rules for custom Price Level Definitions (e.g., Retail, Wholesale).
-     * @path /organizations/{organizationId}/priceLevelDefinitions/{priceLevelDefinitionId}
-     * @allow (create) An org member defining a new 'Sub Dealer' price level.
-     * @deny (update) A user from Org B trying to edit prices for Org A.
-     * @principle Relational integrity and organization membership enforcement.
+     * @description Rules for custom Price Level Definitions.
      */
     match /organizations/{organizationId}/priceLevelDefinitions/{priceLevelDefinitionId} {
       allow get, list: if isOrgMember(organizationId);
@@ -106,11 +88,7 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the core Organization Product Prices (costs, margins).
-     * @path /organizations/{organizationId}/productPrices/{organizationProductPriceId}
-     * @allow (list) A user filtering their price book by brandId.
-     * @deny (create) A user creating a price record with a mismatched organizationId.
-     * @principle Authorization Independence via denormalized organizationId.
+     * @description Rules for the core Organization Product Prices.
      */
     match /organizations/{organizationId}/productPrices/{organizationProductPriceId} {
       allow get, list: if isOrgMember(organizationId);
@@ -120,11 +98,7 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for individual Price Level Values (the final price for a tier).
-     * @path /organizations/{organizationId}/productPrices/{organizationProductPriceId}/priceLevelValues/{priceLevelValueId}
-     * @allow (update) An org member manually overriding a calculated price.
-     * @deny (get) A user trying to access price values for a different organization.
-     * @principle Strict subcollection inheritance and path verification.
+     * @description Rules for individual Price Level Values.
      */
     match /organizations/{organizationId}/productPrices/{organizationProductPriceId}/priceLevelValues/{priceLevelValueId} {
       allow get, list: if isOrgMember(organizationId);
