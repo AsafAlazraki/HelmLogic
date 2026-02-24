@@ -3,11 +3,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, writeBatch, doc, setDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, writeBatch, doc, setDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,10 +15,10 @@ import { createSlug } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, PlusCircle, Trash2, Sailboat, Pencil, X, ChevronDown } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Sailboat, Pencil, X, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormMessage, FormDescription } from '@/components/ui/form';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -32,6 +31,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Range {
     id: string;
@@ -185,6 +190,30 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
         }
     };
 
+    const handleMoveRange = async (index: number, direction: 'up' | 'down') => {
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= ranges.length) return;
+
+        const range1 = ranges[index];
+        const range2 = ranges[newIndex];
+
+        const batch = writeBatch(firestore);
+        
+        const ref1 = doc(firestore, `data-warehouse/${vendorId}/ranges`, range1.id);
+        batch.update(ref1, { order: range2.order ?? newIndex });
+
+        const ref2 = doc(firestore, `data-warehouse/${vendorId}/ranges`, range2.id);
+        batch.update(ref2, { order: range1.order ?? index });
+
+        try {
+            await batch.commit();
+            toast({ title: 'Order updated' });
+        } catch(error) {
+            console.error("Failed to update order:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update order.' });
+        }
+    };
+
     const handleDeleteRange = async () => {
         if (!rangeToDelete) return;
         try {
@@ -267,7 +296,7 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                     <CardContent className="pt-6">
                         {ranges && ranges.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {ranges.map((range) => (
+                                {ranges.map((range, index) => (
                                     <Card key={range.id} className="group relative overflow-hidden flex flex-col h-full transition-all duration-300 ease-in-out hover:border-primary hover:shadow-xl hover:-translate-y-1">
                                         <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                             <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/50 hover:bg-primary/10 hover:text-primary" onClick={() => { setEditingRange(range); setIsEditDialogOpen(true); }}>
@@ -278,7 +307,7 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                                             </Button>
                                         </div>
 
-                                        <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${range.slug || range.id}`} className="block h-full">
+                                        <Link href={`/data-warehouse/${vendorSlugOrId}/ranges/${range.slug || range.id}`} className="block flex-grow">
                                             <div className="h-40 bg-secondary relative">
                                                 {range.imageUrl ? (
                                                     <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" sizes="(max-width: 768px) 50vw, 25vw" />
@@ -289,9 +318,31 @@ export function JeanneauDataStructure({ vendorId, vendorSlugOrId }: { vendorId: 
                                                 )}
                                             </div>
                                             <CardHeader>
-                                                <CardTitle className="text-lg">{range.name}</CardTitle>
+                                                <CardTitle className="text-lg text-center">{range.name}</CardTitle>
                                             </CardHeader>
                                         </Link>
+                                        <CardFooter className="p-2 pt-0 border-t bg-muted/5 flex justify-center gap-1">
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveRange(index, 'up')} disabled={index === 0}>
+                                                            <ArrowUp className="h-3 w-3" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>Move Up</TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveRange(index, 'down')} disabled={index === ranges.length - 1}>
+                                                            <ArrowDown className="h-3 w-3" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>Move Down</TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </CardFooter>
                                     </Card>
                                 ))}
                             </div>
