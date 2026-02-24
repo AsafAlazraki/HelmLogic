@@ -3,9 +3,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * HELMLOGIC PRICE BOOK SECURITY RULES
+     * HELMLOGIC SECURITY RULES
      *
-     * Multi-tenant organization model with global reference data.
+     * Global Admin bypass + Multi-tenant organization model.
      */
 
     // --- GLOBAL HELPER FUNCTIONS ---
@@ -15,53 +15,60 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /** @description Checks if the user has the HelmLogic Admin role. */
+    /** @description Checks if the user has the HelmLogic Admin role in their profile. */
     function isAdmin() {
       return isSignedIn() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('appRole', '') == 'HelmLogic Admin';
     }
 
     /** @description Checks if the user is a member of a specific organisation or a global admin. */
     function isOrgMember(orgId) {
       return isSignedIn() && (
         isAdmin() ||
-        (exists(/databases/$(database)/documents/organisations/$(orgId)) && 
-         (
-           (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId) ||
-           ('members' in get(/databases/$(database)/documents/organisations/$(orgId)).data && request.auth.uid in get(/databases/$(database)/documents/organisations/$(orgId)).data.members)
-         )
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('organisationId', '') == orgId
+        ) ||
+        (
+          exists(/databases/$(database)/documents/organisations/$(orgId)) && 
+          request.auth.uid in get(/databases/$(database)/documents/organisations/$(orgId)).data.get('members', [])
         )
       );
+    }
+
+    // --- GLOBAL ADMIN BYPASS ---
+    
+    /** 
+     * @description HelmLogic Admins can do everything. 
+     * This is the master override for all paths.
+     */
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
     }
 
     // --- COLLECTION RULES ---
 
     /**
-     * @description Rules for User Profiles. Users can manage their own profile.
+     * @description Rules for User Profiles.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow get: if isSignedIn() && (request.auth.uid == userId);
+      allow create, update: if isSignedIn() && (request.auth.uid == userId);
       allow list: if isAdmin();
       
-      // Allow users to have sub-collections like notifications
       match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        allow read, write: if isSignedIn() && (request.auth.uid == userId);
       }
     }
 
     /**
      * @description Rules for the Data Warehouse. 
-     * Reference data is readable by all signed-in users.
      */
     match /data-warehouse/{vendorId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
-
       match /{allSubcollections=**} {
         allow get, list: if isSignedIn();
-        allow create, update, delete: if isAdmin();
       }
     }
 
@@ -70,7 +77,6 @@ service cloud.firestore {
      */
     match /modules/{moduleId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
     }
 
     /**
@@ -78,30 +84,28 @@ service cloud.firestore {
      */
     match /dealerFitCategories/{catId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Rules for Organisations. Root of the multi-tenant hierarchy.
+     * @description Rules for Organisations.
+     * Allow get/list for all signed in users to support slug-based lookups and role switching.
      */
     match /organisations/{organisationId} {
-      // Allow get/list for all signed in users to support slug-based lookups and role switching
       allow get, list: if isSignedIn(); 
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (isAdmin() || isOrgMember(organisationId));
-      allow delete: if isAdmin();
+      allow update: if isSignedIn() && isOrgMember(organisationId);
 
       /**
-       * Sub-collections: priceLevelDefinitions, productPrices, quotes, dealerFitSelections, inventory, vessels, etc.
-       * These are strictly protected.
+       * Sub-collections: priceLevelDefinitions, productPrices, quotes, dealerFitSelections, inventory, etc.
+       * These are protected by organization membership.
        */
       match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && (isAdmin() || isOrgMember(organisationId));
+        allow read, write: if isSignedIn() && isOrgMember(organisationId);
       }
     }
 
     /**
-     * @description Legacy global collections support.
+     * @description Global reference data and legacy support.
      */
     match /brands/{brandId} { allow get, list: if isSignedIn(); }
     match /products/{productId} { allow get, list: if isSignedIn(); }
@@ -110,10 +114,10 @@ service cloud.firestore {
      * @description Global collections for inventory/vessels.
      */
     match /inventory/{itemId} { 
-      allow read, write: if isSignedIn() && (isAdmin() || (exists(resource.data.organisationId) && isOrgMember(resource.data.organisationId))); 
+      allow read, write: if isSignedIn() && (isAdmin() || isOrgMember(resource.data.get('organisationId', ''))); 
     }
     match /vessels/{vesselId} { 
-      allow read, write: if isSignedIn() && (isAdmin() || (exists(resource.data.organisationId) && isOrgMember(resource.data.organisationId))); 
+      allow read, write: if isSignedIn() && (isAdmin() || isOrgMember(resource.data.get('organisationId', ''))); 
     }
     match /vesselReservations/{resId} { 
       allow read, write: if isSignedIn(); 
