@@ -22,14 +22,16 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
     }
 
-    /** @description Checks if the user is a member of a specific organization or a global admin. */
+    /** @description Checks if the user is a member of a specific organisation or a global admin. */
     function isOrgMember(orgId) {
       return isSignedIn() && (
         isAdmin() ||
-        (exists(/databases/$(database)/documents/organizations/$(orgId)) && 
-         request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.members) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId)
+        (exists(/databases/$(database)/documents/organisations/$(orgId)) && 
+         (
+           ('members' in get(/databases/$(database)/documents/organisations/$(orgId)).data && request.auth.uid in get(/databases/$(database)/documents/organisations/$(orgId)).data.members) ||
+           (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId)
+         )
+        )
       );
     }
 
@@ -81,21 +83,21 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for Organizations. Root of the multi-tenant hierarchy.
+     * @description Rules for Organisations. Root of the multi-tenant hierarchy.
      */
-    match /organizations/{organizationId} {
-      allow get: if isOrgMember(organizationId);
-      allow list: if isAdmin();
+    match /organisations/{organisationId} {
+      allow get: if isOrgMember(organisationId);
+      allow list: if isSignedIn(); // Allow signed in users to list for joining/switching
       allow create: if isSignedIn();
-      allow update: if isOrgMember(organizationId);
+      allow update: if isOrgMember(organisationId);
       allow delete: if isAdmin();
 
       /**
        * Sub-collections: priceLevelDefinitions, productPrices, quotes, dealerFitSelections, inventory, vessels, etc.
        */
       match /{allSubcollections=**} {
-        allow get, list: if isOrgMember(organizationId);
-        allow create, update, delete: if isOrgMember(organizationId);
+        allow get, list: if isOrgMember(organisationId);
+        allow create, update, delete: if isOrgMember(organisationId);
       }
     }
 
