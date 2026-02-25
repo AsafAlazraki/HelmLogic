@@ -14,7 +14,7 @@ import { useFirestore, useStorage, useMemoFirebase, useCollection, useDoc } from
 import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight, Upload, Layers } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight, Upload, Layers, CheckCircle2 } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -52,24 +52,6 @@ import { analyzeJson } from '@/ai/flows/analyze-json-flow';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-
-const formSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, { message: 'Vendor name is required.' }),
-  slug: z.string().nullable().optional(),
-  vendorType: z.string().min(1, { message: 'Vendor type is required.' }),
-  dataSource: z.string().min(1, { message: 'Data source is required.' }),
-  currency: z.string().default('AUD'),
-  address: z.string().nullable().optional(),
-  abn: z.string().nullable().optional(),
-  logo: z.any().optional(),
-  primaryContact: z.string().nullable().optional(),
-  website: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  logoUrl: z.string().nullable().optional(),
-});
-
-type VendorFormData = z.infer<typeof formSchema>;
 
 /**
  * Shared component for editing master data records.
@@ -328,15 +310,17 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
                 let currentBatch = writeBatch(firestore);
                 let operationsInBatch = 0;
 
+                const normalizeMatch = (val: any) => String(val || '').trim().toLowerCase().replace(/[\s_-]/g, '');
+
                 for (let i = 0; i < mappingRows.length; i++) {
                     const mapRow = mappingRows[i];
                     // Flexible key matching for "Model Code" and "Image Link"
-                    const modelCodeKey = Object.keys(mapRow).find(k => k.toLowerCase().replace(/[\s_-]/g, '') === 'modelcode');
-                    const imageLinkKey = Object.keys(mapRow).find(k => k.toLowerCase().replace(/[\s_-]/g, '') === 'imagelink');
+                    const modelCodeKey = Object.keys(mapRow).find(k => normalizeMatch(k) === 'modelcode');
+                    const imageLinkKey = Object.keys(mapRow).find(k => normalizeMatch(k) === 'imagelink');
 
                     if (!modelCodeKey || !imageLinkKey) continue;
 
-                    const targetModelCode = String(mapRow[modelCodeKey]).trim().toLowerCase();
+                    const targetModelCode = normalizeMatch(mapRow[modelCodeKey]);
                     const targetImageLink = String(mapRow[imageLinkKey]).trim();
 
                     if (!targetModelCode || !targetImageLink) continue;
@@ -344,10 +328,10 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
                     // Find matches in existing data
                     const rowsToUpdate = currentRows.filter((row: any) => {
                         const rowModelCodeKey = Object.keys(row).find(k => 
-                            ['modelcode', 'modelname', 'name', 'model'].includes(k.toLowerCase().replace(/[\s_-]/g, ''))
+                            ['modelcode', 'modelname', 'name', 'model', 'partnumber', 'sku'].includes(normalizeMatch(k))
                         );
                         if (!rowModelCodeKey) return false;
-                        return String(row[rowModelCodeKey]).trim().toLowerCase() === targetModelCode;
+                        return normalizeMatch(row[rowModelCodeKey]) === targetModelCode;
                     });
 
                     for (const row of rowsToUpdate) {
@@ -1556,7 +1540,10 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                         <AlertDialogContent>
                             <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete <strong>{vendor.name}</strong>.</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteVendor} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction></AlertDialogFooter>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteVendor} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction>
+                            </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
                 )}
