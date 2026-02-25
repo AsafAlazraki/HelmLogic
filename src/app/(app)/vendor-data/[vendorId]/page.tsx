@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Vendor {
     id: string;
@@ -25,6 +26,7 @@ interface DataSet {
     id: string;
     name: string;
     rowCount: number;
+    columnOrder?: string[];
 }
 
 export default function VendorDataPage() {
@@ -74,6 +76,11 @@ export default function VendorDataPage() {
         Object.values(row).some(val => String(val ?? '').toLowerCase().includes(lower))
     );
   }, [rows, searchTerm]);
+
+  const visualizerColumns = useMemo(() => {
+    if (!dataSet?.columnOrder) return undefined;
+    return dataSet.columnOrder.map(key => ({ key, label: key }));
+  }, [dataSet]);
 
   const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
     if (!vendor) return [];
@@ -155,30 +162,33 @@ export default function VendorDataPage() {
                     <div className="flex-1 overflow-hidden min-w-0 max-w-full flex flex-col">
                         {viewMode === 'list' ? (
                             <div className="flex-1 overflow-auto min-w-0">
-                                <JsonDataVisualizer data={filteredRows} />
+                                <JsonDataVisualizer data={filteredRows} columns={visualizerColumns} />
                             </div>
                         ) : (
                             <ScrollArea className="flex-1">
                                 <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 bg-muted/5">
-                                    {filteredRows.map((row, i) => (
-                                        <Card key={i} className="flex flex-col h-fit hover:border-primary transition-colors shadow-sm bg-background">
-                                            <CardHeader className="p-4 pb-2">
-                                                <CardTitle className="text-sm font-black truncate uppercase tracking-tight">
-                                                    {row.name || row.Description || row.Part_Number || `Record #${i+1}`}
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-0 flex-grow">
-                                                <div className="space-y-1.5">
-                                                    {Object.entries(row).slice(0, 6).map(([k, v]) => k !== 'id' && (
-                                                        <div key={k} className="flex justify-between items-start text-[10px] gap-2">
-                                                            <span className="text-muted-foreground uppercase font-black tracking-tighter shrink-0">{k}:</span>
-                                                            <span className="font-bold truncate text-right text-foreground">{String(v)}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                    {filteredRows.map((row, i) => {
+                                        const keysToShow = dataSet?.columnOrder || Object.keys(row).filter(k => k !== 'id').slice(0, 6);
+                                        return (
+                                            <Card key={i} className="flex flex-col h-fit hover:border-primary transition-colors shadow-sm bg-background">
+                                                <CardHeader className="p-4 pb-2">
+                                                    <CardTitle className="text-sm font-black truncate uppercase tracking-tight">
+                                                        {row.name || row.Description || row.Part_Number || `Record #${i+1}`}
+                                                    </CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="p-4 pt-0 flex-grow">
+                                                    <div className="space-y-1.5">
+                                                        {keysToShow.map((k) => k !== 'id' && (
+                                                            <div key={k} className="flex justify-between items-start text-[10px] gap-2">
+                                                                <span className="text-muted-foreground uppercase font-black tracking-tighter shrink-0">{k.replace(/_/g, ' ')}:</span>
+                                                                <span className="font-bold truncate text-right text-foreground">{String(row[k] ?? '')}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })}
                                 </div>
                             </ScrollArea>
                         )}

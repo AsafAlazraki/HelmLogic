@@ -26,57 +26,65 @@ export function JsonDataVisualizer({
     // Handle array of objects (standard table data)
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
         // Use provided columns or extract keys from the first row to preserve original document order.
-        const keys = columns ? columns.map(c => c.key) : Object.keys(data[0]);
-        const headers = columns ? columns.map(c => c.label) : keys;
+        // We filter out the 'id' field as it's typically an internal Firestore identifier.
+        const keys = columns 
+            ? columns.map(c => c.key) 
+            : Object.keys(data[0]).filter(k => k !== 'id');
+            
+        const headers = columns 
+            ? columns.map(c => c.label) 
+            : keys;
 
         return (
-            <div className="w-full min-w-0 max-w-full overflow-hidden">
-                <Table className="w-full border-collapse">
-                    <TableHeader className="sticky top-0 bg-secondary z-10 shadow-sm">
-                        <TableRow className="hover:bg-transparent">
-                            {headers.map((header, idx) => (
-                                <TableHead 
-                                    key={`${header}-${idx}`} 
-                                    className="whitespace-nowrap font-black uppercase text-[10px] tracking-tighter py-3 px-4 text-muted-foreground/80 border-b"
-                                >
-                                    {header.replace(/_/g, ' ')}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {data.map((row, rowIndex) => (
-                            <TableRow 
-                                key={rowIndex} 
-                                className={cn(
-                                    "transition-colors group",
-                                    rowIndex % 2 === 0 ? "bg-background" : "bg-muted/10",
-                                    onRowClick && "cursor-pointer hover:bg-primary/5"
-                                )}
-                                onClick={() => onRowClick?.(row)}
-                            >
-                                {keys.map((key, colIndex) => (
-                                    <TableCell key={`${rowIndex}-${colIndex}`} className="align-top py-3 px-4 border-b/50">
-                                        {typeof row[key] === 'object' && row[key] !== null ? (
-                                            <pre className="text-[10px] font-mono bg-muted/50 p-2 rounded-md overflow-x-auto max-w-[300px]">
-                                                <code>{JSON.stringify(row[key], null, 2)}</code>
-                                            </pre>
-                                        ) : (
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className={cn(
-                                                    "text-[11px] font-medium text-foreground whitespace-nowrap",
-                                                    (key.toLowerCase().includes('code') || key.toLowerCase().includes('sku')) && "font-mono font-bold uppercase"
-                                                )}>
-                                                    {String(row[key] ?? '')}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </TableCell>
+            <div className="w-full min-w-0 max-w-full overflow-hidden border rounded-md shadow-sm bg-card">
+                <div className="w-full overflow-x-auto">
+                    <Table className="w-full border-collapse">
+                        <TableHeader className="sticky top-0 bg-secondary z-10 shadow-sm">
+                            <TableRow className="hover:bg-transparent">
+                                {headers.map((header, idx) => (
+                                    <TableHead 
+                                        key={`${header}-${idx}`} 
+                                        className="whitespace-nowrap font-black uppercase text-[10px] tracking-tighter py-3 px-4 text-muted-foreground/80 border-b"
+                                    >
+                                        {header.replace(/_/g, ' ')}
+                                    </TableHead>
                                 ))}
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {data.map((row, rowIndex) => (
+                                <TableRow 
+                                    key={rowIndex} 
+                                    className={cn(
+                                        "transition-colors group",
+                                        rowIndex % 2 === 0 ? "bg-background" : "bg-muted/5",
+                                        onRowClick && "cursor-pointer hover:bg-primary/5"
+                                    )}
+                                    onClick={() => onRowClick?.(row)}
+                                >
+                                    {keys.map((key, colIndex) => (
+                                        <TableCell key={`${rowIndex}-${colIndex}`} className="align-top py-3 px-4 border-b/50">
+                                            {typeof row[key] === 'object' && row[key] !== null ? (
+                                                <pre className="text-[10px] font-mono bg-muted/50 p-2 rounded-md overflow-x-auto max-w-[300px]">
+                                                    <code>{JSON.stringify(row[key], null, 2)}</code>
+                                                </pre>
+                                            ) : (
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className={cn(
+                                                        "text-[11px] font-medium text-foreground whitespace-nowrap",
+                                                        (key.toLowerCase().includes('code') || key.toLowerCase().includes('sku')) && "font-mono font-bold uppercase"
+                                                    )}>
+                                                        {String(row[key] ?? '')}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
         );
     }
@@ -85,7 +93,7 @@ export function JsonDataVisualizer({
     if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
         return (
              <div className="w-full overflow-hidden rounded-md border p-4 space-y-3 bg-card shadow-sm">
-                {Object.entries(data).map(([key, value]) => (
+                {Object.entries(data).map(([key, value]) => key !== 'id' && (
                     <div key={key} className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm items-start border-b pb-2 last:border-0 last:pb-0">
                         <div className="font-black text-[10px] uppercase tracking-widest text-muted-foreground/60 md:text-right md:pr-4">
                             {key.replace(/_/g, ' ')}

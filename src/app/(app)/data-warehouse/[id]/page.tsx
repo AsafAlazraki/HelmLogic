@@ -76,7 +76,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
 
     const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<any[] | null>(null);
-    const [columns, setColumns] = useState<{key: string, label: string}[] | undefined>(undefined);
+    const [columnOrder, setColumnOrder] = useState<string[]>([]);
     const [isParsing, setIsParsing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -86,7 +86,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
         const selectedFile = e.target.files?.[0] || null;
         setFile(selectedFile);
         setParsedData(null);
-        setColumns(undefined);
+        setColumnOrder([]);
         setError(null);
         if (selectedFile) {
             setDataSetName(selectedFile.name.replace(/\.[^/.]+$/, ""));
@@ -109,11 +109,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
 
                 if (json.length > 0) {
                     const firstRow = json[0] as Record<string, any>;
-                    const suggestedColumns = Object.keys(firstRow).map(key => ({
-                        key,
-                        label: key,
-                    }));
-                    setColumns(suggestedColumns);
+                    setColumnOrder(Object.keys(firstRow));
                 }
 
                 setParsedData(json);
@@ -149,6 +145,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 name: dataSetName,
                 rowCount: parsedData.length,
                 uploadedAt: serverTimestamp(),
+                columnOrder: columnOrder, // Save original document column order
             });
 
             const rowsCollectionRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${dataSetDocRef.id}/rows`);
@@ -166,6 +163,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             toast({ title: 'Success', description: `Table "${dataSetName}" has been created with ${parsedData.length} rows.` });
             setFile(null);
             setParsedData(null);
+            setColumnOrder([]);
             setDataSetName('');
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message || 'An unexpected error occurred.' });
@@ -174,6 +172,10 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             setIsSaving(false);
         }
     };
+
+    const visualizerColumns = useMemo(() => {
+        return columnOrder.map(key => ({ key, label: key }));
+    }, [columnOrder]);
     
     return (
         <Card className="max-w-full overflow-hidden min-w-0">
@@ -229,7 +231,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                         </CardHeader>
                         <CardContent className="p-0 overflow-hidden max-w-full min-w-0">
                              <div className="w-full min-w-0 overflow-auto max-h-[400px]">
-                                <JsonDataVisualizer data={parsedData} columns={columns} />
+                                <JsonDataVisualizer data={parsedData} columns={visualizerColumns} />
                              </div>
                         </CardContent>
                         <CardFooter className="py-3 px-4 border-t bg-muted/30">
@@ -265,6 +267,11 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const { data: rows, loading: rowsLoading } = useCollection<any>(rowsQuery);
 
     const selectedSet = useMemo(() => dataSets?.find(s => s.id === selectedSetId), [dataSets, selectedSetId]);
+
+    const visualizerColumns = useMemo(() => {
+        if (!selectedSet?.columnOrder) return undefined;
+        return selectedSet.columnOrder.map((key: string) => ({ key, label: key }));
+    }, [selectedSet]);
 
     const handleDeleteSet = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -358,7 +365,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                 </div>
                             ) : (
                                 <div className="flex-1 min-w-0 overflow-auto">
-                                    <JsonDataVisualizer data={rows} />
+                                    <JsonDataVisualizer data={rows} columns={visualizerColumns} />
                                 </div>
                             )}
                         </CardContent>
