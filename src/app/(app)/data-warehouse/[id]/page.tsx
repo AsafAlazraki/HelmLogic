@@ -739,7 +739,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
 
     return (
         <>
-            <Card>
+            <Card className="max-w-full overflow-hidden">
                 <CardHeader>
                     <CardTitle>Master Data Set</CardTitle>
                     <CardDescription>
@@ -747,7 +747,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4">
+                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden">
                         <div className="flex items-center gap-2">
                              <div className="relative flex-1">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -820,13 +820,14 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                                 </div>
                                                             ))}
                                                         </CardFooter>
-                                                    </Card>
-                                                )
-                                            })}
-                                        </div>
+                                                    )}
+                                                </Card>
+                                            )
+                                        })}
                                     </div>
+                                </div>
                                 ) : (
-                                    <div className="max-h-[600px] overflow-y-auto rounded-md border">
+                                    <div className="max-h-[600px] overflow-y-auto rounded-md border min-w-0 max-w-full">
                                         <JsonDataVisualizer data={filteredData} columns={columnConfig} onRowClick={handleEditItem} />
                                     </div>
                                 )
