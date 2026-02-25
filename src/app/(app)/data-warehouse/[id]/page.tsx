@@ -12,9 +12,9 @@ import * as XLSX from 'xlsx';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useFirestore, useStorage, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc, serverTimestamp, orderBy, addDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight, Upload, Layers, CheckCircle2 } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight, Upload, Layers, CheckCircle2, PlusCircle, Link as LinkIcon } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -73,7 +73,7 @@ type VendorFormData = z.infer<typeof formSchema>;
 
 /**
  * Shared component for editing master data records.
- * Handles field updates and Firebase Storage image uploads.
+ * Handles field updates, Firebase Storage image uploads, and direct URL linking.
  */
 function MasterDataSetEditorDialog({
     isOpen,
@@ -96,7 +96,9 @@ function MasterDataSetEditorDialog({
     const storage = useStorage();
     const { toast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     const form = useForm({
         defaultValues: item || {},
@@ -105,6 +107,8 @@ function MasterDataSetEditorDialog({
     useEffect(() => {
         if (item) {
             form.reset(item);
+        } else {
+            form.reset({});
         }
     }, [item, form]);
 
@@ -125,8 +129,7 @@ function MasterDataSetEditorDialog({
     };
 
     const itemKeys = useMemo(() => {
-        if (!item) return [];
-        const keys = Object.keys(item).filter(key => key !== 'id');
+        const keys = Object.keys(item || {}).filter(key => key !== 'id');
         // Ensure at least one image field exists for attachment functionality
         if (!keys.some(k => isImageField(k))) {
             keys.push('imageUrl');
@@ -141,31 +144,52 @@ function MasterDataSetEditorDialog({
     }, [item]);
 
     const handleSave = async (data: any) => {
-        if (!item?.id) return;
         setIsSaving(true);
         try {
             const path = collectionPath || `data-warehouse/${vendorId}/masterDataSet`;
-            const docRef = doc(firestore, path, item.id);
-            await updateDoc(docRef, data);
-            toast({ title: 'Success', description: 'Item updated successfully.' });
+            if (item?.id) {
+                const docRef = doc(firestore, path, item.id);
+                await updateDoc(docRef, data);
+                toast({ title: 'Record Updated' });
+            } else {
+                const colRef = collection(firestore, path);
+                await addDoc(colRef, { ...data, createdAt: serverTimestamp() });
+                toast({ title: 'Record Created' });
+            }
             onSave();
             setIsOpen(false);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
-            console.error(error);
         } finally {
             setIsSaving(false);
         }
     };
 
+    const handleDeleteRecord = async () => {
+        if (!item?.id) return;
+        setIsDeleting(true);
+        try {
+            const path = collectionPath || `data-warehouse/${vendorId}/masterDataSet`;
+            await deleteDoc(doc(firestore, path, item.id));
+            toast({ title: 'Record Deleted' });
+            onSave();
+            setIsOpen(false);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteDialogOpen(false);
+        }
+    };
+
     const handleImageUpload = async (key: string, file: File) => {
-        if (!storage || !item?.id) return;
+        if (!storage || !vendorId) return;
         setIsUploading(true);
         try {
-            const path = `data-warehouse/${vendorId}/master-data/${item.id}/${key}-${Date.now()}`;
+            const path = `data-warehouse/${vendorId}/master-data/${item?.id || 'new'}/${key}-${Date.now()}`;
             const url = await uploadFileToStorage(storage, file, path);
             form.setValue(key, url, { shouldDirty: true });
-            toast({ title: 'Image Uploaded', description: 'Changes staged. Click save to persist.' });
+            toast({ title: 'Image Uploaded', description: 'Click save to persist changes.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
         } finally {
@@ -173,110 +197,153 @@ function MasterDataSetEditorDialog({
         }
     };
 
-    if (!item) return null;
-
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                <DialogHeader className="p-6 border-b bg-muted/20">
-                    <DialogTitle className="text-xl font-bold">Edit Master Data Record</DialogTitle>
-                    <DialogDescription>Modify fields and manage item media. Click save to update the record.</DialogDescription>
-                </DialogHeader>
-                
-                <ScrollArea className="flex-1">
-                    <div className="p-6">
-                        <Form {...form}>
-                            <form className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {itemKeys.map((key) => {
-                                        const isImg = isImageField(key);
-                                        return (
-                                            <FormField
-                                                key={key}
-                                                control={form.control}
-                                                name={key as any}
-                                                render={({ field }) => (
-                                                    <FormItem className={cn(isImg && "md:col-span-2")}>
-                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                                            {isImg ? <ImageIcon className="h-3 w-3" /> : <div className="h-1 rounded-full bg-primary w-1" />}
-                                                            {key.replace(/_/g, ' ')}
-                                                        </FormLabel>
-                                                        {isImg ? (
-                                                            <div className="space-y-3">
-                                                                <div className="relative aspect-video w-full max-w-sm rounded-lg border-2 border-dashed bg-muted/10 overflow-hidden group">
-                                                                    {field.value ? (
-                                                                        <>
-                                                                            <img 
-                                                                                src={getPreviewUrl(field.value)} 
-                                                                                alt={key} 
-                                                                                className="h-full w-full object-contain p-2" 
-                                                                            />
-                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                                <Button type="button" variant="destructive" size="sm" onClick={() => field.onChange('')}>
-                                                                                    <X className="h-4 w-4 mr-2" /> Remove
-                                                                                </Button>
+        <>
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b bg-muted/20">
+                        <DialogTitle className="text-xl font-bold">{item?.id ? 'Edit Master Record' : 'Add New Master Record'}</DialogTitle>
+                        <DialogDescription>Modify fields and manage item media. You can either upload a file or provide a direct image URL.</DialogDescription>
+                    </DialogHeader>
+                    
+                    <ScrollArea className="flex-1">
+                        <div className="p-6">
+                            <Form {...form}>
+                                <form className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {itemKeys.map((key) => {
+                                            const isImg = isImageField(key);
+                                            return (
+                                                <FormField
+                                                    key={key}
+                                                    control={form.control}
+                                                    name={key as any}
+                                                    render={({ field }) => (
+                                                        <FormItem className={cn(isImg && "md:col-span-2")}>
+                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                                {isImg ? <ImageIcon className="h-3 w-3" /> : <div className="h-1 rounded-full bg-primary w-1" />}
+                                                                {key.replace(/_/g, ' ')}
+                                                            </FormLabel>
+                                                            {isImg ? (
+                                                                <div className="space-y-3">
+                                                                    <div className="relative aspect-video w-full max-w-sm rounded-lg border-2 border-dashed bg-muted/10 overflow-hidden group shadow-inner">
+                                                                        {field.value ? (
+                                                                            <>
+                                                                                <img 
+                                                                                    src={getPreviewUrl(field.value)} 
+                                                                                    alt={key} 
+                                                                                    className="h-full w-full object-contain p-2" 
+                                                                                />
+                                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                    <Button type="button" variant="destructive" size="sm" onClick={() => field.onChange('')}>
+                                                                                        <X className="h-4 w-4 mr-2" /> Remove
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground italic text-xs p-4 text-center">
+                                                                                <ImageIcon className="h-8 w-8 mb-2 opacity-20" />
+                                                                                No media associated
                                                                             </div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground italic text-xs p-4 text-center">
-                                                                            <ImageIcon className="h-8 w-8 mb-2 opacity-20" />
-                                                                            No media associated with this field
+                                                                        )}
+                                                                        {isUploading && (
+                                                                            <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-20">
+                                                                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex flex-col sm:flex-row gap-3">
+                                                                        <div className="flex-1 space-y-1">
+                                                                            <Label className="text-[9px] font-black uppercase text-muted-foreground/50">Direct Image URL</Label>
+                                                                            <div className="relative">
+                                                                                <LinkIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                                                                <Input 
+                                                                                    placeholder="Paste public URL here..." 
+                                                                                    className="h-9 pl-8 text-xs font-bold"
+                                                                                    value={field.value || ''}
+                                                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                                                />
+                                                                            </div>
                                                                         </div>
-                                                                    )}
-                                                                    {isUploading && (
-                                                                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-20">
-                                                                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                                                        <div className="space-y-1">
+                                                                            <Label className="text-[9px] font-black uppercase text-muted-foreground/50">Local File</Label>
+                                                                            <FormControl>
+                                                                                <label className="flex items-center justify-center h-9 gap-2 px-4 border-2 border-dashed rounded-md cursor-pointer hover:bg-accent transition-colors">
+                                                                                    <Upload className="h-3.5 w-3.5" />
+                                                                                    <span className="text-[10px] font-black uppercase tracking-tighter">Upload</span>
+                                                                                    <Input 
+                                                                                        type="file" 
+                                                                                        accept="image/*" 
+                                                                                        className="hidden" 
+                                                                                        onChange={(e) => {
+                                                                                            const file = e.target.files?.[0];
+                                                                                            if (file) handleImageUpload(key, file);
+                                                                                        }}
+                                                                                    />
+                                                                                </label>
+                                                                            </FormControl>
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <FormControl>
-                                                                        <label className="flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent transition-colors">
-                                                                            <Upload className="h-4 w-4" />
-                                                                            <span className="text-xs font-bold uppercase tracking-tighter">Upload New Image</span>
-                                                                            <Input 
-                                                                                type="file" 
-                                                                                accept="image/*" 
-                                                                                className="hidden" 
-                                                                                onChange={(e) => {
-                                                                                    const file = e.target.files?.[0];
-                                                                                    if (file) handleImageUpload(key, file);
-                                                                                }}
-                                                                            />
-                                                                        </label>
-                                                                    </FormControl>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <FormControl>
-                                                                <Input 
-                                                                    {...field} 
-                                                                    value={field.value ?? ''} 
-                                                                    className="h-10 text-sm font-bold bg-background focus-visible:ring-primary/20"
-                                                                />
-                                                            </FormControl>
-                                                        )}
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </form>
-                        </Form>
-                    </div>
-                </ScrollArea>
+                                                            ) : (
+                                                                <FormControl>
+                                                                    <Input 
+                                                                        {...field} 
+                                                                        value={field.value ?? ''} 
+                                                                        className="h-10 text-sm font-bold bg-background focus-visible:ring-primary/20"
+                                                                    />
+                                                                </FormControl>
+                                                            )}
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </form>
+                            </Form>
+                        </div>
+                    </ScrollArea>
 
-                <DialogFooter className="p-6 border-t bg-muted/10 gap-2">
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={form.handleSubmit(handleSave)} disabled={isSaving || isUploading}>
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save Master Changes
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                    <DialogFooter className="p-6 border-t bg-muted/10 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            {item?.id && (
+                                <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setIsDeleteDialogOpen(true)}>
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Record
+                                </Button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                            <Button onClick={form.handleSubmit(handleSave)} disabled={isSaving || isUploading}>
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                {item?.id ? 'Update Record' : 'Create Record'}
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this record?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently remove this item from the master data set. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteRecord} className="bg-destructive hover:bg-destructive/90" disabled={isDeleting}>
+                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Yes, Delete Record
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }
 
@@ -389,19 +456,22 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
     };
 
     return (
-        <Card className="max-w-full overflow-hidden">
+        <Card className="max-w-full overflow-hidden shadow-sm">
             <CardHeader>
-                <CardTitle>Bulk Image Link Mapper</CardTitle>
+                <div className="flex items-center gap-2 mb-1">
+                    <Layers className="h-5 w-5 text-primary" />
+                    <CardTitle>Bulk Image Link Mapper</CardTitle>
+                </div>
                 <CardDescription>
-                    Upload a file with 'Model Code' and 'Image Link' columns to automatically assign images to existing records.
+                    Automatically assign images to existing records by matching model codes from an Excel/CSV file.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <Label>1. Select Target Table</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">1. Select Target Table</Label>
                         <Select value={targetTable} onValueChange={setTargetTable}>
-                            <SelectTrigger>
+                            <SelectTrigger className="font-bold">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -413,25 +483,25 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label>2. Upload Mapping File (.xlsx, .csv)</Label>
-                        <Input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileChange} disabled={isProcessing} />
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Upload Mapping File (.xlsx, .csv)</Label>
+                        <Input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileChange} disabled={isProcessing} className="font-bold" />
                     </div>
                 </div>
 
                 {isProcessing && (
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    <div className="space-y-2 animate-in fade-in">
+                        <div className="flex justify-between text-xs font-black uppercase tracking-widest text-primary">
                             <span>Processing mappings...</span>
                             <span>{progress}%</span>
                         </div>
-                        <Progress value={progress} />
+                        <Progress value={progress} className="h-2" />
                     </div>
                 )}
             </CardContent>
-            <CardFooter>
-                <Button onClick={handleRunMapping} disabled={!file || isProcessing} className="w-full">
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Layers className="mr-2 h-4 w-4" />}
-                    Match & Update Images
+            <CardFooter className="bg-muted/5 border-t px-6 py-4">
+                <Button onClick={handleRunMapping} disabled={!file || isProcessing} className="w-full font-black uppercase tracking-widest">
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                    Run Intelligent Mapping
                 </Button>
             </CardFooter>
         </Card>
@@ -546,21 +616,24 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     }, [columnOrder]);
     
     return (
-        <Card className="max-w-full overflow-hidden min-w-0">
+        <Card className="max-w-full overflow-hidden min-w-0 shadow-sm">
             <CardHeader>
-                <CardTitle>Document Data Extractor</CardTitle>
-                <CardDescription>Upload a file to create a new data table for this vendor.</CardDescription>
+                <div className="flex items-center gap-2 mb-1">
+                    <FileUp className="h-5 w-5 text-primary" />
+                    <CardTitle>Document Data Extractor</CardTitle>
+                </div>
+                <CardDescription>Upload an Excel or CSV file to create a standalone data table for this vendor.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 max-w-full overflow-hidden min-w-0">
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="document-file">1. Select Data File</Label>
-                        <div className="flex items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-muted/30">
+                        <Label htmlFor="document-file" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">1. Select Data File</Label>
+                        <div className="flex items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                             <FileUp className="h-6 w-6 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground flex-1">
+                            <span className="text-sm text-muted-foreground flex-1 font-bold">
                                 {file ? `Selected: ${file.name}` : 'Choose a CSV or Excel file...'}
                             </span>
-                            <Button asChild variant="outline">
+                            <Button asChild variant="outline" className="font-bold">
                                 <Label htmlFor="document-file" className="cursor-pointer">
                                     Choose File
                                 </Label>
@@ -571,37 +644,37 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
 
                     {file && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                            <Label htmlFor="dataset-name">2. Table Name</Label>
+                            <Label htmlFor="dataset-name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Table Name</Label>
                             <Input 
                                 id="dataset-name" 
                                 placeholder="e.g. Parts List 2024" 
                                 value={dataSetName} 
                                 onChange={(e) => setDataSetName(e.target.value)}
                                 disabled={isSaving}
+                                className="font-bold h-10"
                             />
-                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">This name will be used to identify this specific data table.</p>
                         </div>
                     )}
                 </div>
                 
                 {isParsing && (
-                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                    <div className="flex items-center justify-center rounded-md border border-dashed p-8 bg-muted/10">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="ml-4 text-muted-foreground">Parsing document...</p>
+                        <p className="ml-4 font-black uppercase text-xs text-muted-foreground tracking-widest">Parsing document...</p>
                     </div>
                 )}
-                {error && <p className="text-destructive text-sm">{error}</p>}
+                {error && <p className="text-destructive text-sm font-bold">{error}</p>}
 
                 {parsedData && (
-                     <Card className="border-primary/20 overflow-hidden max-w-full min-w-0">
+                     <Card className="border-primary/20 overflow-hidden max-w-full min-w-0 shadow-inner">
                         <CardHeader className="py-3 px-4 border-b bg-primary/5">
-                            <CardTitle className="text-sm font-bold uppercase tracking-tighter">Preview: {dataSetName}</CardTitle>
+                            <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-primary">Preview: {dataSetName}</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0 overflow-hidden max-w-full min-w-0 h-[400px]">
                              <JsonDataVisualizer data={parsedData} columns={visualizerColumns} />
                         </CardContent>
                         <CardFooter className="py-3 px-4 border-t bg-muted/30">
-                            <Button onClick={handleSaveToMaster} disabled={isSaving || !dataSetName.trim()} className="w-full">
+                            <Button onClick={handleSaveToMaster} disabled={isSaving || !dataSetName.trim()} className="w-full font-black uppercase tracking-widest">
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 Save as New Table
                             </Button>
@@ -688,14 +761,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             if (selectedSetId === id) setSelectedSetId(null);
         } catch (err: any) {
             console.error("Delete failed:", err);
-            if (err.code === 'permission-denied') {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: `data-warehouse/${vendor.id}/dataSets/${id}`,
-                    operation: 'delete'
-                }));
-            } else {
-                toast({ variant: 'destructive', title: "Delete failed", description: err.message || "An unexpected error occurred." });
-            }
+            toast({ variant: 'destructive', title: "Delete failed", description: err.message || "An unexpected error occurred." });
         } finally {
             setIsDeleting(false);
             setSetToDelete(null);
@@ -706,19 +772,19 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
 
     if (!dataSets || dataSets.length === 0) {
         return (
-            <Card className="border-dashed h-64 flex flex-col items-center justify-center text-center p-6">
+            <Card className="border-dashed h-64 flex flex-col items-center justify-center text-center p-6 bg-muted/5">
                 <TableIcon className="h-12 w-12 text-muted-foreground opacity-20 mb-4" />
-                <CardTitle>No Data Tables Found</CardTitle>
-                <CardDescription>Upload files in the 'Data Connection' tab to populate this list.</CardDescription>
+                <CardTitle className="font-bold">No Data Tables Found</CardTitle>
+                <CardDescription>Upload Excel or CSV files in the 'Data Connection' tab to populate this list.</CardDescription>
             </Card>
         );
     }
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 min-w-0 max-w-full overflow-hidden md:h-[600px]">
-            <Card className="md:col-span-1 flex flex-col h-fit md:h-full min-w-0 overflow-hidden">
-                <CardHeader className="py-4 border-b shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Available Tables</CardTitle>
+            <Card className="md:col-span-1 flex flex-col h-fit md:h-full min-w-0 overflow-hidden shadow-sm">
+                <CardHeader className="py-4 border-b shrink-0 bg-muted/10">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Available Tables</CardTitle>
                 </CardHeader>
                 <ScrollArea className="flex-1">
                     <div className="p-2 space-y-1">
@@ -733,14 +799,14 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                             >
                                 <div className="min-w-0 flex-1">
                                     <p className="text-sm font-bold truncate">{set.name}</p>
-                                    <p className={cn("text-[10px] uppercase font-black", selectedSetId === set.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                                    <p className={cn("text-[10px] uppercase font-black tracking-tighter", selectedSetId === set.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
                                         {set.rowCount} Rows
                                     </p>
                                 </div>
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className={cn("h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity", selectedSetId === set.id ? "text-primary-foreground hover:bg-white/20" : "text-destructive")}
+                                    className={cn("h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity", selectedSetId === set.id ? "text-primary-foreground hover:bg-white/20" : "text-destructive hover:bg-destructive/10")}
                                     onClick={(e) => { 
                                         e.preventDefault();
                                         e.stopPropagation(); 
@@ -756,17 +822,17 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 </ScrollArea>
             </Card>
 
-            <Card className="md:col-span-3 h-[500px] md:h-full flex flex-col min-w-0 overflow-hidden max-w-full">
+            <Card className="md:col-span-3 h-[500px] md:h-full flex flex-col min-w-0 overflow-hidden max-w-full shadow-sm">
                 {selectedSetId ? (
                     <>
                         <CardHeader className="py-4 border-b bg-muted/30 flex flex-row items-center justify-between shrink-0">
                             <div className="min-w-0">
-                                <CardTitle className="text-lg truncate">{selectedSet?.name}</CardTitle>
-                                <CardDescription>Viewing {selectedSet?.rowCount} records (Click row to edit/attach image)</CardDescription>
+                                <CardTitle className="text-lg font-bold truncate">{selectedSet?.name}</CardTitle>
+                                <CardDescription className="text-[10px] font-black uppercase tracking-tighter">Viewing {selectedSet?.rowCount} records • Click any row to edit/attach image</CardDescription>
                             </div>
-                            <Button variant="outline" size="sm" asChild className="shrink-0">
+                            <Button variant="outline" size="sm" asChild className="shrink-0 font-bold shadow-sm">
                                 <Link href={`/vendor-data/${vendor.slug || vendor.id}?set=${selectedSetId}`}>
-                                    Open Full View
+                                    Full Explorer
                                     <ChevronRight className="ml-2 h-4 w-4" />
                                 </Link>
                             </Button>
@@ -782,9 +848,9 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         </CardContent>
                     </>
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center p-12 text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center h-full text-center p-12 text-muted-foreground bg-muted/5">
                         <TableIcon className="h-16 w-16 mb-4 opacity-10" />
-                        <p className="text-sm font-medium">Select a table from the sidebar to visualize its data.</p>
+                        <p className="text-sm font-black uppercase tracking-widest">Select a table from the sidebar to visualize its data</p>
                     </div>
                 )}
             </Card>
@@ -1156,36 +1222,51 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         setSelectedItem(item);
         setIsEditorOpen(true);
     };
+
+    const handleAddItem = () => {
+        setSelectedItem(null);
+        setIsEditorOpen(true);
+    };
     
     const { titleKey, infoKeys, columnConfig, imageUrlKey, colorsKey } = displayConfig;
 
     return (
         <div className="max-w-full min-w-0 overflow-hidden space-y-4 flex flex-col h-[600px]">
-            <Card className="max-w-full overflow-hidden flex flex-col min-w-0 h-full">
-                <CardHeader className="shrink-0">
-                    <CardTitle>Master Data Set</CardTitle>
-                    <CardDescription>
-                        This is the master data set for this vendor. Upload new data in the 'Data Connection' tab.
-                    </CardDescription>
+            <Card className="max-w-full overflow-hidden flex flex-col min-w-0 h-full shadow-sm">
+                <CardHeader className="shrink-0 bg-muted/10 border-b">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle className="font-bold">Master Data Set</CardTitle>
+                            <CardDescription className="text-xs uppercase font-black tracking-tighter text-muted-foreground/60">
+                                Global product catalog for {vendor.name}
+                            </CardDescription>
+                        </div>
+                        <Button onClick={handleAddItem} size="sm" className="font-black uppercase tracking-widest shadow-md">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Master Record
+                        </Button>
+                    </div>
                 </CardHeader>
-                <CardContent className="max-w-full min-w-0 flex flex-col overflow-hidden flex-1">
-                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden min-w-0 flex flex-col h-full">
-                        <div className="flex items-center gap-2 shrink-0">
+                <CardContent className="max-w-full min-w-0 flex flex-col overflow-hidden flex-1 p-4">
+                     <div className="border border-muted-foreground/10 rounded-lg space-y-4 max-w-full overflow-hidden min-w-0 flex flex-col h-full bg-muted/5">
+                        <div className="flex items-center gap-2 p-3 bg-background border-b shrink-0">
                              <div className="relative flex-1">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search data..."
+                                    placeholder="Quick search engines or parts..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full max-w-sm pl-8"
+                                    className="w-full max-w-sm pl-8 h-9 text-xs font-bold"
                                 />
                             </div>
-                             <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
-                                <List className="h-4 w-4" />
-                            </Button>
-                            <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
-                                <LayoutGrid className="h-4 w-4" />
-                            </Button>
+                             <div className="flex items-center bg-muted p-1 rounded-md">
+                                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('list')}>
+                                    <List className="h-4 w-4" />
+                                </Button>
+                                <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('card')}>
+                                    <LayoutGrid className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
 
                         {masterDataLoading ? (
@@ -1195,7 +1276,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         ) : filteredData && filteredData.length > 0 ? (
                            viewMode === 'card' ? (
                                 <ScrollArea className="flex-1">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
                                         {filteredData.map((item) => {
                                             let itemImageUrl: string | null = null;
                                             if (imageUrlKey && item[imageUrlKey] && typeof item[imageUrlKey] === 'string') {
@@ -1211,23 +1292,23 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                             }
                                             const itemColors = colorsKey && Array.isArray(item[colorsKey]) ? item[colorsKey] : [];
                                             return (
-                                                <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors flex flex-col h-fit shadow-sm overflow-hidden" onClick={() => handleEditItem(item)}>
+                                                <Card key={item.id} className="cursor-pointer hover:border-primary transition-all duration-300 flex flex-col h-fit shadow-sm overflow-hidden group hover:-translate-y-1 hover:shadow-lg" onClick={() => handleEditItem(item)}>
                                                     {itemImageUrl ? (
                                                         <div className="relative h-40 w-full bg-secondary">
-                                                            <Image src={itemImageUrl} alt={titleKey ? String(item[titleKey]) : 'Product image'} fill className="object-contain p-4" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw" />
+                                                            <Image src={itemImageUrl} alt={titleKey ? String(item[titleKey]) : 'Product image'} fill className="object-contain p-4 group-hover:scale-105 transition-transform" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw" />
                                                         </div>
                                                     ) : (
                                                         <div className="relative h-40 w-full bg-secondary flex items-center justify-center">
-                                                            <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                                                            <ImageIcon className="h-12 w-12 text-muted-foreground opacity-20" />
                                                         </div>
                                                     )}
-                                                    <CardHeader className="pt-4 px-4 pb-2">
+                                                    <CardHeader className="pt-4 px-4 pb-2 bg-background border-t">
                                                         <CardTitle className="truncate text-sm font-black uppercase tracking-tight">{titleKey ? String(item[titleKey] || 'Unnamed Item') : 'Unnamed Item'}</CardTitle>
                                                     </CardHeader>
-                                                    <CardContent className="px-4 pb-4 flex-grow">
+                                                    <CardContent className="px-4 pb-4 flex-grow bg-background">
                                                         <div className="space-y-1 text-[10px] text-muted-foreground">
                                                             {infoKeys.map((key) => (
-                                                                <div key={key} className="flex justify-between items-start gap-2">
+                                                                <div key={key} className="flex justify-between items-start gap-2 border-b border-muted py-1 last:border-0">
                                                                     <span className="font-black uppercase tracking-tighter shrink-0">{key.replace(/_/g, ' ')}:</span>
                                                                     <span className="truncate text-right font-bold text-foreground">{String(item[key])}</span>
                                                                 </div>
@@ -1253,9 +1334,9 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     <JsonDataVisualizer data={filteredData} columns={columnConfig} onRowClick={handleEditItem} />
                                 )
                             ) : (
-                                <div className="flex flex-col items-center justify-center flex-1">
-                                    <p className="text-muted-foreground">No master data set found for this vendor.</p>
-                                    <p className="mt-2 text-sm text-muted-foreground">You can upload a document in the 'Data Connection' tab.</p>
+                                <div className="flex flex-col items-center justify-center flex-1 text-center p-12 bg-muted/5">
+                                    <p className="text-muted-foreground font-bold text-sm uppercase tracking-widest">No master data records found for this vendor.</p>
+                                    <p className="mt-2 text-xs text-muted-foreground/60 uppercase font-black">Upload a document or create a manual record above.</p>
                                 </div>
                             )}
                          </div>
@@ -1398,16 +1479,16 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     <Tabs defaultValue={defaultTab} className="space-y-4 max-w-full overflow-hidden min-w-0">
                         <div className="flex items-start justify-between shrink-0">
                             <div className="min-w-0">
-                                <h1 className="text-2xl font-semibold truncate">Data Warehouse - {vendor.name}</h1>
+                                <h1 className="text-2xl font-semibold truncate tracking-tight">Data Warehouse - {vendor.name}</h1>
                                 <BreadcrumbNav parts={breadcrumbParts} />
                             </div>
                         </div>
                         <TabsList className="max-w-full overflow-x-auto flex justify-start shrink-0">
-                            {isBoatBrand && <TabsTrigger value="product-ranges">Product Ranges</TabsTrigger>}
-                            {isHighfield && <TabsTrigger value="poc">POC</TabsTrigger>}
-                            {(isBulkSupplier || isYamaha || isMultiTableVendor) && <TabsTrigger value="master-data">Master Data Set</TabsTrigger>}
-                            <TabsTrigger value="data-connection">Data Connection</TabsTrigger>
-                            <TabsTrigger value="details">Details</TabsTrigger>
+                            {isBoatBrand && <TabsTrigger value="product-ranges" className="font-bold">Product Ranges</TabsTrigger>}
+                            {isHighfield && <TabsTrigger value="poc" className="font-bold">POC</TabsTrigger>}
+                            {(isBulkSupplier || isYamaha || isMultiTableVendor) && <TabsTrigger value="master-data" className="font-bold">Master Data Set</TabsTrigger>}
+                            <TabsTrigger value="data-connection" className="font-bold">Data Connection</TabsTrigger>
+                            <TabsTrigger value="details" className="font-bold">Details</TabsTrigger>
                         </TabsList>
                         
                         {isBoatBrand && (
@@ -1542,10 +1623,10 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                             </Card>
                                         </div>
                                     </div>
-                                    <Card className="border-destructive">
+                                    <Card className="border-destructive shadow-sm">
                                         <CardHeader><CardTitle className="text-destructive">Danger Zone</CardTitle></CardHeader>
-                                        <CardContent><p className="text-sm text-muted-foreground">Deleting this vendor is permanent.</p></CardContent>
-                                        <CardFooter><Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete Vendor</Button></CardFooter>
+                                        <CardContent><p className="text-sm text-muted-foreground font-medium">Deleting this vendor is permanent and will remove all associated ranges, models, and data sets.</p></CardContent>
+                                        <CardFooter><Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete Vendor Brand</Button></CardFooter>
                                     </Card>
                                 </form>
                             </Form>
@@ -1557,7 +1638,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 {vendor && (
                     <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                         <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete <strong>{vendor.name}</strong>.</AlertDialogDescription></AlertDialogHeader>
+                            <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete <strong>{vendor.name}</strong>. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction onClick={handleDeleteVendor} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction>
