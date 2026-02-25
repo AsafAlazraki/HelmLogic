@@ -229,10 +229,8 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                         <CardHeader className="py-3 px-4 border-b bg-primary/5">
                             <CardTitle className="text-sm font-bold uppercase tracking-tighter">Preview: {dataSetName}</CardTitle>
                         </CardHeader>
-                        <CardContent className="p-0 overflow-hidden max-w-full min-w-0">
-                             <div className="w-full min-w-0 overflow-auto max-h-[400px]">
-                                <JsonDataVisualizer data={parsedData} columns={visualizerColumns} />
-                             </div>
+                        <CardContent className="p-0 overflow-hidden max-w-full min-w-0 h-[400px]">
+                             <JsonDataVisualizer data={parsedData} columns={visualizerColumns} />
                         </CardContent>
                         <CardFooter className="py-3 px-4 border-t bg-muted/30">
                             <Button onClick={handleSaveToMaster} disabled={isSaving || !dataSetName.trim()} className="w-full">
@@ -273,44 +271,44 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         return selectedSet.columnOrder.map((key: string) => ({ key, label: key }));
     }, [selectedSet]);
 
-    const handleDeleteSet = (id: string, e: React.MouseEvent) => {
+    const handleDeleteSet = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!window.confirm("Are you sure you want to delete this table? All rows will be lost.")) return;
         
         setIsDeleting(true);
-        const rowsRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${id}/rows`);
-        
-        // Fetch rows first to delete them in chunks
-        getDocs(rowsRef).then((rowsSnap) => {
+        try {
+            const rowsRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${id}/rows`);
+            const rowsSnap = await getDocs(rowsRef);
             const docs = rowsSnap.docs;
-            const batchSize = 400; // Batch limit is 500, using 400 for safety
+            const batchSize = 400; 
             
-            // Trigger row deletions in multiple batches if necessary
+            // Delete all associated rows in batches
             for (let i = 0; i < docs.length; i += batchSize) {
                 const batch = writeBatch(firestore);
                 const chunk = docs.slice(i, i + batchSize);
                 chunk.forEach(d => batch.delete(d.ref));
-                batch.commit().catch(err => console.error("Row batch deletion failed:", err));
+                await batch.commit();
             }
             
-            // Delete the primary dataset document
+            // Finally delete the primary dataset document
             const setRef = doc(firestore, `data-warehouse/${vendor.id}/dataSets`, id);
-            deleteDoc(setRef).then(() => {
-                toast({ title: "Table deleted", description: "The table and all its records have been removed." });
-                if (selectedSetId === id) setSelectedSetId(null);
-                setIsDeleting(false);
-            }).catch(err => {
-                setIsDeleting(false);
+            await deleteDoc(setRef);
+            
+            toast({ title: "Table deleted", description: "The table and all its records have been removed." });
+            if (selectedSetId === id) setSelectedSetId(null);
+        } catch (err: any) {
+            console.error("Delete failed:", err);
+            if (err.code === 'permission-denied') {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: setRef.path,
+                    path: `data-warehouse/${vendor.id}/dataSets/${id}`,
                     operation: 'delete'
                 }));
-            });
-        }).catch(err => {
+            } else {
+                toast({ variant: 'destructive', title: "Delete failed", description: err.message || "An unexpected error occurred." });
+            }
+        } finally {
             setIsDeleting(false);
-            console.error("Failed to fetch rows for deletion:", err);
-            toast({ variant: 'destructive', title: "Delete failed", description: "Could not retrieve records to delete." });
-        });
+        }
     };
 
     if (setsLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -384,9 +382,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
-                                <div className="flex-1 min-w-0 overflow-auto">
-                                    <JsonDataVisualizer data={rows} columns={visualizerColumns} />
-                                </div>
+                                <JsonDataVisualizer data={rows} columns={visualizerColumns} />
                             )}
                         </CardContent>
                     </>
@@ -503,10 +499,8 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
                                 <TabsTrigger value="raw"><List className="h-4 w-4 mr-2" />Raw JSON</TabsTrigger>
                             </TabsList>
                             
-                            <TabsContent value="visualize" className="mt-4 overflow-hidden max-w-full min-w-0 flex flex-col">
-                                <div className="max-h-[600px] overflow-auto rounded-md border bg-card w-full min-w-0">
-                                    <JsonDataVisualizer data={jsonData} />
-                                </div>
+                            <TabsContent value="visualize" className="mt-4 h-[600px] overflow-hidden">
+                                <JsonDataVisualizer data={jsonData} />
                             </TabsContent>
 
                             <TabsContent value="ai" className="mt-4 space-y-4">
@@ -525,14 +519,12 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
                                 </div>
 
                                 {analysisResult && (
-                                    <Card className="border-primary/20 bg-primary/5 overflow-hidden max-w-full min-w-0">
+                                    <Card className="border-primary/20 bg-primary/5 overflow-hidden h-[400px]">
                                         <CardHeader className="py-3 px-4 border-b">
                                             <CardTitle className="text-sm font-bold uppercase tracking-tighter">AI Result: {analysisResult.summary}</CardTitle>
                                         </CardHeader>
-                                        <CardContent className="p-0 overflow-hidden min-w-0">
-                                            <div className="max-h-[400px] overflow-auto w-full">
-                                                <JsonDataVisualizer data={analysisResult.restructuredData} />
-                                            </div>
+                                        <CardContent className="p-0 h-full overflow-hidden">
+                                            <JsonDataVisualizer data={analysisResult.restructuredData} />
                                         </CardContent>
                                     </Card>
                                 )}
@@ -635,10 +627,8 @@ function ApiDataFetcher() {
                                 <code>{JSON.stringify(jsonData, null, 2)}</code>
                             </pre>
                         </TabsContent>
-                        <TabsContent value="visualize" className="overflow-hidden max-w-full min-w-0 flex flex-col">
-                           <div className="max-h-[600px] w-full overflow-auto rounded-md border min-w-0">
+                        <TabsContent value="visualize" className="h-[600px] overflow-hidden">
                              <JsonDataVisualizer data={jsonData} />
-                           </div>
                         </TabsContent>
                     </Tabs>
                 )}
@@ -741,16 +731,16 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const { titleKey, infoKeys, columnConfig, imageUrlKey, colorsKey } = displayConfig;
 
     return (
-        <div className="max-w-full min-w-0 overflow-hidden space-y-4 flex flex-col">
-            <Card className="max-w-full overflow-hidden flex flex-col min-w-0">
+        <div className="max-w-full min-w-0 overflow-hidden space-y-4 flex flex-col h-[600px]">
+            <Card className="max-w-full overflow-hidden flex flex-col min-w-0 h-full">
                 <CardHeader className="shrink-0">
                     <CardTitle>Master Data Set</CardTitle>
                     <CardDescription>
                         This is the master data set for this vendor. Upload new data in the 'Data Connection' tab.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="max-w-full min-w-0 flex flex-col overflow-hidden">
-                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden min-w-0 flex flex-col">
+                <CardContent className="max-w-full min-w-0 flex flex-col overflow-hidden flex-1">
+                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden min-w-0 flex flex-col h-full">
                         <div className="flex items-center gap-2 shrink-0">
                              <div className="relative flex-1">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -770,12 +760,12 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         </div>
 
                         {masterDataLoading ? (
-                             <div className="flex items-center justify-center h-48">
+                             <div className="flex items-center justify-center flex-1">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             </div>
                         ) : filteredData && filteredData.length > 0 ? (
                            viewMode === 'card' ? (
-                                <div className="max-h-[600px] overflow-y-auto w-full">
+                                <ScrollArea className="flex-1">
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
                                         {filteredData.map((item) => {
                                             let itemImageUrl: string | null = null;
@@ -826,16 +816,12 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                             )
                                         })}
                                     </div>
-                                </div>
+                                </ScrollArea>
                                 ) : (
-                                    <div className="max-h-[600px] overflow-hidden rounded-md border w-full min-w-0 flex flex-col">
-                                        <div className="w-full overflow-auto flex-1 min-w-0">
-                                            <JsonDataVisualizer data={filteredData} columns={columnConfig} onRowClick={handleEditItem} />
-                                        </div>
-                                    </div>
+                                    <JsonDataVisualizer data={filteredData} columns={columnConfig} onRowClick={handleEditItem} />
                                 )
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-48">
+                                <div className="flex flex-col items-center justify-center flex-1">
                                     <p className="text-muted-foreground">No master data set found for this vendor.</p>
                                     <p className="mt-2 text-sm text-muted-foreground">You can upload a document in the 'Data Connection' tab.</p>
                                 </div>

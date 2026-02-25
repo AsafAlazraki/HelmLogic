@@ -36,8 +36,8 @@ export function JsonDataVisualizer({
             : keys;
 
         return (
-            <div className="w-full min-w-0 max-w-full overflow-hidden border rounded-md shadow-sm bg-card">
-                <div className="w-full overflow-x-auto">
+            <div className="w-full min-w-0 max-w-full h-full overflow-hidden border rounded-md shadow-sm bg-card flex flex-col">
+                <div className="w-full overflow-auto flex-1">
                     <Table className="w-full border-collapse">
                         <TableHeader className="sticky top-0 bg-secondary z-10 shadow-sm">
                             <TableRow className="hover:bg-transparent">
