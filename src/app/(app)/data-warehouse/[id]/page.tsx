@@ -14,7 +14,7 @@ import { useFirestore, useStorage, useMemoFirebase, useCollection, useDoc } from
 import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight, Upload } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight, Upload, Layers } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -51,6 +51,7 @@ import { YamahaApiFetcher } from '@/components/yamaha-api-fetcher';
 import { analyzeJson } from '@/ai/flows/analyze-json-flow';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 
 const formSchema = z.object({
   id: z.string(),
@@ -266,6 +267,162 @@ function MasterDataSetEditorDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    
+    const [file, setFile] = useState<File | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [targetTable, setTargetTable] = useState<'master' | string>('master');
+
+    const dataSetsQuery = useMemoFirebase(() => {
+        if (!vendor.id) return null;
+        return collection(firestore, 'data-warehouse', vendor.id, 'dataSets');
+    }, [firestore, vendor.id]);
+    const { data: dataSets } = useCollection<any>(dataSetsQuery);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFile(e.target.files?.[0] || null);
+    };
+
+    const handleRunMapping = async () => {
+        if (!file || !vendor.id) return;
+        setIsProcessing(true);
+        setProgress(0);
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const data = event.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const mappingRows = XLSX.utils.sheet_to_json(sheet) as any[];
+
+                if (mappingRows.length === 0) throw new Error("Mapping file is empty.");
+
+                // Determine target collection path
+                const collectionPath = targetTable === 'master' 
+                    ? `data-warehouse/${vendor.id}/masterDataSet`
+                    : `data-warehouse/${vendor.id}/dataSets/${targetTable}/rows`;
+
+                // Fetch current rows to match against
+                const currentRowsSnap = await getDocs(collection(firestore, collectionPath));
+                const currentRows = currentRowsSnap.docs.map(d => ({ ...d.data(), _ref: d.ref }));
+
+                let matchedCount = 0;
+                const batchSize = 400;
+                let currentBatch = writeBatch(firestore);
+                let operationsInBatch = 0;
+
+                for (let i = 0; i < mappingRows.length; i++) {
+                    const mapRow = mappingRows[i];
+                    // Flexible key matching for "Model Code" and "Image Link"
+                    const modelCodeKey = Object.keys(mapRow).find(k => k.toLowerCase().replace(/[\s_-]/g, '') === 'modelcode');
+                    const imageLinkKey = Object.keys(mapRow).find(k => k.toLowerCase().replace(/[\s_-]/g, '') === 'imagelink');
+
+                    if (!modelCodeKey || !imageLinkKey) continue;
+
+                    const targetModelCode = String(mapRow[modelCodeKey]).trim().toLowerCase();
+                    const targetImageLink = String(mapRow[imageLinkKey]).trim();
+
+                    if (!targetModelCode || !targetImageLink) continue;
+
+                    // Find matches in existing data
+                    const rowsToUpdate = currentRows.filter(row: any => {
+                        const rowModelCodeKey = Object.keys(row).find(k => 
+                            ['modelcode', 'modelname', 'name', 'model'].includes(k.toLowerCase().replace(/[\s_-]/g, ''))
+                        );
+                        if (!rowModelCodeKey) return false;
+                        return String(row[rowModelCodeKey]).trim().toLowerCase() === targetModelCode;
+                    });
+
+                    for (const row of rowsToUpdate) {
+                        // Prefer SummaryImage for Yamaha, or imageUrl as fallback
+                        const fieldToUpdate = vendor.slug === 'yamaha' ? 'SummaryImage' : 'imageUrl';
+                        currentBatch.update(row._ref as any, { [fieldToUpdate]: targetImageLink });
+                        operationsInBatch++;
+                        matchedCount++;
+
+                        if (operationsInBatch >= batchSize) {
+                            await currentBatch.commit();
+                            currentBatch = writeBatch(firestore);
+                            operationsInBatch = 0;
+                        }
+                    }
+                    
+                    setProgress(Math.round(((i + 1) / mappingRows.length) * 100));
+                }
+
+                if (operationsInBatch > 0) {
+                    await currentBatch.commit();
+                }
+
+                toast({ 
+                    title: 'Mapping Complete', 
+                    description: `Updated ${matchedCount} records with new image links.` 
+                });
+                setFile(null);
+            } catch (err: any) {
+                toast({ variant: 'destructive', title: 'Mapping Failed', description: err.message });
+            } finally {
+                setIsProcessing(false);
+                setProgress(0);
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    return (
+        <Card className="max-w-full overflow-hidden">
+            <CardHeader>
+                <CardTitle>Bulk Image Link Mapper</CardTitle>
+                <CardDescription>
+                    Upload a file with 'Model Code' and 'Image Link' columns to automatically assign images to existing records.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label>1. Select Target Table</Label>
+                        <Select value={targetTable} onValueChange={setTargetTable}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="master">Global Master Data Set</SelectItem>
+                                {dataSets?.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>2. Upload Mapping File (.xlsx, .csv)</Label>
+                        <Input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileChange} disabled={isProcessing} />
+                    </div>
+                </div>
+
+                {isProcessing && (
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            <span>Processing mappings...</span>
+                            <span>{progress}%</span>
+                        </div>
+                        <Progress value={progress} />
+                    </div>
+                )}
+            </CardContent>
+            <CardFooter>
+                <Button onClick={handleRunMapping} disabled={!file || isProcessing} className="w-full">
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Layers className="mr-2 h-4 w-4" />}
+                    Match & Update Images
+                </Button>
+            </CardFooter>
+        </Card>
     );
 }
 
@@ -1270,7 +1427,9 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                             </TabsContent>
                         )}
     
-                        <TabsContent value="data-connection" className="min-w-0 max-w-full overflow-hidden">
+                        <TabsContent value="data-connection" className="min-w-0 max-w-full overflow-hidden space-y-6">
+                             {vendor.slug === 'yamaha' && <BulkImageMapper vendor={vendor} />}
+                             
                              {vendor.slug === 'yamaha' ? (
                                 <YamahaApiFetcher vendorId={vendor.id} />
                              ) : vendor.slug === 'sam-allen' ? (
