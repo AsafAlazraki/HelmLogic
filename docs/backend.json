@@ -1,370 +1,817 @@
+
 {
   "entities": {
-    "Organization": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Organization",
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile information.",
       "type": "object",
-      "description": "Represents a customer organization using the HelmLogic application. This entity manages organizational settings and subscriptions.",
       "properties": {
-        "id": {
+        "displayName": {
           "type": "string",
-          "description": "Unique identifier for the Organization entity."
+          "description": "The user's display name."
         },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "appRole": {
+          "type": "string",
+          "description": "The user's role within the application."
+        },
+        "organisationId": {
+          "type": "string",
+          "description": "The ID of the organisation the user belongs to."
+        },
+        "organisationRole": {
+          "type": "string",
+          "description": "The ID of the user's role within their organisation."
+        }
+      },
+      "required": [
+        "email"
+      ]
+    },
+    "Organisation": {
+      "title": "Organisation",
+      "description": "Represents an organisation within the application.",
+      "type": "object",
+      "properties": {
         "name": {
           "type": "string",
-          "description": "The official name of the organization."
+          "description": "The name of the organisation."
         },
-        "hasSubDealers": {
-          "type": "boolean",
-          "description": "Indicates if this organization works with sub-dealers, which triggers the creation of a default 'Sub Dealer Price Level' in the price book."
-        },
-        "defaultCurrency": {
+        "slug": {
           "type": "string",
-          "description": "The primary currency used by the organization for financial calculations and reporting (e.g., 'USD', 'EUR')."
+          "description": "A URL-friendly version of the organisation name."
         },
-        "subscribedBrandIds": {
+        "address": {
+          "type": "string",
+          "description": "The physical address of the organisation."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The contact phone number for the organisation."
+        },
+        "abn": {
+          "type": "string",
+          "description": "The Australian Business Number for the organisation."
+        },
+        "primaryColor": {
+          "type": "string",
+          "description": "The primary branding color in hex format."
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "The accent branding color in hex format."
+        },
+        "secondaryColor": {
+          "type": "string",
+          "description": "The secondary branding color in hex format."
+        },
+        "primaryLogoUrl": {
+          "type": "string",
+          "description": "URL for the primary company logo."
+        },
+        "secondaryLogoUrl": {
+          "type": "string",
+          "description": "URL for the secondary company logo or icon."
+        },
+        "subDealersEnabled": {
+          "type": "boolean",
+          "description": "Indicates if the Sub Dealers module is enabled for the organisation."
+        },
+        "parentOrganisationId": {
+          "type": "string",
+          "description": "The ID of the parent organisation, if this is a sub-dealer."
+        },
+        "roles": {
           "type": "array",
-          "description": "References to Brand entities that this organization is subscribed to. (Relationship: Organization N:N Brand)",
+          "description": "A list of roles within the organisation, forming a hierarchy.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A unique identifier for the role."
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the role."
+              },
+              "parent": {
+                "type": "string",
+                "description": "The ID of the parent role. Empty for top-level roles."
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "description": "Defines permissions for each role ID.",
+          "additionalProperties": {
+            "type": "object",
+            "description": "A map of permission keys to boolean values.",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "dataWarehouseSubscriptions": {
+          "type": "array",
+          "description": "A list of vendor IDs from the data warehouse that this organisation is subscribed to.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabledModuleSubscriptions": {
+          "type": "array",
+          "description": "A list of module IDs that this organisation has access to.",
           "items": {
             "type": "string"
           }
         }
       },
       "required": [
-        "id",
         "name",
-        "hasSubDealers",
-        "defaultCurrency"
+        "slug"
       ]
     },
-    "Brand": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Brand",
+    "Vendor": {
+      "title": "Vendor",
+      "description": "Represents a vendor for data connection.",
       "type": "object",
-      "description": "Represents a product brand. Organizations subscribe to these brands to manage their products and pricing.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Brand entity."
-        },
         "name": {
           "type": "string",
-          "description": "The name of the brand."
+          "description": "The name of the vendor."
         },
-        "description": {
+        "slug": {
           "type": "string",
-          "description": "A brief description of the brand."
+          "description": "A URL-friendly version of the vendor name."
+        },
+        "vendorType": {
+          "type": "string",
+          "description": "The type of the vendor.",
+          "enum": [
+            "Boat Brand",
+            "Motor Brand",
+            "Trailer Brand",
+            "Electronics Brand",
+            "Electronics Supplier",
+            "Parts Wholesaler",
+            "Other"
+          ]
+        },
+        "dataSource": {
+          "type": "string",
+          "description": "The source of the data connection.",
+          "enum": [
+            "Business Central",
+            "Direct API",
+            "Document Upload",
+            "Other"
+          ]
+        },
+        "primaryContact": {
+          "type": "string",
+          "description": "Primary contact for the vendor (e.g., name, email, phone)."
+        },
+        "website": {
+          "type": "string",
+          "description": "The vendor's website URL."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the vendor."
+        },
+        "abn": {
+          "type": "string",
+          "description": "The Australian Business Number for the vendor."
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL for the vendor logo."
+        },
+        "notes": {
+          "type": "string",
+          "description": "General notes about the vendor."
         }
       },
       "required": [
-        "id",
+        "name",
+        "slug"
+      ]
+    },
+    "DataSet": {
+      "title": "Data Set",
+      "description": "A named collection of data rows uploaded for a vendor.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The display name of the data set (e.g., 'Parts List 2024')."
+        },
+        "rowCount": {
+          "type": "number",
+          "description": "Number of items in the set."
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
         "name"
       ]
     },
-    "Product": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Product",
+    "MasterDataRow": {
+      "title": "Master Data Row",
+      "description": "Represents a single row of data from a vendor's master data set.",
       "type": "object",
-      "description": "Represents a specific product offered by a brand. This is a generic product definition, independent of an organization's specific pricing.",
+      "additionalProperties": true
+    },
+    "Range": {
+      "title": "Range",
+      "description": "Represents a product range for a vendor.",
+      "type": "object",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Product entity."
-        },
-        "brandId": {
-          "type": "string",
-          "description": "Reference to the Brand that offers this product. (Relationship: Brand 1:N Product)"
-        },
         "name": {
           "type": "string",
-          "description": "The name of the product."
+          "description": "The name of the range."
         },
-        "sku": {
+        "slug": {
           "type": "string",
-          "description": "Stock Keeping Unit, a unique identifier for the product within the brand's catalog."
+          "description": "A URL-friendly version of the range name."
         },
-        "description": {
+        "vendorId": {
           "type": "string",
-          "description": "A detailed description of the product."
+          "description": "The ID of the vendor this range belongs to."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL for the range's image."
+        },
+        "order": {
+          "type": "number",
+          "description": "The display order of the range."
         }
       },
       "required": [
-        "id",
-        "brandId",
         "name",
-        "sku"
+        "slug",
+        "vendorId"
       ]
     },
-    "OrganizationPriceLevelDefinition": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OrganizationPriceLevelDefinition",
+    "Model": {
+      "title": "Model",
+      "description": "Represents a specific model within a product range.",
       "type": "object",
-      "description": "Defines a custom price level (e.g., 'Retail Price', 'Wholesale Price') that an organization uses for its products. These definitions become dynamic columns in the price book.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Price Level Definition."
-        },
-        "organizationId": {
-          "type": "string",
-          "description": "Reference to the Organization that owns this price level definition. (Relationship: Organization 1:N OrganizationPriceLevelDefinition)"
-        },
         "name": {
           "type": "string",
-          "description": "The display name of the price level (e.g., 'Retail Price', 'Tier 1 Wholesale')."
+          "description": "The name of the model."
         },
-        "description": {
+        "slug": {
           "type": "string",
-          "description": "A brief description of this price level."
+          "description": "A URL-friendly version of the model name."
         },
-        "calculationMethod": {
+        "rangeId": {
           "type": "string",
-          "description": "Specifies how the price level value is determined: 'manual' (entered directly) or 'percentageOfBase' (calculated from a base price).",
-          "format": "enum"
+          "description": "The ID of the range this model belongs to."
         },
-        "percentageModifier": {
+        "vendorId": {
+          "type": "string",
+          "description": "The ID of the vendor this model belongs to."
+        },
+        "order": {
           "type": "number",
-          "description": "The percentage modifier (e.g., 1.10 for 10% markup, 0.90 for 10% discount) applied if 'calculationMethod' is 'percentageOfBase'. Null if manual."
+          "description": "The display order of the model."
         },
-        "basePriceSource": {
+        "coverImageUrl": {
           "type": "string",
-          "description": "The source used as the base for percentage calculations: 'supplierCost', 'costPlusMargin', or 'totalCostIncludingCustoms'. Only applicable if 'calculationMethod' is 'percentageOfBase'.",
-          "format": "enum"
+          "description": "URL for the boat's main cover image."
         },
-        "isSubDealerPriceLevel": {
-          "type": "boolean",
-          "description": "Indicates if this is the special, system-generated 'Sub Dealer Price Level' for the organization."
-        }
-      },
-      "required": [
-        "id",
-        "organizationId",
-        "name",
-        "calculationMethod",
-        "isSubDealerPriceLevel"
-      ]
-    },
-    "OrganizationProductPrice": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OrganizationProductPrice",
-      "type": "object",
-      "description": "Represents the core pricing details for a specific product as managed by an organization, including supplier cost, margin, and custom costings.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for this specific organization's product pricing entry."
-        },
-        "organizationId": {
-          "type": "string",
-          "description": "Reference to the Organization that owns this pricing entry. (Relationship: Organization 1:N OrganizationProductPrice)"
-        },
-        "productId": {
-          "type": "string",
-          "description": "Reference to the Product being priced. (Relationship: Product 1:N OrganizationProductPrice)"
-        },
-        "supplierCost": {
-          "type": "number",
-          "description": "The cost of the product from the supplier."
-        },
-        "supplierCostCurrency": {
-          "type": "string",
-          "description": "The currency in which the 'supplierCost' is denominated (e.g., 'JPY', 'GBP')."
-        },
-        "exchangeRateToBaseCurrency": {
-          "type": "number",
-          "description": "The live exchange rate from the 'supplierCostCurrency' to the Organization's 'defaultCurrency'."
-        },
-        "baseMarginPercentage": {
-          "type": "number",
-          "description": "The organization's default profit margin percentage applied to the product's cost."
-        },
-        "customCostings": {
+        "galleryImageUrls": {
           "type": "array",
-          "description": "An array of additional custom cost entries (e.g., shipping, duties) applied to this product's price. These represent user-defined 'other costings' columns.",
+          "description": "A list of URLs for the model's image gallery.",
           "items": {
             "type": "string"
           }
         },
-        "lastUpdated": {
-          "type": "string",
-          "description": "The date and time when this pricing entry was last updated.",
-          "format": "date-time"
+        "cost": {
+          "type": "number",
+          "description": "Base cost of the model."
+        },
+        "sellPriceExclGst": {
+          "type": "number",
+          "description": "Base selling price, excluding GST."
+        },
+        "freightCostExclGst": {
+          "type": "number",
+          "description": "Freight cost, excluding GST."
+        },
+        "colors": {
+          "type": "array",
+          "description": "Available color variants for the model, each with associated images.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "imageUrls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "standardFeatures": {
+          "type": "array",
+          "description": "A list of standard features for the model.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "optionalFeatures": {
+          "type": "array",
+          "description": "A list of optional add-ons for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional feature."
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "packageStatus": {
+                "type": "object",
+                "description": "A map of package IDs to their status ('standard' or 'optional') for this feature.",
+                "additionalProperties": {
+                  "type": "string",
+                  "enum": [
+                    "standard",
+                    "optional"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "packages": {
+          "type": "array",
+          "description": "A list of optional packages for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional package."
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "packageLevels": {
+          "type": "array",
+          "description": "A list of tiered packages for a Stabicraft model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "A description for the package level."
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package level.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "colorStages": {
+          "type": "object",
+          "description": "Available color stages for a Stabicraft model.",
+          "properties": {
+            "stage0": {
+              "type": "boolean"
+            },
+            "stage1": {
+              "type": "boolean"
+            },
+            "stage2": {
+              "type": "boolean"
+            },
+            "stage3": {
+              "type": "boolean"
+            }
+          }
+        },
+        "uDekOptions": {
+          "type": "object",
+          "description": "U-Dek flooring image URLs.",
+          "properties": {
+            "blackOnWinterGrey": {
+              "type": "string"
+            },
+            "teakOnBlack": {
+              "type": "string"
+            },
+            "steelGreyOnWinterGrey": {
+              "type": "string"
+            },
+            "winterGreyOnSteelGrey": {
+              "type": "string"
+            }
+          }
+        },
+        "paintAndGraphicOptions": {
+          "type": "object",
+          "description": "Paint and graphic options for a Stabicraft model.",
+          "properties": {
+            "standardGloss": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "standardMetallic": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "powderCoating": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "specifications": {
+          "type": "object",
+          "properties": {
+            "motorConfigurations": {
+              "type": "array",
+              "description": "Defines the supported engine configurations and their respective horsepower ratings.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Single",
+                      "Twin",
+                      "Triple",
+                      "Quad",
+                      "SingleWithAux"
+                    ]
+                  },
+                  "engines": {
+                    "type": "array",
+                    "description": "An array of engine specifications for this configuration.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "description": "A label for the engine (e.g., 'Main Engine', 'Engine 1')."
+                        },
+                        "minHp": {
+                          "type": "number"
+                        },
+                        "maxHp": {
+                          "type": "number"
+                        },
+                        "recommendedHp": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "label"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "type",
+                  "engines"
+                ]
+              }
+            },
+            "otherSpecs": {
+              "type": "array",
+              "description": "A list of other key-value specifications.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "variantPricing": {
+          "type": "array",
+          "description": "Pricing for specific model variants (e.g., by color and material). Highfield specific.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "colorId": {
+                "type": "string"
+              },
+              "colorName": {
+                "type": "string"
+              },
+              "material": {
+                "type": "string",
+                "enum": [
+                  "HYP",
+                  "PVC"
+                ]
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "freightCostExclGst": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "colorId",
+              "material"
+            ]
+          }
+        },
+        "documents": {
+          "type": "array",
+          "description": "A list of documents associated with the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "url"
+            ]
+          }
         }
       },
       "required": [
-        "id",
-        "organizationId",
-        "productId",
-        "supplierCost",
-        "supplierCostCurrency",
-        "exchangeRateToBaseCurrency",
-        "baseMarginPercentage",
-        "lastUpdated"
+        "name",
+        "slug",
+        "rangeId",
+        "vendorId"
       ]
     },
-    "OrganizationProductPriceLevelValue": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OrganizationProductPriceLevelValue",
+    "Module": {
+      "title": "Module",
+      "description": "Represents an application module that connects various vendors and data for an organisation.",
       "type": "object",
-      "description": "Stores the actual price value for a specific price level for a given product within an organization's price book.",
       "properties": {
-        "id": {
+        "name": {
           "type": "string",
-          "description": "Unique identifier for the Product Price Level Value entry."
+          "description": "The name of the module."
         },
-        "organizationProductPriceId": {
+        "slug": {
           "type": "string",
-          "description": "Reference to the OrganizationProductPrice entity this value belongs to. (Relationship: OrganizationProductPrice 1:N OrganizationProductPriceLevelValue)"
+          "description": "A URL-friendly version of the module name."
         },
-        "priceLevelDefinitionId": {
+        "mainVendorId": {
           "type": "string",
-          "description": "Reference to the OrganizationPriceLevelDefinition that defines this price level. (Relationship: OrganizationPriceLevelDefinition 1:N OrganizationProductPriceLevelValue)"
+          "description": "The ID of the main vendor for this module."
         },
-        "priceValue": {
-          "type": "number",
-          "description": "The final price for this product at this specific price level, either manually entered or calculated."
+        "associatedVendorIds": {
+          "type": "array",
+          "description": "A list of IDs for associated vendors.",
+          "items": {
+            "type": "string"
+          }
         },
-        "isManuallyOverridden": {
-          "type": "boolean",
-          "description": "Indicates if the 'priceValue' has been manually set by a user, overriding any automatic calculation based on the price level definition."
-        },
-        "lastUpdated": {
+        "logoUrl": {
           "type": "string",
-          "description": "The date and time when this price level value was last updated.",
-          "format": "date-time"
+          "description": "URL for the module's logo, typically inherited from the main vendor."
         }
       },
       "required": [
-        "id",
-        "organizationProductPriceId",
-        "priceLevelDefinitionId",
-        "priceValue",
-        "isManuallyOverridden",
-        "lastUpdated"
+        "name",
+        "slug",
+        "mainVendorId"
       ]
     }
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "email"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/organizations/{organizationId}",
-        "definition": {
-          "entityName": "Organization",
-          "schema": {
-            "$ref": "#/backend/entities/Organization"
-          },
-          "description": "Base collection for Organization entities. Contains core organization details and a list of subscribed brand IDs. Access is restricted to members of the specific organization.",
-          "params": [
-            {
-              "name": "organizationId",
-              "description": "Unique identifier for the Organization."
-            }
-          ]
-        }
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UserProfile"
       },
-      {
-        "path": "/brands/{brandId}",
-        "definition": {
-          "entityName": "Brand",
-          "schema": {
-            "$ref": "#/backend/entities/Brand"
-          },
-          "description": "Global collection for Brand entities. This is reference data, typically readable by all authenticated users.",
-          "params": [
-            {
-              "name": "brandId",
-              "description": "Unique identifier for the Brand."
-            }
-          ]
-        }
+      "description": "User profile documents, keyed by user ID."
+    },
+    "/organisations/{organisationId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Organisation"
       },
-      {
-        "path": "/products/{productId}",
-        "definition": {
-          "entityName": "Product",
-          "schema": {
-            "$ref": "#/backend/entities/Product"
-          },
-          "description": "Global collection for Product entities. This is reference data, containing generic product details and its associated brandId. Typically readable by all authenticated users.",
-          "params": [
-            {
-              "name": "productId",
-              "description": "Unique identifier for the Product."
-            }
-          ]
-        }
+      "description": "Organisation documents, keyed by a unique ID."
+    },
+    "/data-warehouse/{vendorId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Vendor"
       },
-      {
-        "path": "/organizations/{organizationId}/priceLevelDefinitions/{priceLevelDefinitionId}",
-        "definition": {
-          "entityName": "OrganizationPriceLevelDefinition",
-          "schema": {
-            "$ref": "#/backend/entities/OrganizationPriceLevelDefinition"
-          },
-          "description": "Subcollection defining custom price levels for a specific organization. Includes denormalized 'organizationId' for authorization independence. Access is restricted to members of the parent organization.",
-          "params": [
-            {
-              "name": "organizationId",
-              "description": "Unique identifier for the parent Organization."
-            },
-            {
-              "name": "priceLevelDefinitionId",
-              "description": "Unique identifier for the Price Level Definition."
-            }
-          ]
-        }
+      "description": "Vendor documents for the data warehouse, keyed by a unique ID."
+    },
+    "/data-warehouse/{vendorId}/dataSets/{dataSetId}": {
+      "schema": {
+        "$ref": "#/backend/entities/DataSet"
       },
-      {
-        "path": "/organizations/{organizationId}/productPrices/{organizationProductPriceId}",
-        "definition": {
-          "entityName": "OrganizationProductPrice",
-          "schema": {
-            "$ref": "#/backend/entities/OrganizationProductPrice"
-          },
-          "description": "Subcollection storing the core pricing details for a product within an organization's price book. Includes denormalized 'organizationId' for authorization independence and denormalized 'brandId' (from the Product entity) for efficient QAP-compliant querying and filtering by brand. Access is restricted to members of the parent organization.",
-          "params": [
-            {
-              "name": "organizationId",
-              "description": "Unique identifier for the parent Organization."
-            },
-            {
-              "name": "organizationProductPriceId",
-              "description": "Unique identifier for this specific organization's product pricing entry."
-            }
-          ]
-        }
+      "description": "Named data sets uploaded for this vendor."
+    },
+    "/data-warehouse/{vendorId}/dataSets/{dataSetId}/rows/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
       },
-      {
-        "path": "/organizations/{organizationId}/productPrices/{organizationProductPriceId}/priceLevelValues/{priceLevelValueId}",
-        "definition": {
-          "entityName": "OrganizationProductPriceLevelValue",
-          "schema": {
-            "$ref": "#/backend/entities/OrganizationProductPriceLevelValue"
-          },
-          "description": "Subcollection storing the actual price value for a product at a specific price level. This entity *must* include denormalized 'organizationId' and 'brandId' (from its parent 'OrganizationProductPrice' and 'Product' entities) to ensure Authorization Independence and enable QAP-compliant list queries without complex rule 'get()' calls. Access is restricted to members of the grandparent organization.",
-          "params": [
-            {
-              "name": "organizationId",
-              "description": "Unique identifier for the grandparent Organization."
-            },
-            {
-              "name": "organizationProductPriceId",
-              "description": "Unique identifier for the parent OrganizationProductPrice entry."
-            },
-            {
-              "name": "priceLevelValueId",
-              "description": "Unique identifier for the Product Price Level Value entry."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The recommended Firestore structure prioritizes secure, scalable, and debuggable authorization by adhering to the core design principles of Authorization Independence and Structural Segregation. All organization-specific data is placed under a dedicated hierarchy rooted at `/organizations/{organizationId}`, ensuring path-based ownership and simplifying security rules significantly.\n\n1.  **Authorization Independence & QAPs:**\n    *   **Organization-Owned Collections:** Key entities like `OrganizationPriceLevelDefinition`, `OrganizationProductPrice`, and `OrganizationProductPriceLevelValue` are all structured as subcollections of `/organizations/{organizationId}`. For example, `/organizations/{organizationId}/priceLevelDefinitions/{priceLevelDefinitionId}`. This design immediately makes the `organizationId` available in security rules as a wildcard, allowing direct authorization checks (e.g., `allow read, write: if request.auth.uid in get(/databases/.../documents/organizations/$(organizationId)).data.members`). This eliminates the need for expensive and complex `get()` calls to parent documents to determine access, which is crucial for atomic operations and robust security.\n    *   **Denormalization for QAPs (Query-Agnostic Permissions):** To support secure `list` operations and avoid rules acting as filters (QAPs), critical authorization and filtering fields are denormalized into child documents:\n        *   The `OrganizationProductPrice` entity, located at `/organizations/{organizationId}/productPrices/{organizationProductPriceId}`, will include a denormalized `brandId` field (copied from the `Product` entity). This allows client applications to efficiently query for product prices belonging to a specific organization and a specific brand (e.g., `db.collection('organizations/{orgId}/productPrices').where('brandId', '==', 'someBrandId')`). This query structure respects QAPs because the `organizationId` is already enforced by the path, and the `brandId` filter is explicitly allowed by its presence in the document.\n        *   The `OrganizationProductPriceLevelValue` entity, located at `/organizations/{organizationId}/productPrices/{organizationProductPriceId}/priceLevelValues/{priceLevelValueId}`, is critical. It *must* include denormalized `organizationId` and `brandId` fields. While the `organizationId` is available in the path, its presence in the document reinforces Authorization Independence and allows for more flexible querying. The `brandId` denormalization further aids in QAP-compliant `list` queries at deeper levels of the hierarchy, enabling lists of price level values for a given organization and brand without relying on complex, inefficient cross-collection lookups or rule `get()` calls.\n\n2.  **Structural Segregation:** All documents within a given collection (`priceLevelDefinitions`, `productPrices`, `priceLevelValues`) share the same security requirements (i.e., access is governed by the `organizationId` in their path). This prevents mixing data with different access needs, making security rules simpler and less prone to error.\n\n3.  **Access Modeling & DBAC:** The entire structure leans heavily on Path-Based ownership (`/organizations/{organizationId}/...`), which is ideal for user-owned or organization-owned data. Global reference data like `Brand` and `Product` entities are stored in top-level collections (`/brands/{brandId}`, `/products/{productId}`) for broad accessibility, typically read-only for authenticated users.\n\n4.  **Data Clarity:** Wildcards are descriptive (`{organizationId}`, `{priceLevelDefinitionId}`). The `hasSubDealers` flag on the `Organization` entity directly informs the application logic for creating the 'Sub Dealer Price Level', maintaining explicit state.\n\nThis design ensures that authorization rules can be written concisely, typically checking `request.auth.uid` against a `members` map on the `Organization` document for the `organizationId` extracted from the path. The denormalization strategy is paramount in achieving Authorization Independence and supporting robust, QAP-compliant queries for the price book functionality."
+      "description": "Individual data rows within a specific data set."
+    },
+    "/data-warehouse/{vendorId}/masterDataSet/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's master data set."
+    },
+    "/data-warehouse/{vendorId}/ranges/{rangeId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Range"
+      },
+      "description": "Product ranges for a specific vendor."
+    },
+    "/data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Model"
+      },
+      "description": "Specific models within a product range."
+    },
+    "/data-warehouse/{vendorId}/masterPriceList/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's master price list."
+    },
+    "/data-warehouse/{vendorId}/bulkMasterPriceList/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's bulk master price list."
+    },
+    "/modules/{moduleId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Module"
+      },
+      "description": "Application modules."
+    }
   }
 }

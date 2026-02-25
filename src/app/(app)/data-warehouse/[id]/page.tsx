@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -12,9 +13,9 @@ import * as XLSX from 'xlsx';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useFirestore, useStorage, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -37,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { createSlug } from '@/lib/utils';
+import { createSlug, cn } from '@/lib/utils';
 import { HighfieldDataStructure } from '@/components/highfield-data-structure';
 import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 import { StacerDataStructure } from '@/components/stacer-data-structure';
@@ -50,6 +51,7 @@ import { JsonDataVisualizer } from '@/components/json-data-visualizer';
 import { YamahaApiFetcher } from '@/components/yamaha-api-fetcher';
 import { analyzeJson } from '@/ai/flows/analyze-json-flow';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const formSchema = z.object({
   id: z.string(),
@@ -68,6 +70,314 @@ const formSchema = z.object({
 });
 
 type VendorFormData = z.infer<typeof formSchema>;
+
+function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const [file, setFile] = useState<File | null>(null);
+    const [parsedData, setParsedData] = useState<any[] | null>(null);
+    const [columns, setColumns] = useState<{key: string, label: string}[] | undefined>(undefined);
+    const [isParsing, setIsParsing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [dataSetName, setDataSetName] = useState('');
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0] || null;
+        setFile(selectedFile);
+        setParsedData(null);
+        setColumns(undefined);
+        setError(null);
+        if (selectedFile) {
+            setDataSetName(selectedFile.name.replace(/\.[^/.]+$/, ""));
+            handleParseData(selectedFile);
+        }
+    };
+
+    const handleParseData = (fileToParse: File) => {
+        setIsParsing(true);
+        setError(null);
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = event.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+
+                if (json.length > 0) {
+                    const firstRow = json[0] as Record<string, any>;
+                    const suggestedColumns = Object.keys(firstRow).map(key => ({
+                        key,
+                        label: key,
+                    }));
+                    setColumns(suggestedColumns);
+                }
+
+                setParsedData(json);
+                toast({ title: 'Parsing Complete', description: 'The document has been parsed.' });
+            } catch (e: any) {
+                setError(e.message || 'An unexpected error occurred during parsing.');
+                toast({ variant: 'destructive', title: 'Parsing Failed', description: e.message });
+            } finally {
+                setIsParsing(false);
+            }
+        };
+        reader.onerror = () => {
+            setError('Failed to read file.');
+            toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' });
+            setIsParsing(false);
+        };
+        reader.readAsBinaryString(fileToParse);
+    };
+    
+    const handleSaveToMaster = async () => {
+        if (!parsedData || !vendor || !dataSetName.trim()) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No data to save. Please parse a document and provide a name.' });
+            return;
+        }
+        setIsSaving(true);
+
+        try {
+            const dataSetsRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets`);
+            const dataSetDocRef = doc(dataSetsRef);
+            
+            // 1. Create the data set metadata
+            await setDoc(dataSetDocRef, {
+                id: dataSetDocRef.id,
+                name: dataSetName,
+                rowCount: parsedData.length,
+                uploadedAt: serverTimestamp(),
+            });
+
+            // 2. Upload rows in batches
+            const rowsCollectionRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${dataSetDocRef.id}/rows`);
+            const writeBatchSize = 500;
+            for (let i = 0; i < parsedData.length; i += writeBatchSize) {
+                const chunk = parsedData.slice(i, i + writeBatchSize);
+                const writeBatchInstance = writeBatch(firestore);
+                chunk.forEach(row => {
+                    const newRowRef = doc(rowsCollectionRef);
+                    writeBatchInstance.set(newRowRef, { ...row, id: newRowRef.id });
+                });
+                await writeBatchInstance.commit();
+            }
+            
+            toast({ title: 'Success', description: `Table "${dataSetName}" has been created with ${parsedData.length} rows.` });
+            setFile(null);
+            setParsedData(null);
+            setDataSetName('');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: e.message || 'An unexpected error occurred.' });
+            console.error("Save failed:", e);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Document Data Extractor</CardTitle>
+                <CardDescription>Upload a file to create a new data table for this vendor.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="document-file">1. Select Data File</Label>
+                        <div className="flex items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-muted/30">
+                            <FileUp className="h-6 w-6 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground flex-1">
+                                {file ? `Selected: ${file.name}` : 'Choose a CSV or Excel file...'}
+                            </span>
+                            <Button asChild variant="outline">
+                                <Label htmlFor="document-file" className="cursor-pointer">
+                                    Choose File
+                                </Label>
+                            </Button>
+                            <Input id="document-file" type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" disabled={isSaving || isParsing} />
+                        </div>
+                    </div>
+
+                    {file && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                            <Label htmlFor="dataset-name">2. Table Name</Label>
+                            <Input 
+                                id="dataset-name" 
+                                placeholder="e.g. Parts List 2024" 
+                                value={dataSetName} 
+                                onChange={(e) => setDataSetName(e.target.value)}
+                                disabled={isSaving}
+                            />
+                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">This name will be used to identify this specific data table.</p>
+                        </div>
+                    )}
+                </div>
+                
+                {isParsing && (
+                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-4 text-muted-foreground">Parsing document...</p>
+                    </div>
+                )}
+                {error && <p className="text-destructive text-sm">{error}</p>}
+
+                {parsedData && (
+                     <Card className="border-primary/20">
+                        <CardHeader className="py-3 px-4 border-b bg-primary/5">
+                            <CardTitle className="text-sm font-bold uppercase tracking-tighter">Preview: {dataSetName}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                           <div className="max-h-[400px] overflow-auto">
+                             <JsonDataVisualizer data={parsedData} columns={columns} />
+                           </div>
+                        </CardContent>
+                        <CardFooter className="py-3 px-4 border-t bg-muted/30">
+                            <Button onClick={handleSaveToMaster} disabled={isSaving || !dataSetName.trim()} className="w-full">
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Save as New Table
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    
+    // 1. Fetch available data sets
+    const dataSetsQuery = useMemoFirebase(() => {
+        if (!vendor.id) return null;
+        return query(collection(firestore, 'data-warehouse', vendor.id, 'dataSets'), orderBy('uploadedAt', 'desc'));
+    }, [firestore, vendor.id]);
+    const { data: dataSets, loading: setsLoading } = useCollection<any>(dataSetsQuery);
+
+    const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // 2. Fetch rows for selected set
+    const rowsQuery = useMemoFirebase(() => {
+        if (!vendor.id || !selectedSetId) return null;
+        return collection(firestore, 'data-warehouse', vendor.id, 'dataSets', selectedSetId, 'rows');
+    }, [firestore, vendor.id, selectedSetId]);
+    const { data: rows, loading: rowsLoading } = useCollection<any>(rowsQuery);
+
+    const selectedSet = useMemo(() => dataSets?.find(s => s.id === selectedSetId), [dataSets, selectedSetId]);
+
+    const handleDeleteSet = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!window.confirm("Are you sure you want to delete this table? All rows will be lost.")) return;
+        
+        setIsDeleting(true);
+        try {
+            const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/dataSets/${id}/rows`));
+            const batch = writeBatch(firestore);
+            rowsSnap.forEach(d => batch.delete(d.ref));
+            batch.delete(doc(firestore, `data-warehouse/${vendor.id}/dataSets`, id));
+            await batch.commit();
+            toast({ title: "Table deleted" });
+            if (selectedSetId === id) setSelectedSetId(null);
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Delete failed" });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    if (setsLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+    if (!dataSets || dataSets.length === 0) {
+        return (
+            <Card className="border-dashed h-64 flex flex-col items-center justify-center text-center p-6">
+                <TableIcon className="h-12 w-12 text-muted-foreground opacity-20 mb-4" />
+                <CardTitle>No Data Tables Found</CardTitle>
+                <CardDescription>Upload files in the 'Data Connection' tab to populate this list.</CardDescription>
+            </Card>
+        );
+    }
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="md:col-span-1 border-r h-fit">
+                <CardHeader className="py-4 border-b">
+                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Available Tables</CardTitle>
+                </CardHeader>
+                <ScrollArea className="h-[500px]">
+                    <div className="p-2 space-y-1">
+                        {dataSets.map(set => (
+                            <div 
+                                key={set.id}
+                                onClick={() => setSelectedSetId(set.id)}
+                                className={cn(
+                                    "flex items-center justify-between p-3 rounded-md cursor-pointer transition-all group",
+                                    selectedSetId === set.id ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-muted"
+                                )}
+                            >
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold truncate">{set.name}</p>
+                                    <p className={cn("text-[10px] uppercase font-black", selectedSetId === set.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                                        {set.rowCount} Rows
+                                    </p>
+                                </div>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className={cn("h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity", selectedSetId === set.id ? "text-primary-foreground hover:bg-white/20" : "text-destructive")}
+                                    onClick={(e) => handleDeleteSet(set.id, e)}
+                                    disabled={isDeleting}
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </Card>
+
+            <Card className="md:col-span-3 min-h-[500px] flex flex-col">
+                {selectedSetId ? (
+                    <>
+                        <CardHeader className="py-4 border-b bg-muted/30 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-lg">{selectedSet?.name}</CardTitle>
+                                <CardDescription>Viewing {selectedSet?.rowCount} records</CardDescription>
+                            </div>
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={`/vendor-data/${vendor.slug || vendor.id}?set=${selectedSetId}`}>
+                                    Open Full View
+                                    <ChevronRight className="ml-2 h-4 w-4" />
+                                </Link>
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-0 flex-grow relative">
+                            {rowsLoading ? (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            ) : (
+                                <div className="h-[500px] overflow-auto">
+                                    <JsonDataVisualizer data={rows} />
+                                </div>
+                            )}
+                        </CardContent>
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-12 text-muted-foreground">
+                        <TableIcon className="h-16 w-16 mb-4 opacity-10" />
+                        <p className="text-sm font-medium">Select a table from the sidebar to visualize its data.</p>
+                    </div>
+                )}
+            </Card>
+        </div>
+    );
+}
 
 function HighfieldPoc({ vendorId }: { vendorId: string }) {
     const [url, setUrl] = useState('');
@@ -315,290 +625,6 @@ function ApiDataFetcher() {
     );
 }
 
-function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
-    const firestore = useFirestore();
-    const { toast } = useToast();
-
-    const [file, setFile] = useState<File | null>(null);
-    const [parsedData, setParsedData] = useState<any[] | null>(null);
-    const [columns, setColumns] = useState<{key: string, label: string}[] | undefined>(undefined);
-    const [isParsing, setIsParsing] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [saveStatus, setSaveStatus] = useState('Save to Master Data Set');
-    const [isClearing, setIsClearing] = useState(false);
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0] || null;
-        setFile(selectedFile);
-        setParsedData(null);
-        setColumns(undefined);
-        setError(null);
-        if (selectedFile) {
-            handleParseData(selectedFile);
-        }
-    };
-
-    const handleParseData = (fileToParse: File) => {
-        if (!fileToParse) {
-            toast({ variant: 'destructive', title: 'No file selected', description: 'Please select a document to parse.' });
-            return;
-        }
-        setIsParsing(true);
-        setError(null);
-        
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = event.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet);
-
-                if (json.length > 0) {
-                    const firstRow = json[0] as Record<string, any>;
-                    const suggestedColumns = Object.keys(firstRow).map(key => ({
-                        key,
-                        label: key,
-                    }));
-                    setColumns(suggestedColumns);
-                }
-
-                setParsedData(json);
-                toast({ title: 'Parsing Complete', description: 'The document has been parsed.' });
-            } catch (e: any) {
-                setError(e.message || 'An unexpected error occurred during parsing.');
-                toast({ variant: 'destructive', title: 'Parsing Failed', description: e.message });
-            } finally {
-                setIsParsing(false);
-            }
-        };
-        reader.onerror = (e) => {
-            setError('Failed to read file.');
-            toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' });
-            setIsParsing(false);
-        };
-        reader.readAsBinaryString(fileToParse);
-    };
-    
-    const handleSaveToMaster = async () => {
-        if (!parsedData || !vendor) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No data to save. Please parse a document first.' });
-            return;
-        }
-        setIsSaving(true);
-        setSaveStatus('Clearing old data...');
-
-        try {
-            const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
-            const subcollectionRef = collection(firestore, masterDataSetPath);
-
-            const oldDocsQuery = query(subcollectionRef);
-            const oldDocsSnapshot = await getDocs(oldDocsQuery);
-            if (!oldDocsSnapshot.empty) {
-                const deleteBatchSize = 500;
-                for (let i = 0; i < oldDocsSnapshot.docs.length; i += deleteBatchSize) {
-                    const chunk = oldDocsSnapshot.docs.slice(i, i + deleteBatchSize);
-                    const deleteBatch = writeBatch(firestore);
-                    chunk.forEach(doc => deleteBatch.delete(doc.ref));
-                    await deleteBatch.commit();
-                }
-            }
-            
-            setSaveStatus('Saving new data...');
-            const writeBatchSize = 500;
-            for (let i = 0; i < parsedData.length; i += writeBatchSize) {
-                const chunk = parsedData.slice(i, i + writeBatchSize);
-                const writeBatchInstance = writeBatch(firestore);
-                chunk.forEach(row => {
-                    const newRowRef = doc(subcollectionRef);
-                    writeBatchInstance.set(newRowRef, row);
-                });
-                await writeBatchInstance.commit();
-            }
-            
-            toast({ title: 'Success', description: 'Master data set has been updated.' });
-            setFile(null);
-            setParsedData(null);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message || 'An unexpected error occurred. Check console for details.' });
-            console.error("Save to master data set failed:", e);
-        } finally {
-            setIsSaving(false);
-            setSaveStatus('Save to Master Data Set');
-        }
-    };
-
-    const handleClearMaster = async () => {
-        if (!vendor) return;
-        setIsClearing(true);
-        try {
-            const masterDataSetPath = `data-warehouse/${vendor.id}/masterDataSet`;
-            const subcollectionRef = collection(firestore, masterDataSetPath);
-
-            const oldDocsSnapshot = await getDocs(query(subcollectionRef));
-            if (!oldDocsSnapshot.empty) {
-                const deleteBatchSize = 500;
-                for (let i = 0; i < oldDocsSnapshot.docs.length; i += deleteBatchSize) {
-                    const chunk = oldDocsSnapshot.docs.slice(i, i + deleteBatchSize);
-                    const deleteBatch = writeBatch(firestore);
-                    chunk.forEach(doc => deleteBatch.delete(doc.ref));
-                    await deleteBatch.commit();
-                }
-            }
-            toast({ title: 'Success', description: 'Master data set has been cleared.' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Clear Failed', description: e.message });
-            console.error('Clear master data set failed:', e);
-        } finally {
-            setIsClearing(false);
-        }
-    };
-    
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Document Data Extractor</CardTitle>
-                <CardDescription>Upload a new file to replace the existing master data set. Each upload overwrites the previous data.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="space-y-2">
-                    <Label htmlFor="document-file">Data File</Label>
-                    <div className="flex items-center gap-2 p-4 border-2 border-dashed rounded-lg">
-                        <FileUp className="h-6 w-6 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground flex-1">
-                            {file ? `Selected: ${file.name}` : 'Select a file to begin...'}
-                        </span>
-                        <Button asChild variant="outline">
-                            <Label htmlFor="document-file" className="cursor-pointer">
-                                Choose File
-                            </Label>
-                        </Button>
-                        <Input id="document-file" type="file" onChange={handleFileChange} className="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" disabled={isSaving || isParsing || isClearing} />
-                    </div>
-                </div>
-                
-                {isParsing && (
-                    <div className="flex items-center justify-center rounded-md border border-dashed p-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="ml-4 text-muted-foreground">Parsing document...</p>
-                    </div>
-                )}
-                {error && <p className="text-destructive text-sm">{error}</p>}
-
-                {parsedData && (
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Parsed Data Preview</CardTitle>
-                            <CardDescription>Review the data parsed from your file below before saving.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <div className="max-h-[600px] overflow-auto rounded-md border">
-                             <JsonDataVisualizer data={parsedData} columns={columns} />
-                           </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button onClick={handleSaveToMaster} disabled={isSaving || iClearing}>
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                {saveStatus}
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                )}
-            </CardContent>
-            <CardFooter className="border-t pt-6 flex justify-end">
-                 <Button onClick={handleClearMaster} disabled={isClearing || isSaving} variant="destructive">
-                    {isClearing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                    Clear Master Data Set
-                </Button>
-            </CardFooter>
-        </Card>
-    );
-}
-
-function MasterDataSetEditorDialog({
-    isOpen,
-    setIsOpen,
-    item,
-    vendorId,
-    onSave,
-}: {
-    isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
-    item: any | null;
-    vendorId: string;
-    onSave: () => void;
-}) {
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [isSaving, setIsSaving] = useState(false);
-
-    const form = useForm({
-        defaultValues: item || {},
-    });
-
-    useEffect(() => {
-        form.reset(item || {});
-    }, [item, form]);
-
-    if (!item) return null;
-
-    const handleSave = async (data: any) => {
-        setIsSaving(true);
-        try {
-            const docRef = doc(firestore, `data-warehouse/${vendorId}/masterDataSet`, item.id);
-            await updateDoc(docRef, data);
-            toast({ title: 'Success', description: 'Item has been updated.' });
-            onSave();
-            setIsOpen(false);
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
-            console.error(error);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Edit Item</DialogTitle>
-                    <DialogDescription>Maryland changes to the item below and click save.</DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                    <form className="space-y-4 overflow-y-auto px-1">
-                        {Object.keys(item).filter(key => key !== 'id').map((key) => (
-                            <FormField
-                                key={key}
-                                control={form.control}
-                                name={key as any}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="capitalize">{key.replace(/_/g, ' ')}</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} value={field.value ?? ''} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        ))}
-                    </form>
-                </Form>
-                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={form.handleSubmit(handleSave)} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const firestore = useFirestore();
     const masterDataSetQuery = useMemoFirebase(() => {
@@ -830,6 +856,88 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     );
 }
 
+function MasterDataSetEditorDialog({
+    isOpen,
+    setIsOpen,
+    item,
+    vendorId,
+    onSave,
+}: {
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+    item: any | null;
+    vendorId: string;
+    onSave: () => void;
+}) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSaving, setIsSaving] = useState(false);
+
+    const form = useForm({
+        defaultValues: item || {},
+    });
+
+    useEffect(() => {
+        form.reset(item || {});
+    }, [item, form]);
+
+    if (!item) return null;
+
+    const handleSave = async (data: any) => {
+        setIsSaving(true);
+        try {
+            const docRef = doc(firestore, `data-warehouse/${vendorId}/masterDataSet`, item.id);
+            await updateDoc(docRef, data);
+            toast({ title: 'Success', description: 'Item has been updated.' });
+            onSave();
+            setIsOpen(false);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+            console.error(error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Edit Item</DialogTitle>
+                    <DialogDescription>Maryland changes to the item below and click save.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form className="space-y-4 overflow-y-auto px-1">
+                        {Object.keys(item).filter(key => key !== 'id').map((key) => (
+                            <FormField
+                                key={key}
+                                control={form.control}
+                                name={key as any}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="capitalize">{key.replace(/_/g, ' ')}</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} value={field.value ?? ''} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        ))}
+                    </form>
+                </Form>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={form.handleSubmit(handleSave)} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function VendorDetailsPage() {
     const params = useParams();
     const router = useRouter();
@@ -951,7 +1059,8 @@ export default function VendorDetailsPage() {
     const isBulkSupplier = (vendor?.vendorType === 'Electronics Supplier' || vendor?.vendorType === 'Parts Wholesaler');
     const isYamaha = vendor?.slug === 'yamaha';
     const isHighfield = vendor?.slug === 'highfield';
-    const defaultTab = isBoatBrand ? "product-ranges" : (isBulkSupplier || isYamaha) ? "master-data" : "details";
+    const isMultiTableVendor = vendor?.dataSource === 'Document Upload';
+    const defaultTab = isBoatBrand ? "product-ranges" : (isBulkSupplier || isYamaha || isMultiTableVendor) ? "master-data" : "details";
     
     return (
         <AdminGuard>
@@ -968,7 +1077,7 @@ export default function VendorDetailsPage() {
                     <TabsList>
                         {isBoatBrand && <TabsTrigger value="product-ranges">Product Ranges</TabsTrigger>}
                         {isHighfield && <TabsTrigger value="poc">POC</TabsTrigger>}
-                        {(isBulkSupplier || isYamaha) && <TabsTrigger value="master-data">Master Data Set</TabsTrigger>}
+                        {(isBulkSupplier || isYamaha || isMultiTableVendor) && <TabsTrigger value="master-data">Master Data Set</TabsTrigger>}
                         <TabsTrigger value="data-connection">Data Connection</TabsTrigger>
                         <TabsTrigger value="details">Details</TabsTrigger>
                     </TabsList>
@@ -999,10 +1108,12 @@ export default function VendorDetailsPage() {
                         </TabsContent>
                     )}
 
-                    {(isBulkSupplier || isYamaha) && (
+                    {(isBulkSupplier || isYamaha || isMultiTableVendor) && (
                         <TabsContent value="master-data">
                             {vendor.slug === 'sam-allen' ? (
                                 <SamAllenDataViewer vendorId={vendor.id} />
+                            ) : isMultiTableVendor ? (
+                                <MultiDataSetViewer vendor={vendor} />
                             ) : (
                                 <MasterDataSetViewer vendor={vendor} />
                             )}
