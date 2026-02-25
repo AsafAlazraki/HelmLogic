@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -65,6 +65,7 @@ const motorConfigSchema = z.object({
 const optionalFeatureSchema = z.object({
     id: z.string(),
     name: z.string().min(1, 'Feature name is required'),
+    category: z.string().optional().nullable(),
     code: z.string().optional(),
     imageUrl: z.string().nullable().optional(),
     cost: looseNumber,
@@ -572,11 +573,12 @@ function MotorConfigurationsSection() {
     );
 }
 
-function OptionalFeatureItem({ index, remove, gstPercentage }: { index: number; remove: (index: number) => void; gstPercentage: number }) {
+function OptionalFeatureItem({ index, remove, gstPercentage, categories }: { index: number; remove: (index: number) => void; gstPercentage: number, categories: string[] }) {
     const { control } = useFormContext<ModelFormData>();
     const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
     const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
     const code = useWatch({ control, name: `optionalFeatures.${index}.code` });
+    const category = useWatch({ control, name: `optionalFeatures.${index}.category` });
     const storage = useStorage();
     const [isUploading, setIsUploading] = useState(false);
 
@@ -592,11 +594,14 @@ function OptionalFeatureItem({ index, remove, gstPercentage }: { index: number; 
                     <div className="flex items-center gap-2 min-w-0">
                         <span className="font-bold text-xs truncate">{name || 'Unnamed Option'}</span>
                         {code && <span className="font-mono text-[10px] text-muted-foreground uppercase bg-muted px-1 rounded shrink-0">{code}</span>}
+                        {category && <span className="text-[9px] font-black uppercase text-primary bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 truncate">{category}</span>}
                     </div>
                 </div>
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => remove(index)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
             </div>
             <CollapsibleContent>
                 <div className="p-4 space-y-6">
@@ -641,6 +646,29 @@ function OptionalFeatureItem({ index, remove, gstPercentage }: { index: number; 
                                 <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-9 text-xs font-bold" {...field} /></FormControl></FormItem> )} />
                                 <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
                             </div>
+
+                            <FormField
+                                control={control}
+                                name={`optionalFeatures.${index}.category`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category Assignment (Move Tool)</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-9 text-xs font-bold bg-muted/30">
+                                                    <SelectValue placeholder="No Category Assigned" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none">None (No Category)</SelectItem>
+                                                {categories.map(cat => (
+                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
+                                )}
+                            />
                             
                             <div className="grid grid-cols-1 gap-4">
                                 <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
@@ -766,6 +794,29 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
     const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
 
+    const [categories, setCategories] = useState<string[]>([]);
+    const [newCategoryName, setNewCategoryName] = useState('');
+
+    const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
+
+    useEffect(() => {
+        if (watchedOptionalFeatures) {
+            const currentCats = [...new Set(watchedOptionalFeatures.map((f: any) => f.category).filter(Boolean) as string[])];
+            setCategories(prev => {
+                const combined = [...new Set([...prev, ...currentCats])];
+                return combined.sort();
+            });
+        }
+    }, [watchedOptionalFeatures]);
+
+    const handleAddCategory = () => {
+        if (!newCategoryName.trim()) return;
+        if (!categories.includes(newCategoryName.trim())) {
+            setCategories(prev => [...prev, newCategoryName.trim()].sort());
+        }
+        setNewCategoryName('');
+    };
+
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
@@ -791,18 +842,101 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
                 </div>
                 <div className="lg:col-span-3 lg:order-2 space-y-8">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                    
                     <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                         <Card className="border-none shadow-none rounded-none">
-                            <CollapsibleCardHeader 
-                                title="Factory Options" 
-                                count={optionalFeatureFields.length}
-                                onAdd={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '' })}
-                            />
+                            <div className="flex flex-col py-4 px-6 border-b bg-card gap-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <CollapsibleTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                            </Button>
+                                        </CollapsibleTrigger>
+                                        <CardTitle className="text-lg font-bold">Factory Options</CardTitle>
+                                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+                                            {optionalFeatureFields.length}
+                                        </span>
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null })}>
+                                        <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Option
+                                    </Button>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 p-1.5 bg-muted/50 rounded-lg border border-dashed">
+                                    <div className="relative flex-1">
+                                        <FolderPlus className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Define New Category..." 
+                                            value={newCategoryName} 
+                                            onChange={(e) => setNewCategoryName(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+                                            className="h-8 pl-8 text-[10px] font-bold bg-background border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+                                        />
+                                    </div>
+                                    <Button type="button" size="sm" variant="secondary" className="h-7 text-[9px] font-black uppercase tracking-widest px-3" onClick={handleAddCategory}>Create</Button>
+                                </div>
+                            </div>
+
                             <CollapsibleContent>
                                 <CardContent className="pt-6">
-                                    <ScrollArea className="max-h-[500px] pr-4">
-                                        <div className="grid grid-cols-1 gap-4">
-                                            {optionalFeatureFields.map((field, index) => ( <OptionalFeatureItem key={field.id} index={index} remove={removeOptionalFeature} gstPercentage={gstPercentage} /> ))}
+                                    <ScrollArea className="max-h-[700px] pr-4">
+                                        <div className="space-y-8">
+                                            {/* 1. Uncategorized Items (Directly visible at top as per request) */}
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {optionalFeatureFields.map((field, index) => {
+                                                    const feat = watchedOptionalFeatures[index];
+                                                    if (feat?.category) return null;
+                                                    return (
+                                                        <OptionalFeatureItem 
+                                                            key={field.id} 
+                                                            index={index} 
+                                                            remove={removeOptionalFeature} 
+                                                            gstPercentage={gstPercentage}
+                                                            categories={categories}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* 2. Categorized Sections */}
+                                            {categories.map(cat => {
+                                                const catItems = optionalFeatureFields.filter((_, idx) => watchedOptionalFeatures[idx]?.category === cat);
+                                                if (catItems.length === 0) return null;
+
+                                                return (
+                                                    <Collapsible key={cat} className="space-y-4" defaultOpen>
+                                                        <div className="flex items-center justify-between bg-primary/5 p-3 rounded-lg border-l-4 border-primary">
+                                                            <div className="flex items-center gap-2">
+                                                                <CollapsibleTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent hover:text-accent-foreground">
+                                                                        <ChevronDown className="h-4 w-4" />
+                                                                    </Button>
+                                                                </CollapsibleTrigger>
+                                                                <h3 className="font-black text-[11px] uppercase tracking-widest text-primary">{cat}</h3>
+                                                            </div>
+                                                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter bg-background px-2 py-0.5 rounded-full border shadow-sm">{catItems.length} items</span>
+                                                        </div>
+                                                        <CollapsibleContent className="space-y-4 pt-2 ml-2 border-l-2 border-dashed border-muted pl-4">
+                                                            <div className="grid grid-cols-1 gap-4">
+                                                                {optionalFeatureFields.map((field, index) => {
+                                                                    const feat = watchedOptionalFeatures[index];
+                                                                    if (feat?.category !== cat) return null;
+                                                                    return (
+                                                                        <OptionalFeatureItem 
+                                                                            key={field.id} 
+                                                                            index={index} 
+                                                                            remove={removeOptionalFeature} 
+                                                                            gstPercentage={gstPercentage}
+                                                                            categories={categories}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </CollapsibleContent>
+                                                    </Collapsible>
+                                                );
+                                            })}
                                         </div>
                                     </ScrollArea>
                                 </CardContent>
