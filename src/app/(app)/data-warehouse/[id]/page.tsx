@@ -326,12 +326,12 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 min-w-0 max-w-full overflow-hidden">
-            <Card className="md:col-span-1 border-r h-fit min-w-0">
-                <CardHeader className="py-4 border-b">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 min-w-0 max-w-full overflow-hidden md:h-[600px]">
+            <Card className="md:col-span-1 flex flex-col h-fit md:h-full min-w-0 overflow-hidden">
+                <CardHeader className="py-4 border-b shrink-0">
                     <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Available Tables</CardTitle>
                 </CardHeader>
-                <ScrollArea className="h-[500px]">
+                <ScrollArea className="flex-1">
                     <div className="p-2 space-y-1">
                         {dataSets.map(set => (
                             <div 
@@ -363,7 +363,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 </ScrollArea>
             </Card>
 
-            <Card className="md:col-span-3 min-h-[500px] flex flex-col min-w-0 overflow-hidden max-w-full">
+            <Card className="md:col-span-3 h-[500px] md:h-full flex flex-col min-w-0 overflow-hidden max-w-full">
                 {selectedSetId ? (
                     <>
                         <CardHeader className="py-4 border-b bg-muted/30 flex flex-row items-center justify-between shrink-0">
