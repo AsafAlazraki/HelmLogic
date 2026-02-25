@@ -253,7 +253,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         if (!vendor.id) return null;
         return query(collection(firestore, 'data-warehouse', vendor.id, 'dataSets'), orderBy('uploadedAt', 'desc'));
     }, [firestore, vendor.id]);
-    const { data: dataSets, loading: setsLoading } = useCollection<any>(dataSetsQuery);
+    const { data: dataSets, isLoading: setsLoading } = useCollection<any>(dataSetsQuery);
 
     const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
     const [setToDelete, setSetToDelete] = useState<any | null>(null);
@@ -263,7 +263,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         if (!vendor.id || !selectedSetId) return null;
         return collection(firestore, 'data-warehouse', vendor.id, 'dataSets', selectedSetId, 'rows');
     }, [firestore, vendor.id, selectedSetId]);
-    const { data: rows, loading: rowsLoading } = useCollection<any>(rowsQuery);
+    const { data: rows, isLoading: rowsLoading } = useCollection<any>(rowsQuery);
 
     const selectedSet = useMemo(() => dataSets?.find(s => s.id === selectedSetId), [dataSets, selectedSetId]);
 
@@ -280,13 +280,13 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         try {
             const rowsRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${id}/rows`);
             const rowsSnap = await getDocs(rowsRef);
-            const docs = rowsSnap.docs;
+            const docsToDelete = rowsSnap.docs;
             const batchSize = 400; 
             
             // Delete all associated rows in batches
-            for (let i = 0; i < docs.length; i += batchSize) {
+            for (let i = 0; i < docsToDelete.length; i += batchSize) {
                 const batch = writeBatch(firestore);
-                const chunk = docs.slice(i, i + batchSize);
+                const chunk = docsToDelete.slice(i, i + batchSize);
                 chunk.forEach(d => batch.delete(d.ref));
                 await batch.commit();
             }
@@ -342,7 +342,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     selectedSetId === set.id ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-muted"
                                 )}
                             >
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                     <p className="text-sm font-bold truncate">{set.name}</p>
                                     <p className={cn("text-[10px] uppercase font-black", selectedSetId === set.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
                                         {set.rowCount} Rows
@@ -352,7 +352,11 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     variant="ghost" 
                                     size="icon" 
                                     className={cn("h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity", selectedSetId === set.id ? "text-primary-foreground hover:bg-white/20" : "text-destructive")}
-                                    onClick={(e) => { e.stopPropagation(); setSetToDelete(set); }}
+                                    onClick={(e) => { 
+                                        e.preventDefault();
+                                        e.stopPropagation(); 
+                                        setSetToDelete(set); 
+                                    }}
                                     disabled={isDeleting}
                                 >
                                     {isDeleting && setToDelete?.id === set.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -663,7 +667,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         if (!vendor.id) return null;
         return collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
     }, [firestore, vendor.id]);
-    const { data: masterDataSet, loading: masterDataLoading } = useCollection(masterDataSetQuery);
+    const { data: masterDataSet, isLoading: masterDataLoading } = useCollection(masterDataSetQuery);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
@@ -713,7 +717,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 setDisplayConfig({ 
                     titleKey, 
                     infoKeys, 
-                    columnConfig: undefined, // Let visualizer use raw order
+                    columnConfig: undefined, 
                     imageUrlKey: imageUrlKey, 
                     colorsKey: colorsKey ?? null 
                 });
@@ -955,13 +959,13 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             return query(collection(firestore, 'data-warehouse'), where('slug', '==', slugOrId));
         }, [firestore, slugOrId]);
         
-        const { data: vendorsBySlug, loading: slugLoading } = useCollection<VendorFormData>(vendorQueryBySlug);
+        const { data: vendorsBySlug, isLoading: slugLoading } = useCollection<VendorFormData>(vendorQueryBySlug);
         
         const vendorByIdRef = useMemoFirebase(() => {
             if (!slugOrId) return null;
             return doc(firestore, 'data-warehouse', slugOrId);
         }, [firestore, slugOrId]);
-        const { data: vendorById, loading: idLoading } = useDoc<VendorFormData>(vendorByIdRef);
+        const { data: vendorById, isLoading: idLoading } = useDoc<VendorFormData>(vendorByIdRef);
         
         const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
         const vendorLoading = slugLoading || idLoading;
