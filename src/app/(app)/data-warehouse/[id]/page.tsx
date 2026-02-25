@@ -486,7 +486,7 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
 
     return (
         <div className="space-y-6 max-w-full overflow-hidden min-w-0">
-            <Card className="min-w-0 max-w-full">
+            <Card className="min-0 max-w-full">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
@@ -1022,8 +1022,10 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                             )}
                                                             <FormMessage />
                                                         </FormItem>
-                                                    )
-                                                })}
+                                                    )}
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 </form>
                             </Form>
@@ -1325,7 +1327,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                         <AlertDialogContent>
                             <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete <strong>{vendor.name}</strong>.</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction></AlertDialogFooter>
+                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteVendor} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction></AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
                 )}
