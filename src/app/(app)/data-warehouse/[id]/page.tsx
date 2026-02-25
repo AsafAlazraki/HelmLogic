@@ -259,6 +259,9 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const [setToDelete, setSetToDelete] = useState<any | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    const [selectedItem, setSelectedItem] = useState<any | null>(null);
+    const [isEditorOpen, setIsEditorOpen] = useState(false);
+
     const rowsQuery = useMemoFirebase(() => {
         if (!vendor.id || !selectedSetId) return null;
         return collection(firestore, 'data-warehouse', vendor.id, 'dataSets', selectedSetId, 'rows');
@@ -269,8 +272,26 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
 
     const visualizerColumns = useMemo(() => {
         if (!selectedSet?.columnOrder) return undefined;
-        return selectedSet.columnOrder.map((key: string) => ({ key, label: key }));
+        let keys = [...selectedSet.columnOrder];
+        
+        // Prioritize image columns to be first
+        const imageKey = keys.find(k => 
+            k.toLowerCase().includes('image') || 
+            k.toLowerCase().includes('logo') || 
+            k === 'SummaryImage'
+        );
+
+        if (imageKey) {
+            keys = [imageKey, ...keys.filter(k => k !== imageKey)];
+        }
+
+        return keys.map((key: string) => ({ key, label: key }));
     }, [selectedSet]);
+
+    const handleRowClick = (item: any) => {
+        setSelectedItem(item);
+        setIsEditorOpen(true);
+    };
 
     const handleConfirmDelete = async () => {
         if (!setToDelete) return;
@@ -373,7 +394,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         <CardHeader className="py-4 border-b bg-muted/30 flex flex-row items-center justify-between shrink-0">
                             <div className="min-w-0">
                                 <CardTitle className="text-lg truncate">{selectedSet?.name}</CardTitle>
-                                <CardDescription>Viewing {selectedSet?.rowCount} records</CardDescription>
+                                <CardDescription>Viewing {selectedSet?.rowCount} records (Click row to edit/attach image)</CardDescription>
                             </div>
                             <Button variant="outline" size="sm" asChild className="shrink-0">
                                 <Link href={`/vendor-data/${vendor.slug || vendor.id}?set=${selectedSetId}`}>
@@ -388,7 +409,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
-                                <JsonDataVisualizer data={rows} columns={visualizerColumns} />
+                                <JsonDataVisualizer data={rows} columns={visualizerColumns} onRowClick={handleRowClick} />
                             )}
                         </CardContent>
                     </>
@@ -417,6 +438,16 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <MasterDataSetEditorDialog 
+                isOpen={isEditorOpen}
+                setIsOpen={setIsEditorOpen}
+                item={selectedItem}
+                vendorId={vendor.id}
+                vendorSlug={vendor.slug}
+                collectionPath={selectedSetId ? `data-warehouse/${vendor.id}/dataSets/${selectedSetId}/rows` : undefined}
+                onSave={() => {}}
+            />
         </div>
     );
 }
@@ -714,10 +745,13 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 const titleKey = modelNameKey || null;
                 const infoKeys = [productGroupKey, subCategoryKey].filter(Boolean) as string[];
                 
+                const colKeys = [imageUrlKey, ...allKeys.filter(k => k !== imageUrlKey && k !== 'id')];
+                const columnConfig = colKeys.map(k => ({ key: k, label: k }));
+
                 setDisplayConfig({ 
                     titleKey, 
                     infoKeys, 
-                    columnConfig: undefined, 
+                    columnConfig, 
                     imageUrlKey: imageUrlKey, 
                     colorsKey: colorsKey ?? null 
                 });
@@ -872,6 +906,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         vendorId,
         vendorSlug,
         onSave,
+        collectionPath,
     }: {
         isOpen: boolean;
         setIsOpen: (isOpen: boolean) => void;
@@ -879,6 +914,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         vendorId: string;
         vendorSlug?: string;
         onSave: () => void;
+        collectionPath?: string;
     }) {
         const firestore = useFirestore();
         const storage = useStorage();
@@ -891,7 +927,9 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         });
     
         useEffect(() => {
-            form.reset(item || {});
+            if (item) {
+                form.reset(item);
+            }
         }, [item, form]);
     
         if (!item) return null;
@@ -899,7 +937,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         const handleSave = async (data: any) => {
             setIsSaving(true);
             try {
-                const docRef = doc(firestore, `data-warehouse/${vendorId}/masterDataSet`, item.id);
+                const path = collectionPath || `data-warehouse/${vendorId}/masterDataSet`;
+                const docRef = doc(firestore, path, item.id);
                 await updateDoc(docRef, data);
                 toast({ title: 'Success', description: 'Item updated successfully.' });
                 onSave();
@@ -931,13 +970,28 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             const k = key.toLowerCase();
             return k.includes('image') || k.includes('logo') || k.includes('photo') || k === 'summaryimage';
         };
+
+        const itemKeys = useMemo(() => {
+            const keys = Object.keys(item).filter(key => key !== 'id');
+            // Ensure at least one image field exists if requested
+            if (!keys.some(k => isImageField(k))) {
+                keys.push('imageUrl');
+            }
+            return keys.sort((a, b) => {
+                const aImg = isImageField(a);
+                const bImg = isImageField(b);
+                if (aImg && !bImg) return -1;
+                if (!aImg && bImg) return 1;
+                return a.localeCompare(b);
+            });
+        }, [item]);
     
         return (
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-6 border-b bg-muted/20">
                         <DialogTitle className="text-xl font-bold">Edit Master Data Record</DialogTitle>
-                        <DialogDescription>Modify fields and manage item media. Click save to update the master record.</DialogDescription>
+                        <DialogDescription>Modify fields and manage item media. Click save to update the record.</DialogDescription>
                     </DialogHeader>
                     
                     <ScrollArea className="flex-1">
@@ -945,13 +999,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                             <Form {...form}>
                                 <form className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {Object.keys(item).filter(key => key !== 'id').sort((a, b) => {
-                                            const aImg = isImageField(a);
-                                            const bImg = isImageField(b);
-                                            if (aImg && !bImg) return -1;
-                                            if (!aImg && bImg) return 1;
-                                            return a.localeCompare(b);
-                                        }).map((key) => {
+                                        {itemKeys.map((key) => {
                                             const isImg = isImageField(key);
                                             return (
                                                 <FormField
@@ -970,7 +1018,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                                         {field.value ? (
                                                                             <>
                                                                                 <Image 
-                                                                                    src={field.value.startsWith('http') ? field.value : (vendorSlug === 'yamaha' ? `https://www.yamaha-motor.com.au${field.value}` : field.value)} 
+                                                                                    src={field.value.startsWith('http') ? field.value : (field.value.startsWith('/') ? `https://www.yamaha-motor.com.au${field.value}` : field.value)} 
                                                                                     alt={key} 
                                                                                     fill 
                                                                                     className="object-contain p-2" 

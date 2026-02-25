@@ -9,6 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 export function JsonDataVisualizer({ 
     data, 
@@ -23,10 +24,23 @@ export function JsonDataVisualizer({
         return <p className="text-muted-foreground p-4 text-center">No data to display.</p>;
     }
 
+    const isImageValue = (key: string, value: any) => {
+        if (typeof value !== 'string') return false;
+        const k = key.toLowerCase();
+        const isKnownKey = k.includes('image') || k.includes('logo') || k.includes('photo') || k === 'summaryimage';
+        const isUrl = value.startsWith('http') || value.startsWith('/') || value.startsWith('data:image');
+        return isKnownKey && isUrl;
+    };
+
+    const getImageUrl = (value: string) => {
+        if (value.startsWith('/') && !value.startsWith('//')) {
+            return `https://www.yamaha-motor.com.au${value}`;
+        }
+        return value;
+    };
+
     // Handle array of objects (standard table data)
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
-        // Use provided columns or extract keys from the first row to preserve original document order.
-        // We filter out the 'id' field as it's typically an internal Firestore identifier.
         const keys = columns 
             ? columns.map(c => c.key) 
             : Object.keys(data[0]).filter(k => k !== 'id');
@@ -62,24 +76,39 @@ export function JsonDataVisualizer({
                                     )}
                                     onClick={() => onRowClick?.(row)}
                                 >
-                                    {keys.map((key, colIndex) => (
-                                        <TableCell key={`${rowIndex}-${colIndex}`} className="align-top py-3 px-4 border-b/50">
-                                            {typeof row[key] === 'object' && row[key] !== null ? (
-                                                <pre className="text-[10px] font-mono bg-muted/50 p-2 rounded-md overflow-x-auto max-w-[300px]">
-                                                    <code>{JSON.stringify(row[key], null, 2)}</code>
-                                                </pre>
-                                            ) : (
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className={cn(
-                                                        "text-[11px] font-medium text-foreground whitespace-nowrap",
-                                                        (key.toLowerCase().includes('code') || key.toLowerCase().includes('sku')) && "font-mono font-bold uppercase"
-                                                    )}>
-                                                        {String(row[key] ?? '')}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                    ))}
+                                    {keys.map((key, colIndex) => {
+                                        const val = row[key];
+                                        const isImg = isImageValue(key, val);
+
+                                        return (
+                                            <TableCell key={`${rowIndex}-${colIndex}`} className="align-middle py-3 px-4 border-b/50">
+                                                {isImg ? (
+                                                    <div className="relative h-10 w-16 bg-muted rounded overflow-hidden shadow-sm border border-border/50 transition-transform group-hover:scale-105">
+                                                        <Image 
+                                                            src={getImageUrl(val)} 
+                                                            alt="Preview" 
+                                                            fill 
+                                                            className="object-contain p-1" 
+                                                            sizes="64px"
+                                                        />
+                                                    </div>
+                                                ) : typeof val === 'object' && val !== null ? (
+                                                    <pre className="text-[10px] font-mono bg-muted/50 p-2 rounded-md overflow-x-auto max-w-[300px]">
+                                                        <code>{JSON.stringify(val, null, 2)}</code>
+                                                    </pre>
+                                                ) : (
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className={cn(
+                                                            "text-[11px] font-medium text-foreground whitespace-nowrap",
+                                                            (key.toLowerCase().includes('code') || key.toLowerCase().includes('sku')) && "font-mono font-bold uppercase"
+                                                        )}>
+                                                            {String(val ?? '')}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                        );
+                                    })}
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -99,7 +128,11 @@ export function JsonDataVisualizer({
                             {key.replace(/_/g, ' ')}
                         </div>
                         <div className="md:col-span-3 min-w-0">
-                            {typeof value === 'object' && value !== null ? (
+                            {isImageValue(key, value) ? (
+                                <div className="relative h-24 w-40 bg-muted rounded overflow-hidden border">
+                                    <Image src={getImageUrl(value as string)} alt="Value Preview" fill className="object-contain" />
+                                </div>
+                            ) : typeof value === 'object' && value !== null ? (
                                 <pre className="text-xs bg-muted/30 p-3 rounded-md overflow-x-auto max-w-full font-mono">
                                     <code>{JSON.stringify(value, null, 2)}</code>
                                 </pre>
