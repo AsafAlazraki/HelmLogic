@@ -113,6 +113,17 @@ function MasterDataSetEditorDialog({
         return k.includes('image') || k.includes('logo') || k.includes('photo') || k === 'summaryimage';
     };
 
+    const getPreviewUrl = (value: any) => {
+        if (!value || typeof value !== 'string') return '';
+        const path = value.trim().replace(/\\/g, '/');
+        if (path.startsWith('http') || path.startsWith('data:image')) return path;
+        if (vendorSlug === 'yamaha') {
+            const cleanPath = path.startsWith('/') ? path : `/${path}`;
+            return `https://www.yamaha-motor.com.au${cleanPath}`;
+        }
+        return path;
+    };
+
     const itemKeys = useMemo(() => {
         if (!item) return [];
         const keys = Object.keys(item).filter(key => key !== 'id');
@@ -195,11 +206,10 @@ function MasterDataSetEditorDialog({
                                                                 <div className="relative aspect-video w-full max-w-sm rounded-lg border-2 border-dashed bg-muted/10 overflow-hidden group">
                                                                     {field.value ? (
                                                                         <>
-                                                                            <Image 
-                                                                                src={field.value.startsWith('http') ? field.value : (field.value.startsWith('/') ? `https://www.yamaha-motor.com.au${field.value}` : field.value)} 
+                                                                            <img 
+                                                                                src={getPreviewUrl(field.value)} 
                                                                                 alt={key} 
-                                                                                fill 
-                                                                                className="object-contain p-2" 
+                                                                                className="h-full w-full object-contain p-2" 
                                                                             />
                                                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                                                 <Button type="button" variant="destructive" size="sm" onClick={() => field.onChange('')}>
@@ -1187,11 +1197,12 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                         {filteredData.map((item) => {
                                             let itemImageUrl: string | null = null;
                                             if (imageUrlKey && item[imageUrlKey] && typeof item[imageUrlKey] === 'string') {
-                                                const path = item[imageUrlKey].trim().replace(/\\/g, '');
+                                                const path = item[imageUrlKey].trim().replace(/\\/g, '/');
                                                 if (path.startsWith('http')) {
                                                     itemImageUrl = path;
                                                 } else if (vendor.slug === 'yamaha' && path) {
-                                                    itemImageUrl = `https://www.yamaha-motor.com.au${path}`;
+                                                    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+                                                    itemImageUrl = `https://www.yamaha-motor.com.au${cleanPath}`;
                                                 } else if (path.startsWith('data:image')) {
                                                     itemImageUrl = path;
                                                 }

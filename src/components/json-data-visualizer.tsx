@@ -33,10 +33,19 @@ export function JsonDataVisualizer({
     };
 
     const getImageUrl = (value: string) => {
-        if (value.startsWith('/') && !value.startsWith('//')) {
-            return `https://www.yamaha-motor.com.au${value}`;
+        if (!value) return '';
+        const path = value.trim().replace(/\\/g, '/');
+        if (path.startsWith('http') || path.startsWith('data:image')) {
+            return path;
         }
-        return value;
+        if (path.startsWith('/') && !path.startsWith('//')) {
+            return `https://www.yamaha-motor.com.au${path}`;
+        }
+        // Fallback for Yamaha paths without leading slash
+        if (path.includes('images/products') || path.includes('images/accessories')) {
+            return `https://www.yamaha-motor.com.au/${path}`;
+        }
+        return path;
     };
 
     // Handle array of objects (standard table data)
@@ -45,7 +54,7 @@ export function JsonDataVisualizer({
         const firstItem = data[0];
         let keys = columns 
             ? columns.map(c => c.key) 
-            : Object.keys(firstItem).filter(k => k !== 'id');
+            : Object.keys(firstItem).filter(k => k !== 'id' && k !== '_ref');
             
         // Always prioritize image fields to the front
         const imageKey = keys.find(k => isImageValue(k, firstItem[k]) || k.toLowerCase().includes('image') || k === 'SummaryImage');
@@ -92,12 +101,10 @@ export function JsonDataVisualizer({
                                             <TableCell key={`${rowIndex}-${colIndex}`} className="align-middle py-3 px-4 border-b/50">
                                                 {isImg ? (
                                                     <div className="relative h-10 w-16 bg-muted rounded overflow-hidden shadow-sm border border-border/50 transition-transform group-hover:scale-105">
-                                                        <Image 
+                                                        <img 
                                                             src={getImageUrl(val)} 
                                                             alt="Preview" 
-                                                            fill 
-                                                            className="object-contain p-1" 
-                                                            sizes="64px"
+                                                            className="h-full w-full object-contain p-1" 
                                                         />
                                                     </div>
                                                 ) : typeof val === 'object' && val !== null ? (
@@ -130,7 +137,7 @@ export function JsonDataVisualizer({
     if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
         return (
              <div className="w-full overflow-hidden rounded-md border p-4 space-y-3 bg-card shadow-sm">
-                {Object.entries(data).map(([key, value]) => key !== 'id' && (
+                {Object.entries(data).map(([key, value]) => key !== 'id' && key !== '_ref' && (
                     <div key={key} className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm items-start border-b pb-2 last:border-0 last:pb-0">
                         <div className="font-black text-[10px] uppercase tracking-widest text-muted-foreground/60 md:text-right md:pr-4">
                             {key.replace(/_/g, ' ')}
@@ -138,7 +145,7 @@ export function JsonDataVisualizer({
                         <div className="md:col-span-3 min-w-0">
                             {isImageValue(key, value) ? (
                                 <div className="relative h-24 w-40 bg-muted rounded overflow-hidden border">
-                                    <Image src={getImageUrl(value as string)} alt="Value Preview" fill className="object-contain" />
+                                    <img src={getImageUrl(value as string)} alt="Value Preview" className="h-full w-full object-contain" />
                                 </div>
                             ) : typeof value === 'object' && value !== null ? (
                                 <pre className="text-xs bg-muted/30 p-3 rounded-md overflow-x-auto max-w-full font-mono">
