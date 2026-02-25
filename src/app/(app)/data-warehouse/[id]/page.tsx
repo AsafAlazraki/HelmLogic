@@ -256,6 +256,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const { data: dataSets, loading: setsLoading } = useCollection<any>(dataSetsQuery);
 
     const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+    const [setToDelete, setSetToDelete] = useState<any | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const rowsQuery = useMemoFirebase(() => {
@@ -271,11 +272,11 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         return selectedSet.columnOrder.map((key: string) => ({ key, label: key }));
     }, [selectedSet]);
 
-    const handleDeleteSet = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!window.confirm("Are you sure you want to delete this table? All rows will be lost.")) return;
+    const handleConfirmDelete = async () => {
+        if (!setToDelete) return;
         
         setIsDeleting(true);
+        const id = setToDelete.id;
         try {
             const rowsRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${id}/rows`);
             const rowsSnap = await getDocs(rowsRef);
@@ -294,7 +295,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             const setRef = doc(firestore, `data-warehouse/${vendor.id}/dataSets`, id);
             await deleteDoc(setRef);
             
-            toast({ title: "Table deleted", description: "The table and all its records have been removed." });
+            toast({ title: "Table deleted", description: `"${setToDelete.name}" and all its records have been removed.` });
             if (selectedSetId === id) setSelectedSetId(null);
         } catch (err: any) {
             console.error("Delete failed:", err);
@@ -308,6 +309,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             }
         } finally {
             setIsDeleting(false);
+            setSetToDelete(null);
         }
     };
 
@@ -350,10 +352,10 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     variant="ghost" 
                                     size="icon" 
                                     className={cn("h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity", selectedSetId === set.id ? "text-primary-foreground hover:bg-white/20" : "text-destructive")}
-                                    onClick={(e) => handleDeleteSet(set.id, e)}
+                                    onClick={(e) => { e.stopPropagation(); setSetToDelete(set); }}
                                     disabled={isDeleting}
                                 >
-                                    {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                    {isDeleting && setToDelete?.id === set.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                                 </Button>
                             </div>
                         ))}
@@ -393,6 +395,24 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     </div>
                 )}
             </Card>
+
+            <AlertDialog open={!!setToDelete} onOpenChange={(open) => !open && !isDeleting && setSetToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Data Table?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently remove <strong>{setToDelete?.name}</strong> and all its {setToDelete?.rowCount} records. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90" disabled={isDeleting}>
+                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Delete Table
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
