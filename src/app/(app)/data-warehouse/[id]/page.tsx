@@ -187,7 +187,7 @@ function MasterDataSetEditorDialog({
                                                 render={({ field }) => (
                                                     <FormItem className={cn(isImg && "md:col-span-2")}>
                                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                                            {isImg ? <ImageIcon className="h-3 w-3" /> : <div className="h-1 w-1 rounded-full bg-primary" />}
+                                                            {isImg ? <ImageIcon className="h-3 w-3" /> : <div className="h-1 rounded-full bg-primary w-1" />}
                                                             {key.replace(/_/g, ' ')}
                                                         </FormLabel>
                                                         {isImg ? (
@@ -332,7 +332,7 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
                     if (!targetModelCode || !targetImageLink) continue;
 
                     // Find matches in existing data
-                    const rowsToUpdate = currentRows.filter(row: any => {
+                    const rowsToUpdate = currentRows.filter((row: any) => {
                         const rowModelCodeKey = Object.keys(row).find(k => 
                             ['modelcode', 'modelname', 'name', 'model'].includes(k.toLowerCase().replace(/[\s_-]/g, ''))
                         );
