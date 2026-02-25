@@ -25,12 +25,12 @@ export function JsonDataVisualizer({
 
     // Handle array of objects (standard table data)
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
-        // If columns are provided, use them. Otherwise, extract keys from the first row to preserve original document order.
+        // Use provided columns or extract keys from the first row to preserve original document order.
         const keys = columns ? columns.map(c => c.key) : Object.keys(data[0]);
         const headers = columns ? columns.map(c => c.label) : keys;
 
         return (
-            <div className="w-full min-w-0 overflow-hidden">
+            <div className="w-full min-w-0 max-w-full overflow-hidden">
                 <Table className="w-full border-collapse">
                     <TableHeader className="sticky top-0 bg-secondary z-10 shadow-sm">
                         <TableRow className="hover:bg-transparent">

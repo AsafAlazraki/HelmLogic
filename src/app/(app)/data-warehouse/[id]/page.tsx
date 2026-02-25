@@ -635,13 +635,13 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const [displayConfig, setDisplayConfig] = useState<{
         titleKey: string | null;
         infoKeys: string[];
-        columnConfig: { key: string; label: string }[];
+        columnConfig: { key: string; label: string }[] | undefined;
         imageUrlKey?: string | null;
         colorsKey?: string | null;
     }>({
         titleKey: null,
         infoKeys: [],
-        columnConfig: [],
+        columnConfig: undefined,
         imageUrlKey: null,
         colorsKey: null,
     });
@@ -673,16 +673,13 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 const titleKey = modelNameKey || null;
                 const infoKeys = [productGroupKey, subCategoryKey].filter(Boolean) as string[];
                 
-                let columnConfig: { key: string; label: string }[] = [];
-                if (productGroupKey) columnConfig.push({ key: productGroupKey, label: 'Product Group' });
-                if (modelNameKey) columnConfig.push({ key: modelNameKey, label: 'Model Name' });
-                if (subCategoryKey) columnConfig.push({ key: subCategoryKey, label: 'Sub Category' });
-
-                if (columnConfig.length === 0 && allKeys.length > 0) {
-                    columnConfig = allKeys.filter(k => k !== 'id').slice(0, 3).map(k => ({ key: k, label: k }));
-                }
-
-                setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey: imageUrlKey, colorsKey: colorsKey ?? null });
+                setDisplayConfig({ 
+                    titleKey, 
+                    infoKeys, 
+                    columnConfig: undefined, // Let visualizer use raw order
+                    imageUrlKey: imageUrlKey, 
+                    colorsKey: colorsKey ?? null 
+                });
             } else {
                 const findKey = (potentials: string[]) => allKeys.find(k => potentials.includes(k.toLowerCase()));
                 const titleKey = findKey(['name', 'productName', 'modelName', 'title', 'item', 'description', 'part_description']) || allKeys.filter(k=>k!=='id')[0];
@@ -690,22 +687,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     k.toLowerCase() !== titleKey?.toLowerCase() && 
                     ['part_number', 'sku', 'model', 'price', 'cost', 'rrp', 'sellpriceexclgst'].includes(k.toLowerCase())
                 ).slice(0, 3);
-                const columnKeys = [
-                    titleKey,
-                    ...infoKeys,
-                    ...allKeys.filter(k => 
-                        !k.toLowerCase().includes('url') && 
-                        !k.toLowerCase().includes('id') && 
-                        ![titleKey, ...infoKeys].includes(k)
-                    )
-                ].filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 5) as string[];
 
-                const columnConfig = columnKeys.map(key => ({
-                    key,
-                    label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                }));
-
-                setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey: null, colorsKey: null });
+                setDisplayConfig({ titleKey, infoKeys, columnConfig: undefined, imageUrlKey: null, colorsKey: null });
             }
         }
     }, [masterDataSet, vendor.slug]);

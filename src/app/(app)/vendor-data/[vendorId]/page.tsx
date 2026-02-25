@@ -13,6 +13,7 @@ import { JsonDataVisualizer } from '@/components/json-data-visualizer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface Vendor {
     id: string;
@@ -111,7 +112,7 @@ export default function VendorDataPage() {
   }
 
   return (
-    <div className="flex flex-col h-full space-y-4 max-w-full min-w-0">
+    <div className="flex flex-col h-full space-y-4 max-w-full min-w-0 overflow-hidden">
         <div className="flex items-start justify-between shrink-0 px-1">
             <div className="min-w-0">
                 <h1 className="text-2xl font-bold truncate tracking-tight">{dataSet?.name || 'Table Viewer'}</h1>
@@ -138,11 +139,11 @@ export default function VendorDataPage() {
                         />
                     </div>
                     <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
-                        <Button variant={viewMode === 'list' ? 'background' : 'ghost'} size="sm" className={cn("h-8 px-3 text-xs font-bold shadow-none", viewMode === 'list' && "bg-background shadow-sm")} onClick={() => setViewMode('list')}>
+                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" className={cn("h-8 px-3 text-xs font-bold shadow-none", viewMode === 'list' && "bg-background shadow-sm")} onClick={() => setViewMode('list')}>
                             <List className="h-3.5 w-3.5 mr-1.5" />
                             List
                         </Button>
-                        <Button variant={viewMode === 'card' ? 'background' : 'ghost'} size="sm" className={cn("h-8 px-3 text-xs font-bold shadow-none", viewMode === 'card' && "bg-background shadow-sm")} onClick={() => setViewMode('card')}>
+                        <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="sm" className={cn("h-8 px-3 text-xs font-bold shadow-none", viewMode === 'card' && "bg-background shadow-sm")} onClick={() => setViewMode('card')}>
                             <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
                             Grid
                         </Button>
@@ -151,31 +152,35 @@ export default function VendorDataPage() {
             </CardHeader>
             <CardContent className="p-0 flex-1 min-w-0 max-w-full flex flex-col overflow-hidden">
                 {filteredRows.length > 0 ? (
-                    <div className="flex-1 overflow-auto min-w-0 max-w-full">
+                    <div className="flex-1 overflow-hidden min-w-0 max-w-full flex flex-col">
                         {viewMode === 'list' ? (
-                            <JsonDataVisualizer data={filteredRows} />
-                        ) : (
-                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 bg-muted/5">
-                                {filteredRows.map((row, i) => (
-                                    <Card key={i} className="flex flex-col h-fit hover:border-primary transition-colors shadow-sm bg-background">
-                                        <CardHeader className="p-4 pb-2">
-                                            <CardTitle className="text-sm font-black truncate uppercase tracking-tight">
-                                                {row.name || row.Description || row.Part_Number || `Record #${i+1}`}
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="p-4 pt-0 flex-grow">
-                                            <div className="space-y-1.5">
-                                                {Object.entries(row).slice(0, 6).map(([k, v]) => k !== 'id' && (
-                                                    <div key={k} className="flex justify-between items-start text-[10px] gap-2">
-                                                        <span className="text-muted-foreground uppercase font-black tracking-tighter shrink-0">{k}:</span>
-                                                        <span className="font-bold truncate text-right text-foreground">{String(v)}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                            <div className="flex-1 overflow-auto min-w-0">
+                                <JsonDataVisualizer data={filteredRows} />
                             </div>
+                        ) : (
+                            <ScrollArea className="flex-1">
+                                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 bg-muted/5">
+                                    {filteredRows.map((row, i) => (
+                                        <Card key={i} className="flex flex-col h-fit hover:border-primary transition-colors shadow-sm bg-background">
+                                            <CardHeader className="p-4 pb-2">
+                                                <CardTitle className="text-sm font-black truncate uppercase tracking-tight">
+                                                    {row.name || row.Description || row.Part_Number || `Record #${i+1}`}
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-0 flex-grow">
+                                                <div className="space-y-1.5">
+                                                    {Object.entries(row).slice(0, 6).map(([k, v]) => k !== 'id' && (
+                                                        <div key={k} className="flex justify-between items-start text-[10px] gap-2">
+                                                            <span className="text-muted-foreground uppercase font-black tracking-tighter shrink-0">{k}:</span>
+                                                            <span className="font-bold truncate text-right text-foreground">{String(v)}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </ScrollArea>
                         )}
                     </div>
                 ) : (
@@ -189,8 +194,4 @@ export default function VendorDataPage() {
         </Card>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-    return inputs.filter(Boolean).join(' ');
 }
