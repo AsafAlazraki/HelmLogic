@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -42,7 +41,7 @@ export default function PriceBookPage() {
 
     if (!organisationId || !organisation) {
         return (
-            <div className="space-y-4">
+            <div className="space-y-4 max-w-full min-w-0 overflow-hidden">
                 <div>
                     <h1 className="text-2xl font-semibold">Price Book</h1>
                     <BreadcrumbNav />
@@ -58,7 +57,7 @@ export default function PriceBookPage() {
 
     if (!hasPermission) {
         return (
-            <div className="space-y-4">
+            <div className="space-y-4 max-w-full min-w-0 overflow-hidden">
                 <div>
                     <h1 className="text-2xl font-semibold">Price Book</h1>
                     <BreadcrumbNav />
@@ -80,7 +79,7 @@ export default function PriceBookPage() {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 max-w-full min-w-0 overflow-hidden">
             <div className="flex items-start justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Organisation Price Book</h1>

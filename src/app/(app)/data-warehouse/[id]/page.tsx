@@ -273,24 +273,44 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         return selectedSet.columnOrder.map((key: string) => ({ key, label: key }));
     }, [selectedSet]);
 
-    const handleDeleteSet = async (id: string, e: React.MouseEvent) => {
+    const handleDeleteSet = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!window.confirm("Are you sure you want to delete this table? All rows will be lost.")) return;
         
         setIsDeleting(true);
-        try {
-            const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/dataSets/${id}/rows`));
-            const batch = writeBatch(firestore);
-            rowsSnap.forEach(d => batch.delete(d.ref));
-            batch.delete(doc(firestore, `data-warehouse/${vendor.id}/dataSets`, id));
-            await batch.commit();
-            toast({ title: "Table deleted" });
-            if (selectedSetId === id) setSelectedSetId(null);
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Delete failed" });
-        } finally {
+        const rowsRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${id}/rows`);
+        
+        // Fetch rows first to delete them in chunks
+        getDocs(rowsRef).then((rowsSnap) => {
+            const docs = rowsSnap.docs;
+            const batchSize = 400; // Batch limit is 500, using 400 for safety
+            
+            // Trigger row deletions in multiple batches if necessary
+            for (let i = 0; i < docs.length; i += batchSize) {
+                const batch = writeBatch(firestore);
+                const chunk = docs.slice(i, i + batchSize);
+                chunk.forEach(d => batch.delete(d.ref));
+                batch.commit().catch(err => console.error("Row batch deletion failed:", err));
+            }
+            
+            // Delete the primary dataset document
+            const setRef = doc(firestore, `data-warehouse/${vendor.id}/dataSets`, id);
+            deleteDoc(setRef).then(() => {
+                toast({ title: "Table deleted", description: "The table and all its records have been removed." });
+                if (selectedSetId === id) setSelectedSetId(null);
+                setIsDeleting(false);
+            }).catch(err => {
+                setIsDeleting(false);
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: setRef.path,
+                    operation: 'delete'
+                }));
+            });
+        }).catch(err => {
             setIsDeleting(false);
-        }
+            console.error("Failed to fetch rows for deletion:", err);
+            toast({ variant: 'destructive', title: "Delete failed", description: "Could not retrieve records to delete." });
+        });
     };
 
     if (setsLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -335,7 +355,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     onClick={(e) => handleDeleteSet(set.id, e)}
                                     disabled={isDeleting}
                                 >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                    {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                                 </Button>
                             </div>
                         ))}
@@ -1054,7 +1074,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         </TabsList>
                         
                         {isBoatBrand && (
-                            <TabsContent value="product-ranges">
+                            <TabsContent value="product-ranges" className="min-w-0 max-w-full overflow-hidden">
                                 {vendor.slug === 'highfield' && <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
                                 {vendor.slug === 'jeanneau' && <JeanneauDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
                                 {vendor.slug === 'stacer' && <StacerDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
@@ -1069,7 +1089,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                             </TabsContent>
                         )}
     
-                        {isHighfield && <TabsContent value="poc"><HighfieldPoc vendorId={vendor.id} /></TabsContent>}
+                        {isHighfield && <TabsContent value="poc" className="min-w-0 max-w-full overflow-hidden"><HighfieldPoc vendorId={vendor.id} /></TabsContent>}
     
                         {(isBulkSupplier || isYamaha || isMultiTableVendor) && (
                             <TabsContent value="master-data" className="min-w-0 max-w-full overflow-hidden">
@@ -1083,7 +1103,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                             </TabsContent>
                         )}
     
-                        <TabsContent value="data-connection">
+                        <TabsContent value="data-connection" className="min-w-0 max-w-full overflow-hidden">
                              {vendor.slug === 'yamaha' ? (
                                 <YamahaApiFetcher vendorId={vendor.id} />
                              ) : vendor.slug === 'sam-allen' ? (
@@ -1102,7 +1122,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                 </Card>
                             )}
                         </TabsContent>
-                        <TabsContent value="details">
+                        <TabsContent value="details" className="min-w-0 max-w-full overflow-hidden">
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                                     <div className="flex items-center justify-end gap-2">
@@ -1170,7 +1190,15 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                             <Card>
                                                 <CardHeader><CardTitle>Data Source</CardTitle></CardHeader>
                                                 <CardContent>
-                                                    <FormField control={form.control} name="dataSource" render={({ field }) => ( <FormItem><FormLabel>Data Source</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a data source" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Business Central">Business Central</SelectItem><SelectItem value="Direct API">Direct API</SelectItem><SelectItem value="Document Upload">Document Upload</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                                    <FormField control={form.control} name="dataSource" render={({ field }) => ( <FormItem><FormLabel>Data Source</FormLabel><Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a data source" /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="Business Central">Business Central</SelectItem>
+                                                            <SelectItem value="Direct API">Direct API</SelectItem>
+                                                            <SelectItem value="Document Upload">Document Upload</SelectItem>
+                                                            <SelectItem value="Other">Other</SelectItem>
+                                                        </SelectContent>
+                                                    </Select><FormMessage /></FormItem> )} />
                                                 </CardContent>
                                             </Card>
                                         </div>
