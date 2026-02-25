@@ -14,7 +14,7 @@ import { useFirestore, useStorage, useMemoFirebase, useCollection, useDoc } from
 import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc, deleteDoc, query, collection, where, getDocs, writeBatch, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight } from 'lucide-react';
+import { Loader2, Trash2, Save, X, TestTube2, Code, Eye, UploadCloud, FileUp, Replace, Search, List, LayoutGrid, ImageIcon, Globe, Table as TableIcon, ChevronRight, Upload } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -26,7 +26,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -858,6 +858,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     setIsOpen={setIsEditorOpen}
                     item={selectedItem}
                     vendorId={vendor.id}
+                    vendorSlug={vendor.slug}
                     onSave={() => {}}
                 />
             </div>
@@ -869,17 +870,21 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         setIsOpen,
         item,
         vendorId,
+        vendorSlug,
         onSave,
     }: {
         isOpen: boolean;
         setIsOpen: (isOpen: boolean) => void;
         item: any | null;
         vendorId: string;
+        vendorSlug?: string;
         onSave: () => void;
     }) {
         const firestore = useFirestore();
+        const storage = useStorage();
         const { toast } = useToast();
         const [isSaving, setIsSaving] = useState(false);
+        const [isUploading, setIsUploading] = useState(false);
     
         const form = useForm({
             defaultValues: item || {},
@@ -896,7 +901,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             try {
                 const docRef = doc(firestore, `data-warehouse/${vendorId}/masterDataSet`, item.id);
                 await updateDoc(docRef, data);
-                toast({ title: 'Success', description: 'Item has been updated.' });
+                toast({ title: 'Success', description: 'Item updated successfully.' });
                 onSave();
                 setIsOpen(false);
             } catch (error: any) {
@@ -906,39 +911,130 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 setIsSaving(false);
             }
         };
+
+        const handleImageUpload = async (key: string, file: File) => {
+            if (!storage) return;
+            setIsUploading(true);
+            try {
+                const path = `data-warehouse/${vendorId}/master-data/${item.id}/${key}-${Date.now()}`;
+                const url = await uploadFileToStorage(storage, file, path);
+                form.setValue(key, url);
+                toast({ title: 'Image Uploaded', description: 'Changes staged. Click save to persist.' });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+            } finally {
+                setIsUploading(false);
+            }
+        };
+
+        const isImageField = (key: string) => {
+            const k = key.toLowerCase();
+            return k.includes('image') || k.includes('logo') || k.includes('photo') || k === 'summaryimage';
+        };
     
         return (
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle>Edit Item</DialogTitle>
-                        <DialogDescription>Modify changes to the item below and click save.</DialogDescription>
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b bg-muted/20">
+                        <DialogTitle className="text-xl font-bold">Edit Master Data Record</DialogTitle>
+                        <DialogDescription>Modify fields and manage item media. Click save to update the master record.</DialogDescription>
                     </DialogHeader>
-                    <Form {...form}>
-                        <form className="space-y-4 overflow-y-auto px-1">
-                            {Object.keys(item).filter(key => key !== 'id').map((key) => (
-                                <FormField
-                                    key={key}
-                                    control={form.control}
-                                    name={key as any}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="capitalize">{key.replace(/_/g, ' ')}</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} value={field.value ?? ''} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            ))}
-                        </form>
-                    </Form>
-                     <DialogFooter>
+                    
+                    <ScrollArea className="flex-1">
+                        <div className="p-6">
+                            <Form {...form}>
+                                <form className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {Object.keys(item).filter(key => key !== 'id').sort((a, b) => {
+                                            const aImg = isImageField(a);
+                                            const bImg = isImageField(b);
+                                            if (aImg && !bImg) return -1;
+                                            if (!aImg && bImg) return 1;
+                                            return a.localeCompare(b);
+                                        }).map((key) => {
+                                            const isImg = isImageField(key);
+                                            return (
+                                                <FormField
+                                                    key={key}
+                                                    control={form.control}
+                                                    name={key as any}
+                                                    render={({ field }) => (
+                                                        <FormItem className={cn(isImg && "md:col-span-2")}>
+                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                                {isImg ? <ImageIcon className="h-3 w-3" /> : <div className="h-1 w-1 rounded-full bg-primary" />}
+                                                                {key.replace(/_/g, ' ')}
+                                                            </FormLabel>
+                                                            {isImg ? (
+                                                                <div className="space-y-3">
+                                                                    <div className="relative aspect-video w-full max-w-sm rounded-lg border-2 border-dashed bg-muted/10 overflow-hidden group">
+                                                                        {field.value ? (
+                                                                            <>
+                                                                                <Image 
+                                                                                    src={field.value.startsWith('http') ? field.value : (vendorSlug === 'yamaha' ? `https://www.yamaha-motor.com.au${field.value}` : field.value)} 
+                                                                                    alt={key} 
+                                                                                    fill 
+                                                                                    className="object-contain p-2" 
+                                                                                />
+                                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                    <Button type="button" variant="destructive" size="sm" onClick={() => field.onChange('')}>
+                                                                                        <X className="h-4 w-4 mr-2" /> Remove
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground italic text-xs p-4 text-center">
+                                                                                <ImageIcon className="h-8 w-8 mb-2 opacity-20" />
+                                                                                No media associated with this field
+                                                                            </div>
+                                                                        )}
+                                                                        {isUploading && (
+                                                                            <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-20">
+                                                                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <FormControl>
+                                                                            <label className="flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent transition-colors">
+                                                                                <Upload className="h-4 w-4" />
+                                                                                <span className="text-xs font-bold uppercase tracking-tighter">Upload New Image</span>
+                                                                                <Input 
+                                                                                    type="file" 
+                                                                                    accept="image/*" 
+                                                                                    className="hidden" 
+                                                                                    onChange={(e) => {
+                                                                                        const file = e.target.files?.[0];
+                                                                                        if (file) handleImageUpload(key, file);
+                                                                                    }}
+                                                                                />
+                                                                            </label>
+                                                                        </FormControl>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <FormControl>
+                                                                    <Input 
+                                                                        {...field} 
+                                                                        value={field.value ?? ''} 
+                                                                        className="h-10 text-sm font-bold bg-background focus-visible:ring-primary/20"
+                                                                    />
+                                                                </FormControl>
+                                                            )}
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )
+                                                })}
+                                    </div>
+                                </form>
+                            </Form>
+                        </div>
+                    </ScrollArea>
+
+                    <DialogFooter className="p-6 border-t bg-muted/10 gap-2">
                         <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                        <Button onClick={form.handleSubmit(handleSave)} disabled={isSaving}>
+                        <Button onClick={form.handleSubmit(handleSave)} disabled={isSaving || isUploading}>
                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Save
+                            Save Master Changes
                         </Button>
                     </DialogFooter>
                 </DialogContent>
