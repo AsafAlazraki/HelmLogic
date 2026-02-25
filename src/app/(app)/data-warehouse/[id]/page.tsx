@@ -53,6 +53,24 @@ import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 
+const formSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, { message: 'Vendor name is required.' }),
+  slug: z.string(),
+  vendorType: z.string().min(1, { message: 'Vendor type is required.' }),
+  dataSource: z.string().min(1, { message: 'Data source is required.' }),
+  currency: z.string().default('AUD'),
+  address: z.string().optional(),
+  abn: z.string().optional(),
+  logo: z.any().optional(),
+  primaryContact: z.string().optional(),
+  website: z.string().optional(),
+  notes: z.string().optional(),
+  logoUrl: z.string().nullable().optional(),
+});
+
+type VendorFormData = z.infer<typeof formSchema>;
+
 /**
  * Shared component for editing master data records.
  * Handles field updates and Firebase Storage image uploads.
@@ -310,7 +328,7 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
                 let currentBatch = writeBatch(firestore);
                 let operationsInBatch = 0;
 
-                const normalizeMatch = (val: any) => String(val || '').trim().toLowerCase().replace(/[\s_-]/g, '');
+                const normalizeMatch = (val: any) => String(val || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
                 for (let i = 0; i < mappingRows.length; i++) {
                     const mapRow = mappingRows[i];
@@ -1074,7 +1092,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             const allKeys = Object.keys(firstItem);
             
             if (vendor.slug === 'yamaha') {
-                const normalize = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
+                const normalize = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
                 const findKey = (potentials: string[]) => {
                     const normalizedPotentials = potentials.map(normalize);
