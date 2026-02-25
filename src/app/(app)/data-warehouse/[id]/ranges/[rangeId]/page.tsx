@@ -8,7 +8,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy, ChevronRight, Hash, ShieldCheck, Tag, Anchor } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createSlug } from '@/lib/utils';
+import { createSlug, cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUser } from '@/firebase/auth/use-user';
 import {
@@ -50,12 +50,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Model {
     id: string;
     name: string;
     modelCode?: string;
+    sku?: string;
+    colorName?: string;
+    material?: string;
     slug?: string;
     coverImageUrl?: string;
     order?: number;
@@ -106,10 +110,10 @@ function ModelCard({
         setIsDeleting(true);
         try {
             await deleteDoc(doc(firestore, modelPath));
-            toast({ title: 'Model Deleted', description: `"${model.name}" has been deleted.` });
+            toast({ title: 'Record Deleted', description: `"${model.name}" has been deleted.` });
         } catch (error) {
-            console.error('Failed to delete model:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete model.' });
+            console.error('Failed to delete record:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete record.' });
             setIsDeleting(false);
         }
     };
@@ -130,7 +134,7 @@ function ModelCard({
                                         <Copy className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Duplicate Model</TooltipContent>
+                                <TooltipContent>Duplicate Configuration</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     )}
@@ -141,7 +145,7 @@ function ModelCard({
                                     <Pencil className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Rename Model</TooltipContent>
+                            <TooltipContent>Rename/Edit Identity</TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                     {isAdmin && (
@@ -152,7 +156,7 @@ function ModelCard({
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Delete Model</TooltipContent>
+                                <TooltipContent>Delete Record</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     )}
@@ -169,11 +173,10 @@ function ModelCard({
                     </div>
                     <CardContent className="p-3 h-24 flex flex-col items-center justify-center gap-1">
                         <p className="font-semibold text-center line-clamp-2">{model.name}</p>
-                        {model.modelCode ? (
-                            <p className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</p>
-                        ) : (
-                            <p className="text-[10px] text-destructive uppercase font-bold">No Code Set</p>
-                        )}
+                        <div className="flex flex-wrap justify-center gap-1">
+                            {model.modelCode && <p className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</p>}
+                            {model.sku && <p className="text-[10px] font-mono text-primary uppercase bg-primary/5 border border-primary/10 px-1.5 py-0.5 rounded">SKU: {model.sku}</p>}
+                        </div>
                     </CardContent>
                 </Link>
                 <CardFooter className="p-2 pt-0 border-t bg-muted/5 flex justify-center gap-1">
@@ -205,7 +208,7 @@ function ModelCard({
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the model "{model.name}". This action cannot be undone.
+                            This will permanently delete the boat record "{model.name}". This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -221,6 +224,84 @@ function ModelCard({
     );
 }
 
+function HighfieldGroupedView({ 
+    models, 
+    vendor, 
+    range, 
+    isAdmin,
+    onEdit,
+    onDuplicate
+}: { 
+    models: Model[], 
+    vendor: Vendor, 
+    range: Range, 
+    isAdmin: boolean,
+    onEdit: (m: Model) => void,
+    onDuplicate: (m: Model) => void
+}) {
+    const groupedModels = useMemo(() => {
+        const groups: Record<string, Model[]> = {};
+        models.forEach(m => {
+            const code = m.modelCode || 'NO_CODE';
+            if (!groups[code]) groups[code] = [];
+            groups[code].push(m);
+        });
+        return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+    }, [models]);
+
+    return (
+        <div className="space-y-6">
+            {groupedModels.map(([code, codeModels]) => (
+                <Collapsible key={code} defaultOpen className="space-y-4">
+                    <div className="flex items-center justify-between bg-primary/5 p-4 rounded-xl border-l-4 border-primary shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent">
+                                    <ChevronDown className="h-5 w-5" />
+                                </Button>
+                            </CollapsibleTrigger>
+                            <div>
+                                <h3 className="font-black text-lg uppercase tracking-tight text-primary">{code}</h3>
+                                <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">{codeModels.length} Variants / SKUs</p>
+                            </div>
+                        </div>
+                    </div>
+                    <CollapsibleContent className="pt-2">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {codeModels.map((model, idx) => (
+                                <Card key={model.id} className="group relative hover:border-primary transition-all overflow-hidden bg-card/50">
+                                    <div className="p-4 flex flex-col gap-3">
+                                        <div className="flex items-start justify-between">
+                                            <div className="min-w-0">
+                                                <p className="font-black text-sm truncate uppercase">{model.name}</p>
+                                                <p className="font-mono text-[10px] text-primary font-bold mt-0.5">{model.sku || 'MISSING SKU'}</p>
+                                            </div>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(model)}><Pencil className="h-3.5 w-3.5" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDuplicate(model)}><Copy className="h-3.5 w-3.5" /></Button>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {model.material && <Badge variant="secondary" className="text-[9px] font-black uppercase">{model.material}</Badge>}
+                                            {model.colorName && <Badge variant="outline" className="text-[9px] font-black uppercase">{model.colorName}</Badge>}
+                                        </div>
+                                        <Button asChild variant="outline" size="sm" className="w-full mt-2 font-bold group-hover:bg-primary group-hover:text-primary-foreground">
+                                            <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`}>
+                                                Configure Variant
+                                                <ChevronRight className="ml-2 h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
+            ))}
+        </div>
+    );
+}
+
 
 export default function RangeDetailsPage() {
     const params = useParams();
@@ -233,6 +314,9 @@ export default function RangeDetailsPage() {
     const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
     const [newModelName, setNewModelName] = useState('');
     const [newModelCode, setNewModelCode] = useState('');
+    const [newSku, setNewSku] = useState('');
+    const [newColor, setNewColor] = useState('');
+    const [newMaterial, setNewMaterial] = useState<'PVC' | 'HYP' | ''>('');
     const [isAddingModel, setIsAddingModel] = useState(false);
 
     // Edit State
@@ -240,6 +324,9 @@ export default function RangeDetailsPage() {
     const [editingModel, setEditingModel] = useState<Model | null>(null);
     const [editName, setEditName] = useState('');
     const [editCode, setEditCode] = useState('');
+    const [editSku, setEditSku] = useState('');
+    const [editColor, setEditColor] = useState('');
+    const [editMaterial, setEditMaterial] = useState<'PVC' | 'HYP' | ''>('');
     const [isUpdatingModel, setIsUpdatingModel] = useState(false);
 
     // Duplicate State
@@ -247,6 +334,7 @@ export default function RangeDetailsPage() {
     const [duplicatingModel, setDuplicatingModel] = useState<Model | null>(null);
     const [dupName, setDupName] = useState('');
     const [dupCode, setDupCode] = useState('');
+    const [dupSku, setDupSku] = useState('');
     const [isDuplicating, setIsDuplicating] = useState(false);
 
     const { toast } = useToast();
@@ -307,18 +395,24 @@ export default function RangeDetailsPage() {
             await addDoc(modelsCollectionRef, {
                 name: newModelName,
                 modelCode: newModelCode.toUpperCase(),
+                sku: newSku.toUpperCase(),
+                colorName: newColor,
+                material: newMaterial,
                 slug: createSlug(newModelName),
                 rangeId: range.id,
                 vendorId: vendor.id,
                 order: sortedModels.length,
             });
-            toast({ title: 'Model Added', description: `${newModelName} was added successfully.` });
+            toast({ title: 'Record Added', description: `${newModelName} was added successfully.` });
             setNewModelName('');
             setNewModelCode('');
+            setNewSku('');
+            setNewColor('');
+            setNewMaterial('');
             setIsAddModelDialogOpen(false);
         } catch (error) {
-            console.error('Error adding model:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not add model.' });
+            console.error('Error adding record:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not add record.' });
         } finally {
             setIsAddingModel(false);
         }
@@ -328,6 +422,9 @@ export default function RangeDetailsPage() {
         setEditingModel(model);
         setEditName(model.name);
         setEditCode(model.modelCode || '');
+        setEditSku(model.sku || '');
+        setEditColor(model.colorName || '');
+        setEditMaterial((model.material as any) || '');
         setIsEditModelDialogOpen(true);
     };
 
@@ -339,13 +436,16 @@ export default function RangeDetailsPage() {
             await updateDoc(modelRef, {
                 name: editName,
                 modelCode: editCode.toUpperCase(),
+                sku: editSku.toUpperCase(),
+                colorName: editColor,
+                material: editMaterial,
                 slug: createSlug(editName),
             });
-            toast({ title: 'Model Updated' });
+            toast({ title: 'Identity Updated' });
             setIsEditModelDialogOpen(false);
         } catch (error) {
-            console.error('Failed to update model:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not update model.' });
+            console.error('Failed to update record:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update record.' });
         } finally {
             setIsUpdatingModel(false);
         }
@@ -354,7 +454,8 @@ export default function RangeDetailsPage() {
     const handleOpenDuplicate = (model: Model) => {
         setDuplicatingModel(model);
         setDupName(`${model.name} - Copy`);
-        setDupCode(`${model.modelCode || ''}DUP`);
+        setDupCode(model.modelCode || '');
+        setDupSku(`${model.sku || ''}COPY`);
         setIsDuplicateDialogOpen(true);
     };
 
@@ -366,7 +467,7 @@ export default function RangeDetailsPage() {
             const sourceSnap = await getDoc(sourceRef);
             
             if (!sourceSnap.exists()) {
-                throw new Error("Source model configuration not found.");
+                throw new Error("Source record not found.");
             }
 
             const sourceData = sourceSnap.data();
@@ -377,16 +478,17 @@ export default function RangeDetailsPage() {
                 ...dataToCopy,
                 name: dupName,
                 modelCode: dupCode.toUpperCase(),
+                sku: dupSku.toUpperCase(),
                 slug: createSlug(dupName),
                 order: sortedModels.length,
                 createdAt: serverTimestamp(),
             });
 
-            toast({ title: 'Model Duplicated', description: `Successfully created ${dupName}.` });
+            toast({ title: 'Record Duplicated', description: `Successfully created ${dupName}.` });
             setIsDuplicateDialogOpen(false);
         } catch (error) {
             console.error('Duplication failed:', error);
-            toast({ variant: 'destructive', title: 'Duplication Failed', description: 'Could not copy the model configuration.' });
+            toast({ variant: 'destructive', title: 'Duplication Failed', description: 'Could not copy the configuration.' });
         } finally {
             setIsDuplicating(false);
         }
@@ -439,22 +541,14 @@ export default function RangeDetailsPage() {
     }
     
     if (!vendor) {
-        return (
-            <Card>
-                <CardHeader><CardTitle>Vendor Not Found</CardTitle></CardHeader>
-                <CardContent><p>The requested vendor could not be found.</p></CardContent>
-            </Card>
-        );
+        return <Card><CardHeader><CardTitle>Vendor Not Found</CardTitle></CardHeader></Card>;
     }
 
     if (!range) {
-        return (
-            <Card>
-                <CardHeader><CardTitle>Range Not Found</CardTitle></CardHeader>
-                <CardContent><p>The requested range could not be found for this vendor.</p></CardContent>
-            </Card>
-        );
+        return <Card><CardHeader><CardTitle>Range Not Found</CardTitle></CardHeader></Card>;
     }
+
+    const isHighfield = vendor.slug === 'highfield';
 
     return (
         <>
@@ -465,30 +559,45 @@ export default function RangeDetailsPage() {
                             <div>
                                 <h1 className="text-2xl font-semibold">Models in {range.name}</h1>
                                 <BreadcrumbNav parts={breadcrumbParts} />
-                                <CardDescription>Manage the models available in this product range.</CardDescription>
+                                <CardDescription>
+                                    {isHighfield 
+                                        ? "Manage individual boat records (SKUs) grouped by their primary model code."
+                                        : "Manage the models available in this product range."}
+                                </CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
                                 {isAdmin && (
                                     <Button variant="outline" onClick={() => setIsAddModelDialogOpen(true)}>
                                         <PlusCircle className="mr-2 h-4 w-4" />
-                                        Add Model
+                                        {isHighfield ? "Add Boat SKU" : "Add Model"}
                                     </Button>
                                 )}
-                                <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')} className="hover:bg-accent hover:text-accent-foreground">
-                                    <LayoutGrid className="h-4 w-4" />
-                                    <span className="sr-only">Card View</span>
-                                </Button>
-                                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')} className="hover:bg-accent hover:text-accent-foreground">
-                                    <List className="h-4 w-4" />
-                                    <span className="sr-only">List View</span>
-                                </Button>
+                                {!isHighfield && (
+                                    <div className="flex items-center bg-muted p-1 rounded-md">
+                                        <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
+                                            <LayoutGrid className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                                            <List className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent>
                         {sortedModels && sortedModels.length > 0 ? (
-                            <>
-                                {viewMode === 'card' ? (
+                            isHighfield ? (
+                                <HighfieldGroupedView 
+                                    models={sortedModels} 
+                                    vendor={vendor} 
+                                    range={range} 
+                                    isAdmin={isAdmin} 
+                                    onEdit={handleOpenEdit}
+                                    onDuplicate={handleOpenDuplicate}
+                                />
+                            ) : (
+                                viewMode === 'card' ? (
                                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                         {sortedModels.map((model, index) => (
                                             <ModelCard 
@@ -523,72 +632,18 @@ export default function RangeDetailsPage() {
                                                         </Link>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {model.modelCode ? (
-                                                            <span className="font-mono text-xs uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</span>
-                                                        ) : (
-                                                            <span className="text-[10px] text-destructive uppercase font-bold italic">Missing Code</span>
-                                                        )}
+                                                        {model.modelCode && <span className="font-mono text-xs uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</span>}
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end items-center gap-2">
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="sm" asChild className="hover:bg-accent hover:text-accent-foreground">
-                                                                            <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`}>
-                                                                                View Details
-                                                                            </Link>
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>Open Config Editor</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                            
-                                                            {isAdmin && (
-                                                                <TooltipProvider>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent" onClick={() => handleOpenDuplicate(model)}>
-                                                                                <Copy className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent>Duplicate Configuration</TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
-                                                            )}
-
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent" onClick={() => handleOpenEdit(model)}>
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>Rename Model</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-
+                                                            <Button variant="ghost" size="sm" asChild>
+                                                                <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${model.slug || model.id}`}>View Details</Link>
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDuplicate(model)}><Copy className="h-4 w-4" /></Button>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEdit(model)}><Pencil className="h-4 w-4" /></Button>
                                                             <div className="flex gap-1">
-                                                                <TooltipProvider>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}>
-                                                                                <ArrowUp className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent>Move Up</TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
-                                                                <TooltipProvider>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent hover:text-accent-foreground" onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}>
-                                                                                <ArrowDown className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent>Move Down</TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveModel(index, 'up')} disabled={index === 0}><ArrowUp className="h-4 w-4" /></Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveModel(index, 'down')} disabled={index === sortedModels.length - 1}><ArrowDown className="h-4 w-4" /></Button>
                                                             </div>
                                                         </div>
                                                     </TableCell>
@@ -596,16 +651,13 @@ export default function RangeDetailsPage() {
                                             ))}
                                         </TableBody>
                                     </Table>
-                                )}
-                            </>
+                                )
+                            )
                         ) : (
                             <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-lg">
                                 <Sailboat className="h-16 w-16 text-muted-foreground" />
                                 <h3 className="mt-4 text-lg font-semibold">No Models in this Range</h3>
-                                <p className="mt-2 text-sm text-muted-foreground">Go back to the vendor page to add models to this range.</p>
-                                <Button asChild className="mt-6" variant="outline">
-                                    <Link href={`/data-warehouse/${vendor.slug || vendor.id}`}>Back to Vendor</Link>
-                                </Button>
+                                <p className="mt-2 text-sm text-muted-foreground">Add your first model configuration to get started.</p>
                             </div>
                         )}
                     </CardContent>
@@ -614,28 +666,50 @@ export default function RangeDetailsPage() {
 
             {/* Add Dialog */}
             <Dialog open={isAddModelDialogOpen} onOpenChange={setIsAddModelDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
-                        <DialogTitle>Add New Model</DialogTitle>
-                        <DialogDescription>
-                            Enter the details for the new model in the {range?.name} range.
-                        </DialogDescription>
+                        <DialogTitle>{isHighfield ? "Add New Boat SKU" : "Add New Model"}</DialogTitle>
+                        <DialogDescription>Enter the identity details for this new boat record.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-6 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right font-bold text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
-                            <Input id="name" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3 font-bold" placeholder="e.g. 1850 Supercab" />
+                            <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">Full Name</Label>
+                            <Input value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="col-span-3 font-bold" placeholder="e.g. Classic 310 Storm Grey PVC" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="code" className="text-right font-bold text-xs uppercase tracking-wider text-muted-foreground">Model Code</Label>
-                            <Input id="code" value={newModelCode} onChange={(e) => setNewModelCode(e.target.value)} className="col-span-3 font-mono font-bold uppercase border-2 focus-visible:ring-primary/20" placeholder="e.g. 1850SC" />
+                            <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">Model Code</Label>
+                            <Input value={newModelCode} onChange={(e) => setNewModelCode(e.target.value)} className="col-span-3 font-mono font-bold uppercase" placeholder="e.g. CL310" />
                         </div>
+                        {isHighfield && (
+                            <>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">SKU / ID</Label>
+                                    <Input value={newSku} onChange={(e) => setNewSku(e.target.value)} className="col-span-3 font-mono font-bold uppercase" placeholder="e.g. HF-CL310-PVC-SG" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">Material</Label>
+                                    <div className="col-span-3">
+                                        <Select value={newMaterial} onValueChange={(v: any) => setNewMaterial(v)}>
+                                            <SelectTrigger><SelectValue placeholder="Select Material" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="PVC">PVC</SelectItem>
+                                                <SelectItem value="HYP">Hypalon (HYP)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">Color Name</Label>
+                                    <Input value={newColor} onChange={(e) => setNewColor(e.target.value)} className="col-span-3 font-bold" placeholder="e.g. Storm Grey" />
+                                </div>
+                            </>
+                        )}
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
                         <Button onClick={handleAddModel} disabled={isAddingModel || !newModelName.trim() || !newModelCode.trim()}>
                             {isAddingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Add Model
+                            Create Record
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -643,26 +717,49 @@ export default function RangeDetailsPage() {
 
             {/* Edit Dialog */}
             <Dialog open={isEditModelDialogOpen} onOpenChange={setIsEditModelDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
-                        <DialogTitle>Edit Model: {editingModel?.name}</DialogTitle>
-                        <DialogDescription>Update the name and code for this master boat record.</DialogDescription>
+                        <DialogTitle>Edit Identity: {editingModel?.name}</DialogTitle>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-6 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-name" className="text-right font-bold text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
-                            <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} className="col-span-3 font-bold" />
+                            <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">Full Name</Label>
+                            <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="col-span-3 font-bold" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-code" className="text-right font-bold text-xs uppercase tracking-wider text-muted-foreground">Model Code</Label>
-                            <Input id="edit-code" value={editCode} onChange={(e) => setEditCode(e.target.value)} className="col-span-3 font-mono font-bold uppercase border-2 focus-visible:ring-primary/20" />
+                            <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">Model Code</Label>
+                            <Input value={editCode} onChange={(e) => setEditCode(e.target.value)} className="col-span-3 font-mono font-bold uppercase" />
                         </div>
+                        {isHighfield && (
+                            <>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">SKU / ID</Label>
+                                    <Input value={editSku} onChange={(e) => setEditSku(e.target.value)} className="col-span-3 font-mono font-bold uppercase" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">Material</Label>
+                                    <div className="col-span-3">
+                                        <Select value={editMaterial} onValueChange={(v: any) => setEditMaterial(v)}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="PVC">PVC</SelectItem>
+                                                <SelectItem value="HYP">Hypalon (HYP)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">Color Name</Label>
+                                    <Input value={editColor} onChange={(e) => setEditColor(e.target.value)} className="col-span-3 font-bold" />
+                                </div>
+                            </>
+                        )}
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-                        <Button onClick={handleUpdateModel} disabled={isUpdatingModel || !editName.trim() || !editCode.trim()}>
+                        <Button onClick={handleUpdateModel} disabled={isUpdatingModel}>
                             {isUpdatingModel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Update Model
+                            Update Identity
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -672,27 +769,25 @@ export default function RangeDetailsPage() {
             <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Duplicate Model</DialogTitle>
-                        <DialogDescription>
-                            Provide a name and code for the new model configuration. All other specifications will be copied from <strong>{duplicatingModel?.name}</strong>.
-                        </DialogDescription>
+                        <DialogTitle>Duplicate Record</DialogTitle>
+                        <DialogDescription>Create a new configuration record based on <strong>{duplicatingModel?.name}</strong>.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="dup-name" className="text-right font-bold text-xs uppercase tracking-wider text-muted-foreground">New Name</Label>
-                            <Input id="dup-name" value={dupName} onChange={(e) => setDupName(e.target.value)} className="col-span-3 font-bold" />
+                            <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">New Name</Label>
+                            <Input value={dupName} onChange={(e) => setDupName(e.target.value)} className="col-span-3 font-bold" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="dup-code" className="text-right font-bold text-xs uppercase tracking-wider text-muted-foreground">New Code</Label>
-                            <Input id="dup-code" value={dupCode} onChange={(e) => setDupCode(e.target.value)} className="col-span-3 font-mono font-bold uppercase border-2 focus-visible:ring-primary/20" />
+                            <Label className="text-right font-black text-[10px] uppercase text-muted-foreground">SKU</Label>
+                            <Input value={dupSku} onChange={(e) => setDupSku(e.target.value)} className="col-span-3 font-mono font-bold uppercase" />
                         </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-                        <Button onClick={handleDuplicateModel} disabled={isDuplicating || !dupName.trim() || !dupCode.trim()}>
+                        <Button onClick={handleDuplicateModel} disabled={isDuplicating || !dupName.trim() || !dupSku.trim()}>
                             {isDuplicating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Copy className="mr-2 h-4 w-4" />
-                            Duplicate Configuration
+                            Confirm Duplicate
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -13,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle, DollarSign, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -30,22 +29,6 @@ const looseNumber = z.preprocess(
   },
   z.number().nullable().optional()
 );
-
-const priceSchema = z.object({
-    cost: looseNumber,
-    sellPriceExclGst: looseNumber,
-});
-
-const colorVariantFormSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, 'Display name is required'),
-    code: z.string().optional().nullable(),
-    imageUrl: z.string().nullable().optional(),
-    pricing: z.object({
-        HYP: priceSchema.default({}),
-        PVC: priceSchema.default({}),
-    }),
-});
 
 const specSchema = z.object({
     id: z.string(),
@@ -88,6 +71,11 @@ const ruleSchema = z.object({
 
 export const highfieldModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
+    sku: z.string().optional(),
+    colorName: z.string().optional(),
+    material: z.string().optional(),
+    cost: looseNumber,
+    sellPriceExclGst: looseNumber,
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     specifications: z.object({
@@ -96,7 +84,6 @@ export const highfieldModelSchema = z.object({
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
-    colors: z.array(colorVariantFormSchema).default([]),
     documents: z.array(documentSchema).default([]),
     rules: z.array(ruleSchema).default([]),
 });
@@ -242,195 +229,6 @@ function GstInputPair({ control, name, label, gstPercentage }: { control: any; n
              <FormMessage className="text-[9px] font-semibold">{fieldState.error && String(fieldState.error.message)}</FormMessage>
         </div>
     );
-}
-
-function PricingSummary({ pricing, gstPercentage }: { pricing: any, gstPercentage: number }) {
-    const taxRate = gstPercentage / 100;
-    
-    const renderPrice = (material: 'HYP' | 'PVC') => {
-        const p = pricing?.[material];
-        if (!p) return null;
-        
-        const sellExcl = p.sellPriceExclGst;
-        const costExcl = p.cost;
-
-        const hasSell = sellExcl !== null && sellExcl !== undefined && sellExcl !== '';
-        const hasCost = costExcl !== null && costExcl !== undefined && costExcl !== '';
-
-        if (!hasSell && !hasCost) return null;
-
-        const sellIncl = hasSell ? (Number(sellExcl) * (1 + taxRate)) : 0;
-        const costIncl = hasCost ? (Number(costExcl) * (1 + taxRate)) : 0;
-
-        return (
-            <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-tighter">{material}</span>
-                <div className="flex items-center gap-2">
-                    {hasSell && (
-                        <span className="text-xs font-black text-primary">
-                            ${sellIncl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                    )}
-                    {hasCost && (
-                        <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                            <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Cost</span>
-                            <span className="text-xs font-black text-amber-600">
-                                ${costIncl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    const hyp = renderPrice('HYP');
-    const pvc = renderPrice('PVC');
-
-    if (!hyp && !pvc) return null;
-
-    return (
-        <div className="flex items-center gap-6 ml-auto mr-4 group-data-[state=open]/item:hidden">
-            {hyp}
-            {pvc}
-        </div>
-    );
-}
-
-function ColorVariantItem({ index, remove, gstPercentage }: { index: number; remove: (index: number) => void; gstPercentage: number }) {
-  const { control } = useFormContext<ModelFormData>();
-  const name = useWatch({ control, name: `colors.${index}.name` });
-  const code = useWatch({ control, name: `colors.${index}.code` });
-  const imageUrl = useWatch({ control, name: `colors.${index}.imageUrl` });
-  const pricing = useWatch({ control, name: `colors.${index}.pricing` });
-  const storage = useStorage();
-  const [isUploading, setIsUploading] = useState(false);
-
-  return (
-    <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:border-primary/20">
-        <div className="flex items-center p-3 bg-muted/20 border-b">
-            <div className="flex items-center gap-3 flex-grow">
-                <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
-                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
-                    </Button>
-                </CollapsibleTrigger>
-                
-                <div className="flex items-center gap-3">
-                    <div className="relative h-10 w-14 rounded-md border-2 border-background overflow-hidden bg-background shadow-sm shrink-0">
-                        {imageUrl ? (
-                            <Image src={imageUrl} alt="Swatch" fill className="object-cover" />
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-muted-foreground/30">
-                                <ImageIcon className="h-4 w-4" />
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                        <span className="font-black text-sm tracking-tight text-foreground">{name || 'Unnamed Color Variant'}</span>
-                        {code && <span className="text-[10px] w-fit font-mono font-bold text-muted-foreground uppercase bg-muted/50 px-1.5 rounded">{code}</span>}
-                    </div>
-                </div>
-
-                <PricingSummary pricing={pricing} gstPercentage={gstPercentage} />
-            </div>
-            
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-2" onClick={() => remove(index)}>
-                <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-        </div>
-        <CollapsibleContent>
-            <div className="p-4">
-                <div className="flex flex-row gap-6 items-start">
-                    <div className="w-[200px] shrink-0">
-                        <FormField
-                            control={control}
-                            name={`colors.${index}.imageUrl`}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Swatch / Render</Label>
-                                    <div className="relative aspect-video w-full overflow-hidden rounded-lg border-2 border-dashed bg-muted/10 group/swatch">
-                                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                                        {imageUrl ? (
-                                            <>
-                                                <Image src={imageUrl} alt="Color" fill className="object-cover" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/swatch:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <Button type="button" variant="destructive" size="xs" className="h-6 text-[10px] px-2" onClick={() => field.onChange(null)}>Remove</Button>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50 transition-colors">
-                                                <Upload className="w-4 h-4 text-primary mb-1" />
-                                                <span className="text-[8px] text-muted-foreground font-black uppercase">Upload</span>
-                                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file && storage) {
-                                                        setIsUploading(true);
-                                                        try {
-                                                            const url = await uploadFileToStorage(storage, file, `colors/${Date.now()}-${file.name}`);
-                                                            field.onChange(url);
-                                                        } finally { setIsUploading(false); }
-                                                    }
-                                                }} /></FormControl>
-                                            </label>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        />
-                    </div>
-
-                    <div className="flex-1 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField 
-                                control={control} 
-                                name={`colors.${index}.name`} 
-                                render={({ field }) => ( 
-                                    <FormItem>
-                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Color Variant Display Name</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Storm Grey" className="h-9 text-xs font-bold border-muted focus-visible:ring-primary/10" {...field} />
-                                        </FormControl>
-                                    </FormItem> 
-                                )} 
-                            />
-                            <FormField 
-                                control={control} 
-                                name={`colors.${index}.code`} 
-                                render={({ field }) => ( 
-                                    <FormItem>
-                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Color Code</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., SG-01" className="h-9 text-xs font-mono font-bold uppercase border-muted focus-visible:ring-primary/10" value={field.value ?? ''} onChange={field.onChange} />
-                                        </FormControl>
-                                    </FormItem> 
-                                )} 
-                            />
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 border-l-2 border-primary bg-muted/5 space-y-3">
-                                <h4 className="font-black text-[10px] uppercase tracking-tighter text-primary">HYP Material</h4>
-                                <div className="grid grid-cols-1 gap-3">
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.HYP.sellPriceExclGst`} label="Retail Sell" gstPercentage={gstPercentage} />
-                                </div>
-                            </div>
-                            
-                            <div className="p-3 border-l-2 border-primary bg-muted/5 space-y-3">
-                                <h4 className="font-black text-[10px] uppercase tracking-tighter text-primary">PVC Material</h4>
-                                <div className="grid grid-cols-1 gap-3">
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
-                                    <GstInputPair control={control} name={`colors.${index}.pricing.PVC.sellPriceExclGst`} label="Retail Sell" gstPercentage={gstPercentage} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </CollapsibleContent>
-    </Collapsible>
-  );
 }
 
 function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
@@ -920,7 +718,7 @@ function RulesSection() {
                         ) : (
                             <div className="py-12 border-2 border-dashed rounded-xl bg-muted/5 flex flex-col items-center justify-center text-center">
                                 <ShieldAlert className="h-10 w-10 text-muted-foreground opacity-20 mb-4" />
-                                <p className="text-sm font-medium text-muted-foreground">No rules defined for this model yet.</p>
+                                <p className="text-sm font-medium text-muted-foreground">No rules defined for this record yet.</p>
                                 <p className="text-[10px] text-muted-foreground/60 uppercase font-black mt-1">Rules help automate inclusions and exclusions in the quoter.</p>
                             </div>
                         )}
@@ -932,8 +730,7 @@ function RulesSection() {
 }
 
 export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { model: any, isModuleView?: boolean, gstPercentage: number }) {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
+    const { control, watch } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
 
     const [categories, setCategories] = useState<string[]>([]);
@@ -966,20 +763,42 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
 
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
-            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                <Card className="border-none shadow-none rounded-none">
-                    <CollapsibleCardHeader 
-                        title="Material & Color Pricing" 
-                        count={colorFields.length}
-                        onAdd={() => appendColor({ id: `color-${Date.now()}`, name: '', code: '', imageUrl: null, pricing: { HYP: { cost: null, sellPriceExclGst: null }, PVC: { cost: null, sellPriceExclGst: null }}})}
-                    />
-                    <CollapsibleContent>
-                        <CardContent className="space-y-4 pt-6">
-                            {colorFields.map((field, index) => ( <ColorVariantItem key={field.id} index={index} remove={removeColor} gstPercentage={gstPercentage} /> ))}
-                        </CardContent>
-                    </CollapsibleContent>
-                </Card>
-            </Collapsible>
+            <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="py-4 border-b bg-card">
+                    <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-primary" />
+                        Specific Boat Pricing (SKU Identity)
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                    <div className="grid md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 p-3 bg-card rounded-lg border shadow-sm">
+                                <div className="h-10 w-10 bg-secondary rounded flex items-center justify-center">
+                                    <Anchor className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Configuration Identity</p>
+                                    <p className="font-bold text-sm">{watch('material')} Boat - {watch('colorName')}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-card rounded-lg border shadow-sm">
+                                <div className="h-10 w-10 bg-secondary rounded flex items-center justify-center">
+                                    <Hash className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Unique SKU</p>
+                                    <p className="font-mono font-bold text-sm">{watch('sku') || 'NO SKU ASSIGNED'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-6">
+                            <GstInputPair control={control} name="cost" label="Factory Cost" gstPercentage={gstPercentage} />
+                            <GstInputPair control={control} name="sellPriceExclGst" label="Retail Sell Price" gstPercentage={gstPercentage} />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className="lg:col-span-4 lg:order-1 space-y-8">
@@ -1030,7 +849,6 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
                                 <CardContent className="pt-6">
                                     <ScrollArea className="max-h-[700px] pr-4">
                                         <div className="space-y-8">
-                                            {/* 1. Categorized Sections (NOW ON TOP) */}
                                             {categories.map(cat => {
                                                 const catItems = optionalFeatureFields.filter((_, idx) => watchedOptionalFeatures[idx]?.category === cat);
 
@@ -1098,7 +916,6 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
                                                 );
                                             })}
 
-                                            {/* 2. Uncategorized Items (NOW AT BOTTOM) */}
                                             <div className="grid grid-cols-1 gap-4">
                                                 {optionalFeatureFields.map((field, index) => {
                                                     const feat = watchedOptionalFeatures[index];
