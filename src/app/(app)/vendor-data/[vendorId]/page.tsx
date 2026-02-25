@@ -111,13 +111,13 @@ export default function VendorDataPage() {
   }
 
   return (
-    <div className="space-y-4 max-w-full min-w-0 flex flex-col h-full">
-        <div className="flex items-start justify-between shrink-0">
+    <div className="flex flex-col h-full space-y-4 max-w-full min-w-0">
+        <div className="flex items-start justify-between shrink-0 px-1">
             <div className="min-w-0">
-                <h1 className="text-2xl font-bold truncate">{dataSet?.name || 'Table Viewer'}</h1>
+                <h1 className="text-2xl font-bold truncate tracking-tight">{dataSet?.name || 'Table Viewer'}</h1>
                 <BreadcrumbNav parts={breadcrumbParts} />
             </div>
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild className="shadow-sm">
                 <Link href={`/data-warehouse/${vendor.slug || vendor.id}`}>
                     <ChevronLeft className="mr-2 h-4 w-4" />
                     Back to Vendor
@@ -125,48 +125,50 @@ export default function VendorDataPage() {
             </Button>
         </div>
 
-        <Card className="flex-1 max-w-full overflow-hidden flex flex-col min-w-0">
-            <CardHeader className="border-b bg-muted/30 shrink-0">
+        <Card className="flex-1 flex flex-col min-w-0 max-w-full overflow-hidden shadow-lg border-muted-foreground/10">
+            <CardHeader className="border-b bg-muted/20 shrink-0 py-4 px-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="relative flex-1">
+                    <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
                             placeholder="Search this table..." 
-                            className="pl-9 h-10"
+                            className="pl-9 h-10 bg-background border-muted transition-all focus-visible:ring-primary/20"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
-                            <List className="h-4 w-4" />
+                    <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+                        <Button variant={viewMode === 'list' ? 'background' : 'ghost'} size="sm" className={cn("h-8 px-3 text-xs font-bold shadow-none", viewMode === 'list' && "bg-background shadow-sm")} onClick={() => setViewMode('list')}>
+                            <List className="h-3.5 w-3.5 mr-1.5" />
+                            List
                         </Button>
-                        <Button variant={viewMode === 'card' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('card')}>
-                            <LayoutGrid className="h-4 w-4" />
+                        <Button variant={viewMode === 'card' ? 'background' : 'ghost'} size="sm" className={cn("h-8 px-3 text-xs font-bold shadow-none", viewMode === 'card' && "bg-background shadow-sm")} onClick={() => setViewMode('card')}>
+                            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                            Grid
                         </Button>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-0 flex-1 min-w-0 overflow-hidden flex flex-col">
+            <CardContent className="p-0 flex-1 min-w-0 max-w-full flex flex-col overflow-hidden">
                 {filteredRows.length > 0 ? (
                     <div className="flex-1 overflow-auto min-w-0 max-w-full">
                         {viewMode === 'list' ? (
                             <JsonDataVisualizer data={filteredRows} />
                         ) : (
-                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 bg-muted/5">
                                 {filteredRows.map((row, i) => (
-                                    <Card key={i} className="flex flex-col h-fit">
+                                    <Card key={i} className="flex flex-col h-fit hover:border-primary transition-colors shadow-sm bg-background">
                                         <CardHeader className="p-4 pb-2">
-                                            <CardTitle className="text-sm font-bold truncate">
+                                            <CardTitle className="text-sm font-black truncate uppercase tracking-tight">
                                                 {row.name || row.Description || row.Part_Number || `Record #${i+1}`}
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-4 pt-0 flex-grow">
-                                            <div className="space-y-1">
-                                                {Object.entries(row).slice(0, 5).map(([k, v]) => k !== 'id' && (
-                                                    <div key={k} className="flex justify-between text-[10px]">
-                                                        <span className="text-muted-foreground uppercase font-black tracking-tighter shrink-0 mr-2">{k}:</span>
-                                                        <span className="font-bold truncate text-right">{String(v)}</span>
+                                            <div className="space-y-1.5">
+                                                {Object.entries(row).slice(0, 6).map(([k, v]) => k !== 'id' && (
+                                                    <div key={k} className="flex justify-between items-start text-[10px] gap-2">
+                                                        <span className="text-muted-foreground uppercase font-black tracking-tighter shrink-0">{k}:</span>
+                                                        <span className="font-bold truncate text-right text-foreground">{String(v)}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -177,13 +179,18 @@ export default function VendorDataPage() {
                         )}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                        <TableIcon className="h-12 w-12 mb-4 opacity-10" />
-                        <p>No records found matching your search.</p>
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-12 text-center bg-muted/5">
+                        <TableIcon className="h-16 w-16 mb-4 opacity-10" />
+                        <p className="font-bold">No records found matching your search.</p>
+                        <p className="text-xs">Try adjusting your filters or search terms.</p>
                     </div>
                 )}
             </CardContent>
         </Card>
     </div>
   );
+}
+
+function cn(...inputs: any[]) {
+    return inputs.filter(Boolean).join(' ');
 }

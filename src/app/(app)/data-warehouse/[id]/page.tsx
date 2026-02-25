@@ -339,7 +339,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             <Card className="md:col-span-3 min-h-[500px] flex flex-col min-w-0 overflow-hidden max-w-full">
                 {selectedSetId ? (
                     <>
-                        <CardHeader className="py-4 border-b bg-muted/30 flex flex-row items-center justify-between">
+                        <CardHeader className="py-4 border-b bg-muted/30 flex flex-row items-center justify-between shrink-0">
                             <div className="min-w-0">
                                 <CardTitle className="text-lg truncate">{selectedSet?.name}</CardTitle>
                                 <CardDescription>Viewing {selectedSet?.rowCount} records</CardDescription>
@@ -353,7 +353,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         </CardHeader>
                         <CardContent className="p-0 flex-grow relative overflow-hidden min-w-0 max-w-full flex flex-col">
                             {rowsLoading ? (
-                                <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-20">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
@@ -739,7 +739,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         This is the master data set for this vendor. Upload new data in the 'Data Connection' tab.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="max-w-full min-w-0 flex flex-col">
+                <CardContent className="max-w-full min-w-0 flex flex-col overflow-hidden">
                      <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden min-w-0 flex flex-col">
                         <div className="flex items-center gap-2 shrink-0">
                              <div className="relative flex-1">
@@ -779,7 +779,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                             }
                                             const itemColors = colorsKey && Array.isArray(item[colorsKey]) ? item[colorsKey] : [];
                                             return (
-                                                <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors flex flex-col h-fit" onClick={() => handleEditItem(item)}>
+                                                <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors flex flex-col h-fit shadow-sm overflow-hidden" onClick={() => handleEditItem(item)}>
                                                     {itemImageUrl ? (
                                                         <div className="relative h-40 w-full bg-secondary">
                                                             <Image src={itemImageUrl} alt={titleKey ? String(item[titleKey]) : 'Product image'} fill className="object-contain p-4" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw" />
@@ -789,25 +789,25 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                             <ImageIcon className="h-12 w-12 text-muted-foreground" />
                                                         </div>
                                                     )}
-                                                    <CardHeader className="pt-4">
-                                                        <CardTitle className="truncate text-base">{titleKey ? String(item[titleKey] || 'Unnamed Item') : 'Unnamed Item'}</CardTitle>
+                                                    <CardHeader className="pt-4 px-4 pb-2">
+                                                        <CardTitle className="truncate text-sm font-black uppercase tracking-tight">{titleKey ? String(item[titleKey] || 'Unnamed Item') : 'Unnamed Item'}</CardTitle>
                                                     </CardHeader>
-                                                    <CardContent className="flex-grow">
-                                                        <div className="space-y-1 text-sm text-muted-foreground">
+                                                    <CardContent className="px-4 pb-4 flex-grow">
+                                                        <div className="space-y-1 text-[10px] text-muted-foreground">
                                                             {infoKeys.map((key) => (
                                                                 <div key={key} className="flex justify-between items-start gap-2">
-                                                                    <span className="font-medium capitalize truncate text-xs">{key.replace(/_/g, ' ')}:</span>
-                                                                    <span className="truncate text-right text-xs text-foreground">{String(item[key])}</span>
+                                                                    <span className="font-black uppercase tracking-tighter shrink-0">{key.replace(/_/g, ' ')}:</span>
+                                                                    <span className="truncate text-right font-bold text-foreground">{String(item[key])}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
                                                     </CardContent>
                                                     {itemColors.length > 0 && (
-                                                        <CardFooter className="pt-0 mt-auto flex flex-wrap gap-2">
+                                                        <CardFooter className="pt-0 pb-3 px-4 mt-auto flex flex-wrap gap-1.5 border-t bg-muted/5 pt-2">
                                                             {itemColors.map((color: any, index: number) => (
-                                                                <div key={index} className="flex items-center gap-1.5 text-xs">
-                                                                    <div className="h-3 w-3 rounded-full border" style={{ backgroundColor: typeof color === 'string' ? color.toLowerCase().replace(/ /g, '') : color.hex || color.Name || 'transparent' }}></div>
-                                                                    <span className="text-muted-foreground">{typeof color === 'string' ? color : color.name || color.Name}</span>
+                                                                <div key={index} className="flex items-center gap-1 text-[9px] font-bold">
+                                                                    <div className="h-2 w-2 rounded-full border shadow-sm" style={{ backgroundColor: typeof color === 'string' ? color.toLowerCase().replace(/ /g, '') : color.hex || color.Name || 'transparent' }}></div>
+                                                                    <span className="text-muted-foreground/80 uppercase">{typeof color === 'string' ? color : color.name || color.Name}</span>
                                                                 </div>
                                                             ))}
                                                         </CardFooter>
@@ -1049,13 +1049,13 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
                 ) : vendor ? (
                     <Tabs defaultValue={defaultTab} className="space-y-4 max-w-full overflow-hidden min-w-0">
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between shrink-0">
                             <div className="min-w-0">
                                 <h1 className="text-2xl font-semibold truncate">Data Warehouse - {vendor.name}</h1>
                                 <BreadcrumbNav parts={breadcrumbParts} />
                             </div>
                         </div>
-                        <TabsList className="max-w-full overflow-x-auto flex justify-start">
+                        <TabsList className="max-w-full overflow-x-auto flex justify-start shrink-0">
                             {isBoatBrand && <TabsTrigger value="product-ranges">Product Ranges</TabsTrigger>}
                             {isHighfield && <TabsTrigger value="poc">POC</TabsTrigger>}
                             {(isBulkSupplier || isYamaha || isMultiTableVendor) && <TabsTrigger value="master-data">Master Data Set</TabsTrigger>}
@@ -1082,7 +1082,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         {isHighfield && <TabsContent value="poc"><HighfieldPoc vendorId={vendor.id} /></TabsContent>}
     
                         {(isBulkSupplier || isYamaha || isMultiTableVendor) && (
-                            <TabsContent value="master-data" className="min-w-0 max-w-full">
+                            <TabsContent value="master-data" className="min-w-0 max-w-full overflow-hidden">
                                 {vendor.slug === 'sam-allen' ? (
                                     <SamAllenDataViewer vendorId={vendor.id} />
                                 ) : isMultiTableVendor ? (
