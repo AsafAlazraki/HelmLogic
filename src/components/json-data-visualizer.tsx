@@ -41,12 +41,20 @@ export function JsonDataVisualizer({
 
     // Handle array of objects (standard table data)
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
-        const keys = columns 
+        // If no columns provided, detect them from the first item
+        const firstItem = data[0];
+        let keys = columns 
             ? columns.map(c => c.key) 
-            : Object.keys(data[0]).filter(k => k !== 'id');
+            : Object.keys(firstItem).filter(k => k !== 'id');
             
+        // Always prioritize image fields to the front
+        const imageKey = keys.find(k => isImageValue(k, firstItem[k]) || k.toLowerCase().includes('image') || k === 'SummaryImage');
+        if (imageKey) {
+            keys = [imageKey, ...keys.filter(k => k !== imageKey)];
+        }
+
         const headers = columns 
-            ? columns.map(c => c.label) 
+            ? keys.map(k => columns.find(c => c.key === k)?.label || k)
             : keys;
 
         return (
