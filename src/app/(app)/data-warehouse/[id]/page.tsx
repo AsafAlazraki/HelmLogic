@@ -178,12 +178,12 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     };
     
     return (
-        <Card className="max-w-full">
+        <Card className="max-w-full overflow-hidden">
             <CardHeader>
                 <CardTitle>Document Data Extractor</CardTitle>
                 <CardDescription>Upload a file to create a new data table for this vendor.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 max-w-full overflow-hidden">
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="document-file">1. Select Data File</Label>
@@ -225,12 +225,14 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 {error && <p className="text-destructive text-sm">{error}</p>}
 
                 {parsedData && (
-                     <Card className="border-primary/20 overflow-hidden">
+                     <Card className="border-primary/20 overflow-hidden max-w-full">
                         <CardHeader className="py-3 px-4 border-b bg-primary/5">
                             <CardTitle className="text-sm font-bold uppercase tracking-tighter">Preview: {dataSetName}</CardTitle>
                         </CardHeader>
-                        <CardContent className="p-0 max-h-[400px] overflow-y-auto">
-                             <JsonDataVisualizer data={parsedData} columns={columns} />
+                        <CardContent className="p-0 max-h-[400px] overflow-hidden max-w-full">
+                             <div className="w-full overflow-auto max-h-[400px]">
+                                <JsonDataVisualizer data={parsedData} columns={columns} />
+                             </div>
                         </CardContent>
                         <CardFooter className="py-3 px-4 border-t bg-muted/30">
                             <Button onClick={handleSaveToMaster} disabled={isSaving || !dataSetName.trim()} className="w-full">
@@ -301,8 +303,8 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 min-w-0">
-            <Card className="md:col-span-1 border-r h-fit">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 min-w-0 max-w-full overflow-hidden">
+            <Card className="md:col-span-1 border-r h-fit min-w-0">
                 <CardHeader className="py-4 border-b">
                     <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Available Tables</CardTitle>
                 </CardHeader>
@@ -338,7 +340,7 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 </ScrollArea>
             </Card>
 
-            <Card className="md:col-span-3 min-h-[500px] flex flex-col min-w-0 overflow-hidden">
+            <Card className="md:col-span-3 min-h-[500px] flex flex-col min-w-0 overflow-hidden max-w-full">
                 {selectedSetId ? (
                     <>
                         <CardHeader className="py-4 border-b bg-muted/30 flex flex-row items-center justify-between">
@@ -353,13 +355,13 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                 </Link>
                             </Button>
                         </CardHeader>
-                        <CardContent className="p-0 flex-grow relative overflow-hidden">
+                        <CardContent className="p-0 flex-grow relative overflow-hidden min-w-0 max-w-full">
                             {rowsLoading ? (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
-                                <div className="h-[500px] overflow-y-auto">
+                                <div className="h-[500px] w-full overflow-auto">
                                     <JsonDataVisualizer data={rows} />
                                 </div>
                             )}
@@ -440,7 +442,7 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-full overflow-hidden">
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
@@ -456,7 +458,7 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
                         )}
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 max-w-full overflow-hidden">
                     <div className="flex items-center gap-2">
                         <Input
                             placeholder="https://api.highfield.com/v1/models"
@@ -471,15 +473,15 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
                     </div>
 
                     {jsonData && (
-                        <Tabs defaultValue="visualize" className="pt-4 border-t">
+                        <Tabs defaultValue="visualize" className="pt-4 border-t max-w-full overflow-hidden">
                             <TabsList className="grid w-full grid-cols-3 max-w-[400px]">
                                 <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize</TabsTrigger>
                                 <TabsTrigger value="ai"><Code className="h-4 w-4 mr-2" />AI Transform</TabsTrigger>
                                 <TabsTrigger value="raw"><List className="h-4 w-4 mr-2" />Raw JSON</TabsTrigger>
                             </TabsList>
                             
-                            <TabsContent value="visualize" className="mt-4 overflow-hidden">
-                                <div className="max-h-[600px] overflow-y-auto rounded-md border bg-card">
+                            <TabsContent value="visualize" className="mt-4 overflow-hidden max-w-full">
+                                <div className="max-h-[600px] overflow-auto rounded-md border bg-card w-full">
                                     <JsonDataVisualizer data={jsonData} />
                                 </div>
                             </TabsContent>
@@ -500,11 +502,11 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
                                 </div>
 
                                 {analysisResult && (
-                                    <Card className="border-primary/20 bg-primary/5 overflow-hidden">
+                                    <Card className="border-primary/20 bg-primary/5 overflow-hidden max-w-full">
                                         <CardHeader className="py-3 px-4 border-b">
                                             <CardTitle className="text-sm font-bold uppercase tracking-tighter">AI Result: {analysisResult.summary}</CardTitle>
                                         </CardHeader>
-                                        <CardContent className="p-0 max-h-[400px] overflow-y-auto">
+                                        <CardContent className="p-0 max-h-[400px] overflow-auto">
                                             <JsonDataVisualizer data={analysisResult.restructuredData} />
                                         </CardContent>
                                     </Card>
@@ -568,12 +570,12 @@ function ApiDataFetcher() {
     };
 
     return (
-        <Card>
+        <Card className="max-w-full overflow-hidden">
             <CardHeader>
                 <CardTitle>API Data Fetcher</CardTitle>
                 <CardDescription>Enter an API endpoint to fetch and view JSON data.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 max-w-full overflow-hidden">
                 <div className="flex items-center gap-2">
                     <Input
                         placeholder="https://api.example.com/data"
@@ -598,7 +600,7 @@ function ApiDataFetcher() {
                     </div>
                 )}
                 {jsonData && (
-                    <Tabs defaultValue="json" className="pt-4">
+                    <Tabs defaultValue="json" className="pt-4 max-w-full overflow-hidden">
                         <TabsList>
                             <TabsTrigger value="json"><Code className="h-4 w-4 mr-2" />JSON Response</TabsTrigger>
                             <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize Data</TabsTrigger>
@@ -608,8 +610,8 @@ function ApiDataFetcher() {
                                 <code>{JSON.stringify(jsonData, null, 2)}</code>
                             </pre>
                         </TabsContent>
-                        <TabsContent value="visualize" className="overflow-hidden">
-                           <div className="max-h-[600px] overflow-y-auto rounded-md border">
+                        <TabsContent value="visualize" className="overflow-hidden max-w-full">
+                           <div className="max-h-[600px] w-full overflow-auto rounded-md border">
                              <JsonDataVisualizer data={jsonData} />
                            </div>
                         </TabsContent>
@@ -738,7 +740,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const { titleKey, infoKeys, columnConfig, imageUrlKey, colorsKey } = displayConfig;
 
     return (
-        <>
+        <div className="max-w-full min-w-0 overflow-hidden space-y-4">
             <Card className="max-w-full overflow-hidden">
                 <CardHeader>
                     <CardTitle>Master Data Set</CardTitle>
@@ -746,8 +748,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         This is the master data set for this vendor. Upload new data in the 'Data Connection' tab.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden">
+                <CardContent className="max-w-full min-w-0">
+                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden min-w-0">
                         <div className="flex items-center gap-2">
                              <div className="relative flex-1">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -827,8 +829,10 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     </div>
                                 </div>
                                 ) : (
-                                    <div className="max-h-[600px] overflow-y-auto rounded-md border min-w-0 max-w-full">
-                                        <JsonDataVisualizer data={filteredData} columns={columnConfig} onRowClick={handleEditItem} />
+                                    <div className="max-h-[600px] overflow-hidden rounded-md border w-full min-w-0">
+                                        <div className="w-full overflow-auto max-h-[600px]">
+                                            <JsonDataVisualizer data={filteredData} columns={columnConfig} onRowClick={handleEditItem} />
+                                        </div>
                                     </div>
                                 )
                             ) : (
@@ -847,7 +851,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     vendorId={vendor.id}
                     onSave={() => { /* Data will refetch automatically via useCollection */ }}
                 />
-            </>
+            </div>
         );
     }
     
@@ -899,7 +903,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Edit Item</DialogTitle>
-                        <DialogDescription>Maryland changes to the item below and click save.</DialogDescription>
+                        <DialogDescription>Modify changes to the item below and click save.</DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
                         <form className="space-y-4 overflow-y-auto px-1">
@@ -1104,7 +1108,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         )}
     
                         {(isBulkSupplier || isYamaha || isMultiTableVendor) && (
-                            <TabsContent value="master-data" className="min-w-0">
+                            <TabsContent value="master-data" className="min-w-0 max-w-full">
                                 {vendor.slug === 'sam-allen' ? (
                                     <SamAllenDataViewer vendorId={vendor.id} />
                                 ) : isMultiTableVendor ? (
