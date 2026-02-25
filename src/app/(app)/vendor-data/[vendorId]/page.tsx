@@ -6,7 +6,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { Loader2, Table as TableIcon, LayoutGrid, List, Search, ChevronLeft } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { JsonDataVisualizer } from '@/components/json-data-visualizer';
@@ -111,8 +111,8 @@ export default function VendorDataPage() {
   }
 
   return (
-    <div className="space-y-4 max-w-full min-w-0">
-        <div className="flex items-start justify-between">
+    <div className="space-y-4 max-w-full min-w-0 flex flex-col h-full">
+        <div className="flex items-start justify-between shrink-0">
             <div className="min-w-0">
                 <h1 className="text-2xl font-bold truncate">{dataSet?.name || 'Table Viewer'}</h1>
                 <BreadcrumbNav parts={breadcrumbParts} />
@@ -125,8 +125,8 @@ export default function VendorDataPage() {
             </Button>
         </div>
 
-        <Card className="max-w-full overflow-hidden flex flex-col">
-            <CardHeader className="border-b bg-muted/30">
+        <Card className="flex-1 max-w-full overflow-hidden flex flex-col min-w-0">
+            <CardHeader className="border-b bg-muted/30 shrink-0">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -147,41 +147,37 @@ export default function VendorDataPage() {
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-0 flex-grow min-w-0 overflow-hidden">
+            <CardContent className="p-0 flex-1 min-w-0 overflow-hidden flex flex-col">
                 {filteredRows.length > 0 ? (
-                    <div className="max-w-full overflow-hidden">
+                    <div className="flex-1 overflow-auto min-w-0 max-w-full">
                         {viewMode === 'list' ? (
-                            <div className="w-full overflow-auto max-h-[calc(100vh-250px)]">
-                                <JsonDataVisualizer data={filteredRows} />
-                            </div>
+                            <JsonDataVisualizer data={filteredRows} />
                         ) : (
-                            <div className="p-6 overflow-y-auto max-h-[calc(100vh-250px)]">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {filteredRows.map((row, i) => (
-                                        <Card key={i} className="flex flex-col">
-                                            <CardHeader className="p-4 pb-2">
-                                                <CardTitle className="text-sm font-bold truncate">
-                                                    {row.name || row.Description || row.Part_Number || `Record #${i+1}`}
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-0 flex-grow">
-                                                <div className="space-y-1">
-                                                    {Object.entries(row).slice(0, 5).map(([k, v]) => k !== 'id' && (
-                                                        <div key={k} className="flex justify-between text-[10px]">
-                                                            <span className="text-muted-foreground uppercase font-black tracking-tighter">{k}:</span>
-                                                            <span className="font-bold truncate max-w-[120px]">{String(v)}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
+                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {filteredRows.map((row, i) => (
+                                    <Card key={i} className="flex flex-col h-fit">
+                                        <CardHeader className="p-4 pb-2">
+                                            <CardTitle className="text-sm font-bold truncate">
+                                                {row.name || row.Description || row.Part_Number || `Record #${i+1}`}
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-4 pt-0 flex-grow">
+                                            <div className="space-y-1">
+                                                {Object.entries(row).slice(0, 5).map(([k, v]) => k !== 'id' && (
+                                                    <div key={k} className="flex justify-between text-[10px]">
+                                                        <span className="text-muted-foreground uppercase font-black tracking-tighter shrink-0 mr-2">{k}:</span>
+                                                        <span className="font-bold truncate text-right">{String(v)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-96 text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                         <TableIcon className="h-12 w-12 mb-4 opacity-10" />
                         <p>No records found matching your search.</p>
                     </div>

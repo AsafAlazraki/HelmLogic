@@ -20,7 +20,7 @@ export function JsonDataVisualizer({ data, columns, onRowClick }: { data: any, c
         const keys = columns ? columns.map(c => c.key) : headers;
 
         return (
-            <div className="w-full overflow-x-auto min-w-0">
+            <div className="w-full min-w-0 overflow-hidden border rounded-md">
                 <Table>
                     <TableHeader className="sticky top-0 bg-secondary z-10">
                         <TableRow>

@@ -39,9 +39,9 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset className="overflow-hidden">
           <Header />
-          <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">{children}</div>
         </SidebarInset>
       </SidebarProvider>
   )

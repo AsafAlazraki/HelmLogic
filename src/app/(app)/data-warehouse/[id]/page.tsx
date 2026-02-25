@@ -144,7 +144,6 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             const dataSetsRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets`);
             const dataSetDocRef = doc(dataSetsRef);
             
-            // 1. Create the data set metadata
             await setDoc(dataSetDocRef, {
                 id: dataSetDocRef.id,
                 name: dataSetName,
@@ -152,7 +151,6 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 uploadedAt: serverTimestamp(),
             });
 
-            // 2. Upload rows in batches
             const rowsCollectionRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${dataSetDocRef.id}/rows`);
             const writeBatchSize = 500;
             for (let i = 0; i < parsedData.length; i += writeBatchSize) {
@@ -178,12 +176,12 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
     };
     
     return (
-        <Card className="max-w-full overflow-hidden">
+        <Card className="max-w-full overflow-hidden min-w-0">
             <CardHeader>
                 <CardTitle>Document Data Extractor</CardTitle>
                 <CardDescription>Upload a file to create a new data table for this vendor.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 max-w-full overflow-hidden">
+            <CardContent className="space-y-6 max-w-full overflow-hidden min-w-0">
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="document-file">1. Select Data File</Label>
@@ -225,12 +223,12 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 {error && <p className="text-destructive text-sm">{error}</p>}
 
                 {parsedData && (
-                     <Card className="border-primary/20 overflow-hidden max-w-full">
+                     <Card className="border-primary/20 overflow-hidden max-w-full min-w-0">
                         <CardHeader className="py-3 px-4 border-b bg-primary/5">
                             <CardTitle className="text-sm font-bold uppercase tracking-tighter">Preview: {dataSetName}</CardTitle>
                         </CardHeader>
-                        <CardContent className="p-0 max-h-[400px] overflow-hidden max-w-full">
-                             <div className="w-full overflow-auto max-h-[400px]">
+                        <CardContent className="p-0 overflow-hidden max-w-full min-w-0">
+                             <div className="w-full min-w-0 overflow-auto max-h-[400px]">
                                 <JsonDataVisualizer data={parsedData} columns={columns} />
                              </div>
                         </CardContent>
@@ -251,7 +249,6 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    // 1. Fetch available data sets
     const dataSetsQuery = useMemoFirebase(() => {
         if (!vendor.id) return null;
         return query(collection(firestore, 'data-warehouse', vendor.id, 'dataSets'), orderBy('uploadedAt', 'desc'));
@@ -261,7 +258,6 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // 2. Fetch rows for selected set
     const rowsQuery = useMemoFirebase(() => {
         if (!vendor.id || !selectedSetId) return null;
         return collection(firestore, 'data-warehouse', vendor.id, 'dataSets', selectedSetId, 'rows');
@@ -355,13 +351,13 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                 </Link>
                             </Button>
                         </CardHeader>
-                        <CardContent className="p-0 flex-grow relative overflow-hidden min-w-0 max-w-full">
+                        <CardContent className="p-0 flex-grow relative overflow-hidden min-w-0 max-w-full flex flex-col">
                             {rowsLoading ? (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
-                                <div className="h-[500px] w-full overflow-auto">
+                                <div className="flex-1 min-w-0 overflow-auto">
                                     <JsonDataVisualizer data={rows} />
                                 </div>
                             )}
@@ -442,8 +438,8 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
     };
 
     return (
-        <div className="space-y-6 max-w-full overflow-hidden">
-            <Card>
+        <div className="space-y-6 max-w-full overflow-hidden min-w-0">
+            <Card className="min-w-0 max-w-full">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
@@ -458,7 +454,7 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
                         )}
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4 max-w-full overflow-hidden">
+                <CardContent className="space-y-4 max-w-full overflow-hidden min-w-0">
                     <div className="flex items-center gap-2">
                         <Input
                             placeholder="https://api.highfield.com/v1/models"
@@ -473,15 +469,15 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
                     </div>
 
                     {jsonData && (
-                        <Tabs defaultValue="visualize" className="pt-4 border-t max-w-full overflow-hidden">
+                        <Tabs defaultValue="visualize" className="pt-4 border-t max-w-full overflow-hidden min-w-0">
                             <TabsList className="grid w-full grid-cols-3 max-w-[400px]">
                                 <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize</TabsTrigger>
                                 <TabsTrigger value="ai"><Code className="h-4 w-4 mr-2" />AI Transform</TabsTrigger>
                                 <TabsTrigger value="raw"><List className="h-4 w-4 mr-2" />Raw JSON</TabsTrigger>
                             </TabsList>
                             
-                            <TabsContent value="visualize" className="mt-4 overflow-hidden max-w-full">
-                                <div className="max-h-[600px] overflow-auto rounded-md border bg-card w-full">
+                            <TabsContent value="visualize" className="mt-4 overflow-hidden max-w-full min-w-0 flex flex-col">
+                                <div className="max-h-[600px] overflow-auto rounded-md border bg-card w-full min-w-0">
                                     <JsonDataVisualizer data={jsonData} />
                                 </div>
                             </TabsContent>
@@ -502,12 +498,14 @@ function HighfieldPoc({ vendorId }: { vendorId: string }) {
                                 </div>
 
                                 {analysisResult && (
-                                    <Card className="border-primary/20 bg-primary/5 overflow-hidden max-w-full">
+                                    <Card className="border-primary/20 bg-primary/5 overflow-hidden max-w-full min-w-0">
                                         <CardHeader className="py-3 px-4 border-b">
                                             <CardTitle className="text-sm font-bold uppercase tracking-tighter">AI Result: {analysisResult.summary}</CardTitle>
                                         </CardHeader>
-                                        <CardContent className="p-0 max-h-[400px] overflow-auto">
-                                            <JsonDataVisualizer data={analysisResult.restructuredData} />
+                                        <CardContent className="p-0 overflow-hidden min-w-0">
+                                            <div className="max-h-[400px] overflow-auto w-full">
+                                                <JsonDataVisualizer data={analysisResult.restructuredData} />
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 )}
@@ -570,12 +568,12 @@ function ApiDataFetcher() {
     };
 
     return (
-        <Card className="max-w-full overflow-hidden">
+        <Card className="max-w-full overflow-hidden min-w-0">
             <CardHeader>
                 <CardTitle>API Data Fetcher</CardTitle>
                 <CardDescription>Enter an API endpoint to fetch and view JSON data.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 max-w-full overflow-hidden">
+            <CardContent className="space-y-4 max-w-full overflow-hidden min-w-0">
                 <div className="flex items-center gap-2">
                     <Input
                         placeholder="https://api.example.com/data"
@@ -600,7 +598,7 @@ function ApiDataFetcher() {
                     </div>
                 )}
                 {jsonData && (
-                    <Tabs defaultValue="json" className="pt-4 max-w-full overflow-hidden">
+                    <Tabs defaultValue="json" className="pt-4 max-w-full overflow-hidden min-w-0">
                         <TabsList>
                             <TabsTrigger value="json"><Code className="h-4 w-4 mr-2" />JSON Response</TabsTrigger>
                             <TabsTrigger value="visualize"><Eye className="h-4 w-4 mr-2" />Visualize Data</TabsTrigger>
@@ -610,8 +608,8 @@ function ApiDataFetcher() {
                                 <code>{JSON.stringify(jsonData, null, 2)}</code>
                             </pre>
                         </TabsContent>
-                        <TabsContent value="visualize" className="overflow-hidden max-w-full">
-                           <div className="max-h-[600px] w-full overflow-auto rounded-md border">
+                        <TabsContent value="visualize" className="overflow-hidden max-w-full min-w-0 flex flex-col">
+                           <div className="max-h-[600px] w-full overflow-auto rounded-md border min-w-0">
                              <JsonDataVisualizer data={jsonData} />
                            </div>
                         </TabsContent>
@@ -628,7 +626,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         if (!vendor.id) return null;
         return collection(firestore, 'data-warehouse', vendor.id, 'masterDataSet');
     }, [firestore, vendor.id]);
-    const { data: masterDataSet, loading: masterDataLoading, error } = useCollection(masterDataSetQuery);
+    const { data: masterDataSet, loading: masterDataLoading } = useCollection(masterDataSetQuery);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
@@ -669,20 +667,16 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 const modelNameKey = findKey(['Model Name', 'ModelName', 'name']);
                 const productGroupKey = findKey(['Product Group', 'ProductGroup']);
                 const subCategoryKey = findKey(['Sub Catagory', 'SubCategory', 'category']);
-                
                 const imageUrlKey = 'SummaryImage';
-                
                 const colorsKey = findKey(['colors', 'available_colors', 'availableColors', 'Colours']);
 
                 const titleKey = modelNameKey || null;
                 const infoKeys = [productGroupKey, subCategoryKey].filter(Boolean) as string[];
                 
                 let columnConfig: { key: string; label: string }[] = [];
-                
                 if (productGroupKey) columnConfig.push({ key: productGroupKey, label: 'Product Group' });
                 if (modelNameKey) columnConfig.push({ key: modelNameKey, label: 'Model Name' });
                 if (subCategoryKey) columnConfig.push({ key: subCategoryKey, label: 'Sub Category' });
-
 
                 if (columnConfig.length === 0 && allKeys.length > 0) {
                     columnConfig = allKeys.filter(k => k !== 'id').slice(0, 3).map(k => ({ key: k, label: k }));
@@ -691,14 +685,11 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 setDisplayConfig({ titleKey, infoKeys, columnConfig, imageUrlKey: imageUrlKey, colorsKey: colorsKey ?? null });
             } else {
                 const findKey = (potentials: string[]) => allKeys.find(k => potentials.includes(k.toLowerCase()));
-
                 const titleKey = findKey(['name', 'productName', 'modelName', 'title', 'item', 'description', 'part_description']) || allKeys.filter(k=>k!=='id')[0];
-
                 const infoKeys = allKeys.filter(k => 
                     k.toLowerCase() !== titleKey?.toLowerCase() && 
                     ['part_number', 'sku', 'model', 'price', 'cost', 'rrp', 'sellpriceexclgst'].includes(k.toLowerCase())
                 ).slice(0, 3);
-                
                 const columnKeys = [
                     titleKey,
                     ...infoKeys,
@@ -740,17 +731,17 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
     const { titleKey, infoKeys, columnConfig, imageUrlKey, colorsKey } = displayConfig;
 
     return (
-        <div className="max-w-full min-w-0 overflow-hidden space-y-4">
-            <Card className="max-w-full overflow-hidden">
-                <CardHeader>
+        <div className="max-w-full min-w-0 overflow-hidden space-y-4 flex flex-col">
+            <Card className="max-w-full overflow-hidden flex flex-col min-w-0">
+                <CardHeader className="shrink-0">
                     <CardTitle>Master Data Set</CardTitle>
                     <CardDescription>
                         This is the master data set for this vendor. Upload new data in the 'Data Connection' tab.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="max-w-full min-w-0">
-                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden min-w-0">
-                        <div className="flex items-center gap-2">
+                <CardContent className="max-w-full min-w-0 flex flex-col">
+                     <div className="border-2 border-dashed rounded-lg p-4 space-y-4 max-w-full overflow-hidden min-w-0 flex flex-col">
+                        <div className="flex items-center gap-2 shrink-0">
                              <div className="relative flex-1">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -774,7 +765,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                             </div>
                         ) : filteredData && filteredData.length > 0 ? (
                            viewMode === 'card' ? (
-                                <div className="max-h-[600px] overflow-y-auto">
+                                <div className="max-h-[600px] overflow-y-auto w-full">
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
                                         {filteredData.map((item) => {
                                             let itemImageUrl: string | null = null;
@@ -786,11 +777,9 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                     itemImageUrl = `https://www.yamaha-motor.com.au${path}`;
                                                 }
                                             }
-                                            
                                             const itemColors = colorsKey && Array.isArray(item[colorsKey]) ? item[colorsKey] : [];
-                                            
                                             return (
-                                                <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors flex flex-col" onClick={() => handleEditItem(item)}>
+                                                <Card key={item.id} className="cursor-pointer hover:border-primary transition-colors flex flex-col h-fit" onClick={() => handleEditItem(item)}>
                                                     {itemImageUrl ? (
                                                         <div className="relative h-40 w-full bg-secondary">
                                                             <Image src={itemImageUrl} alt={titleKey ? String(item[titleKey]) : 'Product image'} fill className="object-contain p-4" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw" />
@@ -829,8 +818,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                     </div>
                                 </div>
                                 ) : (
-                                    <div className="max-h-[600px] overflow-hidden rounded-md border w-full min-w-0">
-                                        <div className="w-full overflow-auto max-h-[600px]">
+                                    <div className="max-h-[600px] overflow-hidden rounded-md border w-full min-w-0 flex flex-col">
+                                        <div className="w-full overflow-auto flex-1 min-w-0">
                                             <JsonDataVisualizer data={filteredData} columns={columnConfig} onRowClick={handleEditItem} />
                                         </div>
                                     </div>
@@ -849,7 +838,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     setIsOpen={setIsEditorOpen}
                     item={selectedItem}
                     vendorId={vendor.id}
-                    onSave={() => { /* Data will refetch automatically via useCollection */ }}
+                    onSave={() => {}}
                 />
             </div>
         );
@@ -989,10 +978,8 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         async function onSubmit(values: VendorFormData) {
             if (!vendor) return;
             setIsSubmitting(true);
-    
             try {
                 const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
-    
                 const dataToUpdate: Partial<VendorFormData> = {
                     name: values.name,
                     slug: createSlug(values.name),
@@ -1005,14 +992,12 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     website: values.website || '',
                     notes: values.notes || '',
                 };
-    
                 if (values.logo instanceof File && storage) {
                     const logoPath = `data-warehouse/${vendor.id}/logos/${Date.now()}-${values.logo.name}`;
                     dataToUpdate.logoUrl = await uploadFileToStorage(storage, values.logo, logoPath);
                 } else if (values.logoUrl === null) {
                     dataToUpdate.logoUrl = null;
                 }
-                
                 await setDoc(vendorDocRef, dataToUpdate, { merge: true })
                     .catch((serverError) => {
                         const permissionError = new FirestorePermissionError({
@@ -1021,13 +1006,10 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                         errorEmitter.emit('permission-error', permissionError);
                         throw serverError;
                     });
-    
                 toast({ title: 'Vendor updated', description: `${values.name} has been updated successfully.` });
-                
                 if (dataToUpdate.slug !== slugOrId) {
                     router.replace(`/data-warehouse/${dataToUpdate.slug}`);
                 }
-    
             } catch (error: any) {
                 console.error("Failed to update vendor:", error);
                 toast({ variant: 'destructive', title: 'Failed to update vendor', description: error.message || 'An unexpected error occurred.' });
@@ -1066,7 +1048,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 {vendorLoading ? (
                     <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
                 ) : vendor ? (
-                    <Tabs defaultValue={defaultTab} className="space-y-4 max-w-full overflow-hidden">
+                    <Tabs defaultValue={defaultTab} className="space-y-4 max-w-full overflow-hidden min-w-0">
                         <div className="flex items-start justify-between">
                             <div className="min-w-0">
                                 <h1 className="text-2xl font-semibold truncate">Data Warehouse - {vendor.name}</h1>
@@ -1090,22 +1072,14 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                 {vendor.slug === 'surtees' && <SurteesDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
                                 {vendor.slug !== 'highfield' && vendor.slug !== 'jeanneau' && vendor.slug !== 'stacer' && vendor.slug !== 'stabicraft' && vendor.slug !== 'surtees' && (
                                     <Card>
-                                        <CardHeader>
-                                            <CardTitle>Product Ranges</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p>A specific data structure has not been configured for this boat brand.</p>
-                                        </CardContent>
+                                        <CardHeader><CardTitle>Product Ranges</CardTitle></CardHeader>
+                                        <CardContent><p>A specific data structure has not been configured for this boat brand.</p></CardContent>
                                     </Card>
                                 )}
                             </TabsContent>
                         )}
     
-                        {isHighfield && (
-                            <TabsContent value="poc">
-                                <HighfieldPoc vendorId={vendor.id} />
-                            </TabsContent>
-                        )}
+                        {isHighfield && <TabsContent value="poc"><HighfieldPoc vendorId={vendor.id} /></TabsContent>}
     
                         {(isBulkSupplier || isYamaha || isMultiTableVendor) && (
                             <TabsContent value="master-data" className="min-w-0 max-w-full">
@@ -1134,9 +1108,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                         <CardTitle>Vendor Data Connection</CardTitle>
                                         <CardDescription>Data integration for this source type is not yet available.</CardDescription>
                                     </CardHeader>
-                                    <CardContent>
-                                        <p className="text-muted-foreground">Data integration is not yet available for this vendor.</p>
-                                    </CardContent>
+                                    <CardContent><p className="text-muted-foreground">Data integration is not yet available for this vendor.</p></CardContent>
                                 </Card>
                             )}
                         </TabsContent>
@@ -1150,14 +1122,10 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                             <Save className="mr-2 h-4 w-4" /> Save Changes
                                         </Button>
                                     </div>
-                                    
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                         <div className="lg:col-span-2 space-y-8">
                                             <Card>
-                                                <CardHeader>
-                                                    <CardTitle>Vendor Details</CardTitle>
-                                                    <CardDescription>Primary information for the vendor.</CardDescription>
-                                                </CardHeader>
+                                                <CardHeader><CardTitle>Vendor Details</CardTitle><CardDescription>Primary information for the vendor.</CardDescription></CardHeader>
                                                 <CardContent className="space-y-6">
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Vendor Name</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
@@ -1175,40 +1143,20 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                 </CardContent>
                                             </Card>
                                         </div>
-    
                                         <div className="lg:col-span-1 space-y-8">
                                             <Card>
-                                                <CardHeader>
-                                                    <CardTitle>Master Data Logic</CardTitle>
-                                                    <CardDescription>Financial defaults for this vendor's data.</CardDescription>
-                                                </CardHeader>
+                                                <CardHeader><CardTitle>Master Data Logic</CardTitle><CardDescription>Financial defaults for this vendor's data.</CardDescription></CardHeader>
                                                 <CardContent className="space-y-6">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="currency"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="flex items-center gap-2">
-                                                                    <Globe className="h-4 w-4 text-muted-foreground" />
-                                                                    Master Data Currency
-                                                                </FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select currency" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {SUPPORTED_CURRENCIES.map(curr => (
-                                                                            <SelectItem key={curr.code} value={curr.code}>{curr.label}</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormDescription>The currency used for all prices stored in this vendor's master data set.</FormDescription>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                                    <FormField control={form.control} name="currency" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4 text-muted-foreground" />Master Data Currency</FormLabel>
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <FormControl><SelectTrigger><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
+                                                                <SelectContent>{SUPPORTED_CURRENCIES.map(curr => (<SelectItem key={curr.code} value={curr.code}>{curr.label}</SelectItem>))}</SelectContent>
+                                                            </Select>
+                                                            <FormDescription>Currency used for all prices stored in master data.</FormDescription><FormMessage />
+                                                        </FormItem>
+                                                    )} />
                                                 </CardContent>
                                             </Card>
                                             <Card>
@@ -1220,30 +1168,11 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                             {logoPreview && (
                                                                 <div className="mt-2 w-32 h-32 relative group">
                                                                     <Image src={logoPreview} alt="Logo Preview" fill className="rounded-md object-contain border p-1" sizes="128px" />
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="destructive"
-                                                                        size="icon"
-                                                                        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                                                        onClick={() => {
-                                                                            setLogoPreview(null);
-                                                                            form.setValue('logoUrl', null);
-                                                                            field.onChange(null);
-                                                                        }}
-                                                                    >
-                                                                        <X className="h-4 w-4" />
-                                                                    </Button>
+                                                                    <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => { setLogoPreview(null); form.setValue('logoUrl', null); field.onChange(null); }}><X className="h-4 w-4" /></Button>
                                                                 </div>
                                                             )}
-                                                            <FormControl>
-                                                                <Input type="file" accept="image/*" onChange={(e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    field.onChange(file);
-                                                                    setLogoPreview(file ? URL.createObjectURL(file) : null);
-                                                                }} />
-                                                            </FormControl>
-                                                            <FormDescription>Upload a new logo.</FormDescription>
-                                                            <FormMessage />
+                                                            <FormControl><Input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; field.onChange(file); setLogoPreview(file ? URL.createObjectURL(file) : null); }} /></FormControl>
+                                                            <FormDescription>Upload a new logo.</FormDescription><FormMessage />
                                                         </FormItem>
                                                     )} />
                                                 </CardContent>
@@ -1256,33 +1185,23 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                             </Card>
                                         </div>
                                     </div>
-    
                                     <Card className="border-destructive">
                                         <CardHeader><CardTitle className="text-destructive">Danger Zone</CardTitle></CardHeader>
-                                        <CardContent><p className="text-sm text-muted-foreground">Deleting this vendor is permanent and cannot be undone.</p></CardContent>
-                                        <CardFooter>
-                                            <Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete Vendor</Button>
-                                        </CardFooter>
+                                        <CardContent><p className="text-sm text-muted-foreground">Deleting this vendor is permanent.</p></CardContent>
+                                        <CardFooter><Button variant="destructive" type="button" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete Vendor</Button></CardFooter>
                                     </Card>
                                 </form>
                             </Form>
                         </TabsContent>
                     </Tabs>
                 ) : (
-                    <Card><CardHeader><CardTitle>Vendor not found</CardTitle></CardHeader><CardContent><p>The requested vendor could not be found. It may have been deleted, or the link is incorrect.</p></CardContent></Card>
+                    <Card><CardHeader><CardTitle>Vendor not found</CardTitle></CardHeader><CardContent><p>The requested vendor could not be found.</p></CardContent></Card>
                 )}
-    
                 {vendor && (
                     <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                         <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>This will permanently delete <strong>{vendor.name}</strong> and all its data. This action cannot be undone.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction>
-                            </AlertDialogFooter>
+                            <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete <strong>{vendor.name}</strong>.</AlertDialogDescription></AlertDialogHeader>
+                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction></AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
                 )}
