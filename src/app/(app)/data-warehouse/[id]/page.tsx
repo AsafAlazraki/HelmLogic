@@ -613,7 +613,7 @@ function ApiDataFetcher() {
     return (
         <Card className="max-w-full overflow-hidden min-w-0">
             <CardHeader>
-                <CardTitle>API Data Fetcher</CardTitle>
+                <CardTitle>Api Data Fetcher</CardTitle>
                 <CardDescription>Enter an API endpoint to fetch and view JSON data.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 max-w-full overflow-hidden min-w-0">
@@ -1136,7 +1136,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             }
         }
     
-        const handleDelete = async () => {
+        const handleDeleteVendor = async () => {
             if (!vendor) return;
             try {
                 const vendorDocRef = doc(firestore, 'data-warehouse', vendor.id);
