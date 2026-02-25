@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -811,10 +811,15 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
 
     const handleAddCategory = () => {
         if (!newCategoryName.trim()) return;
-        if (!categories.includes(newCategoryName.trim())) {
-            setCategories(prev => [...prev, newCategoryName.trim()].sort());
+        const trimmedName = newCategoryName.trim();
+        if (!categories.includes(trimmedName)) {
+            setCategories(prev => [...prev, trimmedName].sort());
         }
         setNewCategoryName('');
+    };
+
+    const handleRemoveCategory = (cat: string) => {
+        setCategories(prev => prev.filter(c => c !== cat));
     };
 
     return (
@@ -902,7 +907,6 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
                                             {/* 2. Categorized Sections */}
                                             {categories.map(cat => {
                                                 const catItems = optionalFeatureFields.filter((_, idx) => watchedOptionalFeatures[idx]?.category === cat);
-                                                if (catItems.length === 0) return null;
 
                                                 return (
                                                     <Collapsible key={cat} className="space-y-4" defaultOpen>
@@ -915,24 +919,54 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
                                                                 </CollapsibleTrigger>
                                                                 <h3 className="font-black text-[11px] uppercase tracking-widest text-primary">{cat}</h3>
                                                             </div>
-                                                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter bg-background px-2 py-0.5 rounded-full border shadow-sm">{catItems.length} items</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter bg-background px-2 py-0.5 rounded-full border shadow-sm">{catItems.length} items</span>
+                                                                <Button 
+                                                                    type="button" 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-6 w-6 hover:bg-primary/10 text-primary"
+                                                                    onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '' })}
+                                                                >
+                                                                    <PlusCircle className="h-4 w-4" />
+                                                                </Button>
+                                                                {catItems.length === 0 && (
+                                                                    <Button 
+                                                                        type="button" 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        className="h-6 w-6 hover:bg-destructive/10 text-destructive"
+                                                                        onClick={() => handleRemoveCategory(cat)}
+                                                                    >
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <CollapsibleContent className="space-y-4 pt-2 ml-2 border-l-2 border-dashed border-muted pl-4">
-                                                            <div className="grid grid-cols-1 gap-4">
-                                                                {optionalFeatureFields.map((field, index) => {
-                                                                    const feat = watchedOptionalFeatures[index];
-                                                                    if (feat?.category !== cat) return null;
-                                                                    return (
-                                                                        <OptionalFeatureItem 
-                                                                            key={field.id} 
-                                                                            index={index} 
-                                                                            remove={removeOptionalFeature} 
-                                                                            gstPercentage={gstPercentage}
-                                                                            categories={categories}
-                                                                        />
-                                                                    );
-                                                                })}
-                                                            </div>
+                                                            {catItems.length > 0 ? (
+                                                                <div className="grid grid-cols-1 gap-4">
+                                                                    {optionalFeatureFields.map((field, index) => {
+                                                                        const feat = watchedOptionalFeatures[index];
+                                                                        if (feat?.category !== cat) return null;
+                                                                        return (
+                                                                            <OptionalFeatureItem 
+                                                                                key={field.id} 
+                                                                                index={index} 
+                                                                                remove={removeOptionalFeature} 
+                                                                                gstPercentage={gstPercentage}
+                                                                                categories={categories}
+                                                                            />
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="py-6 border-2 border-dashed rounded-lg bg-muted/10 flex flex-col items-center justify-center text-center">
+                                                                    <Layers className="h-6 w-6 text-muted-foreground opacity-20 mb-2" />
+                                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Empty Category</p>
+                                                                    <p className="text-[9px] text-muted-foreground/60 italic">Use the move tool on an item or click the + above</p>
+                                                                </div>
+                                                            )}
                                                         </CollapsibleContent>
                                                     </Collapsible>
                                                 );
