@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -13,13 +13,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from './ui/badge';
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -78,6 +79,13 @@ const documentSchema = z.object({
   url: z.string().min(1, "Document URL is required"),
 });
 
+const ruleSchema = z.object({
+    id: z.string(),
+    sourceOptionId: z.string().min(1, 'Source option is required'),
+    type: z.enum(['include', 'exclude']),
+    targetOptionIds: z.array(z.string()).min(1, 'At least one target option is required'),
+});
+
 export const highfieldModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
@@ -90,6 +98,7 @@ export const highfieldModelSchema = z.object({
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     colors: z.array(colorVariantFormSchema).default([]),
     documents: z.array(documentSchema).default([]),
+    rules: z.array(ruleSchema).default([]),
 });
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
@@ -751,7 +760,7 @@ function SpecsSection() {
 
 function FeaturesSection() {
     const { control, watch } = useFormContext<ModelFormData>();
-    const { fields, append, remove, replace } = useFieldArray({ control, name: "standardFeatures" });
+    const { fields, append, remove } = useFieldArray({ control, name: "standardFeatures" });
     const [bulkFeatures, setBulkFeatures] = useState('');
 
     return (
@@ -782,6 +791,139 @@ function FeaturesSection() {
                                 setBulkFeatures(''); 
                             }}>Append Bulk Items</Button>
                         </div>
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
+    );
+}
+
+function RulesSection() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({ control, name: "rules" });
+    const optionalFeatures = useWatch({ control, name: "optionalFeatures" }) || [];
+
+    const featureOptions = useMemo(() => {
+        return optionalFeatures.map((f: any) => ({
+            id: f.id,
+            label: `${f.name}${f.code ? ` (${f.code})` : ''}`,
+        }));
+    }, [optionalFeatures]);
+
+    return (
+        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <Card className="border-none shadow-none rounded-none">
+                <CollapsibleCardHeader 
+                    title="Business Logic Rules" 
+                    count={fields.length} 
+                    onAdd={() => append({ id: `rule-${Date.now()}`, sourceOptionId: '', type: 'include', targetOptionIds: [] })}
+                />
+                <CollapsibleContent>
+                    <CardContent className="pt-6 space-y-6">
+                        {fields.length > 0 ? (
+                            fields.map((field, index) => (
+                                <Card key={field.id} className="relative p-5 bg-muted/5 border-2 hover:border-primary/20 transition-all">
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    
+                                    <div className="space-y-6">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                            <div className="flex-1 space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">If This Option is Selected:</Label>
+                                                <FormField
+                                                    control={control}
+                                                    name={`rules.${index}.sourceOptionId`}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-10 font-bold bg-background">
+                                                                    <SelectValue placeholder="Select trigger option..." />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                {featureOptions.map(opt => (
+                                                                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="w-32 space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action:</Label>
+                                                <FormField
+                                                    control={control}
+                                                    name={`rules.${index}.type`}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-10 font-black uppercase tracking-tighter bg-background">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="include" className="text-green-600 font-bold">Include</SelectItem>
+                                                                <SelectItem value="exclude" className="text-destructive font-bold">Exclude</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                {useWatch({ control, name: `rules.${index}.type` }) === 'include' ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <AlertTriangle className="h-3 w-3 text-destructive" />}
+                                                Target Options to {useWatch({ control, name: `rules.${index}.type` }) === 'include' ? 'Automatically Assign' : 'Force Deselect'}:
+                                            </Label>
+                                            
+                                            <FormField
+                                                control={control}
+                                                name={`rules.${index}.targetOptionIds`}
+                                                render={({ field }) => (
+                                                    <div className="p-4 border rounded-lg bg-background min-h-[80px]">
+                                                        <div className="flex flex-wrap gap-2 mb-3">
+                                                            {field.value.map((id: string) => {
+                                                                const opt = featureOptions.find(o => o.id === id);
+                                                                return (
+                                                                    <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase">
+                                                                        {opt?.label || id}
+                                                                        <button type="button" onClick={() => field.onChange(field.value.filter((v: string) => v !== id))}>
+                                                                            <X className="h-3 w-3 hover:text-destructive" />
+                                                                        </button>
+                                                                    </Badge>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <Select onValueChange={(val) => !field.value.includes(val) && field.onChange([...field.value, val])} value="">
+                                                            <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-widest w-full border-dashed bg-muted/20">
+                                                                <SelectValue placeholder="Add Target Option..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {featureOptions
+                                                                    .filter(opt => opt.id !== useWatch({ control, name: `rules.${index}.sourceOptionId` }))
+                                                                    .map(opt => (
+                                                                        <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                                                    ))
+                                                                }
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))
+                        ) : (
+                            <div className="py-12 border-2 border-dashed rounded-xl bg-muted/5 flex flex-col items-center justify-center text-center">
+                                <ShieldAlert className="h-10 w-10 text-muted-foreground opacity-20 mb-4" />
+                                <p className="text-sm font-medium text-muted-foreground">No rules defined for this model yet.</p>
+                                <p className="text-[10px] text-muted-foreground/60 uppercase font-black mt-1">Rules help automate inclusions and exclusions in the quoter.</p>
+                            </div>
+                        )}
                     </CardContent>
                 </CollapsibleContent>
             </Card>
@@ -844,6 +986,7 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
                     <FeaturesSection />
                     <SpecsSection />
                     <MotorConfigurationsSection />
+                    <RulesSection />
                 </div>
                 <div className="lg:col-span-3 lg:order-2 space-y-8">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
@@ -887,24 +1030,7 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
                                 <CardContent className="pt-6">
                                     <ScrollArea className="max-h-[700px] pr-4">
                                         <div className="space-y-8">
-                                            {/* 1. Uncategorized Items (Directly visible at top as per request) */}
-                                            <div className="grid grid-cols-1 gap-4">
-                                                {optionalFeatureFields.map((field, index) => {
-                                                    const feat = watchedOptionalFeatures[index];
-                                                    if (feat?.category) return null;
-                                                    return (
-                                                        <OptionalFeatureItem 
-                                                            key={field.id} 
-                                                            index={index} 
-                                                            remove={removeOptionalFeature} 
-                                                            gstPercentage={gstPercentage}
-                                                            categories={categories}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
-
-                                            {/* 2. Categorized Sections */}
+                                            {/* 1. Categorized Sections (NOW ON TOP) */}
                                             {categories.map(cat => {
                                                 const catItems = optionalFeatureFields.filter((_, idx) => watchedOptionalFeatures[idx]?.category === cat);
 
@@ -971,6 +1097,23 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
                                                     </Collapsible>
                                                 );
                                             })}
+
+                                            {/* 2. Uncategorized Items (NOW AT BOTTOM) */}
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {optionalFeatureFields.map((field, index) => {
+                                                    const feat = watchedOptionalFeatures[index];
+                                                    if (feat?.category) return null;
+                                                    return (
+                                                        <OptionalFeatureItem 
+                                                            key={field.id} 
+                                                            index={index} 
+                                                            remove={removeOptionalFeature} 
+                                                            gstPercentage={gstPercentage}
+                                                            categories={categories}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     </ScrollArea>
                                 </CardContent>

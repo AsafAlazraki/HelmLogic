@@ -149,6 +149,7 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
                     }
                 };
             }),
+            rules: data.rules ?? [],
         };
     }
 
