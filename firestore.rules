@@ -22,19 +22,29 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('appRole', '') == 'HelmLogic Admin';
     }
 
-    /** @description Checks if the user is a member of a specific organisation or a global admin. */
+    /** @description Checks if the user is a member of a specific organisation, a global admin, or a member of the parent organisation. */
     function isOrgMember(orgId) {
-      return isSignedIn() && (
-        isAdmin() ||
-        (
-          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('organisationId', '') == orgId
-        ) ||
-        (
-          exists(/databases/$(database)/documents/organisations/$(orgId)) && 
-          request.auth.uid in get(/databases/$(database)/documents/organisations/$(orgId)).data.get('members', [])
-        )
-      );
+      if (!isSignedIn()) return false;
+      if (isAdmin()) return true;
+      
+      // Get user's primary organisation
+      let userProfilePath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let userOrgId = exists(userProfilePath) ? get(userProfilePath).data.get('organisationId', '') : '';
+      
+      // 1. Direct membership via profile
+      if (userOrgId == orgId) return true;
+      
+      // 2. Parent-Child relationship (Org managers can manage their sub-dealers)
+      let targetOrgPath = /databases/$(database)/documents/organisations/$(orgId);
+      if (exists(targetOrgPath)) {
+        let targetOrg = get(targetOrgPath).data;
+        // If the target's parent is the user's org, allow access
+        if (targetOrg.get('parentOrganisationId', '') == userOrgId) return true;
+        // Direct membership via members array
+        if (request.auth.uid in targetOrg.get('members', [])) return true;
+      }
+      
+      return false;
     }
 
     // --- GLOBAL ADMIN BYPASS ---
@@ -53,17 +63,36 @@ service cloud.firestore {
      * @description Rules for User Profiles.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId);
-      allow create, update: if isSignedIn() && (request.auth.uid == userId);
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
       
       match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && (request.auth.uid == userId);
+        allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       }
     }
 
     /**
-     * @description Rules for the Data Warehouse. 
+     * @description Rules for Organisations.
+     */
+    match /organisations/{organisationId} {
+      // Allow get/list for discovery and context switching
+      allow get, list: if isSignedIn(); 
+      // Allow creation for signups or admin
+      allow create: if isSignedIn();
+      // Allow update if member, admin, or parent organization member
+      allow update: if isSignedIn() && isOrgMember(organisationId);
+
+      /**
+       * Sub-collections: priceLevelDefinitions, productPrices, quotes, dealerFitSelections, inventory, etc.
+       */
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn() && isOrgMember(organisationId);
+      }
+    }
+
+    /**
+     * @description Rules for the Data Warehouse.
      */
     match /data-warehouse/{vendorId} {
       allow get, list: if isSignedIn();
@@ -72,44 +101,6 @@ service cloud.firestore {
       }
     }
 
-    /**
-     * @description Rules for application modules.
-     */
-    match /modules/{moduleId} {
-      allow get, list: if isSignedIn();
-    }
-
-    /**
-     * @description Rules for global dealer fit categories.
-     */
-    match /dealerFitCategories/{catId} {
-      allow get, list: if isSignedIn();
-    }
-
-    /**
-     * @description Rules for Organisations.
-     * Allow get/list for all signed in users to support slug-based lookups and role switching.
-     */
-    match /organisations/{organisationId} {
-      allow get, list: if isSignedIn(); 
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && isOrgMember(organisationId);
-
-      /**
-       * Sub-collections: priceLevelDefinitions, productPrices, quotes, dealerFitSelections, inventory, etc.
-       * These are protected by organization membership.
-       */
-      match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && isOrgMember(organisationId);
-      }
-    }
-
-    /**
-     * @description Global reference data and legacy support.
-     */
-    match /brands/{brandId} { allow get, list: if isSignedIn(); }
-    match /products/{productId} { allow get, list: if isSignedIn(); }
-    
     /**
      * @description Global collections for inventory/vessels.
      */
@@ -122,5 +113,13 @@ service cloud.firestore {
     match /vesselReservations/{resId} { 
       allow read, write: if isSignedIn(); 
     }
+    
+    /**
+     * @description Global reference data.
+     */
+    match /brands/{brandId} { allow get, list: if isSignedIn(); }
+    match /products/{productId} { allow get, list: if isSignedIn(); }
+    match /modules/{moduleId} { allow get, list: if isSignedIn(); }
+    match /dealerFitCategories/{catId} { allow get, list: if isSignedIn(); }
   }
 }
