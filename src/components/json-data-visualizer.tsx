@@ -20,30 +20,32 @@ export function JsonDataVisualizer({ data, columns, onRowClick }: { data: any, c
         const keys = columns ? columns.map(c => c.key) : headers;
 
         return (
-            <div className="overflow-auto">
-                <Table>
-                    <TableHeader className="sticky top-0 bg-secondary z-10">
-                        <TableRow>
-                            {headers.map((header, idx) => <TableHead key={`${header}-${idx}`} className="whitespace-nowrap">{header}</TableHead>)}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {data.map((row, rowIndex) => (
-                            <TableRow key={rowIndex} className={cn("odd:bg-muted/50", onRowClick && "cursor-pointer hover:bg-muted")} onClick={() => onRowClick?.(row)}>
-                                {keys.map((key, colIndex) => (
-                                    <TableCell key={`${rowIndex}-${colIndex}`} className="align-top text-sm">
-                                        {typeof row[key] === 'object' && row[key] !== null ? (
-                                            <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto"><code>{JSON.stringify(row[key], null, 2)}</code></pre>
-                                        ) : (
-                                            <span className="truncate">{String(row[key] ?? '')}</span>
-                                        )}
-                                    </TableCell>
-                                ))}
-                            </TableRow>
+            <Table>
+                <TableHeader className="sticky top-0 bg-secondary z-10">
+                    <TableRow>
+                        {headers.map((header, idx) => (
+                            <TableHead key={`${header}-${idx}`} className="whitespace-nowrap font-bold uppercase text-[10px] tracking-wider py-3">
+                                {header.replace(/_/g, ' ')}
+                            </TableHead>
                         ))}
-                    </TableBody>
-                </Table>
-            </div>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {data.map((row, rowIndex) => (
+                        <TableRow key={rowIndex} className={cn("odd:bg-muted/20 transition-colors", onRowClick && "cursor-pointer hover:bg-muted/50")} onClick={() => onRowClick?.(row)}>
+                            {keys.map((key, colIndex) => (
+                                <TableCell key={`${rowIndex}-${colIndex}`} className="align-top text-xs py-3">
+                                    {typeof row[key] === 'object' && row[key] !== null ? (
+                                        <pre className="text-[10px] font-mono bg-muted/50 p-2 rounded-md overflow-x-auto max-w-[300px]"><code>{JSON.stringify(row[key], null, 2)}</code></pre>
+                                    ) : (
+                                        <span className="line-clamp-2 min-w-[120px]">{String(row[key] ?? '')}</span>
+                                    )}
+                                </TableCell>
+                            ))}
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         );
     }
 

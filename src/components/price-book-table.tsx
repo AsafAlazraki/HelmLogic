@@ -218,8 +218,8 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
     }
 
     return (
-        <div className="space-y-6">
-            <Card>
+        <div className="space-y-6 max-w-full overflow-hidden">
+            <Card className="max-w-full">
                 <CardHeader>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
@@ -257,18 +257,18 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
                         </Select>
                     </div>
 
-                    <div className="rounded-md border overflow-x-auto">
+                    <div className="rounded-md border overflow-hidden">
                         <Table>
                             <TableHeader className="bg-muted/50">
                                 <TableRow>
-                                    <TableHead className="w-[200px]">Product / SKU</TableHead>
-                                    <TableHead className="text-right">Supplier Cost</TableHead>
-                                    <TableHead className="text-right">Margin (%)</TableHead>
-                                    <TableHead className="text-right font-bold">Base Price</TableHead>
+                                    <TableHead className="w-[200px] whitespace-nowrap">Product / SKU</TableHead>
+                                    <TableHead className="text-right whitespace-nowrap">Supplier Cost</TableHead>
+                                    <TableHead className="text-right whitespace-nowrap">Margin (%)</TableHead>
+                                    <TableHead className="text-right font-bold whitespace-nowrap">Base Price</TableHead>
                                     {levelDefinitions?.map(level => (
-                                        <TableHead key={level.id} className="text-right bg-primary/5 group">
+                                        <TableHead key={level.id} className="text-right bg-primary/5 group min-w-[120px]">
                                             <div className="flex items-center justify-end gap-2">
-                                                <span>{level.name}</span>
+                                                <span className="whitespace-nowrap">{level.name}</span>
                                                 {!level.isSubDealerPriceLevel && (
                                                     <Button 
                                                         variant="ghost" 
@@ -294,34 +294,34 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
                                     return (
                                         <TableRow key={product.id} className="hover:bg-muted/20">
                                             <TableCell>
-                                                <div className="flex flex-col">
+                                                <div className="flex flex-col min-w-[180px]">
                                                     <span className="font-bold text-sm truncate">{product.name}</span>
                                                     <span className="text-[10px] font-mono text-muted-foreground uppercase">{product.sku}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="p-2">
-                                                <div className="relative w-32 ml-auto">
+                                                <div className="relative w-28 ml-auto">
                                                     <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                                     <Input 
                                                         type="number"
                                                         defaultValue={price?.supplierCost ?? ''}
                                                         onBlur={(e) => updateProductCost(product.id, product.brandId, e.target.value)}
-                                                        className="h-8 text-right pl-6"
+                                                        className="h-8 text-right pl-6 text-xs"
                                                     />
                                                 </div>
                                             </TableCell>
                                             <TableCell className="p-2">
-                                                <div className="relative w-24 ml-auto">
+                                                <div className="relative w-20 ml-auto">
                                                     <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                                     <Input 
                                                         type="number"
                                                         defaultValue={price?.baseMarginPercentage ?? ''}
                                                         onBlur={(e) => updateProductMargin(product.id, product.brandId, e.target.value)}
-                                                        className="h-8 text-center pr-6"
+                                                        className="h-8 text-center pr-6 text-xs"
                                                     />
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right font-black text-primary">
+                                            <TableCell className="text-right font-black text-primary text-xs whitespace-nowrap">
                                                 {formatCurrency(basePrice, organisation.tradingCurrency || 'AUD')}
                                             </TableCell>
                                             {levelDefinitions?.map(level => {
@@ -332,7 +332,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
                                                 }
 
                                                 return (
-                                                    <TableCell key={level.id} className="text-right font-bold bg-primary/5">
+                                                    <TableCell key={level.id} className="text-right font-bold bg-primary/5 text-xs whitespace-nowrap">
                                                         {calculatedValue > 0 ? formatCurrency(calculatedValue, organisation.tradingCurrency || 'AUD') : '-'}
                                                     </TableCell>
                                                 );
