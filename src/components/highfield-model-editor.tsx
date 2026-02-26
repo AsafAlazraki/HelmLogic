@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil, ArrowUp, ArrowDown, Check } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -454,7 +454,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
     const updateCostIncl = (val: string) => {
         setVCostIncl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVCostExcl((num / (1 + (gstPercentage/100))).toFixed(2));
+        if (!isNaN(num)) setVPriceExcl((num / (1 + (gstPercentage/100))).toFixed(2));
         else setVCostExcl('');
     };
     const updatePriceExcl = (val: string) => {
@@ -1281,21 +1281,14 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className="lg:col-span-4">
+                <div className="lg:col-span-4 space-y-8">
                     <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} gstPercentage={gstPercentage} />
-                </div>
-                <div className="lg:col-span-3">
-                    <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className="lg:col-span-4 lg:order-1 space-y-8">
                     <FeaturesSection />
                     <SpecsSection />
                     <MotorConfigurationsSection />
                 </div>
-                <div className="lg:col-span-3 lg:order-2 space-y-8">
+                <div className="lg:col-span-3 space-y-8">
+                    <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                         <div className="flex flex-col py-4 px-6 border-b bg-card gap-4">
                             <div className="flex items-center justify-between">

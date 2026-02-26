@@ -152,68 +152,64 @@ export function SurteesModelEditor({ model, isModuleView }: { model: any, isModu
     const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
 
     const SpecsSection = () => (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="General Specifications" 
-                    count={specFields.length} 
-                    onAdd={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}
-                />
-                <CollapsibleContent>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="grid gap-3">
-                            {specFields.map((field, index) => (
-                                <div key={field.id} className="flex items-center gap-2 group/field">
-                                    <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="General Specifications" 
+                count={specFields.length} 
+                onAdd={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}
+            />
+            <CollapsibleContent>
+                <CardContent className="space-y-4 pt-6">
+                    <div className="grid gap-3">
+                        {specFields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2 group/field">
+                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
+                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </CollapsibleContent>
         </Collapsible>
     );
 
     const FeaturesSection = () => (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="Standard Features" 
-                    count={featureFields.length} 
-                    onAdd={() => appendFeature('')}
-                />
-                <CollapsibleContent>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
-                            {featureFields.map((field, index) => (
-                                <div key={field.id} className="flex items-center gap-2 group/feat">
-                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            ))}
-                        </div>
-                        <Separator />
-                        <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
-                            <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
-                                const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-                                replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
-                                setBulkFeatures(''); 
-                            }}>Append Bulk Items</Button>
-                        </div>
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="Standard Features" 
+                count={featureFields.length} 
+                onAdd={() => appendFeature('')}
+            />
+            <CollapsibleContent>
+                <CardContent className="space-y-4 pt-6">
+                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
+                        {featureFields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2 group/feat">
+                                <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                    <Separator />
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
+                        <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                        <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
+                            const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
+                            replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
+                            setBulkFeatures(''); 
+                        }}>Append Bulk Items</Button>
+                    </div>
+                </CardContent>
+            </CollapsibleContent>
         </Collapsible>
     );
 
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-3 lg:order-1" : "lg:col-span-4 lg:order-1")}>
+                <div className={cn("space-y-8", isModuleView ? "lg:col-span-3" : "lg:col-span-4")}>
                     {isModuleView ? (
                         <>
                             <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
@@ -225,7 +221,7 @@ export function SurteesModelEditor({ model, isModuleView }: { model: any, isModu
                         </>
                     )}
                 </div>
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-4 lg:order-2" : "lg:col-span-3 lg:order-2")}>
+                <div className={cn("space-y-8", isModuleView ? "lg:col-span-4" : "lg:col-span-3")}>
                     {isModuleView ? (
                         <>
                             <SpecsSection />

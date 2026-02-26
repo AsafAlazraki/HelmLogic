@@ -289,68 +289,64 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
     }, [watchedOptionalFeatures]);
 
     const SpecsSection = () => (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="General Specifications" 
-                    count={specFields.length} 
-                    onAdd={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}
-                />
-                <CollapsibleContent>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="grid gap-3">
-                            {specFields.map((field, index) => (
-                                <div key={field.id} className="flex items-center gap-2 group/field">
-                                    <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="General Specifications" 
+                count={specFields.length} 
+                onAdd={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}
+            />
+            <CollapsibleContent>
+                <CardContent className="space-y-4 pt-6">
+                    <div className="grid gap-3">
+                        {specFields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2 group/field">
+                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
+                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </CollapsibleContent>
         </Collapsible>
     );
 
     const FeaturesSection = () => (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="Standard Features" 
-                    count={featureFields.length} 
-                    onAdd={() => appendFeature('')}
-                />
-                <CollapsibleContent>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
-                            {featureFields.map((field, index) => (
-                                <div key={field.id} className="flex items-center gap-2 group/feat">
-                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            ))}
-                        </div>
-                        <Separator />
-                        <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
-                            <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
-                                const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-                                replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
-                                setBulkFeatures(''); 
-                            }}>Append Bulk Items</Button>
-                        </div>
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="Standard Features" 
+                count={featureFields.length} 
+                onAdd={() => appendFeature('')}
+            />
+            <CollapsibleContent>
+                <CardContent className="space-y-4 pt-6">
+                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
+                        {featureFields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2 group/feat">
+                                <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                    <Separator />
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
+                        <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                        <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
+                            const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
+                            replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
+                            setBulkFeatures(''); 
+                        }}>Append Bulk Items</Button>
+                    </div>
+                </CardContent>
+            </CollapsibleContent>
         </Collapsible>
     );
 
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-3 lg:order-1" : "lg:col-span-4 lg:order-1")}>
+                <div className={cn("space-y-8", isModuleView ? "lg:col-span-3" : "lg:col-span-4")}>
                     {isModuleView ? (
                         <>
                             <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
@@ -362,7 +358,7 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                         </>
                     )}
                 </div>
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-4 lg:order-2" : "lg:col-span-3 lg:order-2")}>
+                <div className={cn("space-y-8", isModuleView ? "lg:col-span-4" : "lg:col-span-3")}>
                     {isModuleView ? (
                         <>
                             <SpecsSection />
@@ -372,162 +368,154 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                 </div>
             </div>
 
-            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                <Card className="border-none shadow-none rounded-none">
-                    <CollapsibleCardHeader 
-                        title="Package Levels" 
-                        count={packageLevelFields.length}
-                        onAdd={() => appendPackageLevel({ id: `pkg-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null })}
-                    />
-                    <CollapsibleContent>
-                        <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-6">
-                            {packageLevelFields.map((field, index) => (
-                                <Card key={field.id} className="relative bg-muted/5 p-5 border-2 hover:border-primary/20 transition-all rounded-xl">
-                                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10 transition-colors" onClick={() => removePackageLevel(index)}><Trash2 className="h-4 w-4" /></Button>
-                                    <div className="space-y-4">
-                                        <FormField control={control} name={`packageLevels.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-xs font-bold uppercase tracking-widest">Level Name</FormLabel><FormControl><Input placeholder="e.g. Adventure" className="h-10 font-bold" {...field} /></FormControl></FormItem> )} />
-                                        <Separator />
-                                        <GstInputPair control={control} name={`packageLevels.${index}.cost`} label="Factory Cost" />
-                                        <GstInputPair control={control} name={`packageLevels.${index}.sellPriceExclGst`} label="Retail Sell Price" />
-                                    </div>
-                                </Card>
-                            ))}
-                        </CardContent>
-                    </CollapsibleContent>
-                </Card>
+            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                <CollapsibleCardHeader 
+                    title="Package Levels" 
+                    count={packageLevelFields.length}
+                    onAdd={() => appendPackageLevel({ id: `pkg-${Date.now()}`, name: '', description: '', cost: null, sellPriceExclGst: null })}
+                />
+                <CollapsibleContent>
+                    <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-6">
+                        {packageLevelFields.map((field, index) => (
+                            <Card key={field.id} className="relative bg-muted/5 p-5 border-2 hover:border-primary/20 transition-all rounded-xl">
+                                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10 transition-colors" onClick={() => removePackageLevel(index)}><Trash2 className="h-4 w-4" /></Button>
+                                <div className="space-y-4">
+                                    <FormField control={control} name={`packageLevels.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-xs font-bold uppercase tracking-widest">Level Name</FormLabel><FormControl><Input placeholder="e.g. Adventure" className="h-10 font-bold" {...field} /></FormControl></FormItem> )} />
+                                    <Separator />
+                                    <GstInputPair control={control} name={`packageLevels.${index}.cost`} label="Factory Cost" />
+                                    <GstInputPair control={control} name={`packageLevels.${index}.sellPriceExclGst`} label="Retail Sell Price" />
+                                </div>
+                            </Card>
+                        ))}
+                    </CardContent>
+                </CollapsibleContent>
             </Collapsible>
 
-            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                <Card className="border-none shadow-none rounded-none">
-                    <CollapsibleCardHeader 
-                        title="Features & Packaging" 
-                        count={categories.length}
-                    />
-                    <CollapsibleContent>
-                        <CardContent className="space-y-10 pt-8">
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="flex gap-2 p-1 bg-muted rounded-md">
-                                    <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="w-48 h-8 text-xs bg-background" />
-                                    <Button type="button" size="sm" className="h-8 text-xs hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { if(newCategoryName) { setCategories([...categories, newCategoryName]); setNewCategoryName(''); }}}>Add Category</Button>
-                                </div>
+            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                <CollapsibleCardHeader 
+                    title="Features & Packaging" 
+                    count={categories.length}
+                />
+                <CollapsibleContent>
+                    <CardContent className="space-y-10 pt-8">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="flex gap-2 p-1 bg-muted rounded-md">
+                                <Input placeholder="New Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="w-48 h-8 text-xs bg-background" />
+                                <Button type="button" size="sm" className="h-8 text-xs hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { if(newCategoryName) { setCategories([...categories, newCategoryName]); setNewCategoryName(''); }}}>Add Category</Button>
                             </div>
-                            {categories.length > 0 ? categories.map(cat => (
-                                <div key={cat} className="space-y-4">
-                                    <div className="flex justify-between items-center bg-muted/30 p-3 rounded-lg border-l-4 border-primary">
-                                        <h3 className="font-black text-sm uppercase tracking-tighter">{cat}</h3>
-                                        <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] font-bold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, packageStatus: {}})}><PlusCircle className="h-3 w-3 mr-1.5" />Add Feature</Button>
-                                    </div>
-                                    <div className="rounded-xl border shadow-sm overflow-hidden bg-background">
-                                        <Table>
-                                            <TableHeader className="bg-muted/20">
-                                                <TableRow>
-                                                    <TableHead className="w-[300px] font-bold text-xs uppercase tracking-wider">Feature Description</TableHead>
-                                                    {watchedPackageLevels.map((p: any) => <TableHead key={p.id} className="text-center font-bold text-xs uppercase tracking-wider">{p.name}</TableHead>)}
-                                                    <TableHead className="text-right w-12"></TableHead>
+                        </div>
+                        {categories.length > 0 ? categories.map(cat => (
+                            <div key={cat} className="space-y-4">
+                                <div className="flex justify-between items-center bg-muted/30 p-3 rounded-lg border-l-4 border-primary">
+                                    <h3 className="font-black text-sm uppercase tracking-tighter">{cat}</h3>
+                                    <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] font-bold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, packageStatus: {}})}><PlusCircle className="h-3 w-3 mr-1.5" />Add Feature</Button>
+                                </div>
+                                <div className="rounded-xl border shadow-sm overflow-hidden bg-background">
+                                    <Table>
+                                        <TableHeader className="bg-muted/20">
+                                            <TableRow>
+                                                <TableHead className="w-[300px] font-bold text-xs uppercase tracking-wider">Feature Description</TableHead>
+                                                {watchedPackageLevels.map((p: any) => <TableHead key={p.id} className="text-center font-bold text-xs uppercase tracking-wider">{p.name}</TableHead>)}
+                                                <TableHead className="text-right w-12"></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {optionalFeatureFields.map((field, idx) => watchedOptionalFeatures[idx]?.category === cat && (
+                                                <TableRow key={field.id} className="hover:bg-muted/5 group/row transition-colors">
+                                                    <TableCell className="p-2">
+                                                        <FormField control={control} name={`optionalFeatures.${idx}.name`} render={({ field }) => <Input {...field} className="border-none shadow-none bg-transparent h-8 font-medium focus-visible:ring-0 focus-visible:bg-muted/30" placeholder="Feature Name" />} />
+                                                    </TableCell>
+                                                    {watchedPackageLevels.map((p: any) => (
+                                                        <TableCell key={p.id} className="p-2 text-center">
+                                                            <div className="max-w-[120px] mx-auto">
+                                                                <PackageStatusToggle featureIndex={idx} packageId={p.id} />
+                                                            </div>
+                                                        </TableCell>
+                                                    ))}
+                                                    <TableCell className="text-right p-2">
+                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover/row:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeOptionalFeature(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                                    </TableCell>
                                                 </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {optionalFeatureFields.map((field, idx) => watchedOptionalFeatures[idx]?.category === cat && (
-                                                    <TableRow key={field.id} className="hover:bg-muted/5 group/row transition-colors">
-                                                        <TableCell className="p-2">
-                                                            <FormField control={control} name={`optionalFeatures.${idx}.name`} render={({ field }) => <Input {...field} className="border-none shadow-none bg-transparent h-8 font-medium focus-visible:ring-0 focus-visible:bg-muted/30" placeholder="Feature Name" />} />
-                                                        </TableCell>
-                                                        {watchedPackageLevels.map((p: any) => (
-                                                            <TableCell key={p.id} className="p-2 text-center">
-                                                                <div className="max-w-[120px] mx-auto">
-                                                                    <PackageStatusToggle featureIndex={idx} packageId={p.id} />
-                                                                </div>
-                                                            </TableCell>
-                                                        ))}
-                                                        <TableCell className="text-right p-2">
-                                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover/row:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeOptionalFeature(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 </div>
-                            )) : (
-                                <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-muted/5">
-                                    <Layers className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-                                    <p className="text-sm font-medium text-muted-foreground">No feature categories defined. Add one above to get started.</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </CollapsibleContent>
-                </Card>
+                            </div>
+                        )) : (
+                            <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-muted/5">
+                                <Layers className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                                <p className="text-sm font-medium text-muted-foreground">No feature categories defined. Add one above to get started.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </CollapsibleContent>
             </Collapsible>
 
-            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm">
-                <Card className="border-none shadow-none rounded-none">
-                    <CollapsibleCardHeader title="U-Dek Flooring Options" />
-                    <CollapsibleContent>
-                        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6">
-                            <UdekUploader patternId="blackOnWinterGrey" label="Black on Winter Grey" />
-                            <UdekUploader patternId="teakOnBlack" label="Teak on Black" />
-                            <UdekUploader patternId="steelGreyOnWinterGrey" label="Steel Grey on Winter Grey" />
-                            <UdekUploader patternId="winterGreyOnSteelGrey" label="Winter Grey on Steel Grey" />
-                        </CardContent>
-                    </CollapsibleContent>
-                </Card>
+            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm">
+                <CollapsibleCardHeader title="U-Dek Flooring Options" />
+                <CollapsibleContent>
+                    <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6">
+                        <UdekUploader patternId="blackOnWinterGrey" label="Black on Winter Grey" />
+                        <UdekUploader patternId="teakOnBlack" label="Teak on Black" />
+                        <UdekUploader patternId="steelGreyOnWinterGrey" label="Steel Grey on Winter Grey" />
+                        <UdekUploader patternId="winterGreyOnSteelGrey" label="Winter Grey on Steel Grey" />
+                    </CardContent>
+                </CollapsibleContent>
             </Collapsible>
 
-            <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm">
-                <Card className="border-none shadow-none rounded-none">
-                    <CollapsibleCardHeader title="Paint & Graphic Options" />
-                    <CollapsibleContent>
-                        <CardContent className="pt-8 space-y-10">
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center border-b pb-2">
-                                    <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Standard Gloss</h3>
-                                    <Button type="button" variant="outline" size="sm" className="hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendGloss({ id: `gloss-${Date.now()}`, paint: '', graphics: '' })}><Plus className="h-3.5 w-3.5 mr-1.5" />Add Gloss Option</Button>
-                                </div>
-                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {glossFields.map((field, index) => (
-                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
-                                            <div className="grid gap-3">
-                                                <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.paint`} render={({ field }) => <Input {...field} className="h-8" placeholder="Paint Color" />} />
-                                                <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.graphics`} render={({ field }) => <Input {...field} className="h-8" placeholder="Graphics" />} />
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
+            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm">
+                <CollapsibleCardHeader title="Paint & Graphic Options" />
+                <CollapsibleContent>
+                    <CardContent className="pt-8 space-y-10">
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center border-b pb-2">
+                                <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Standard Gloss</h3>
+                                <Button type="button" variant="outline" size="sm" className="hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendGloss({ id: `gloss-${Date.now()}`, paint: '', graphics: '' })}><Plus className="h-3.5 w-3.5 mr-1.5" />Add Gloss Option</Button>
                             </div>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {glossFields.map((field, index) => (
+                                    <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
+                                        <div className="grid gap-3">
+                                            <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.paint`} render={({ field }) => <Input {...field} className="h-8" placeholder="Paint Color" />} />
+                                            <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.graphics`} render={({ field }) => <Input {...field} className="h-8" placeholder="Graphics" />} />
+                                        </div>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
 
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center border-b pb-2">
-                                    <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Standard Metallic</h3>
-                                    <Button type="button" variant="outline" size="sm" className="hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendMetallic({ id: `met-${Date.now()}`, paint: '', graphics: '' })}><Plus className="h-3.5 w-3.5 mr-1.5" />Add Metallic Option</Button>
-                                </div>
-                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {metallicFields.map((field, index) => (
-                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
-                                            <div className="grid gap-3">
-                                                <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.paint`} render={({ field }) => <Input {...field} className="h-8" placeholder="Paint Color" />} />
-                                                <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.graphics`} render={({ field }) => <Input {...field} className="h-8" placeholder="Graphics" />} />
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center border-b pb-2">
+                                <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Standard Metallic</h3>
+                                <Button type="button" variant="outline" size="sm" className="hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendMetallic({ id: `met-${Date.now()}`, paint: '', graphics: '' })}><Plus className="h-3.5 w-3.5 mr-1.5" />Add Metallic Option</Button>
                             </div>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {metallicFields.map((field, index) => (
+                                    <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
+                                        <div className="grid gap-3">
+                                            <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.paint`} render={({ field }) => <Input {...field} className="h-8" placeholder="Paint Color" />} />
+                                            <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.graphics`} render={({ field }) => <Input {...field} className="h-8" placeholder="Graphics" />} />
+                                        </div>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
 
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center border-b pb-2">
-                                    <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Powder Coating</h3>
-                                    <Button type="button" variant="outline" size="sm" className="hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendPowder({ id: `pwd-${Date.now()}`, color: '' })}><Plus className="h-3.5 w-3.5 mr-1.5" />Add Powder Coating</Button>
-                                </div>
-                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {powderFields.map((field, index) => (
-                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
-                                            <FormField control={control} name={`paintAndGraphicOptions.powderCoating.${index}.color`} render={({ field }) => <Input {...field} className="h-8" placeholder="Color Name" />} />
-                                        </Card>
-                                    ))}
-                                </div>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center border-b pb-2">
+                                <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Powder Coating</h3>
+                                <Button type="button" variant="outline" size="sm" className="hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendPowder({ id: `pwd-${Date.now()}`, color: '' })}><Plus className="h-3.5 w-3.5 mr-1.5" />Add Powder Coating</Button>
                             </div>
-                        </CardContent>
-                    </CollapsibleContent>
-                </Card>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {powderFields.map((field, index) => (
+                                    <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
+                                        <FormField control={control} name={`paintAndGraphicOptions.powderCoating.${index}.color`} render={({ field }) => <Input {...field} className="h-8" placeholder="Color Name" />} />
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    </CardContent>
+                </CollapsibleContent>
             </Collapsible>
         </div>
     );
