@@ -1,18 +1,20 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
-import { useStorage } from '@/firebase/provider';
+import { useStorage, useFirestore } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
+import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -20,6 +22,7 @@ import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from './ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -596,10 +599,15 @@ function FeaturesSection() {
     );
 }
 
-function RulesSection() {
+function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
     const { control } = useFormContext<ModelFormData>();
     const { fields, append, remove } = useFieldArray({ control, name: "rules" });
     const optionalFeatures = useWatch({ control, name: "optionalFeatures" }) || [];
+    const currentRules = useWatch({ control, name: "rules" }) || [];
+    
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const featureOptions = useMemo(() => {
         return optionalFeatures.map((f: any) => ({
@@ -608,14 +616,57 @@ function RulesSection() {
         }));
     }, [optionalFeatures]);
 
+    const handleSyncRules = async () => {
+        if (!modelCode || !model.rangeId || !model.vendorId) return;
+        setIsSyncing(true);
+        try {
+            const modelsRef = collection(firestore, `data-warehouse/${model.vendorId}/ranges/${model.rangeId}/models`);
+            const q = query(modelsRef, where('modelCode', '==', modelCode));
+            const snap = await getDocs(q);
+            
+            const batch = writeBatch(firestore);
+            snap.docs.forEach(d => {
+                if (d.id !== model.id) {
+                    batch.update(d.ref, { rules: currentRules });
+                }
+            });
+            await batch.commit();
+            toast({ title: "Rules Synchronized", description: `Applied rules to all ${snap.size} variants of ${modelCode}.` });
+        } catch (error) {
+            console.error("Sync failed:", error);
+            toast({ variant: 'destructive', title: "Sync Failed" });
+        } finally {
+            setIsSyncing(true);
+            setTimeout(() => setIsSyncing(false), 1000);
+        }
+    };
+
     return (
         <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="Business Logic Rules" 
-                    count={fields.length} 
-                    onAdd={() => append({ id: `rule-${Date.now()}`, sourceOptionId: '', type: 'include', targetOptionIds: [] })}
-                />
+                <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
+                    <div className="flex items-center gap-3">
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </Button>
+                        </CollapsibleTrigger>
+                        <CardTitle className="text-lg font-bold">Business Logic Rules</CardTitle>
+                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+                            {fields.length}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button type="button" variant="secondary" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest" onClick={handleSyncRules} disabled={isSyncing}>
+                            {isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />}
+                            Sync to Model Group
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => append({ id: `rule-${Date.now()}`, sourceOptionId: '', type: 'include', targetOptionIds: [] })}>
+                            <Plus className="mr-1.5 h-3.5 w-3.5" />
+                            Add Rule
+                        </Button>
+                    </div>
+                </div>
                 <CollapsibleContent>
                     <CardContent className="pt-6 space-y-6">
                         {fields.length > 0 ? (
@@ -730,13 +781,15 @@ function RulesSection() {
 }
 
 export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { model: any, isModuleView?: boolean, gstPercentage: number }) {
-    const { control, watch } = useFormContext<ModelFormData>();
+    const { control, watch, setValue } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
 
     const [categories, setCategories] = useState<string[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
 
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
+    const currentMaterial = watch('material');
+    const modelCode = watch('modelCode');
 
     useEffect(() => {
         if (watchedOptionalFeatures) {
@@ -763,53 +816,92 @@ export function HighfieldModelEditor({ model, isModuleView, gstPercentage }: { m
 
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
-            <Card className="border-primary/20 bg-primary/5">
-                <CardHeader className="py-4 border-b bg-card">
-                    <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-primary" />
-                        Specific Boat Pricing (SKU Identity)
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <div className="grid md:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3 p-3 bg-card rounded-lg border shadow-sm">
-                                <div className="h-10 w-10 bg-secondary rounded flex items-center justify-center">
-                                    <Anchor className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Configuration Identity</p>
-                                    <p className="font-bold text-sm">{watch('material')} Boat - {watch('colorName')}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 bg-card rounded-lg border shadow-sm">
-                                <div className="h-10 w-10 bg-secondary rounded flex items-center justify-center">
-                                    <Hash className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Unique SKU</p>
-                                    <p className="font-mono font-bold text-sm">{watch('sku') || 'NO SKU ASSIGNED'}</p>
-                                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Identity & Pricing Card */}
+                <Card className="border-primary/20 bg-primary/5">
+                    <CardHeader className="py-4 border-b bg-card">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
+                            <Anchor className="h-4 w-4 text-primary" />
+                            Boat SKU & Pricing Identity
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={control}
+                                name="sku"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Unique SKU</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} className="h-9 font-mono font-bold uppercase" placeholder="e.g. HF-CL310-PVC-SG" />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={control}
+                                name="colorName"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Color Name</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} className="h-9 font-bold" placeholder="e.g. Storm Grey" />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Select Material</Label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Card 
+                                    onClick={() => setValue('material', 'PVC')}
+                                    className={cn(
+                                        "cursor-pointer border-2 transition-all p-4 flex flex-col items-center justify-center gap-2",
+                                        currentMaterial === 'PVC' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:bg-muted opacity-60"
+                                    )}
+                                >
+                                    <Ship className={cn("h-6 w-6", currentMaterial === 'PVC' ? "text-primary" : "text-muted-foreground")} />
+                                    <span className="font-black text-xs uppercase tracking-tighter">PVC</span>
+                                    {currentMaterial === 'PVC' && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                                </Card>
+                                <Card 
+                                    onClick={() => setValue('material', 'HYP')}
+                                    className={cn(
+                                        "cursor-pointer border-2 transition-all p-4 flex flex-col items-center justify-center gap-2",
+                                        currentMaterial === 'HYP' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:bg-muted opacity-60"
+                                    )}
+                                >
+                                    <ShieldAlert className={cn("h-6 w-6", currentMaterial === 'HYP' ? "text-primary" : "text-muted-foreground")} />
+                                    <span className="font-black text-xs uppercase tracking-tighter">Hypalon (HYP)</span>
+                                    {currentMaterial === 'HYP' && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                                </Card>
                             </div>
                         </div>
-                        <div className="space-y-6">
+
+                        <Separator />
+
+                        <div className="grid grid-cols-2 gap-6">
                             <GstInputPair control={control} name="cost" label="Factory Cost" gstPercentage={gstPercentage} />
-                            <GstInputPair control={control} name="sellPriceExclGst" label="Retail Sell Price" gstPercentage={gstPercentage} />
+                            <GstInputPair control={control} name="sellPriceExclGst" label="Retail Sell" gstPercentage={gstPercentage} />
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+
+                {/* Visual Assets Card */}
+                <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className="lg:col-span-4 lg:order-1 space-y-8">
                     <FeaturesSection />
                     <SpecsSection />
                     <MotorConfigurationsSection />
-                    <RulesSection />
+                    <RulesSection model={model} modelCode={modelCode} />
                 </div>
                 <div className="lg:col-span-3 lg:order-2 space-y-8">
-                    <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                    
                     <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                         <Card className="border-none shadow-none rounded-none">
                             <div className="flex flex-col py-4 px-6 border-b bg-card gap-4">
