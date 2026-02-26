@@ -8,30 +8,12 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp, orderBy, setDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy, ChevronRight, ChevronDown, Hash, ShieldCheck, Tag, Anchor, Image as ImageIcon, CheckCircle2, DollarSign, PackagePlus, Ship, X, Settings2, Plus } from 'lucide-react';
+import { Loader2, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, ChevronDown, ImageIcon, CheckCircle2, X, Plus, Settings2 } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
     Dialog,
     DialogContent,
@@ -52,14 +34,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { uploadFileToStorage } from '@/firebase/storage';
 import { useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 
 interface Variant {
     id: string;
-    sku: string;
+    sku: string | null;
     name: string;
     colorName?: string;
     colorCode?: string;
@@ -164,13 +145,13 @@ function HighfieldVariantList({
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-32">
+                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-24">
                             <p className="font-black text-[11px] uppercase truncate leading-none">{variant.name}</p>
                             <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku || 'NO SKU'}</p>
-                            <div className="flex items-center gap-1.5 mt-2">
-                                {variant.material && <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase">{variant.material}</Badge>}
+                            <div className="flex items-center gap-1.5 mt-2 overflow-hidden">
+                                {variant.material && <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase shrink-0">{variant.material}</Badge>}
                                 {variant.colorName && (
-                                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase max-w-full truncate">
+                                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase truncate max-w-full">
                                         {variant.colorName} {variant.colorCode && `(${variant.colorCode})`}
                                     </Badge>
                                 )}
@@ -261,12 +242,12 @@ function HighfieldGroupedView({
                                 )}
                             </div>
                             
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 pr-4">
                                 <div className="flex items-center gap-3">
-                                    <h3 className="font-black text-xl uppercase tracking-tight text-primary">{group.modelCode}</h3>
-                                    <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest">{group.name}</Badge>
+                                    <h3 className="font-black text-xl uppercase tracking-tight text-primary truncate">{group.modelCode}</h3>
+                                    <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest hidden sm:flex shrink-0">{group.name}</Badge>
                                 </div>
-                                <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest mt-1">Manage shared logic and variants for this model code.</p>
+                                <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest mt-1 truncate">Manage shared logic and variants for this model code.</p>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
@@ -360,7 +341,7 @@ export default function RangeDetailsPage() {
 
     const { user, loading: userLoading } = useUser();
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string }>(userProfileRef);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string }>(userProfileRef);
     const isAdmin = !!userProfile && userProfile.appRole === 'HelmLogic Admin';
 
     // Fetch Vendor/Range
@@ -406,7 +387,7 @@ export default function RangeDetailsPage() {
             }
 
             await setDoc(groupRef, data, { merge: true });
-            toast({ title: groupName.trim() ? (editingGroup ? "Group Updated" : "Group Created") : "Configuration Updated" });
+            toast({ title: editingGroup ? "Group Updated" : "Group Created" });
             setIsGroupDialogOpen(false);
             resetGroupForm();
         } catch (error) {
