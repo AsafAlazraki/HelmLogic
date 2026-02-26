@@ -121,6 +121,7 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
             optionalFeatures: (data.optionalFeatures ?? []).map((f: any) => ({
                 ...f,
                 code: f.code ?? '',
+                color: f.color ?? '',
             })),
             rules: data.rules ?? [],
         };

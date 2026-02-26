@@ -63,6 +63,7 @@ const optionalFeatureSchema = z.object({
     name: z.string().min(1, 'Feature name is required'),
     category: z.string().optional().nullable(),
     code: z.string().optional(),
+    color: z.string().optional().nullable(),
     imageUrl: z.string().nullable().optional(),
     cost: looseNumber,
     sellPriceExclGst: looseNumber,
@@ -862,28 +863,36 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories }: { ind
                                 <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
                             </div>
 
-                            <FormField
-                                control={control}
-                                name={`optionalFeatures.${index}.category`}
-                                render={({ field }) => (
+                            <div className="grid grid-cols-2 gap-3">
+                                <FormField control={control} name={`optionalFeatures.${index}.color`} render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category Assignment</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                            <FormControl>
-                                                <SelectTrigger className="h-9 text-xs font-bold bg-muted/30">
-                                                    <SelectValue placeholder="No Category Assigned" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="none">None (No Category)</SelectItem>
-                                                {categories.map(cat => (
-                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Optional Color</FormLabel>
+                                        <FormControl><Input placeholder="e.g. White / Grey" className="h-9 text-xs font-bold" {...field} value={field.value ?? ''} /></FormControl>
                                     </FormItem>
-                                )}
-                            />
+                                )} />
+                                <FormField
+                                    control={control}
+                                    name={`optionalFeatures.${index}.category`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category Assignment</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-9 text-xs font-bold bg-muted/30">
+                                                        <SelectValue placeholder="No Category Assigned" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="none">None (No Category)</SelectItem>
+                                                    {categories.map(cat => (
+                                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
                             
                             <div className="grid grid-cols-1 gap-4">
                                 <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
@@ -1191,7 +1200,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
     const { control, watch, setValue } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
 
-    const [categories, setCategories] = useState<string[]>([]);
+    const [categories, setCategories] = useState<string[]>(['Consoles', 'Seats']);
     const [newCategoryName, setNewCategoryName] = useState('');
 
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
@@ -1201,7 +1210,8 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
         if (watchedOptionalFeatures) {
             const currentCats = [...new Set(watchedOptionalFeatures.map((f: any) => f.category).filter(Boolean) as string[])];
             setCategories(prev => {
-                const combined = [...new Set([...prev, ...currentCats])];
+                const defaults = ['Consoles', 'Seats'];
+                const combined = [...new Set([...defaults, ...currentCats])];
                 return combined.sort();
             });
         }
@@ -1217,6 +1227,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
     };
 
     const handleRemoveCategory = (cat: string) => {
+        if (['Consoles', 'Seats'].includes(cat)) return;
         setCategories(prev => prev.filter(c => c !== cat));
     };
 
@@ -1249,7 +1260,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                             {optionalFeatureFields.length}
                                         </span>
                                     </div>
-                                    <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null })}>
+                                    <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '' })}>
                                         <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Option
                                     </Button>
                                 </div>
@@ -1294,11 +1305,11 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                                     variant="ghost" 
                                                                     size="icon" 
                                                                     className="h-6 w-6 hover:bg-primary/10 text-primary"
-                                                                    onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '' })}
+                                                                    onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '' })}
                                                                 >
                                                                     <PlusCircle className="h-4 w-4" />
                                                                 </Button>
-                                                                {catItems.length === 0 && (
+                                                                {catItems.length === 0 && !['Consoles', 'Seats'].includes(cat) && (
                                                                     <Button 
                                                                         type="button" 
                                                                         variant="ghost" 
