@@ -122,6 +122,28 @@ function HighfieldVariantList({
         }
     };
 
+    const handleMoveVariant = async (index: number, direction: 'up' | 'down') => {
+        if (!variants) return;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= variants.length) return;
+
+        const v1 = variants[index];
+        const v2 = variants[newIndex];
+
+        const batch = writeBatch(firestore);
+        const ref1 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${groupId}/variants`, v1.id);
+        const ref2 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${groupId}/variants`, v2.id);
+
+        batch.update(ref1, { order: v2.order ?? newIndex });
+        batch.update(ref2, { order: v1.order ?? index });
+
+        try {
+            await batch.commit();
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Move Failed" });
+        }
+    };
+
     if (loading) return <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>;
 
     if (!variants || variants.length === 0) {
@@ -130,7 +152,7 @@ function HighfieldVariantList({
 
     return (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pt-2">
-            {variants.map((variant) => (
+            {variants.map((variant, index) => (
                 <Card key={variant.id} className="group relative overflow-hidden bg-background border-muted shadow-none hover:border-primary/40 transition-all">
                     <div className="flex gap-3 p-3">
                         <div className="relative h-20 w-32 bg-secondary/50 rounded border overflow-hidden shrink-0">
@@ -157,6 +179,12 @@ function HighfieldVariantList({
                     </div>
                     {isAdmin && (
                         <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveVariant(index, 'up')} disabled={index === 0}>
+                                <ArrowUp className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveVariant(index, 'down')} disabled={index === variants.length - 1}>
+                                <ArrowDown className="h-3 w-3" />
+                            </Button>
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditVariant(variant)}><Pencil className="h-3 w-3" /></Button>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteVariant(variant.id)}><Trash2 className="h-3 w-3" /></Button>
                         </div>
@@ -196,9 +224,30 @@ function HighfieldGroupedView({
         }
     };
 
+    const handleMoveGroup = async (index: number, direction: 'up' | 'down') => {
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= models.length) return;
+
+        const g1 = models[index];
+        const g2 = models[newIndex];
+
+        const batch = writeBatch(firestore);
+        const ref1 = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, g1.id);
+        const ref2 = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, g2.id);
+
+        batch.update(ref1, { order: g2.order ?? newIndex });
+        batch.update(ref2, { order: g1.order ?? index });
+
+        try {
+            await batch.commit();
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Move Failed" });
+        }
+    };
+
     return (
         <div className="space-y-6">
-            {models.map((group) => (
+            {models.map((group, index) => (
                 <Collapsible key={group.id} defaultOpen className="space-y-4">
                     <Card className="overflow-hidden border-l-4 border-l-primary shadow-sm">
                         <div className="flex flex-col md:flex-row md:items-center p-4 gap-4 bg-muted/10">
@@ -221,6 +270,16 @@ function HighfieldGroupedView({
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
+                                {isAdmin && (
+                                    <div className="flex items-center gap-1 mr-2 border-r pr-2">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveGroup(index, 'up')} disabled={index === 0}>
+                                            <ArrowUp className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveGroup(index, 'down')} disabled={index === models.length - 1}>
+                                            <ArrowDown className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
                                 <Button asChild variant="outline" size="sm" className="font-bold">
                                     <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${group.id}`}>
                                         <Settings2 className="mr-2 h-4 w-4" />
@@ -679,7 +738,7 @@ export default function RangeDetailsPage() {
                             </div>
                         </div>
                     </div>
-                    <DialogFooter className="pt-4 border-t">
+                    <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
                         <Button onClick={handleSaveVariant} disabled={isSavingVariant || !varMaterial}>
                             {isSavingVariant && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

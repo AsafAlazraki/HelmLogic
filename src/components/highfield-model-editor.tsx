@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -417,6 +417,24 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
         }
     };
 
+    const handleMove = async (index: number, direction: 'up' | 'down') => {
+        if (!variants) return;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= variants.length) return;
+
+        const v1 = variants[index];
+        const v2 = variants[newIndex];
+
+        const batch = writeBatch(firestore);
+        const ref1 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v1.id);
+        const ref2 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v2.id);
+
+        batch.update(ref1, { order: v2.order ?? newIndex });
+        batch.update(ref2, { order: v1.order ?? index });
+
+        await batch.commit();
+    };
+
     // Calculation Helpers
     const updateCostExcl = (val: string) => {
         setVCostExcl(val);
@@ -457,7 +475,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                             <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                         ) : variants && variants.length > 0 ? (
                             <div className="grid gap-4 md:grid-cols-2">
-                                {variants.map((v) => (
+                                {variants.map((v, index) => (
                                     <Card key={v.id} className="group relative flex gap-4 p-4 hover:border-primary/40 transition-all bg-muted/10">
                                         <div className="relative h-20 w-32 rounded border bg-secondary/50 overflow-hidden shrink-0">
                                             {v.imageUrl ? (
@@ -480,6 +498,8 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                             </div>
                                         </div>
                                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(index, 'up')} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(index, 'down')} disabled={index === variants.length - 1}><ArrowDown className="h-3.5 w-3.5" /></Button>
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(v)}><Pencil className="h-3.5 w-3.5" /></Button>
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(v.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                                         </div>
