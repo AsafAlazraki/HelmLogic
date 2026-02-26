@@ -8,7 +8,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp, orderBy, setDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, ChevronDown, ImageIcon, CheckCircle2, X, Plus, Settings2, MoreHorizontal } from 'lucide-react';
+import { Loader2, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, ChevronDown, ImageIcon, CheckCircle2, X, Plus, Settings2, MoreHorizontal, Search } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useStorage } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Variant {
     id: string;
@@ -152,7 +153,7 @@ function HighfieldVariantList({
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-12">
+                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-10">
                             <p className="font-black text-[11px] uppercase truncate leading-none">{variant.name}</p>
                             <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku || 'NO SKU'}</p>
                             <div className="flex items-center gap-1.5 mt-2 overflow-hidden">
@@ -253,7 +254,7 @@ function HighfieldGroupedView({
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pr-4">
             {models.map((group, index) => (
                 <Collapsible key={group.id} defaultOpen className="space-y-4">
                     <Card className="overflow-hidden border-l-4 border-l-primary shadow-sm">
@@ -268,7 +269,7 @@ function HighfieldGroupedView({
                                 )}
                             </div>
                             
-                            <div className="flex-1 min-w-0 pr-4">
+                            <div className="flex-1 min-w-0 pr-12">
                                 <div className="flex items-center gap-3">
                                     <h3 className="font-black text-xl uppercase tracking-tight text-primary truncate">{group.modelCode}</h3>
                                 </div>
@@ -348,6 +349,9 @@ export default function RangeDetailsPage() {
     const storage = useStorage();
     const { toast } = useToast();
     
+    // Search state
+    const [searchTerm, setSearchTerm] = useState('');
+
     // Group Add/Edit State
     const [isGroupDialogOpen, setIsGroupDialogOpen] = useState(false);
     const [editingGroup, setEditingGroup] = useState<ModelGroup | null>(null);
@@ -400,6 +404,16 @@ export default function RangeDetailsPage() {
     [firestore, vendor, range]);
     const { data: modelGroups, loading: groupsLoading } = useCollection<ModelGroup>(groupsQuery);
 
+    const filteredGroups = useMemo(() => {
+        if (!modelGroups) return [];
+        if (!searchTerm) return modelGroups;
+        const lower = searchTerm.toLowerCase();
+        return modelGroups.filter(g => 
+            g.name.toLowerCase().includes(lower) || 
+            g.modelCode.toLowerCase().includes(lower)
+        );
+    }, [modelGroups, searchTerm]);
+
     const handleSaveGroup = async () => {
         if (!groupName.trim() || !groupCode.trim() || !vendor.id || !range.id) return;
         setIsSavingGroup(true);
@@ -425,7 +439,7 @@ export default function RangeDetailsPage() {
             }
 
             await setDoc(groupRef, data, { merge: true });
-            toast({ title: editingGroup ? "Group Updated" : "Group Created" });
+            toast({ title: "Group Updated" });
             setIsGroupDialogOpen(false);
             resetGroupForm();
         } catch (error) {
@@ -558,9 +572,9 @@ export default function RangeDetailsPage() {
     if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
     return (
-        <div className="space-y-4">
-            <Card>
-                <CardHeader>
+        <div className="space-y-4 max-h-[calc(100vh-120px)] flex flex-col">
+            <Card className="flex flex-col min-h-0">
+                <CardHeader className="shrink-0">
                     <div className="flex items-start justify-between">
                         <div>
                             <h1 className="text-2xl font-semibold">Product Range: {range?.name}</h1>
@@ -575,24 +589,40 @@ export default function RangeDetailsPage() {
                         )}
                     </div>
                 </CardHeader>
-                <CardContent>
-                    {modelGroups && modelGroups.length > 0 ? (
-                        <HighfieldGroupedView 
-                            models={modelGroups} 
-                            vendor={vendor} 
-                            range={range} 
-                            isAdmin={isAdmin} 
-                            onEditGroup={openEditGroup}
-                            onAddVariant={(g) => { setTargetGroup(g); setIsVariantDialogOpen(true); }}
-                            onEditVariant={openEditVariant}
-                        />
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-lg bg-muted/5">
-                            <Sailboat className="h-16 w-16 text-muted-foreground/20" />
-                            <h3 className="mt-4 text-lg font-semibold">No Model Ranges Yet</h3>
-                            <p className="mt-2 text-sm text-muted-foreground">Start by defining a Model Range (Code) for this range.</p>
+                <CardContent className="flex flex-col min-h-0 space-y-4">
+                    <div className="flex items-center gap-2 shrink-0">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search model codes or series names..." 
+                                className="pl-9 h-10 font-bold bg-muted/10 border-2 focus-visible:ring-primary/20"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                    )}
+                    </div>
+
+                    <ScrollArea className="flex-1 pr-4">
+                        {filteredGroups && filteredGroups.length > 0 ? (
+                            <HighfieldGroupedView 
+                                models={filteredGroups} 
+                                vendor={vendor} 
+                                range={range} 
+                                isAdmin={isAdmin} 
+                                onEditGroup={openEditGroup}
+                                onAddVariant={(g) => { setTargetGroup(g); setIsVariantDialogOpen(true); }}
+                                onEditVariant={openEditVariant}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-lg bg-muted/5">
+                                <Sailboat className="h-16 w-16 text-muted-foreground/20" />
+                                <h3 className="mt-4 text-lg font-semibold">{searchTerm ? 'No Matching Ranges' : 'No Model Ranges Yet'}</h3>
+                                <p className="mt-2 text-sm text-muted-foreground text-center">
+                                    {searchTerm ? `No results found for "${searchTerm}". Try a different code.` : 'Start by defining a Model Range (Code) for this range.'}
+                                </p>
+                            </div>
+                        )}
+                    </ScrollArea>
                 </CardContent>
             </Card>
 
