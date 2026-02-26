@@ -490,14 +490,14 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                             )}
                                         </div>
                                         <div className="p-4 flex flex-col flex-1 gap-3">
-                                            <div className="min-w-0 pr-8">
+                                            <div className="min-w-0 pr-10">
                                                 <p className="font-black text-[11px] uppercase leading-tight truncate">{v.name}</p>
                                                 <p className="font-mono text-[9px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
                                             </div>
                                             
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5 shrink-0">{v.material}</Badge>
-                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5 truncate max-w-full">
+                                                <Badge variant="outline" className="text-[8px] h-auto font-black uppercase px-1.5 whitespace-normal break-words">
                                                     {v.colorName} {v.colorCode && `(${v.colorCode})`}
                                                 </Badge>
                                             </div>
@@ -1222,7 +1222,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
 
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                 <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} gstPercentage={gstPercentage} />
                 <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
             </div>
