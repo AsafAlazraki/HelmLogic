@@ -133,9 +133,9 @@ function HighfieldVariantList({
             {variants.map((variant) => (
                 <Card key={variant.id} className="group relative overflow-hidden bg-background border-muted shadow-none hover:border-primary/40 transition-all">
                     <div className="flex gap-3 p-3">
-                        <div className="relative h-16 w-16 bg-muted rounded border overflow-hidden shrink-0">
+                        <div className="relative h-20 w-32 bg-secondary/50 rounded border overflow-hidden shrink-0">
                             {variant.imageUrl ? (
-                                <Image src={variant.imageUrl} alt={variant.sku || 'Variant'} fill className="object-cover" sizes="64px" />
+                                <Image src={variant.imageUrl} alt={variant.sku || 'Variant'} fill className="object-contain p-1" sizes="128px" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center">
                                     <Sailboat className="h-6 w-6 text-muted-foreground/30" />
@@ -575,14 +575,14 @@ export default function RangeDetailsPage() {
                     </DialogHeader>
                     <div className="grid gap-6 py-4">
                         <div className="flex justify-center">
-                            <div className="relative h-28 w-44 bg-muted rounded border-2 border-dashed overflow-hidden group">
+                            <div className="relative h-32 w-56 bg-secondary/30 rounded border-2 border-dashed overflow-hidden group">
                                 {varImagePreview ? (
                                     <>
                                         <Image src={varImagePreview} alt="Variant" fill className="object-contain p-2" />
                                         <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVarImage(null); setVarImagePreview(null); }}><X className="h-3 w-3" /></Button>
                                     </>
                                 ) : (
-                                    <label className="flex flex-col items-center justify-center h-full w-full cursor-pointer hover:bg-secondary">
+                                    <label className="flex flex-col items-center justify-center h-full w-full cursor-pointer hover:bg-secondary/50">
                                         <Plus className="h-5 w-5 text-muted-foreground/40" />
                                         <span className="text-[8px] font-black uppercase text-muted-foreground">SKU Photo</span>
                                         <Input type="file" className="hidden" accept="image/*" onChange={(e) => {
@@ -605,17 +605,39 @@ export default function RangeDetailsPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Material</Label>
-                                <Select value={varMaterial} onValueChange={(v: any) => setVarMaterial(v)}>
-                                    <SelectTrigger className="font-bold"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="PVC">PVC</SelectItem>
-                                        <SelectItem value="HYP">Hypalon (HYP)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Hull Material</Label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Card 
+                                    className={cn(
+                                        "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50",
+                                        varMaterial === 'PVC' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+                                    )}
+                                    onClick={() => setVarMaterial('PVC')}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-black text-sm uppercase">PVC</span>
+                                        {varMaterial === 'PVC' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Standard Durability</p>
+                                </Card>
+                                <Card 
+                                    className={cn(
+                                        "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50",
+                                        varMaterial === 'HYP' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+                                    )}
+                                    onClick={() => setVarMaterial('HYP')}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-black text-sm uppercase">Hypalon (HYP)</span>
+                                        {varMaterial === 'HYP' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Premium UV Resistance</p>
+                                </Card>
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
                                 <Input placeholder="White" value={varColor} onChange={e => setVarColor(e.target.value)} className="font-bold" />

@@ -459,9 +459,9 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                             <div className="grid gap-4 md:grid-cols-2">
                                 {variants.map((v) => (
                                     <Card key={v.id} className="group relative flex gap-4 p-4 hover:border-primary/40 transition-all bg-muted/10">
-                                        <div className="relative h-20 w-20 rounded border bg-background overflow-hidden shrink-0">
+                                        <div className="relative h-20 w-32 rounded border bg-secondary/50 overflow-hidden shrink-0">
                                             {v.imageUrl ? (
-                                                <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-cover" />
+                                                <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-1" />
                                             ) : (
                                                 <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                             )}
@@ -504,14 +504,14 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                         </DialogHeader>
                         <div className="grid gap-6 py-4">
                             <div className="flex justify-center">
-                                <div className="relative h-28 w-40 bg-muted rounded border-2 border-dashed overflow-hidden group">
+                                <div className="relative h-32 w-56 bg-secondary/30 rounded border-2 border-dashed overflow-hidden group">
                                     {vImagePreview ? (
                                         <>
                                             <Image src={vImagePreview} alt="SKU Preview" fill className="object-contain p-2" />
                                             <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVImage(null); setVImagePreview(null); }}><X className="h-3 w-3" /></Button>
                                         </>
                                     ) : (
-                                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary">
+                                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
                                             <ImageIcon className="h-6 w-6 text-muted-foreground/40 mb-1" />
                                             <span className="text-[8px] font-black uppercase text-muted-foreground">Upload SKU Photo</span>
                                             <Input type="file" className="hidden" accept="image/*" onChange={(e) => {
@@ -532,14 +532,40 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                     <Input placeholder="CL310-PVC-SG" value={vSku} onChange={e => setVSku(e.target.value)} className="font-mono font-bold uppercase h-10" />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Material</Label>
-                                    <div className="flex gap-1">
-                                        <Button type="button" variant={vMaterial === 'PVC' ? 'default' : 'outline'} className="flex-1 h-9 text-[10px] font-black" onClick={() => setVMaterial('PVC')}>PVC</Button>
-                                        <Button type="button" variant={vMaterial === 'HYP' ? 'default' : 'outline'} className="flex-1 h-9 text-[10px] font-black" onClick={() => setVMaterial('HYP')}>HYP</Button>
-                                    </div>
+                            
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Hull Material</Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Card 
+                                        className={cn(
+                                            "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50",
+                                            vMaterial === 'PVC' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+                                        )}
+                                        onClick={() => setVMaterial('PVC')}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-black text-sm uppercase">PVC</span>
+                                            {vMaterial === 'PVC' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                        </div>
+                                        <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Standard Durability</p>
+                                    </Card>
+                                    <Card 
+                                        className={cn(
+                                            "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50",
+                                            vMaterial === 'HYP' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+                                        )}
+                                        onClick={() => setVMaterial('HYP')}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-black text-sm uppercase">Hypalon (HYP)</span>
+                                            {vMaterial === 'HYP' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                        </div>
+                                        <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Premium UV Resistance</p>
+                                    </Card>
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
                                     <Input placeholder="Storm Grey" value={vColor} onChange={e => setVColor(e.target.value)} className="font-bold h-9" />
