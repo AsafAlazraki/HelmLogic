@@ -153,13 +153,17 @@ function HighfieldVariantList({
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-10">
+                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-12">
                             <p className="font-black text-[11px] uppercase truncate leading-none">{variant.name}</p>
                             <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku || 'NO SKU'}</p>
-                            <div className="flex items-center gap-1.5 mt-2 overflow-hidden">
-                                {variant.material && <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase shrink-0">{variant.material}</Badge>}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                {variant.material && (
+                                    <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase shrink-0">
+                                        {variant.material}
+                                    </Badge>
+                                )}
                                 {variant.colorName && (
-                                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase truncate max-w-full">
+                                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase whitespace-nowrap">
                                         {variant.colorName} {variant.colorCode && `(${variant.colorCode})`}
                                     </Badge>
                                 )}
@@ -383,8 +387,9 @@ export default function RangeDetailsPage() {
 
     const { user, loading: userLoading } = useUser();
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string }>(userProfileRef);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string, organisationRole?: string, gstPercentage?: number }>(userProfileRef);
     const isAdmin = !!userProfile && userProfile.appRole === 'HelmLogic Admin';
+    const gstRate = 1.10; // Default 10%
 
     // Fetch Vendor/Range
     const vendorQuery = useMemoFirebase(() => 
@@ -531,11 +536,11 @@ export default function RangeDetailsPage() {
         
         const cost = v.cost || 0;
         setVarCostExcl(cost.toFixed(2));
-        setVarCostIncl((cost * 1.1).toFixed(2));
+        setVarCostIncl((cost * gstRate).toFixed(2));
         
         const price = v.sellPriceExclGst || 0;
         setVarPriceExcl(price.toFixed(2));
-        setVarPriceIncl((price * 1.1).toFixed(2));
+        setVarPriceIncl((price * gstRate).toFixed(2));
         
         setVarImagePreview(v.imageUrl || null);
         setIsVariantDialogOpen(true);
@@ -545,25 +550,25 @@ export default function RangeDetailsPage() {
     const updateCostFromExcl = (val: string) => {
         setVarCostExcl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVarCostIncl((num * 1.1).toFixed(2));
+        if (!isNaN(num)) setVarCostIncl((num * gstRate).toFixed(2));
         else setVarCostIncl('');
     };
     const updateCostFromIncl = (val: string) => {
         setVarCostIncl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVarCostExcl((num / 1.1).toFixed(2));
+        if (!isNaN(num)) setVarCostExcl((num / gstRate).toFixed(2));
         else setVarCostExcl('');
     };
     const updatePriceFromExcl = (val: string) => {
         setVarPriceExcl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVarPriceIncl((num * 1.1).toFixed(2));
+        if (!isNaN(num)) setVarPriceIncl((num * gstRate).toFixed(2));
         else setVarPriceIncl('');
     };
     const updatePriceFromIncl = (val: string) => {
         setVarPriceIncl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVarPriceExcl((num / 1.1).toFixed(2));
+        if (!isNaN(num)) setVarPriceExcl((num / gstRate).toFixed(2));
         else setVarPriceExcl('');
     };
 

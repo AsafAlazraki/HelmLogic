@@ -493,10 +493,10 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                         </div>
                                         <div className="min-w-0 flex-1 pr-12">
                                             <p className="font-black text-xs uppercase truncate leading-none">{v.name}</p>
-                                            <p className="font-mono text-[10px] font-bold text-primary mt-1 uppercase truncate">{v.sku || 'NO SKU'}</p>
-                                            <div className="flex flex-wrap gap-1.5 mt-3">
+                                            <p className="font-mono text-[10px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
+                                            <div className="flex flex-wrap items-center gap-1.5 mt-3">
                                                 <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5 shrink-0">{v.material}</Badge>
-                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5 truncate max-w-full">{v.colorName} {v.colorCode && `(${v.colorCode})`}</Badge>
+                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5 whitespace-nowrap">{v.colorName} {v.colorCode && `(${v.colorCode})`}</Badge>
                                             </div>
                                             <div className="flex items-center gap-3 mt-3">
                                                 <div className="flex flex-col"><span className="text-[8px] font-bold text-muted-foreground uppercase">Retail</span><span className="text-[10px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span></div>
@@ -1057,7 +1057,7 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
                                                                 {field.value.map((id: string) => {
                                                                     const opt = featureOptions.find(o => o.id === id);
                                                                     return (
-                                                                        <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase">
+                                                                        <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase whitespace-nowrap">
                                                                             {opt?.label || id}
                                                                             <button type="button" onClick={() => field.onChange(field.value.filter((v: string) => v !== id))}>
                                                                                 <X className="h-3 w-3 hover:text-destructive" />
