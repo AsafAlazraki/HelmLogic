@@ -164,7 +164,7 @@ function HighfieldVariantList({
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-16">
+                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-32">
                             <p className="font-black text-[11px] uppercase truncate leading-none">{variant.name}</p>
                             <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku || 'NO SKU'}</p>
                             <div className="flex items-center gap-1.5 mt-2">

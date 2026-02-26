@@ -398,11 +398,11 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
         
         const cost = v.cost || 0;
         setVCostExcl(cost.toFixed(2));
-        setVCostIncl((cost * 1.1).toFixed(2));
+        setVCostIncl((cost * (1 + (gstPercentage/100))).toFixed(2));
         
         const price = v.sellPriceExclGst || 0;
         setVPriceExcl(price.toFixed(2));
-        setVPriceIncl((price * 1.1).toFixed(2));
+        setVPriceIncl((price * (1 + (gstPercentage/100))).toFixed(2));
         
         setVImagePreview(v.imageUrl || null);
         setIsAddOpen(true);
@@ -439,25 +439,25 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
     const updateCostExcl = (val: string) => {
         setVCostExcl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVCostIncl((num * 1.1).toFixed(2));
+        if (!isNaN(num)) setVCostIncl((num * (1 + (gstPercentage/100))).toFixed(2));
         else setVCostIncl('');
     };
     const updateCostIncl = (val: string) => {
         setVCostIncl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVCostExcl((num / 1.1).toFixed(2));
+        if (!isNaN(num)) setVCostExcl((num / (1 + (gstPercentage/100))).toFixed(2));
         else setVCostExcl('');
     };
     const updatePriceExcl = (val: string) => {
         setVPriceExcl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVPriceIncl((num * 1.1).toFixed(2));
+        if (!isNaN(num)) setVPriceIncl((num * (1 + (gstPercentage/100))).toFixed(2));
         else setVPriceIncl('');
     };
     const updatePriceIncl = (val: string) => {
         setVPriceIncl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVPriceExcl((num / 1.1).toFixed(2));
+        if (!isNaN(num)) setVPriceExcl((num / (1 + (gstPercentage/100))).toFixed(2));
         else setVPriceExcl('');
     };
 
@@ -477,14 +477,14 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                             <div className="grid gap-4 md:grid-cols-2">
                                 {variants.map((v, index) => (
                                     <Card key={v.id} className="group relative flex gap-4 p-4 hover:border-primary/40 transition-all bg-muted/10">
-                                        <div className="relative h-20 w-32 rounded border bg-secondary/50 overflow-hidden shrink-0">
+                                        <div className="relative h-24 w-40 rounded border bg-secondary/50 overflow-hidden shrink-0">
                                             {v.imageUrl ? (
                                                 <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-1" />
                                             ) : (
                                                 <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                             )}
                                         </div>
-                                        <div className="min-w-0 flex-1 pr-24">
+                                        <div className="min-w-0 flex-1 pr-32">
                                             <p className="font-black text-xs uppercase truncate leading-none">{v.name}</p>
                                             <p className="font-mono text-[10px] font-bold text-primary mt-1 uppercase truncate">{v.sku || 'NO SKU'}</p>
                                             <div className="flex flex-wrap gap-1.5 mt-3">
