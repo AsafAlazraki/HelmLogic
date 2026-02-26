@@ -87,7 +87,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
             <CollapsibleCardHeader title={isModuleView ? "Visual Config & Renders" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
             <CollapsibleContent>
                 <div className="space-y-0">
-                    <div className="relative aspect-[16/10] w-full bg-secondary group">
+                    <div className="relative aspect-[16/10] w-full bg-secondary group shadow-inner">
                         {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                         {coverImageUrl ? (
                             <div className="h-full w-full flex items-center justify-center relative">

@@ -162,7 +162,7 @@ function UdekUploader({ patternId, label }: { patternId: string, label: string }
     return (
         <div className="space-y-2">
             <Label className="text-xs font-semibold">{label}</Label>
-            <div className="relative aspect-video rounded-xl border-2 border-dashed bg-muted/20 overflow-hidden group">
+            <div className="relative aspect-video rounded-xl border-2 border-dashed bg-muted/20 overflow-hidden group shadow-inner">
                 {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                 {imageUrl ? (
                     <>
@@ -170,9 +170,9 @@ function UdekUploader({ patternId, label }: { patternId: string, label: string }
                         <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue(`uDekOptions.${patternId}` as any, null)}><X className="h-3 w-3" /></Button>
                     </>
                 ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                        <Upload className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Swatch</span>
+                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50 transition-colors">
+                        <Upload className="h-5 w-5 text-muted-foreground/50" />
+                        <span className="text-[10px] text-muted-foreground/60 mt-1 uppercase font-bold tracking-tighter">Swatch</span>
                         <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file && storage) {
@@ -451,7 +451,7 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                 </CollapsibleContent>
             </Collapsible>
 
-            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm">
+            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                 <CollapsibleCardHeader title="U-Dek Flooring Options" />
                 <CollapsibleContent>
                     <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6">
@@ -463,7 +463,7 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                 </CollapsibleContent>
             </Collapsible>
 
-            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm">
+            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                 <CollapsibleCardHeader title="Paint & Graphic Options" />
                 <CollapsibleContent>
                     <CardContent className="pt-8 space-y-10">

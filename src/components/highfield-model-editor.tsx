@@ -818,14 +818,14 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories, variant
                 </div>
             </div>
             <CollapsibleContent>
-                <div className="p-4 space-y-6">
-                    <div className="flex flex-row gap-4 items-start">
-                        <div className="w-[120px] shrink-0">
+                <div className="p-4 space-y-8">
+                    <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="w-full md:w-[140px] shrink-0">
                             <FormField
                                 control={control}
                                 name={`optionalFeatures.${index}.imageUrl`}
                                 render={({ field }) => (
-                                    <div className="relative aspect-square w-full overflow-hidden rounded-md border-2 border-dashed bg-muted/20 group/feat-img">
+                                    <div className="relative aspect-square w-full overflow-hidden rounded-xl border-2 border-dashed bg-muted/20 group/feat-img shadow-inner">
                                         {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                                         {imageUrl ? (
                                             <>
@@ -835,9 +835,9 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories, variant
                                                 </div>
                                             </>
                                         ) : (
-                                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                                <Upload className="w-4 h-4 text-muted-foreground" />
-                                                <span className="text-[8px] text-muted-foreground mt-1 uppercase font-black">Upload</span>
+                                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50 transition-colors">
+                                                <Upload className="w-5 h-5 text-muted-foreground/50 mb-1" />
+                                                <span className="text-[9px] text-muted-foreground/60 uppercase font-black tracking-tighter">Upload</span>
                                                 <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (file && storage) {
@@ -855,94 +855,99 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories, variant
                             />
                         </div>
 
-                        <div className="flex-1 space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
-                                <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Name</FormLabel><FormControl><Input placeholder="Name" className="h-9 text-xs font-bold" {...field} /></FormControl></FormItem> )} />
-                                <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem><FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Option Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 text-xs font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <FormField control={control} name={`optionalFeatures.${index}.color`} render={({ field }) => (
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
+                                <FormItem>
+                                    <FormLabel className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">Name</FormLabel>
+                                    <FormControl><Input placeholder="Name" className="h-10 text-xs font-bold" {...field} /></FormControl>
+                                </FormItem> 
+                            )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( 
+                                <FormItem>
+                                    <FormLabel className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">Option Code</FormLabel>
+                                    <FormControl><Input placeholder="CODE" className="h-10 text-xs font-mono font-bold uppercase" {...field} /></FormControl>
+                                </FormItem> 
+                            )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.color`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">Optional Color</FormLabel>
+                                    <FormControl><Input placeholder="e.g. White / Grey" className="h-10 text-xs font-bold" {...field} value={field.value ?? ''} /></FormControl>
+                                </FormItem>
+                            )} />
+                            <FormField
+                                control={control}
+                                name={`optionalFeatures.${index}.category`}
+                                render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Optional Color</FormLabel>
-                                        <FormControl><Input placeholder="e.g. White / Grey" className="h-9 text-xs font-bold" {...field} value={field.value ?? ''} /></FormControl>
+                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70">Category Assignment</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-10 text-xs font-bold bg-muted/10">
+                                                    <SelectValue placeholder="Select Category..." />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none">None (No Category)</SelectItem>
+                                                {categories.map(cat => (
+                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </FormItem>
-                                )} />
-                                <FormField
-                                    control={control}
-                                    name={`optionalFeatures.${index}.category`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category Assignment</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                <FormControl>
-                                                    <SelectTrigger className="h-9 text-xs font-bold bg-muted/30">
-                                                        <SelectValue placeholder="No Category Assigned" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="none">None (No Category)</SelectItem>
-                                                    {categories.map(cat => (
-                                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-
-                            {isConsoleOrSeat && (
-                                <div className="space-y-2">
-                                    <FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Fits SKU (Compatibility)</FormLabel>
-                                    <FormField
-                                        control={control}
-                                        name={`optionalFeatures.${index}.applicableVariantIds`}
-                                        render={({ field }) => (
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button variant="outline" size="sm" className="w-full h-9 justify-start text-[10px] font-bold uppercase tracking-tighter bg-muted/10 border-dashed">
-                                                        {field.value?.length > 0 ? `${field.value.length} SKUs Selected` : 'Select Compatible SKUs...'}
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[300px] p-0" align="start">
-                                                    <Command>
-                                                        <CommandInput placeholder="Search SKUs..." className="h-8 text-xs" />
-                                                        <CommandList>
-                                                            <CommandEmpty className="p-4 text-xs italic text-muted-foreground">No variants found.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {variants.map(v => {
-                                                                    const isSelected = field.value?.includes(v.id);
-                                                                    return (
-                                                                        <CommandItem
-                                                                            key={v.id}
-                                                                            onSelect={() => {
-                                                                                const current = field.value || [];
-                                                                                const next = isSelected ? current.filter((id: string) => id !== v.id) : [...current, v.id];
-                                                                                field.onChange(next);
-                                                                            }}
-                                                                            className="text-[10px] font-bold uppercase tracking-tight flex items-center justify-between"
-                                                                        >
-                                                                            <span>{v.name} {v.sku && `(${v.sku})`}</span>
-                                                                            {isSelected && <Check className="h-3 w-3 text-primary" />}
-                                                                        </CommandItem>
-                                                                    );
-                                                                })}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                        )}
-                                    />
-                                </div>
-                            )}
-                            
-                            <div className="grid grid-cols-1 gap-4">
-                                <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
-                                <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell" gstPercentage={gstPercentage} />
-                            </div>
+                                )}
+                            />
                         </div>
+                    </div>
+
+                    {isConsoleOrSeat && (
+                        <div className="space-y-3 pt-2">
+                            <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Fits SKU (Compatibility)</FormLabel>
+                            <FormField
+                                control={control}
+                                name={`optionalFeatures.${index}.applicableVariantIds`}
+                                render={({ field }) => (
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" size="sm" className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 hover:bg-muted/10">
+                                                {field.value?.length > 0 ? `${field.value.length} SKUs Selected` : 'Select Compatible SKUs...'}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[350px] p-0" align="start">
+                                            <Command>
+                                                <CommandInput placeholder="Search SKUs..." className="h-9 text-xs" />
+                                                <CommandList className="max-h-[300px]">
+                                                    <CommandEmpty className="p-4 text-xs italic text-muted-foreground">No variants found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {variants.map(v => {
+                                                            const isSelected = field.value?.includes(v.id);
+                                                            return (
+                                                                <CommandItem
+                                                                    key={v.id}
+                                                                    onSelect={() => {
+                                                                        const current = field.value || [];
+                                                                        const next = isSelected ? current.filter((id: string) => id !== v.id) : [...current, v.id];
+                                                                        field.onChange(next);
+                                                                    }}
+                                                                    className="text-[10px] font-bold uppercase tracking-tight flex items-center justify-between py-2"
+                                                                >
+                                                                    <span>{v.name} {v.sku && `(${v.sku})`}</span>
+                                                                    {isSelected && <Check className="h-3 w-3 text-primary" />}
+                                                                </CommandItem>
+                                                            );
+                                                        })}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                )}
+                            />
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-dashed">
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
+                        <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell" gstPercentage={gstPercentage} />
                     </div>
                 </div>
             </CollapsibleContent>
