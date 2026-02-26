@@ -455,7 +455,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
     const updateCostIncl = (val: string) => {
         setVCostIncl(val);
         const num = parseFloat(val);
-        if (!isNaN(num)) setVPriceExcl((num / (1 + (gstPercentage/100))).toFixed(2));
+        if (!isNaN(num)) setVCostExcl((num / (1 + (gstPercentage/100))).toFixed(2));
         else setVCostExcl('');
     };
     const updatePriceExcl = (val: string) => {
@@ -814,9 +814,13 @@ function OptionalFeatureItem({
     const isSeat = category === 'Seats';
     const isConsoleOrSeat = isConsole || isSeat;
 
-    const seatOptions = useMemo(() => 
-        allFeatures.filter((f: any) => f.category === 'Seats' && f.id !== allFeatures[index].id),
-    [allFeatures, index]);
+    const currentFeature = allFeatures[index];
+    const currentFeatureId = currentFeature?.id;
+
+    const seatOptions = useMemo(() => {
+        if (!allFeatures) return [];
+        return allFeatures.filter((f: any) => f.category === 'Seats' && f.id !== currentFeatureId);
+    }, [allFeatures, currentFeatureId]);
 
     return (
         <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
