@@ -484,12 +484,12 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                                 <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                             )}
                                         </div>
-                                        <div className="min-w-0 flex-1">
+                                        <div className="min-w-0 flex-1 pr-24">
                                             <p className="font-black text-xs uppercase truncate leading-none">{v.name}</p>
-                                            <p className="font-mono text-[10px] font-bold text-primary mt-1 uppercase">{v.sku || 'NO SKU'}</p>
+                                            <p className="font-mono text-[10px] font-bold text-primary mt-1 uppercase truncate">{v.sku || 'NO SKU'}</p>
                                             <div className="flex flex-wrap gap-1.5 mt-3">
                                                 <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5">{v.material}</Badge>
-                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5">{v.colorName} {v.colorCode && `(${v.colorCode})`}</Badge>
+                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5 truncate max-w-full">{v.colorName} {v.colorCode && `(${v.colorCode})`}</Badge>
                                             </div>
                                             <div className="flex items-center gap-3 mt-3">
                                                 <div className="flex flex-col"><span className="text-[8px] font-bold text-muted-foreground uppercase">Retail</span><span className="text-[10px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span></div>
@@ -497,11 +497,11 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                                 <div className="flex flex-col"><span className="text-[8px] font-bold text-muted-foreground uppercase">Cost</span><span className="text-[10px] font-black">${(v.cost || 0).toLocaleString()}</span></div>
                                             </div>
                                         </div>
-                                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm p-0.5 rounded-lg border">
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(index, 'up')} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(index, 'down')} disabled={index === variants.length - 1}><ArrowDown className="h-3.5 w-3.5" /></Button>
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(v)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(v.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(v.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                                         </div>
                                     </Card>
                                 ))}

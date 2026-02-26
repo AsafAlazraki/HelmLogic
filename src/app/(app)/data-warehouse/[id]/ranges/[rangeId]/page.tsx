@@ -8,7 +8,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp, orderBy, setDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy, ChevronRight, ChevronDown, Hash, ShieldCheck, Tag, Anchor, Image as ImageIcon, CheckCircle2, DollarSign, PackagePlus, Ship, X, Settings2, Plus } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy, ChevronRight, ChevronDown, Hash, ShieldCheck, Tag, Anchor, Image as ImageIcon, CheckCircle2, DollarSign, PackagePlus, Ship, X, Settings2, Plus, Separator } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { createSlug, cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUser } from '@/firebase/auth/use-user';
@@ -164,13 +163,13 @@ function HighfieldVariantList({
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-1 flex flex-col justify-center">
+                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-16">
                             <p className="font-black text-[11px] uppercase truncate leading-none">{variant.name}</p>
                             <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku || 'NO SKU'}</p>
                             <div className="flex items-center gap-1.5 mt-2">
                                 {variant.material && <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase">{variant.material}</Badge>}
                                 {variant.colorName && (
-                                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase">
+                                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase max-w-full truncate">
                                         {variant.colorName} {variant.colorCode && `(${variant.colorCode})`}
                                     </Badge>
                                 )}
@@ -178,7 +177,7 @@ function HighfieldVariantList({
                         </div>
                     </div>
                     {isAdmin && (
-                        <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm p-0.5 rounded-bl-lg border-l border-b">
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveVariant(index, 'up')} disabled={index === 0}>
                                 <ArrowUp className="h-3 w-3" />
                             </Button>
