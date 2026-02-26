@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -950,7 +950,7 @@ function OptionalFeatureItem({
                                                                             const next = isSelected ? current.filter((id: string) => id !== v.id) : [...current, v.id];
                                                                             field.onChange(next);
                                                                         }}
-                                                                        className="text-[10px] font-bold uppercase tracking-tight flex items-center justify-between py-2"
+                                                                        className="text-[10px] font-bold uppercase tracking-tight flex items-center justify-between py-2 aria-selected:text-primary-foreground"
                                                                     >
                                                                         <span>{v.name} {v.sku && `(${v.sku})`}</span>
                                                                         {isSelected && <Check className="h-3 w-3 text-primary" />}
@@ -973,21 +973,34 @@ function OptionalFeatureItem({
                                         control={control}
                                         name={`optionalFeatures.${index}.associatedSeatId`}
                                         render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                <FormControl>
-                                                    <SelectTrigger className="h-10 text-xs font-bold bg-muted/10 border-dashed border-2">
-                                                        <SelectValue placeholder="No Linked Seat" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="none" className="text-[10px] font-bold uppercase">None</SelectItem>
-                                                    {seatOptions.map((seat: any) => (
-                                                        <SelectItem key={seat.id} value={seat.id} className="text-[10px] font-bold uppercase">
-                                                            {seat.name} {seat.code && `(${seat.code})`}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" size="sm" className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 hover:bg-muted/10">
+                                                        {field.value ? seatOptions.find((s: any) => s.id === field.value)?.name || 'Seat Selected' : 'No Linked Seat'}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[350px] p-0" align="start">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search Seats..." className="h-9 text-xs" />
+                                                        <CommandList className="max-h-[300px]">
+                                                            <CommandEmpty className="p-4 text-xs italic text-muted-foreground">No seats found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                <CommandItem onSelect={() => field.onChange(null)} className="text-[10px] font-bold uppercase tracking-tight py-2 aria-selected:text-primary-foreground">None</CommandItem>
+                                                                {seatOptions.map((seat: any) => (
+                                                                    <CommandItem
+                                                                        key={seat.id}
+                                                                        onSelect={() => field.onChange(seat.id)}
+                                                                        className="text-[10px] font-bold uppercase tracking-tight flex items-center justify-between py-2 aria-selected:text-primary-foreground"
+                                                                    >
+                                                                        <span>{seat.name} {seat.code && `(${seat.code})`}</span>
+                                                                        {field.value === seat.id && <Check className="h-3 w-3 text-primary" />}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
                                         )}
                                     />
                                 </div>
