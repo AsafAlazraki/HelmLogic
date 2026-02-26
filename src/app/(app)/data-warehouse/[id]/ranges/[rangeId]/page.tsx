@@ -61,6 +61,7 @@ interface Variant {
     sku: string;
     name: string;
     colorName?: string;
+    colorCode?: string;
     material?: string;
     cost?: number;
     sellPriceExclGst?: number;
@@ -145,7 +146,11 @@ function HighfieldVariantList({
                             <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku}</p>
                             <div className="flex items-center gap-1.5 mt-2">
                                 {variant.material && <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase">{variant.material}</Badge>}
-                                {variant.colorName && <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase">{variant.colorName}</Badge>}
+                                {variant.colorName && (
+                                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase">
+                                        {variant.colorName} {variant.colorCode && `(${variant.colorCode})`}
+                                    </Badge>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -167,14 +172,16 @@ function HighfieldGroupedView({
     range, 
     isAdmin,
     onEditGroup,
-    onAddVariant
+    onAddVariant,
+    onEditVariant
 }: { 
     models: ModelGroup[], 
     vendor: Vendor, 
     range: Range, 
     isAdmin: boolean,
     onEditGroup: (m: ModelGroup) => void,
-    onAddVariant: (m: ModelGroup) => void
+    onAddVariant: (m: ModelGroup) => void,
+    onEditVariant: (v: Variant, group: ModelGroup) => void
 }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -243,7 +250,7 @@ function HighfieldGroupedView({
                                     rangeId={range.id} 
                                     groupId={group.id} 
                                     isAdmin={isAdmin} 
-                                    onEditVariant={() => { /* Implement if needed */ }}
+                                    onEditVariant={(v) => onEditVariant(v, group)}
                                 />
                             </div>
                         </CollapsibleContent>
@@ -273,13 +280,20 @@ export default function RangeDetailsPage() {
 
     // Variant Add State
     const [isVariantDialogOpen, setIsVariantDialogOpen] = useState(false);
+    const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
     const [targetGroup, setTargetGroup] = useState<ModelGroup | null>(null);
+    
     const [varName, setVarName] = useState('');
     const [varSku, setVarSku] = useState('');
     const [varColor, setVarColor] = useState('');
+    const [varColorCode, setVarColorCode] = useState('');
     const [varMaterial, setVarMaterial] = useState<'PVC' | 'HYP' | ''>('');
-    const [varCost, setVarCost] = useState('');
-    const [varPrice, setVarPrice] = useState('');
+    
+    const [varCostExcl, setVarCostExcl] = useState('');
+    const [varCostIncl, setVarCostIncl] = useState('');
+    const [varPriceExcl, setVarPriceExcl] = useState('');
+    const [varPriceIncl, setVarPriceIncl] = useState('');
+    
     const [varImage, setVarImage] = useState<File | null>(null);
     const [varImagePreview, setVarImagePreview] = useState<string | null>(null);
     const [isSavingVariant, setIsSavingVariant] = useState(false);
@@ -347,26 +361,31 @@ export default function RangeDetailsPage() {
         setIsSavingVariant(true);
         try {
             const variantsCol = collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models/${targetGroup.id}/variants`);
-            const varRef = doc(variantsCol);
+            const varRef = editingVariant ? doc(variantsCol, editingVariant.id) : doc(variantsCol);
             
             const data: any = {
-                name: varName,
+                name: varName || `${varColor} ${varMaterial}`,
                 sku: varSku.toUpperCase(),
                 colorName: varColor,
+                colorCode: varColorCode.toUpperCase(),
                 material: varMaterial,
-                cost: parseFloat(varCost) || 0,
-                sellPriceExclGst: parseFloat(varPrice) || 0,
-                createdAt: serverTimestamp(),
-                order: Date.now(),
+                cost: parseFloat(varCostExcl) || 0,
+                sellPriceExclGst: parseFloat(varPriceExcl) || 0,
+                updatedAt: serverTimestamp(),
             };
+
+            if (!editingVariant) {
+                data.createdAt = serverTimestamp();
+                data.order = Date.now();
+            }
 
             if (varImage && storage) {
                 const path = `highfield/variants/${varRef.id}/photo-${Date.now()}`;
                 data.imageUrl = await uploadFileToStorage(storage, varImage, path);
             }
 
-            await setDoc(varRef, data);
-            toast({ title: "Variant Added" });
+            await setDoc(varRef, data, { merge: true });
+            toast({ title: editingVariant ? "SKU Updated" : "SKU Created" });
             setIsVariantDialogOpen(false);
             resetVariantForm();
         } catch (error) {
@@ -385,13 +404,17 @@ export default function RangeDetailsPage() {
     };
 
     const resetVariantForm = () => {
+        setEditingVariant(null);
         setTargetGroup(null);
         setVarName('');
         setVarSku('');
         setVarColor('');
+        setVarColorCode('');
         setVarMaterial('');
-        setVarCost('');
-        setVarPrice('');
+        setVarCostExcl('');
+        setVarCostIncl('');
+        setVarPriceExcl('');
+        setVarPriceIncl('');
         setVarImage(null);
         setVarImagePreview(null);
     };
@@ -402,6 +425,53 @@ export default function RangeDetailsPage() {
         setGroupCode(group.modelCode);
         setGroupImagePreview(group.coverImageUrl || null);
         setIsGroupDialogOpen(true);
+    };
+
+    const openEditVariant = (v: Variant, group: ModelGroup) => {
+        setTargetGroup(group);
+        setEditingVariant(v);
+        setVarName(v.name);
+        setVarSku(v.sku);
+        setVarColor(v.colorName || '');
+        setVarColorCode(v.colorCode || '');
+        setVarMaterial(v.material as any || '');
+        
+        const cost = v.cost || 0;
+        setVarCostExcl(cost.toFixed(2));
+        setVarCostIncl((cost * 1.1).toFixed(2));
+        
+        const price = v.sellPriceExclGst || 0;
+        setVarPriceExcl(price.toFixed(2));
+        setVarPriceIncl((price * 1.1).toFixed(2));
+        
+        setVarImagePreview(v.imageUrl || null);
+        setIsVariantDialogOpen(true);
+    };
+
+    // GST Calculation Helpers
+    const updateCostFromExcl = (val: string) => {
+        setVarCostExcl(val);
+        const num = parseFloat(val);
+        if (!isNaN(num)) setVarCostIncl((num * 1.1).toFixed(2));
+        else setVarCostIncl('');
+    };
+    const updateCostFromIncl = (val: string) => {
+        setVarCostIncl(val);
+        const num = parseFloat(val);
+        if (!isNaN(num)) setVarCostExcl((num / 1.1).toFixed(2));
+        else setVarCostExcl('');
+    };
+    const updatePriceFromExcl = (val: string) => {
+        setVarPriceExcl(val);
+        const num = parseFloat(val);
+        if (!isNaN(num)) setVarPriceIncl((num * 1.1).toFixed(2));
+        else setVarPriceIncl('');
+    };
+    const updatePriceFromIncl = (val: string) => {
+        setVarPriceIncl(val);
+        const num = parseFloat(val);
+        if (!isNaN(num)) setVarPriceExcl((num / 1.1).toFixed(2));
+        else setVarPriceExcl('');
     };
 
     const loading = groupsLoading || userLoading || profileLoading;
@@ -435,6 +505,7 @@ export default function RangeDetailsPage() {
                             isAdmin={isAdmin} 
                             onEditGroup={openEditGroup}
                             onAddVariant={(g) => { setTargetGroup(g); setIsVariantDialogOpen(true); }}
+                            onEditVariant={openEditVariant}
                         />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-lg bg-muted/5">
@@ -496,17 +567,17 @@ export default function RangeDetailsPage() {
 
             {/* Variant Dialog */}
             <Dialog open={isVariantDialogOpen} onOpenChange={(open) => !open && (setIsVariantDialogOpen(false), resetVariantForm())}>
-                <DialogContent className="sm:max-w-xl">
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Add SKU to {targetGroup?.modelCode}</DialogTitle>
+                        <DialogTitle>{editingVariant ? 'Edit SKU' : 'Add SKU'} to {targetGroup?.modelCode}</DialogTitle>
                         <DialogDescription>Define a specific color and material combination.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-6 py-4">
                         <div className="flex justify-center">
-                            <div className="relative h-24 w-36 bg-muted rounded border-2 border-dashed overflow-hidden group">
+                            <div className="relative h-28 w-44 bg-muted rounded border-2 border-dashed overflow-hidden group">
                                 {varImagePreview ? (
                                     <>
-                                        <Image src={varImagePreview} alt="Variant" fill className="object-cover" />
+                                        <Image src={varImagePreview} alt="Variant" fill className="object-contain p-2" />
                                         <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVarImage(null); setVarImagePreview(null); }}><X className="h-3 w-3" /></Button>
                                     </>
                                 ) : (
@@ -521,21 +592,23 @@ export default function RangeDetailsPage() {
                                 )}
                             </div>
                         </div>
+                        
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Variant Display Name</Label>
-                                <Input placeholder="e.g. White PVC" value={varName} onChange={e => setVarName(e.target.value)} />
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Variant Display Name</Label>
+                                <Input placeholder="e.g. White PVC" value={varName} onChange={e => setVarName(e.target.value)} className="font-bold" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">SKU / Part ID</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">SKU / Part ID</Label>
                                 <Input placeholder="HF-CL310-PVC-WH" value={varSku} onChange={e => setVarSku(e.target.value)} className="font-mono uppercase font-bold" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+
+                        <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Material</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Material</Label>
                                 <Select value={varMaterial} onValueChange={(v: any) => setVarMaterial(v)}>
-                                    <SelectTrigger><SelectValue placeholder="Select Material" /></SelectTrigger>
+                                    <SelectTrigger className="font-bold"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="PVC">PVC</SelectItem>
                                         <SelectItem value="HYP">Hypalon (HYP)</SelectItem>
@@ -543,26 +616,51 @@ export default function RangeDetailsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Color Name</Label>
-                                <Input placeholder="White" value={varColor} onChange={e => setVarColor(e.target.value)} />
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
+                                <Input placeholder="White" value={varColor} onChange={e => setVarColor(e.target.value)} className="font-bold" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Code</Label>
+                                <Input placeholder="WH" value={varColorCode} onChange={e => setVarColorCode(e.target.value)} className="font-mono font-bold uppercase" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Factory Cost</Label>
-                                <Input type="number" placeholder="0.00" value={varCost} onChange={e => setVarCost(e.target.value)} />
+
+                        <Separator />
+
+                        <div className="grid grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Factory Cost</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={varCostExcl} onChange={e => updateCostFromExcl(e.target.value)} className="h-9 text-xs font-bold" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={varCostIncl} onChange={e => updateCostFromIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/30" />
+                                    </div>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Retail Price (Excl.)</Label>
-                                <Input type="number" placeholder="0.00" value={varPrice} onChange={e => setVarPrice(e.target.value)} />
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Retail Price</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={varPriceExcl} onChange={e => updatePriceFromExcl(e.target.value)} className="h-9 text-xs font-bold" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={varPriceIncl} onChange={e => updatePriceFromIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/30" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="pt-4 border-t">
                         <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
                         <Button onClick={handleSaveVariant} disabled={isSavingVariant || !varSku || !varMaterial}>
                             {isSavingVariant && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create SKU
+                            {editingVariant ? 'Update SKU' : 'Create SKU'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

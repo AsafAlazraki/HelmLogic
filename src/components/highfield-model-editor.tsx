@@ -322,9 +322,14 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
     const [vSku, setVSku] = useState('');
     const [vName, setVName] = useState('');
     const [vColor, setVColor] = useState('');
+    const [vColorCode, setVColorCode] = useState('');
     const [vMaterial, setVMaterial] = useState<'PVC' | 'HYP' | ''>('');
-    const [vCost, setVCost] = useState('');
-    const [vPrice, setVPrice] = useState('');
+    
+    const [vCostExcl, setVCostExcl] = useState('');
+    const [vCostIncl, setVCostIncl] = useState('');
+    const [vPriceExcl, setVPriceExcl] = useState('');
+    const [vPriceIncl, setVPriceIncl] = useState('');
+    
     const [vImage, setVImage] = useState<File | null>(null);
     const [vImagePreview, setVImagePreview] = useState<string | null>(null);
 
@@ -333,9 +338,12 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
         setVSku('');
         setVName('');
         setVColor('');
+        setVColorCode('');
         setVMaterial('');
-        setVCost('');
-        setVPrice('');
+        setVCostExcl('');
+        setVCostIncl('');
+        setVPriceExcl('');
+        setVPriceIncl('');
         setVImage(null);
         setVImagePreview(null);
     };
@@ -351,9 +359,10 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                 sku: vSku.toUpperCase(),
                 name: vName || `${vColor} ${vMaterial}`,
                 colorName: vColor,
+                colorCode: vColorCode.toUpperCase(),
                 material: vMaterial,
-                cost: parseFloat(vCost) || 0,
-                sellPriceExclGst: parseFloat(vPrice) || 0,
+                cost: parseFloat(vCostExcl) || 0,
+                sellPriceExclGst: parseFloat(vPriceExcl) || 0,
                 updatedAt: serverTimestamp(),
             };
 
@@ -383,9 +392,17 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
         setVSku(v.sku);
         setVName(v.name);
         setVColor(v.colorName || '');
+        setVColorCode(v.colorCode || '');
         setVMaterial(v.material || '');
-        setVCost(String(v.cost || ''));
-        setVPrice(String(v.sellPriceExclGst || ''));
+        
+        const cost = v.cost || 0;
+        setVCostExcl(cost.toFixed(2));
+        setVCostIncl((cost * 1.1).toFixed(2));
+        
+        const price = v.sellPriceExclGst || 0;
+        setVPriceExcl(price.toFixed(2));
+        setVPriceIncl((price * 1.1).toFixed(2));
+        
         setVImagePreview(v.imageUrl || null);
         setIsAddOpen(true);
     };
@@ -397,6 +414,32 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
         } catch (error) {
             toast({ variant: 'destructive', title: "Delete failed" });
         }
+    };
+
+    // Calculation Helpers
+    const updateCostExcl = (val: string) => {
+        setVCostExcl(val);
+        const num = parseFloat(val);
+        if (!isNaN(num)) setVCostIncl((num * 1.1).toFixed(2));
+        else setVCostIncl('');
+    };
+    const updateCostIncl = (val: string) => {
+        setVCostIncl(val);
+        const num = parseFloat(val);
+        if (!isNaN(num)) setVCostExcl((num / 1.1).toFixed(2));
+        else setVCostExcl('');
+    };
+    const updatePriceExcl = (val: string) => {
+        setVPriceExcl(val);
+        const num = parseFloat(val);
+        if (!isNaN(num)) setVPriceIncl((num * 1.1).toFixed(2));
+        else setVPriceIncl('');
+    };
+    const updatePriceIncl = (val: string) => {
+        setVPriceIncl(val);
+        const num = parseFloat(val);
+        if (!isNaN(num)) setVPriceExcl((num / 1.1).toFixed(2));
+        else setVPriceExcl('');
     };
 
     return (
@@ -427,7 +470,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                             <p className="font-mono text-[10px] font-bold text-primary mt-1 uppercase">{v.sku}</p>
                                             <div className="flex flex-wrap gap-1.5 mt-3">
                                                 <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5">{v.material}</Badge>
-                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5">{v.colorName}</Badge>
+                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5">{v.colorName} {v.colorCode && `(${v.colorCode})`}</Badge>
                                             </div>
                                             <div className="flex items-center gap-3 mt-3">
                                                 <div className="flex flex-col"><span className="text-[8px] font-bold text-muted-foreground uppercase">Retail</span><span className="text-[10px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span></div>
@@ -453,7 +496,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                 </CollapsibleContent>
 
                 <Dialog open={isAddOpen} onOpenChange={(o) => !o && (setIsAddOpen(false), resetForm())}>
-                    <DialogContent className="sm:max-w-lg">
+                    <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{editingVariant ? 'Edit Variant SKU' : 'Add New Boat SKU'}</DialogTitle>
                             <DialogDescription>Individual boat details including material-specific imagery.</DialogDescription>
@@ -463,11 +506,11 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                 <div className="relative h-28 w-40 bg-muted rounded border-2 border-dashed overflow-hidden group">
                                     {vImagePreview ? (
                                         <>
-                                            <Image src={vImagePreview} alt="SKU Preview" fill className="object-cover" />
+                                            <Image src={vImagePreview} alt="SKU Preview" fill className="object-contain p-2" />
                                             <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVImage(null); setVImagePreview(null); }}><X className="h-3 w-3" /></Button>
                                         </>
                                     ) : (
-                                        <label className="flex flex-col items-center justify-center h-full w-full cursor-pointer hover:bg-secondary">
+                                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary">
                                             <ImageIcon className="h-6 w-6 text-muted-foreground/40 mb-1" />
                                             <span className="text-[8px] font-black uppercase text-muted-foreground">Upload SKU Photo</span>
                                             <Input type="file" className="hidden" accept="image/*" onChange={(e) => {
@@ -480,39 +523,64 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Variant Name</Label>
-                                    <Input placeholder="e.g. Storm Grey PVC" value={vName} onChange={e => setVName(e.target.value)} />
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Variant Display Name</Label>
+                                    <Input placeholder="e.g. Storm Grey PVC" value={vName} onChange={e => setVName(e.target.value)} className="font-bold h-10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Specific SKU</Label>
-                                    <Input placeholder="CL310-PVC-SG" value={vSku} onChange={e => setVSku(e.target.value)} className="font-mono font-bold uppercase" />
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Specific SKU</Label>
+                                    <Input placeholder="CL310-PVC-SG" value={vSku} onChange={e => setVSku(e.target.value)} className="font-mono font-bold uppercase h-10" />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Material Selection</Label>
-                                    <div className="flex gap-2">
-                                        <Button type="button" variant={vMaterial === 'PVC' ? 'default' : 'outline'} className="flex-1 h-9 text-xs font-black" onClick={() => setVMaterial('PVC')}>PVC</Button>
-                                        <Button type="button" variant={vMaterial === 'HYP' ? 'default' : 'outline'} className="flex-1 h-9 text-xs font-black" onClick={() => setVMaterial('HYP')}>HYP</Button>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Material</Label>
+                                    <div className="flex gap-1">
+                                        <Button type="button" variant={vMaterial === 'PVC' ? 'default' : 'outline'} className="flex-1 h-9 text-[10px] font-black" onClick={() => setVMaterial('PVC')}>PVC</Button>
+                                        <Button type="button" variant={vMaterial === 'HYP' ? 'default' : 'outline'} className="flex-1 h-9 text-[10px] font-black" onClick={() => setVMaterial('HYP')}>HYP</Button>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Color Name</Label>
-                                    <Input placeholder="Storm Grey" value={vColor} onChange={e => setVColor(e.target.value)} />
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
+                                    <Input placeholder="Storm Grey" value={vColor} onChange={e => setVColor(e.target.value)} className="font-bold h-9" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Code</Label>
+                                    <Input placeholder="SG" value={vColorCode} onChange={e => setVColorCode(e.target.value)} className="font-mono font-bold uppercase h-9" />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 border-t pt-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Factory Cost</Label>
-                                    <Input type="number" placeholder="0.00" value={vCost} onChange={e => setVCost(e.target.value)} />
+                            
+                            <Separator />
+
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Factory Cost</Label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
+                                            <Input type="number" placeholder="0.00" value={vCostExcl} onChange={e => updateCostExcl(e.target.value)} className="h-9 text-xs font-bold" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
+                                            <Input type="number" placeholder="0.00" value={vCostIncl} onChange={e => updateCostIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-primary">Retail Sell (Excl.)</Label>
-                                    <Input type="number" placeholder="0.00" value={vPrice} onChange={e => setVPrice(e.target.value)} className="border-primary/40 focus-visible:ring-primary/20" />
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Retail Sell</Label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
+                                            <Input type="number" placeholder="0.00" value={vPriceExcl} onChange={e => updatePriceExcl(e.target.value)} className="h-9 text-xs font-bold" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
+                                            <Input type="number" placeholder="0.00" value={vPriceIncl} onChange={e => updatePriceIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <DialogFooter>
+                        <DialogFooter className="pt-4 border-t">
                             <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
                             <Button onClick={handleSaveVariant} disabled={isSaving || !vSku || !vMaterial}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
