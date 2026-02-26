@@ -402,7 +402,9 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className={cn("space-y-8", isModuleView ? "lg:col-span-3" : "lg:col-span-4")}>
                     {isModuleView ? (
-                        <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                        <>
+                            <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                        </>
                     ) : (
                         <>
                             <SpecsSection />

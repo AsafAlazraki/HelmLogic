@@ -70,6 +70,7 @@ const optionalFeatureSchema = z.object({
     cost: looseNumber,
     sellPriceExclGst: looseNumber,
     applicableVariantIds: z.array(z.string()).default([]),
+    associatedSeatId: z.string().optional().nullable(),
 });
 
 const documentSchema = z.object({
@@ -786,7 +787,21 @@ function FeaturesSection() {
     );
 }
 
-function OptionalFeatureItem({ index, remove, gstPercentage, categories, variants }: { index: number; remove: (index: number) => void; gstPercentage: number, categories: string[], variants: any[] }) {
+function OptionalFeatureItem({ 
+    index, 
+    remove, 
+    gstPercentage, 
+    categories, 
+    variants,
+    allFeatures 
+}: { 
+    index: number; 
+    remove: (index: number) => void; 
+    gstPercentage: number, 
+    categories: string[], 
+    variants: any[],
+    allFeatures: any[]
+}) {
     const { control } = useFormContext<ModelFormData>();
     const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
     const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
@@ -795,7 +810,13 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories, variant
     const storage = useStorage();
     const [isUploading, setIsUploading] = useState(false);
 
-    const isConsoleOrSeat = category === 'Consoles' || category === 'Seats';
+    const isConsole = category === 'Consoles';
+    const isSeat = category === 'Seats';
+    const isConsoleOrSeat = isConsole || isSeat;
+
+    const seatOptions = useMemo(() => 
+        allFeatures.filter((f: any) => f.category === 'Seats' && f.id !== allFeatures[index].id),
+    [allFeatures, index]);
 
     return (
         <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -900,48 +921,77 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories, variant
                     </div>
 
                     {isConsoleOrSeat && (
-                        <div className="space-y-3 pt-2">
-                            <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Fits SKU (Compatibility)</FormLabel>
-                            <FormField
-                                control={control}
-                                name={`optionalFeatures.${index}.applicableVariantIds`}
-                                render={({ field }) => (
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" size="sm" className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 hover:bg-muted/10">
-                                                {field.value?.length > 0 ? `${field.value.length} SKUs Selected` : 'Select Compatible SKUs...'}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[350px] p-0" align="start">
-                                            <Command>
-                                                <CommandInput placeholder="Search SKUs..." className="h-9 text-xs" />
-                                                <CommandList className="max-h-[300px]">
-                                                    <CommandEmpty className="p-4 text-xs italic text-muted-foreground">No variants found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {variants.map(v => {
-                                                            const isSelected = field.value?.includes(v.id);
-                                                            return (
-                                                                <CommandItem
-                                                                    key={v.id}
-                                                                    onSelect={() => {
-                                                                        const current = field.value || [];
-                                                                        const next = isSelected ? current.filter((id: string) => id !== v.id) : [...current, v.id];
-                                                                        field.onChange(next);
-                                                                    }}
-                                                                    className="text-[10px] font-bold uppercase tracking-tight flex items-center justify-between py-2"
-                                                                >
-                                                                    <span>{v.name} {v.sku && `(${v.sku})`}</span>
-                                                                    {isSelected && <Check className="h-3 w-3 text-primary" />}
-                                                                </CommandItem>
-                                                            );
-                                                        })}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                )}
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                            <div className="space-y-3">
+                                <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Fits SKU (Compatibility)</FormLabel>
+                                <FormField
+                                    control={control}
+                                    name={`optionalFeatures.${index}.applicableVariantIds`}
+                                    render={({ field }) => (
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" size="sm" className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 hover:bg-muted/10">
+                                                    {field.value?.length > 0 ? `${field.value.length} SKUs Selected` : 'Select Compatible SKUs...'}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[350px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search SKUs..." className="h-9 text-xs" />
+                                                    <CommandList className="max-h-[300px]">
+                                                        <CommandEmpty className="p-4 text-xs italic text-muted-foreground">No variants found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {variants.map(v => {
+                                                                const isSelected = field.value?.includes(v.id);
+                                                                return (
+                                                                    <CommandItem
+                                                                        key={v.id}
+                                                                        onSelect={() => {
+                                                                            const current = field.value || [];
+                                                                            const next = isSelected ? current.filter((id: string) => id !== v.id) : [...current, v.id];
+                                                                            field.onChange(next);
+                                                                        }}
+                                                                        className="text-[10px] font-bold uppercase tracking-tight flex items-center justify-between py-2"
+                                                                    >
+                                                                        <span>{v.name} {v.sku && `(${v.sku})`}</span>
+                                                                        {isSelected && <Check className="h-3 w-3 text-primary" />}
+                                                                    </CommandItem>
+                                                                );
+                                                            })}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                    )}
+                                />
+                            </div>
+
+                            {isConsole && (
+                                <div className="space-y-3">
+                                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Associated Seat (Optional)</FormLabel>
+                                    <FormField
+                                        control={control}
+                                        name={`optionalFeatures.${index}.associatedSeatId`}
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-10 text-xs font-bold bg-muted/10 border-dashed border-2">
+                                                        <SelectValue placeholder="No Linked Seat" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="none" className="text-[10px] font-bold uppercase">None</SelectItem>
+                                                    {seatOptions.map((seat: any) => (
+                                                        <SelectItem key={seat.id} value={seat.id} className="text-[10px] font-bold uppercase">
+                                                            {seat.name} {seat.code && `(${seat.code})`}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
                     
@@ -1242,7 +1292,7 @@ function MotorConfigurationsSection() {
 }
 
 export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, gstPercentage }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean, gstPercentage: number }) {
-    const { control, watch, setValue } = useFormContext<ModelFormData>();
+    const { control, watch } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
 
     const [categories, setCategories] = useState<string[]>(['Consoles', 'Seats']);
@@ -1286,13 +1336,13 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className="lg:col-span-4 space-y-8">
+                <div className="lg:col-span-4 space-y-8 min-w-0">
                     <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} gstPercentage={gstPercentage} />
                     <FeaturesSection />
                     <SpecsSection />
                     <MotorConfigurationsSection />
                 </div>
-                <div className="lg:col-span-3 space-y-8">
+                <div className="lg:col-span-3 space-y-8 min-w-0">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                         <div className="flex flex-col py-4 px-6 border-b bg-card gap-4">
@@ -1308,7 +1358,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                         {optionalFeatureFields.length}
                                     </span>
                                 </div>
-                                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '', applicableVariantIds: [] })}>
+                                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '', applicableVariantIds: [], associatedSeatId: null })}>
                                     <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Option
                                 </Button>
                             </div>
@@ -1354,7 +1404,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="h-6 w-6 hover:bg-primary/10 text-primary"
-                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '', applicableVariantIds: [] })}
+                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null })}
                                                             >
                                                                 <PlusCircle className="h-4 w-4" />
                                                             </Button>
@@ -1385,6 +1435,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                                             gstPercentage={gstPercentage}
                                                                             categories={categories}
                                                                             variants={variants}
+                                                                            allFeatures={watchedOptionalFeatures}
                                                                         />
                                                                     );
                                                                 })}
@@ -1412,6 +1463,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                         gstPercentage={gstPercentage}
                                                         categories={categories}
                                                         variants={variants}
+                                                        allFeatures={watchedOptionalFeatures}
                                                     />
                                                 );
                                             })}
