@@ -27,7 +27,6 @@ import { DealerFitOptions } from './dealer-fit-options';
 import { FormField, FormItem, FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { formatCurrency, convertCurrency } from '@/lib/currency-utils';
 
 interface Permissions {
     can_access_module: boolean;
@@ -41,8 +40,6 @@ interface Organisation {
     name: string;
     tradingCurrency?: string;
     gstPercentage?: number;
-    brandMargins?: Record<string, number>;
-    moduleMargins?: Record<string, number>;
 }
 
 const motorConfigOptions = [
@@ -205,14 +202,12 @@ export function ModelConfigurationEditor({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Fetch active organisation data for currency and tax logic
     const orgRef = useMemoFirebase(() => organisationId ? doc(firestore, 'organisations', organisationId) : null, [firestore, organisationId]);
     const { data: organisation } = useDoc<Organisation>(orgRef);
 
     const currentSchema = getVendorSchema(vendor?.slug);
     const isModuleView = module?.id !== 'master';
 
-    // Financial context
     const masterCurrency = vendor?.currency || 'AUD';
     const tradingCurrency = isAdmin ? masterCurrency : (organisation?.tradingCurrency || 'AUD');
     const gstPercentage = organisation?.gstPercentage ?? 10;
@@ -294,7 +289,6 @@ export function ModelConfigurationEditor({
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
         
-        // Extract Vendor and Range IDs from docPath
         const parts = docPath.split('/');
         const vId = parts[1];
         const rId = parts[3];
@@ -405,7 +399,7 @@ export function ModelConfigurationEditor({
                                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                                             <Tag className="h-3 w-3" />
                                                             Series Display Name
-                                                        </Label>
+                                                        </FormLabel>
                                                         <FormControl>
                                                             <Input 
                                                                 {...field} 

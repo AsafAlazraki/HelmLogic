@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil, Save } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -419,7 +419,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                             {v.imageUrl ? (
                                                 <Image src={v.imageUrl} alt={v.sku} fill className="object-cover" />
                                             ) : (
-                                                <div className="flex h-full w-full items-center justify-center"><Sailboat className="h-8 w-8 text-muted-foreground/20" /></div>
+                                                <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                             )}
                                         </div>
                                         <div className="min-w-0 flex-1">
@@ -763,7 +763,6 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
         if (!modelCode || !model.vendorId) return;
         setIsSyncing(true);
         try {
-            // Highfield Rules are shared across all SKUs of the same Model Code Group
             const groupsRef = collection(firestore, `data-warehouse/${model.vendorId}/ranges/${model.rangeId}/models`);
             const q = query(groupsRef, where('modelCode', '==', modelCode));
             const snap = await getDocs(q);
