@@ -8,11 +8,12 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp, orderBy, setDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy, ChevronRight, ChevronDown, Hash, ShieldCheck, Tag, Anchor, Image as ImageIcon, CheckCircle2, DollarSign, PackagePlus, Ship, X, Settings2, Plus, Separator } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy, ChevronRight, ChevronDown, Hash, ShieldCheck, Tag, Anchor, Image as ImageIcon, CheckCircle2, DollarSign, PackagePlus, Ship, X, Settings2, Plus } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
     Table,
     TableBody,
