@@ -8,7 +8,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp, orderBy, setDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, ChevronDown, ImageIcon, CheckCircle2, X, Plus, Settings2 } from 'lucide-react';
+import { Loader2, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, ChevronDown, ImageIcon, CheckCircle2, X, Plus, Settings2, MoreHorizontal } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,13 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createSlug, cn } from '@/lib/utils';
@@ -245,40 +252,52 @@ function HighfieldGroupedView({
                             <div className="flex-1 min-w-0 pr-4">
                                 <div className="flex items-center gap-3">
                                     <h3 className="font-black text-xl uppercase tracking-tight text-primary truncate">{group.modelCode}</h3>
-                                    <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest hidden sm:flex shrink-0">{group.name}</Badge>
                                 </div>
                                 <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest mt-1 truncate">Manage shared logic and variants for this model code.</p>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
                                 {isAdmin && (
-                                    <div className="flex items-center gap-1 mr-2 border-r pr-2">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveGroup(index, 'up')} disabled={index === 0}>
-                                            <ArrowUp className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMoveGroup(index, 'down')} disabled={index === models.length - 1}>
-                                            <ArrowDown className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                )}
-                                <Button asChild variant="outline" size="sm" className="font-bold">
-                                    <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${group.id}`}>
-                                        <Settings2 className="mr-2 h-4 w-4" />
-                                        Shared Config
-                                    </Link>
-                                </Button>
-                                <Button onClick={() => onAddVariant(group)} size="sm" className="font-bold bg-primary hover:bg-primary/90">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Add SKU
-                                </Button>
-                                {isAdmin && (
-                                    <div className="flex items-center ml-2 border-l pl-4 gap-1">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEditGroup(group)}><Pencil className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteGroup(group.id)}><Trash2 className="h-4 w-4" /></Button>
-                                    </div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 border shadow-sm hover:bg-accent transition-colors">
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-56">
+                                            <DropdownMenuItem onClick={() => onEditGroup(group)}>
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Edit Identity
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${group.id}`}>
+                                                    <Settings2 className="mr-2 h-4 w-4" />
+                                                    Shared Logic Config
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => onAddVariant(group)}>
+                                                <PlusCircle className="mr-2 h-4 w-4" />
+                                                Add New Boat SKU
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => handleMoveGroup(index, 'up')} disabled={index === 0}>
+                                                <ArrowUp className="mr-2 h-4 w-4" />
+                                                Move Up
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleMoveGroup(index, 'down')} disabled={index === models.length - 1}>
+                                                <ArrowDown className="mr-2 h-4 w-4" />
+                                                Move Down
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteGroup(group.id)}>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete Range Series
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 )}
                                 <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 ml-2 group-data-[state=open]:bg-muted">
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 border shadow-sm group-data-[state=open]:bg-muted">
                                         <ChevronDown className="h-5 w-5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                     </Button>
                                 </CollapsibleTrigger>
