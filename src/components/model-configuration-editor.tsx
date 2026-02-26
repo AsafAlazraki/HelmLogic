@@ -319,7 +319,7 @@ export function ModelConfigurationEditor({
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
                 <div className="space-y-6">
-                    <Card className="border-primary/20 bg-primary/5">
+                    <Card className="border-primary/20 bg-primary/5 rounded-xl">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -448,7 +448,7 @@ export function ModelConfigurationEditor({
                                     <MotorOptions model={model} module={module} />
                                 </TabsContent>
                                 <TabsContent value="trailer" className="mt-6">
-                                    <Card>
+                                    <Card className="rounded-xl">
                                         <CardHeader>
                                             <CardTitle>Trailer Options</CardTitle>
                                         </CardHeader>

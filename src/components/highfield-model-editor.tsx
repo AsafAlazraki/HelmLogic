@@ -482,8 +482,8 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                         ) : variants && variants.length > 0 ? (
                             <div className="grid gap-4 md:grid-cols-2">
                                 {variants.map((v, index) => (
-                                    <Card key={v.id} className="group relative flex flex-col overflow-hidden hover:border-primary/40 transition-all bg-muted/5 border-2 shadow-none">
-                                        <div className="relative aspect-[16/10] w-full rounded-t-sm border-b bg-secondary/30 overflow-hidden shrink-0">
+                                    <Card key={v.id} className="group relative flex flex-col overflow-hidden hover:border-primary/40 transition-all bg-muted/5 border-2 shadow-none rounded-xl">
+                                        <div className="relative aspect-[16/10] w-full border-b bg-secondary/30 overflow-hidden shrink-0">
                                             {v.imageUrl ? (
                                                 <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-2" sizes="256px" />
                                             ) : (
@@ -599,7 +599,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                 <div className="grid grid-cols-2 gap-3">
                                     <Card 
                                         className={cn(
-                                            "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50",
+                                            "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
                                             vMaterial === 'PVC' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
                                         )}
                                         onClick={() => setVMaterial('PVC')}
@@ -612,7 +612,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                     </Card>
                                     <Card 
                                         className={cn(
-                                            "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50",
+                                            "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
                                             vMaterial === 'HYP' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
                                         )}
                                         onClick={() => setVMaterial('HYP')}
@@ -980,7 +980,7 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
                                 const sourceType = useWatch({ control, name: `rules.${index}.sourceType` as const });
                                 
                                 return (
-                                    <Card key={field.id} className="relative p-5 bg-muted/5 border-2 hover:border-primary/20 transition-all">
+                                    <Card key={field.id} className="relative p-5 bg-muted/5 border-2 hover:border-primary/20 transition-all rounded-xl">
                                         <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -1172,7 +1172,7 @@ function MotorConfigurationsSection() {
                 <CollapsibleContent>
                     <CardContent className="pt-6 space-y-6">
                         {fields.map((field, index) => (
-                            <Card key={field.id} className="relative p-4 bg-muted/10">
+                            <Card key={field.id} className="relative p-4 bg-muted/10 rounded-xl">
                                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                 <div className="space-y-4">
                                     <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
@@ -1233,9 +1233,13 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
 
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} gstPercentage={gstPercentage} />
-                <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
+                <div className="lg:col-span-4">
+                    <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} gstPercentage={gstPercentage} />
+                </div>
+                <div className="lg:col-span-3">
+                    <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
@@ -1264,23 +1268,24 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                         <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Option
                                     </Button>
                                 </div>
-                                
-                                <div className="flex items-center gap-2 p-1.5 bg-muted/50 rounded-lg border border-dashed">
-                                    <div className="relative flex-1">
-                                        <FolderPlus className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                                        <Input 
-                                            placeholder="Define New Category..." 
-                                            value={newCategoryName} 
-                                            onChange={(e) => setNewCategoryName(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
-                                            className="h-8 pl-8 text-[10px] font-bold bg-background border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
-                                        />
-                                    </div>
-                                    <Button type="button" size="sm" variant="secondary" className="h-7 text-[9px] font-black uppercase tracking-widest px-3" onClick={handleAddCategory}>Create</Button>
-                                </div>
                             </div>
 
                             <CollapsibleContent>
+                                <div className="px-6 py-4 border-b bg-muted/10">
+                                    <div className="flex items-center gap-2 p-1.5 bg-background rounded-lg border border-dashed shadow-inner">
+                                        <div className="relative flex-1">
+                                            <FolderPlus className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                            <Input 
+                                                placeholder="Define New Category..." 
+                                                value={newCategoryName} 
+                                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+                                                className="h-8 pl-8 text-[10px] font-bold bg-transparent border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+                                            />
+                                        </div>
+                                        <Button type="button" size="sm" variant="secondary" className="h-7 text-[9px] font-black uppercase tracking-widest px-3" onClick={handleAddCategory}>Create</Button>
+                                    </div>
+                                </div>
                                 <CardContent className="pt-6">
                                     <ScrollArea className="max-h-[700px] pr-4">
                                         <div className="space-y-8">
@@ -1340,7 +1345,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                                     })}
                                                                 </div>
                                                             ) : (
-                                                                <div className="py-6 border-2 border-dashed rounded-lg bg-muted/10 flex flex-col items-center justify-center text-center">
+                                                                <div className="py-6 border-2 border-dashed rounded-xl bg-muted/10 flex flex-col items-center justify-center text-center">
                                                                     <Layers className="h-6 w-6 text-muted-foreground opacity-20 mb-2" />
                                                                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Empty Category</p>
                                                                 </div>
