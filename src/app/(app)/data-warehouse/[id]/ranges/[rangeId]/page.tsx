@@ -140,41 +140,44 @@ function HighfieldVariantList({
     }
 
     return (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pt-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pt-4">
             {variants.map((variant, index) => (
-                <Card key={variant.id} className="group relative overflow-hidden bg-background border-muted shadow-none hover:border-primary/40 transition-all">
-                    <div className="flex gap-3 p-3">
-                        <div className="relative h-20 w-32 bg-secondary/50 rounded border overflow-hidden shrink-0">
-                            {variant.imageUrl ? (
-                                <Image src={variant.imageUrl} alt={variant.sku || 'Variant'} fill className="object-contain p-1" sizes="128px" />
-                            ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                    <Sailboat className="h-6 w-6 text-muted-foreground/30" />
-                                </div>
+                <Card key={variant.id} className="group relative overflow-hidden bg-background border-muted shadow-none hover:border-primary/40 transition-all flex flex-col">
+                    <div className="relative aspect-[16/10] w-full bg-secondary/50 border-b overflow-hidden shrink-0">
+                        {variant.imageUrl ? (
+                            <Image src={variant.imageUrl} alt={variant.sku || 'Variant'} fill className="object-contain p-2" sizes="(max-width: 768px) 50vw, 25vw" />
+                        ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                                <Sailboat className="h-8 w-8 text-muted-foreground/20" />
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="p-3 flex flex-col flex-1 gap-2">
+                        <div className="min-w-0 pr-8">
+                            <p className="font-black text-[11px] uppercase leading-tight truncate">{variant.name}</p>
+                            <p className="font-mono text-[9px] text-primary font-bold mt-1 uppercase truncate">{variant.sku || 'NO SKU'}</p>
+                        </div>
+                        
+                        <div className="flex flex-wrap items-center gap-1.5 mt-auto">
+                            {variant.material && (
+                                <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase shrink-0">
+                                    {variant.material}
+                                </Badge>
+                            )}
+                            {variant.colorName && (
+                                <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase max-w-full">
+                                    <span className="truncate">{variant.colorName}</span>
+                                </Badge>
                             )}
                         </div>
-                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-10">
-                            <p className="font-black text-[11px] uppercase leading-tight">{variant.name}</p>
-                            <p className="font-mono text-[9px] text-primary font-bold mt-1 uppercase truncate">{variant.sku || 'NO SKU'}</p>
-                            <div className="flex flex-wrap items-center gap-1 mt-2">
-                                {variant.material && (
-                                    <Badge variant="secondary" className="text-[8px] h-4 px-1 font-black uppercase shrink-0">
-                                        {variant.material}
-                                    </Badge>
-                                )}
-                                {variant.colorName && (
-                                    <Badge variant="outline" className="text-[8px] h-4 px-1 font-black uppercase max-w-full">
-                                        <span className="truncate">{variant.colorName}</span>
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
                     </div>
+
                     {isAdmin && (
-                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="default" size="icon" className="h-7 w-7 shadow-sm">
+                                    <Button variant="secondary" size="icon" className="h-7 w-7 shadow-md border bg-background/95 hover:bg-background">
                                         <Pencil className="h-3.5 w-3.5" />
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -262,7 +265,7 @@ function HighfieldGroupedView({
             {models.map((group, index) => (
                 <Collapsible key={group.id} defaultOpen className="space-y-4">
                     <Card className="overflow-hidden border-l-4 border-l-primary shadow-sm">
-                        <div className="flex flex-col md:flex-row md:items-center p-3 gap-4 bg-muted/10">
+                        <div className="flex flex-col md:flex-row md:items-center p-3 gap-4 bg-muted/10 relative">
                             <div className="relative h-16 w-28 bg-secondary rounded border overflow-hidden shrink-0">
                                 {group.coverImageUrl ? (
                                     <Image src={group.coverImageUrl} alt={group.name} fill className="object-contain p-1" sizes="128px" />
@@ -273,18 +276,18 @@ function HighfieldGroupedView({
                                 )}
                             </div>
                             
-                            <div className="flex-1 min-w-0 pr-10">
+                            <div className="flex-1 min-w-0 pr-20">
                                 <div className="flex items-center gap-3">
                                     <h3 className="font-black text-lg uppercase tracking-tight text-primary truncate">{group.modelCode}</h3>
                                 </div>
                                 <p className="text-[10px] font-bold text-muted-foreground/60 truncate uppercase">{group.name}</p>
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 shrink-0">
                                 {isAdmin && (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 border shadow-sm hover:bg-accent transition-colors">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors bg-background/50">
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
@@ -321,7 +324,7 @@ function HighfieldGroupedView({
                                     </DropdownMenu>
                                 )}
                                 <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 border shadow-sm">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 border shadow-sm bg-background/50">
                                         <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                     </Button>
                                 </CollapsibleTrigger>

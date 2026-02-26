@@ -481,33 +481,43 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                         ) : variants && variants.length > 0 ? (
                             <div className="grid gap-4 md:grid-cols-2">
                                 {variants.map((v, index) => (
-                                    <Card key={v.id} className="group relative flex gap-4 p-4 hover:border-primary/40 transition-all bg-muted/10">
-                                        <div className="relative h-20 w-32 rounded border bg-secondary/50 overflow-hidden shrink-0">
+                                    <Card key={v.id} className="group relative flex flex-col overflow-hidden hover:border-primary/40 transition-all bg-muted/5 border-2 shadow-none">
+                                        <div className="relative aspect-[16/10] w-full rounded-t-sm border-b bg-secondary/30 overflow-hidden shrink-0">
                                             {v.imageUrl ? (
-                                                <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-1" sizes="128px" />
+                                                <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-2" sizes="256px" />
                                             ) : (
                                                 <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                             )}
                                         </div>
-                                        <div className="min-w-0 flex-1 pr-10">
-                                            <p className="font-black text-[11px] uppercase leading-tight">{v.name}</p>
-                                            <p className="font-mono text-[9px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
-                                            <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                                        <div className="p-4 flex flex-col flex-1 gap-3">
+                                            <div className="min-w-0 pr-8">
+                                                <p className="font-black text-[11px] uppercase leading-tight truncate">{v.name}</p>
+                                                <p className="font-mono text-[9px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
+                                            </div>
+                                            
+                                            <div className="flex flex-wrap items-center gap-1.5">
                                                 <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5 shrink-0">{v.material}</Badge>
-                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5 whitespace-normal">
-                                                    <span>{v.colorName} {v.colorCode && `(${v.colorCode})`}</span>
+                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5 truncate max-w-full">
+                                                    {v.colorName} {v.colorCode && `(${v.colorCode})`}
                                                 </Badge>
                                             </div>
-                                            <div className="flex items-center gap-3 mt-3">
-                                                <div className="flex flex-col"><span className="text-[8px] font-bold text-muted-foreground uppercase">Retail</span><span className="text-[10px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span></div>
-                                                <div className="h-4 w-px bg-border" />
-                                                <div className="flex flex-col"><span className="text-[8px] font-bold text-muted-foreground uppercase">Cost</span><span className="text-[10px] font-black">${(v.cost || 0).toLocaleString()}</span></div>
+
+                                            <div className="grid grid-cols-2 gap-3 mt-auto pt-2 border-t">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Retail (Excl)</span>
+                                                    <span className="text-[11px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex flex-col text-right">
+                                                    <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Factory Cost</span>
+                                                    <span className="text-[11px] font-black">${(v.cost || 0).toLocaleString()}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="default" size="icon" className="h-7 w-7 shadow-md">
+                                                    <Button variant="secondary" size="icon" className="h-7 w-7 shadow-md border bg-background/95 hover:bg-background">
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
