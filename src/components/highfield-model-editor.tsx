@@ -349,14 +349,14 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
     };
 
     const handleSaveVariant = async () => {
-        if (!vSku.trim() || !vMaterial) return;
+        if (!vMaterial) return;
         setIsSaving(true);
         try {
             const varCol = collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`);
             const varRef = editingVariant ? doc(varCol, editingVariant.id) : doc(varCol);
             
             const data: any = {
-                sku: vSku.toUpperCase(),
+                sku: vSku.trim().toUpperCase() || null,
                 name: vName || `${vColor} ${vMaterial}`,
                 colorName: vColor,
                 colorCode: vColorCode.toUpperCase(),
@@ -389,7 +389,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
 
     const handleEdit = (v: any) => {
         setEditingVariant(v);
-        setVSku(v.sku);
+        setVSku(v.sku || '');
         setVName(v.name);
         setVColor(v.colorName || '');
         setVColorCode(v.colorCode || '');
@@ -460,14 +460,14 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                     <Card key={v.id} className="group relative flex gap-4 p-4 hover:border-primary/40 transition-all bg-muted/10">
                                         <div className="relative h-20 w-20 rounded border bg-background overflow-hidden shrink-0">
                                             {v.imageUrl ? (
-                                                <Image src={v.imageUrl} alt={v.sku} fill className="object-cover" />
+                                                <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-cover" />
                                             ) : (
                                                 <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                             )}
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <p className="font-black text-xs uppercase truncate leading-none">{v.name}</p>
-                                            <p className="font-mono text-[10px] font-bold text-primary mt-1 uppercase">{v.sku}</p>
+                                            <p className="font-mono text-[10px] font-bold text-primary mt-1 uppercase">{v.sku || 'NO SKU'}</p>
                                             <div className="flex flex-wrap gap-1.5 mt-3">
                                                 <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5">{v.material}</Badge>
                                                 <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5">{v.colorName} {v.colorCode && `(${v.colorCode})`}</Badge>
@@ -527,7 +527,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                     <Input placeholder="e.g. Storm Grey PVC" value={vName} onChange={e => setVName(e.target.value)} className="font-bold h-10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Specific SKU</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Specific SKU (Optional)</Label>
                                     <Input placeholder="CL310-PVC-SG" value={vSku} onChange={e => setVSku(e.target.value)} className="font-mono font-bold uppercase h-10" />
                                 </div>
                             </div>
@@ -582,7 +582,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                         </div>
                         <DialogFooter className="pt-4 border-t">
                             <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSaveVariant} disabled={isSaving || !vSku || !vMaterial}>
+                            <Button onClick={handleSaveVariant} disabled={isSaving || !vMaterial}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {editingVariant ? 'Update SKU' : 'Add SKU'}
                             </Button>

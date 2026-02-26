@@ -135,7 +135,7 @@ function HighfieldVariantList({
                     <div className="flex gap-3 p-3">
                         <div className="relative h-16 w-16 bg-muted rounded border overflow-hidden shrink-0">
                             {variant.imageUrl ? (
-                                <Image src={variant.imageUrl} alt={variant.sku} fill className="object-cover" sizes="64px" />
+                                <Image src={variant.imageUrl} alt={variant.sku || 'Variant'} fill className="object-cover" sizes="64px" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center">
                                     <Sailboat className="h-6 w-6 text-muted-foreground/30" />
@@ -144,7 +144,7 @@ function HighfieldVariantList({
                         </div>
                         <div className="min-w-0 flex-1 flex flex-col justify-center">
                             <p className="font-black text-[11px] uppercase truncate leading-none">{variant.name}</p>
-                            <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku}</p>
+                            <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku || 'NO SKU'}</p>
                             <div className="flex items-center gap-1.5 mt-2">
                                 {variant.material && <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase">{variant.material}</Badge>}
                                 {variant.colorName && (
@@ -347,7 +347,7 @@ export default function RangeDetailsPage() {
             }
 
             await setDoc(groupRef, data, { merge: true });
-            toast({ title: editingGroup ? "Group Updated" : "Group Created" });
+            toast({ title: groupName.trim() ? (editingGroup ? "Group Updated" : "Group Created") : "Configuration Updated" });
             setIsGroupDialogOpen(false);
             resetGroupForm();
         } catch (error) {
@@ -358,7 +358,7 @@ export default function RangeDetailsPage() {
     };
 
     const handleSaveVariant = async () => {
-        if (!targetGroup || !varSku.trim() || !vendor.id || !range.id) return;
+        if (!targetGroup || !varMaterial || !vendor.id || !range.id) return;
         setIsSavingVariant(true);
         try {
             const variantsCol = collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models/${targetGroup.id}/variants`);
@@ -366,7 +366,7 @@ export default function RangeDetailsPage() {
             
             const data: any = {
                 name: varName || `${varColor} ${varMaterial}`,
-                sku: varSku.toUpperCase(),
+                sku: varSku.trim().toUpperCase() || null,
                 colorName: varColor,
                 colorCode: varColorCode.toUpperCase(),
                 material: varMaterial,
@@ -432,7 +432,7 @@ export default function RangeDetailsPage() {
         setTargetGroup(group);
         setEditingVariant(v);
         setVarName(v.name);
-        setVarSku(v.sku);
+        setVarSku(v.sku || '');
         setVarColor(v.colorName || '');
         setVarColorCode(v.colorCode || '');
         setVarMaterial(v.material as any || '');
@@ -600,7 +600,7 @@ export default function RangeDetailsPage() {
                                 <Input placeholder="e.g. White PVC" value={varName} onChange={e => setVarName(e.target.value)} className="font-bold" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">SKU / Part ID</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">SKU / Part ID (Optional)</Label>
                                 <Input placeholder="HF-CL310-PVC-WH" value={varSku} onChange={e => setVarSku(e.target.value)} className="font-mono uppercase font-bold" />
                             </div>
                         </div>
@@ -659,7 +659,7 @@ export default function RangeDetailsPage() {
                     </div>
                     <DialogFooter className="pt-4 border-t">
                         <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                        <Button onClick={handleSaveVariant} disabled={isSavingVariant || !varSku || !varMaterial}>
+                        <Button onClick={handleSaveVariant} disabled={isSavingVariant || !varMaterial}>
                             {isSavingVariant && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {editingVariant ? 'Update SKU' : 'Create SKU'}
                         </Button>
