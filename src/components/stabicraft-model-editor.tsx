@@ -162,8 +162,8 @@ function UdekUploader({ patternId, label }: { patternId: string, label: string }
     return (
         <div className="space-y-2">
             <Label className="text-xs font-semibold">{label}</Label>
-            <div className="relative aspect-video rounded-md border-2 border-dashed bg-muted/20 overflow-hidden group">
-                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+            <div className="relative aspect-video rounded-xl border-2 border-dashed bg-muted/20 overflow-hidden group">
+                {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                 {imageUrl ? (
                     <>
                         <Image src={imageUrl} alt={label} fill className="object-cover" sizes="(max-width: 768px) 50vw, 25vw" />
@@ -382,7 +382,7 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                     <CollapsibleContent>
                         <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-6">
                             {packageLevelFields.map((field, index) => (
-                                <Card key={field.id} className="relative bg-muted/5 p-5 border-2 hover:border-primary/20 transition-all">
+                                <Card key={field.id} className="relative bg-muted/5 p-5 border-2 hover:border-primary/20 transition-all rounded-xl">
                                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10 transition-colors" onClick={() => removePackageLevel(index)}><Trash2 className="h-4 w-4" /></Button>
                                     <div className="space-y-4">
                                         <FormField control={control} name={`packageLevels.${index}.name`} render={({ field }) => ( <FormItem><FormLabel className="text-xs font-bold uppercase tracking-widest">Level Name</FormLabel><FormControl><Input placeholder="e.g. Adventure" className="h-10 font-bold" {...field} /></FormControl></FormItem> )} />
@@ -485,7 +485,7 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                                 </div>
                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {glossFields.map((field, index) => (
-                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint">
+                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
                                             <div className="grid gap-3">
                                                 <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.paint`} render={({ field }) => <Input {...field} className="h-8" placeholder="Paint Color" />} />
                                                 <FormField control={control} name={`paintAndGraphicOptions.standardGloss.${index}.graphics`} render={({ field }) => <Input {...field} className="h-8" placeholder="Graphics" />} />
@@ -502,7 +502,7 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                                 </div>
                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {metallicFields.map((field, index) => (
-                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint">
+                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
                                             <div className="grid gap-3">
                                                 <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.paint`} render={({ field }) => <Input {...field} className="h-8" placeholder="Paint Color" />} />
                                                 <FormField control={control} name={`paintAndGraphicOptions.standardMetallic.${index}.graphics`} render={({ field }) => <Input {...field} className="h-8" placeholder="Graphics" />} />
@@ -519,7 +519,7 @@ export function StabicraftModelEditor({ model, isModuleView }: { model: any, isM
                                 </div>
                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {powderFields.map((field, index) => (
-                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint">
+                                        <Card key={field.id} className="p-4 bg-muted/10 relative group/paint rounded-xl">
                                             <FormField control={control} name={`paintAndGraphicOptions.powderCoating.${index}.color`} render={({ field }) => <Input {...field} className="h-8" placeholder="Color Name" />} />
                                         </Card>
                                     ))}

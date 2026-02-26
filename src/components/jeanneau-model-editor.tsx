@@ -300,7 +300,7 @@ function MotorConfigurationsSection() {
                 <CollapsibleContent>
                     <CardContent className="pt-6 space-y-6">
                         {fields.map((field, index) => (
-                            <Card key={field.id} className="relative p-4 bg-muted/10">
+                            <Card key={field.id} className="relative p-4 bg-muted/10 rounded-xl">
                                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                 <div className="space-y-4">
                                     <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
@@ -483,7 +483,7 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
                     <CollapsibleContent>
                         <CardContent className="pt-8 space-y-6">
                             {colorFields.map((field, index) => (
-                                <Card key={field.id} className="p-5 border bg-muted/5">
+                                <Card key={field.id} className="p-5 border rounded-xl bg-muted/5">
                                     <div className="flex items-end gap-6">
                                         <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-xs font-bold uppercase text-muted-foreground">Variant Name</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
                                         <div className="flex-1">

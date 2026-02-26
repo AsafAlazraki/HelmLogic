@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldAlert, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, AlertTriangle, DollarSign, Percent, Anchor, Ship, RefreshCw, PackagePlus, Pencil, ArrowUp, ArrowDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
@@ -32,6 +32,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -67,6 +69,7 @@ const optionalFeatureSchema = z.object({
     imageUrl: z.string().nullable().optional(),
     cost: looseNumber,
     sellPriceExclGst: looseNumber,
+    applicableVariantIds: z.array(z.string()).default([]),
 });
 
 const documentSchema = z.object({
@@ -783,7 +786,7 @@ function FeaturesSection() {
     );
 }
 
-function OptionalFeatureItem({ index, remove, gstPercentage, categories }: { index: number; remove: (index: number) => void; gstPercentage: number, categories: string[] }) {
+function OptionalFeatureItem({ index, remove, gstPercentage, categories, variants }: { index: number; remove: (index: number) => void; gstPercentage: number, categories: string[], variants: any[] }) {
     const { control } = useFormContext<ModelFormData>();
     const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
     const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
@@ -791,6 +794,8 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories }: { ind
     const category = useWatch({ control, name: `optionalFeatures.${index}.category` });
     const storage = useStorage();
     const [isUploading, setIsUploading] = useState(false);
+
+    const isConsoleOrSeat = category === 'Consoles' || category === 'Seats';
 
     return (
         <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -803,7 +808,6 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories }: { ind
                     </CollapsibleTrigger>
                     <div className="flex items-center gap-2 min-w-0">
                         <span className="font-bold text-xs truncate">{name || 'Unnamed Option'}</span>
-                        {code && <span className="font-mono text-[10px] text-muted-foreground uppercase bg-muted px-1 rounded shrink-0">{code}</span>}
                         {category && <span className="text-[9px] font-black uppercase text-primary bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 truncate">{category}</span>}
                     </div>
                 </div>
@@ -887,6 +891,52 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories }: { ind
                                     )}
                                 />
                             </div>
+
+                            {isConsoleOrSeat && (
+                                <div className="space-y-2">
+                                    <FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Fits SKU (Compatibility)</FormLabel>
+                                    <FormField
+                                        control={control}
+                                        name={`optionalFeatures.${index}.applicableVariantIds`}
+                                        render={({ field }) => (
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" size="sm" className="w-full h-9 justify-start text-[10px] font-bold uppercase tracking-tighter bg-muted/10 border-dashed">
+                                                        {field.value?.length > 0 ? `${field.value.length} SKUs Selected` : 'Select Compatible SKUs...'}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[300px] p-0" align="start">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search SKUs..." className="h-8 text-xs" />
+                                                        <CommandList>
+                                                            <CommandEmpty className="p-4 text-xs italic text-muted-foreground">No variants found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {variants.map(v => {
+                                                                    const isSelected = field.value?.includes(v.id);
+                                                                    return (
+                                                                        <CommandItem
+                                                                            key={v.id}
+                                                                            onSelect={() => {
+                                                                                const current = field.value || [];
+                                                                                const next = isSelected ? current.filter((id: string) => id !== v.id) : [...current, v.id];
+                                                                                field.onChange(next);
+                                                                            }}
+                                                                            className="text-[10px] font-bold uppercase tracking-tight flex items-center justify-between"
+                                                                        >
+                                                                            <span>{v.name} {v.sku && `(${v.sku})`}</span>
+                                                                            {isSelected && <Check className="h-3 w-3 text-primary" />}
+                                                                        </CommandItem>
+                                                                    );
+                                                                })}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        )}
+                                    />
+                                </div>
+                            )}
                             
                             <div className="grid grid-cols-1 gap-4">
                                 <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
@@ -1196,6 +1246,13 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
     const modelCode = watch('modelCode');
 
+    // Fetch variants for SKU compatibility
+    const firestore = useFirestore();
+    const variantsQuery = useMemoFirebase(() => 
+        query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
+    [firestore, vendorId, rangeId, model.id]);
+    const { data: variants = [] } = useCollection<any>(variantsQuery);
+
     useEffect(() => {
         if (watchedOptionalFeatures) {
             const currentCats = [...new Set(watchedOptionalFeatures.map((f: any) => f.category).filter(Boolean) as string[])];
@@ -1253,7 +1310,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                         {optionalFeatureFields.length}
                                     </span>
                                 </div>
-                                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '' })}>
+                                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '', applicableVariantIds: [] })}>
                                     <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Option
                                 </Button>
                             </div>
@@ -1299,7 +1356,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="h-6 w-6 hover:bg-primary/10 text-primary"
-                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '' })}
+                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '', applicableVariantIds: [] })}
                                                             >
                                                                 <PlusCircle className="h-4 w-4" />
                                                             </Button>
@@ -1329,6 +1386,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                                             remove={removeOptionalFeature} 
                                                                             gstPercentage={gstPercentage}
                                                                             categories={categories}
+                                                                            variants={variants}
                                                                         />
                                                                     );
                                                                 })}
@@ -1355,6 +1413,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                         remove={removeOptionalFeature} 
                                                         gstPercentage={gstPercentage}
                                                         categories={categories}
+                                                        variants={variants}
                                                     />
                                                 );
                                             })}
