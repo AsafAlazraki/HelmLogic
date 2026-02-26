@@ -8,7 +8,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp, orderBy, setDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, ChevronDown, ImageIcon, CheckCircle2, X, Plus, Settings2, MoreHorizontal, Search } from 'lucide-react';
+import { Loader2, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, ChevronDown, ImageIcon, CheckCircle2, X, Plus, Settings2, MoreHorizontal, Search, ShieldCheck } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -153,18 +153,18 @@ function HighfieldVariantList({
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-12">
-                            <p className="font-black text-[11px] uppercase truncate leading-none">{variant.name}</p>
-                            <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku || 'NO SKU'}</p>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-10">
+                            <p className="font-black text-[11px] uppercase leading-tight">{variant.name}</p>
+                            <p className="font-mono text-[9px] text-primary font-bold mt-1 uppercase truncate">{variant.sku || 'NO SKU'}</p>
+                            <div className="flex flex-wrap items-center gap-1 mt-2">
                                 {variant.material && (
-                                    <Badge variant="secondary" className="text-[8px] h-4 px-1.5 font-black uppercase shrink-0">
+                                    <Badge variant="secondary" className="text-[8px] h-4 px-1 font-black uppercase shrink-0">
                                         {variant.material}
                                     </Badge>
                                 )}
                                 {variant.colorName && (
-                                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-black uppercase whitespace-nowrap">
-                                        {variant.colorName} {variant.colorCode && `(${variant.colorCode})`}
+                                    <Badge variant="outline" className="text-[8px] h-4 px-1 font-black uppercase max-w-full">
+                                        <span className="truncate">{variant.colorName}</span>
                                     </Badge>
                                 )}
                             </div>
@@ -174,8 +174,8 @@ function HighfieldVariantList({
                         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="default" size="icon" className="h-8 w-8 shadow-md">
-                                        <Pencil className="h-4 w-4" />
+                                    <Button variant="default" size="icon" className="h-7 w-7 shadow-sm">
+                                        <Pencil className="h-3.5 w-3.5" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
@@ -258,45 +258,45 @@ function HighfieldGroupedView({
     };
 
     return (
-        <div className="space-y-6 pr-4">
+        <div className="space-y-4">
             {models.map((group, index) => (
                 <Collapsible key={group.id} defaultOpen className="space-y-4">
                     <Card className="overflow-hidden border-l-4 border-l-primary shadow-sm">
-                        <div className="flex flex-col md:flex-row md:items-center p-4 gap-4 bg-muted/10">
-                            <div className="relative h-20 w-32 bg-secondary rounded border overflow-hidden shrink-0">
+                        <div className="flex flex-col md:flex-row md:items-center p-3 gap-4 bg-muted/10">
+                            <div className="relative h-16 w-28 bg-secondary rounded border overflow-hidden shrink-0">
                                 {group.coverImageUrl ? (
-                                    <Image src={group.coverImageUrl} alt={group.name} fill className="object-contain p-2" sizes="128px" />
+                                    <Image src={group.coverImageUrl} alt={group.name} fill className="object-contain p-1" sizes="128px" />
                                 ) : (
                                     <div className="flex h-full w-full items-center justify-center">
-                                        <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
+                                        <ImageIcon className="h-6 w-6 text-muted-foreground/20" />
                                     </div>
                                 )}
                             </div>
                             
-                            <div className="flex-1 min-w-0 pr-12">
+                            <div className="flex-1 min-w-0 pr-10">
                                 <div className="flex items-center gap-3">
-                                    <h3 className="font-black text-xl uppercase tracking-tight text-primary truncate">{group.modelCode}</h3>
+                                    <h3 className="font-black text-lg uppercase tracking-tight text-primary truncate">{group.modelCode}</h3>
                                 </div>
-                                <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest mt-1 truncate">Manage shared logic and variants for this model code.</p>
+                                <p className="text-[10px] font-bold text-muted-foreground/60 truncate uppercase">{group.name}</p>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
                                 {isAdmin && (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 border shadow-sm hover:bg-accent transition-colors">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 border shadow-sm hover:bg-accent transition-colors">
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-56">
                                             <DropdownMenuItem onClick={() => onEditGroup(group)}>
                                                 <Pencil className="mr-2 h-4 w-4" />
-                                                Edit Identity
+                                                Edit Group Name/Code
                                             </DropdownMenuItem>
                                             <DropdownMenuItem asChild>
                                                 <Link href={`/data-warehouse/${vendor.slug || vendor.id}/ranges/${range.slug || range.id}/models/${group.id}`}>
                                                     <Settings2 className="mr-2 h-4 w-4" />
-                                                    Shared Logic Config
+                                                    Business Rules Config
                                                 </Link>
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => onAddVariant(group)}>
@@ -306,23 +306,23 @@ function HighfieldGroupedView({
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem onClick={() => handleMoveGroup(index, 'up')} disabled={index === 0}>
                                                 <ArrowUp className="mr-2 h-4 w-4" />
-                                                Move Up
+                                                Move Range Up
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleMoveGroup(index, 'down')} disabled={index === models.length - 1}>
                                                 <ArrowDown className="mr-2 h-4 w-4" />
-                                                Move Down
+                                                Move Range Down
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteGroup(group.id)}>
                                                 <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete Range Series
+                                                Delete Model Range
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 )}
                                 <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-9 w-9 border shadow-sm group-data-[state=open]:bg-muted">
-                                        <ChevronDown className="h-5 w-5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 border shadow-sm">
+                                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                     </Button>
                                 </CollapsibleTrigger>
                             </div>
@@ -387,11 +387,10 @@ export default function RangeDetailsPage() {
 
     const { user, loading: userLoading } = useUser();
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string, organisationRole?: string, gstPercentage?: number }>(userProfileRef);
+    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string, gstPercentage?: number }>(userProfileRef);
     const isAdmin = !!userProfile && userProfile.appRole === 'HelmLogic Admin';
-    const gstRate = 1.10; // Default 10%
+    const gstRate = 1.10; 
 
-    // Fetch Vendor/Range
     const vendorQuery = useMemoFirebase(() => 
         vendorSlugOrId ? query(collection(firestore, 'data-warehouse'), where('slug', '==', vendorSlugOrId)) : null,
     [firestore, vendorSlugOrId]);
@@ -546,7 +545,6 @@ export default function RangeDetailsPage() {
         setIsVariantDialogOpen(true);
     };
 
-    // GST Calculation Helpers
     const updateCostFromExcl = (val: string) => {
         setVarCostExcl(val);
         const num = parseFloat(val);
@@ -579,35 +577,34 @@ export default function RangeDetailsPage() {
     return (
         <div className="space-y-4 max-h-[calc(100vh-120px)] flex flex-col">
             <Card className="flex flex-col min-h-0">
-                <CardHeader className="shrink-0">
+                <CardHeader className="shrink-0 border-b bg-card">
                     <div className="flex items-start justify-between">
                         <div>
                             <h1 className="text-2xl font-semibold">Product Range: {range?.name}</h1>
                             <BreadcrumbNav />
-                            <CardDescription>Manage Model Ranges (Codes) and their specific boat SKUs.</CardDescription>
+                            <CardDescription>Manage Model Codes and their associated material combinations.</CardDescription>
                         </div>
                         {isAdmin && (
-                            <Button onClick={() => setIsGroupDialogOpen(true)}>
+                            <Button onClick={() => setIsGroupDialogOpen(true)} className="shadow-md">
                                 <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Model Range
+                                Create Model Series
                             </Button>
                         )}
                     </div>
-                </CardHeader>
-                <CardContent className="flex flex-col min-h-0 space-y-4">
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="mt-4 flex items-center gap-2">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Search model codes or series names..." 
+                                placeholder="Quick search model codes or series names..." 
                                 className="pl-9 h-10 font-bold bg-muted/10 border-2 focus-visible:ring-primary/20"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
-
-                    <ScrollArea className="flex-1 pr-4">
+                </CardHeader>
+                <CardContent className="flex flex-col min-h-0 p-0">
+                    <ScrollArea className="flex-1 h-[600px] px-6 py-4">
                         {filteredGroups && filteredGroups.length > 0 ? (
                             <HighfieldGroupedView 
                                 models={filteredGroups} 
@@ -619,11 +616,11 @@ export default function RangeDetailsPage() {
                                 onEditVariant={openEditVariant}
                             />
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-lg bg-muted/5">
+                            <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed rounded-lg bg-muted/5 m-4">
                                 <Sailboat className="h-16 w-16 text-muted-foreground/20" />
                                 <h3 className="mt-4 text-lg font-semibold">{searchTerm ? 'No Matching Ranges' : 'No Model Ranges Yet'}</h3>
                                 <p className="mt-2 text-sm text-muted-foreground text-center">
-                                    {searchTerm ? `No results found for "${searchTerm}". Try a different code.` : 'Start by defining a Model Range (Code) for this range.'}
+                                    {searchTerm ? `No results found for "${searchTerm}". Try a different code.` : 'Start by defining a Model Code for this range.'}
                                 </p>
                             </div>
                         )}
@@ -631,12 +628,11 @@ export default function RangeDetailsPage() {
                 </CardContent>
             </Card>
 
-            {/* Group Dialog */}
             <Dialog open={isGroupDialogOpen} onOpenChange={(open) => !open && (setIsGroupDialogOpen(false), resetGroupForm())}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editingGroup ? 'Edit Model Range' : 'Add Model Range'}</DialogTitle>
-                        <DialogDescription>Define the global identity for a series of boat variants.</DialogDescription>
+                        <DialogTitle>{editingGroup ? 'Edit Model Series' : 'Add Model Series'}</DialogTitle>
+                        <DialogDescription>Define the base identity for a series of boat variants.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 py-4">
                         <div className="flex justify-center">
@@ -660,12 +656,12 @@ export default function RangeDetailsPage() {
                         </div>
                         <div className="grid gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-muted-foreground">Range Series Name</Label>
-                                <Input placeholder="e.g. Classic 310" value={groupName} onChange={e => setGroupName(e.target.value)} className="font-bold" />
+                                <Label className="text-[10px] font-black uppercase text-muted-foreground">Series Display Name</Label>
+                                <Input placeholder="e.g. Classic 310" value={groupName} onChange={e => setGroupName(e.target.value)} className="font-bold h-10" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-muted-foreground">Model Code</Label>
-                                <Input placeholder="e.g. CL310" value={groupCode} onChange={e => setGroupCode(e.target.value)} className="font-mono font-bold uppercase" />
+                                <Label className="text-[10px] font-black uppercase text-muted-foreground">Master Model Code</Label>
+                                <Input placeholder="e.g. CL310" value={groupCode} onChange={e => setGroupCode(e.target.value)} className="font-mono font-bold uppercase h-10" />
                             </div>
                         </div>
                     </div>
@@ -673,13 +669,12 @@ export default function RangeDetailsPage() {
                         <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
                         <Button onClick={handleSaveGroup} disabled={isSavingGroup || !groupName || !groupCode}>
                             {isSavingGroup && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {editingGroup ? 'Update Range' : 'Create Range'}
+                            {editingGroup ? 'Update Series' : 'Create Series'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Variant Dialog */}
             <Dialog open={isVariantDialogOpen} onOpenChange={(open) => !open && (setIsVariantDialogOpen(false), resetVariantForm())}>
                 <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
@@ -688,7 +683,7 @@ export default function RangeDetailsPage() {
                     </DialogHeader>
                     <div className="grid gap-6 py-4">
                         <div className="flex justify-center">
-                            <div className="relative h-32 w-56 bg-secondary/30 rounded border-2 border-dashed overflow-hidden group">
+                            <div className="relative h-36 w-60 bg-secondary/30 rounded border-2 border-dashed overflow-hidden group">
                                 {varImagePreview ? (
                                     <>
                                         <Image src={varImagePreview} alt="Variant" fill className="object-contain p-2" />
@@ -710,11 +705,11 @@ export default function RangeDetailsPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Variant Display Name</Label>
-                                <Input placeholder="e.g. White PVC" value={varName} onChange={e => setVarName(e.target.value)} className="font-bold" />
+                                <Input placeholder="e.g. White PVC" value={varName} onChange={e => setVarName(e.target.value)} className="font-bold h-10" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">SKU / Part ID (Optional)</Label>
-                                <Input placeholder="HF-CL310-PVC-WH" value={varSku} onChange={e => setVarSku(e.target.value)} className="font-mono uppercase font-bold" />
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Unique SKU (Optional)</Label>
+                                <Input placeholder="HF-CL310-PVC-WH" value={varSku} onChange={e => setVarSku(e.target.value)} className="font-mono uppercase font-bold h-10" />
                             </div>
                         </div>
 
@@ -753,11 +748,11 @@ export default function RangeDetailsPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
-                                <Input placeholder="White" value={varColor} onChange={e => setVarColor(e.target.value)} className="font-bold" />
+                                <Input placeholder="White" value={varColor} onChange={e => setVarColor(e.target.value)} className="font-bold h-9" />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Code</Label>
-                                <Input placeholder="WH" value={varColorCode} onChange={e => setVarColorCode(e.target.value)} className="font-mono font-bold uppercase" />
+                                <Input placeholder="WH" value={varColorCode} onChange={e => setVarColorCode(e.target.value)} className="font-mono font-bold uppercase h-9" />
                             </div>
                         </div>
 

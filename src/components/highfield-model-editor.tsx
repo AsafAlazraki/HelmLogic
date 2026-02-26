@@ -326,7 +326,6 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
     const [isSaving, setIsSaving] = useState(false);
     const [editingVariant, setEditingVariant] = useState<any | null>(null);
 
-    // Form state for SKU Variant
     const [vSku, setVSku] = useState('');
     const [vName, setVName] = useState('');
     const [vColor, setVColor] = useState('');
@@ -442,7 +441,6 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
         await batch.commit();
     };
 
-    // Calculation Helpers
     const updateCostExcl = (val: string) => {
         setVCostExcl(val);
         const num = parseFloat(val);
@@ -484,19 +482,21 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                             <div className="grid gap-4 md:grid-cols-2">
                                 {variants.map((v, index) => (
                                     <Card key={v.id} className="group relative flex gap-4 p-4 hover:border-primary/40 transition-all bg-muted/10">
-                                        <div className="relative h-24 w-40 rounded border bg-secondary/50 overflow-hidden shrink-0">
+                                        <div className="relative h-20 w-32 rounded border bg-secondary/50 overflow-hidden shrink-0">
                                             {v.imageUrl ? (
-                                                <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-1" />
+                                                <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-1" sizes="128px" />
                                             ) : (
                                                 <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                             )}
                                         </div>
-                                        <div className="min-w-0 flex-1 pr-12">
-                                            <p className="font-black text-xs uppercase truncate leading-none">{v.name}</p>
-                                            <p className="font-mono text-[10px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
+                                        <div className="min-w-0 flex-1 pr-10">
+                                            <p className="font-black text-[11px] uppercase leading-tight">{v.name}</p>
+                                            <p className="font-mono text-[9px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
                                             <div className="flex flex-wrap items-center gap-1.5 mt-3">
                                                 <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5 shrink-0">{v.material}</Badge>
-                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5 whitespace-nowrap">{v.colorName} {v.colorCode && `(${v.colorCode})`}</Badge>
+                                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase px-1.5 whitespace-normal">
+                                                    <span>{v.colorName} {v.colorCode && `(${v.colorCode})`}</span>
+                                                </Badge>
                                             </div>
                                             <div className="flex items-center gap-3 mt-3">
                                                 <div className="flex flex-col"><span className="text-[8px] font-bold text-muted-foreground uppercase">Retail</span><span className="text-[10px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span></div>
@@ -507,8 +507,8 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="default" size="icon" className="h-8 w-8 shadow-md">
-                                                        <Pencil className="h-4 w-4" />
+                                                    <Button variant="default" size="icon" className="h-7 w-7 shadow-md">
+                                                        <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-48">
@@ -790,7 +790,7 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories }: { ind
     return (
         <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
             <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
-                <div className="flex items-center gap-3 min-w-0 pr-12">
+                <div className="flex items-center gap-3 min-w-0 pr-10">
                     <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
                             <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
@@ -1057,10 +1057,10 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
                                                                 {field.value.map((id: string) => {
                                                                     const opt = featureOptions.find(o => o.id === id);
                                                                     return (
-                                                                        <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase whitespace-nowrap">
-                                                                            {opt?.label || id}
+                                                                        <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase whitespace-normal">
+                                                                            <span className="break-words">{opt?.label || id}</span>
                                                                             <button type="button" onClick={() => field.onChange(field.value.filter((v: string) => v !== id))}>
-                                                                                <X className="h-3 w-3 hover:text-destructive" />
+                                                                                <X className="h-3 w-3 hover:text-destructive shrink-0" />
                                                                             </button>
                                                                         </Badge>
                                                                     );
@@ -1213,10 +1213,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Variants Management Card */}
                 <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} gstPercentage={gstPercentage} />
-
-                {/* Visual Assets Card (Group Cover) */}
                 <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
             </div>
 
