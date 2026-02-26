@@ -1046,7 +1046,6 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                     <FeaturesSection />
                     <SpecsSection />
                     <MotorConfigurationsSection />
-                    <RulesSection model={model} modelCode={modelCode} />
                 </div>
                 <div className="lg:col-span-3 lg:order-2 space-y-8">
                     <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
@@ -1175,6 +1174,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                             </CollapsibleContent>
                         </Card>
                     </Collapsible>
+                    <RulesSection model={model} modelCode={modelCode} />
                 </div>
             </div>
         </div>
