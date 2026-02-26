@@ -152,7 +152,7 @@ function HighfieldVariantList({
                                 </div>
                             )}
                         </div>
-                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-24">
+                        <div className="min-w-0 flex-1 flex flex-col justify-center pr-12">
                             <p className="font-black text-[11px] uppercase truncate leading-none">{variant.name}</p>
                             <p className="font-mono text-[10px] text-primary font-bold mt-1.5 uppercase truncate">{variant.sku || 'NO SKU'}</p>
                             <div className="flex items-center gap-1.5 mt-2 overflow-hidden">
@@ -166,15 +166,34 @@ function HighfieldVariantList({
                         </div>
                     </div>
                     {isAdmin && (
-                        <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm p-0.5 rounded-bl-lg border-l border-b">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveVariant(index, 'up')} disabled={index === 0}>
-                                <ArrowUp className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveVariant(index, 'down')} disabled={index === variants.length - 1}>
-                                <ArrowDown className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditVariant(variant)}><Pencil className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteVariant(variant.id)}><Trash2 className="h-3 w-3" /></Button>
+                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="default" size="icon" className="h-8 w-8 shadow-md">
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => onEditVariant(variant)}>
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Edit SKU Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleMoveVariant(index, 'up')} disabled={index === 0}>
+                                        <ArrowUp className="mr-2 h-4 w-4" />
+                                        Move Up
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleMoveVariant(index, 'down')} disabled={index === variants.length - 1}>
+                                        <ArrowDown className="mr-2 h-4 w-4" />
+                                        Move Down
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteVariant(variant.id)}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete SKU
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     )}
                 </Card>

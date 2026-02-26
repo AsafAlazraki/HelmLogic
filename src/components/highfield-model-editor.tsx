@@ -25,6 +25,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const looseNumber = z.preprocess(
   (val) => {
@@ -484,7 +491,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                                 <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                             )}
                                         </div>
-                                        <div className="min-w-0 flex-1 pr-24">
+                                        <div className="min-w-0 flex-1 pr-12">
                                             <p className="font-black text-xs uppercase truncate leading-none">{v.name}</p>
                                             <p className="font-mono text-[10px] font-bold text-primary mt-1 uppercase truncate">{v.sku || 'NO SKU'}</p>
                                             <div className="flex flex-wrap gap-1.5 mt-3">
@@ -497,11 +504,34 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                                 <div className="flex flex-col"><span className="text-[8px] font-bold text-muted-foreground uppercase">Cost</span><span className="text-[10px] font-black">${(v.cost || 0).toLocaleString()}</span></div>
                                             </div>
                                         </div>
-                                        <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm p-0.5 rounded-lg border shadow-sm">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(index, 'up')} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMove(index, 'down')} disabled={index === variants.length - 1}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(v)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(v.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="default" size="icon" className="h-8 w-8 shadow-md">
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-48">
+                                                    <DropdownMenuItem onClick={() => handleEdit(v)}>
+                                                        <Pencil className="mr-2 h-4 w-4" />
+                                                        Edit Boat SKU
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => handleMove(index, 'up')} disabled={index === 0}>
+                                                        <ArrowUp className="mr-2 h-4 w-4" />
+                                                        Move Up
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleMove(index, 'down')} disabled={index === variants.length - 1}>
+                                                        <ArrowDown className="mr-2 h-4 w-4" />
+                                                        Move Down
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(v.id)}>
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Delete Variant
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
                                     </Card>
                                 ))}
@@ -760,7 +790,7 @@ function OptionalFeatureItem({ index, remove, gstPercentage, categories }: { ind
     return (
         <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
             <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
-                <div className="flex items-center gap-3 min-w-0 pr-24">
+                <div className="flex items-center gap-3 min-w-0 pr-12">
                     <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
                             <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
