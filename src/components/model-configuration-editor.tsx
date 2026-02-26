@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -120,35 +119,12 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
     };
 
     if (vendorSlug === 'highfield') {
-        const modelColors = data.colors || [];
-        const modelPricing = data.variantPricing || [];
-        const pricingMap = new Map();
-        modelPricing.forEach((p: any) => {
-            if (!p.colorId) return;
-            if (!pricingMap.has(p.colorId)) pricingMap.set(p.colorId, {});
-            const entry = pricingMap.get(p.colorId);
-            if (p.material === 'HYP') entry.HYP = p;
-            else if (p.material === 'PVC') entry.PVC = p;
-        });
         return {
             ...base,
             optionalFeatures: (data.optionalFeatures ?? []).map((f: any) => ({
                 ...f,
                 code: f.code ?? '',
             })),
-            colors: modelColors.map((color: any) => {
-                const prices = pricingMap.get(color.id) || {};
-                return {
-                    id: color.id,
-                    name: color.name,
-                    code: color.code ?? '',
-                    imageUrl: color.imageUrl ?? color.imageUrls?.[0] ?? null,
-                    pricing: {
-                        HYP: { cost: prices.HYP?.cost ?? null, sellPriceExclGst: prices.HYP?.sellPriceExclGst ?? null },
-                        PVC: { cost: prices.PVC?.cost ?? null, sellPriceExclGst: prices.PVC?.sellPriceExclGst ?? null },
-                    }
-                };
-            }),
             rules: data.rules ?? [],
         };
     }
@@ -265,36 +241,7 @@ export function ModelConfigurationEditor({
         setIsSubmitting(true);
 
         try {
-            let finalValues = values;
-
-            if (vendor.slug === 'highfield' && values.colors) {
-                const colorsForDb = values.colors.map((color: any) => ({
-                    id: color.id,
-                    name: color.name,
-                    code: color.code,
-                    imageUrl: color.imageUrl,
-                }));
-                
-                const variantPricingForDb: any[] = [];
-                values.colors.forEach((color: any) => {
-                    const { HYP, PVC } = color.pricing;
-                    if (HYP && (HYP.cost != null || HYP.sellPriceExclGst != null)) {
-                        variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'HYP', ...HYP });
-                    }
-                    if (PVC && (PVC.cost != null || PVC.sellPriceExclGst != null)) {
-                        variantPricingForDb.push({ colorId: color.id, colorName: color.name, material: 'PVC', ...PVC });
-                    }
-                });
-
-                const { colors, ...restOfValues } = values;
-                finalValues = {
-                    ...restOfValues,
-                    colors: colorsForDb,
-                    variantPricing: variantPricingForDb
-                };
-            }
-
-            const sanitizedValues = sanitizeDataForFirestore(finalValues);
+            const sanitizedValues = sanitizeDataForFirestore(values);
 
             if (isAdmin) {
                 const modelDocRef = doc(firestore, docPath);
@@ -346,8 +293,16 @@ export function ModelConfigurationEditor({
 
     const getModelEditor = () => {
         if (!model || !vendor || !docPath) return <p>Select a model to view details.</p>;
+        
+        // Extract Vendor and Range IDs from docPath
+        const parts = docPath.split('/');
+        const vId = parts[1];
+        const rId = parts[3];
+
         const commonProps = { 
             model, 
+            vendorId: vId,
+            rangeId: rId,
             isModuleView: !!isModuleView,
             gstPercentage,
             tradingCurrency,
@@ -414,7 +369,7 @@ export function ModelConfigurationEditor({
 
                     <Tabs defaultValue="boat" className="w-full">
                         <TabsList className={cn("grid w-full", isModuleView ? "grid-cols-4" : "grid-cols-1 max-w-[200px]")}>
-                            <TabsTrigger value="boat">Boat Details</TabsTrigger>
+                            <TabsTrigger value="boat">Series Details</TabsTrigger>
                             {isModuleView && (
                                 <>
                                     <TabsTrigger value="motor">Motor Options</TabsTrigger>
@@ -435,7 +390,7 @@ export function ModelConfigurationEditor({
                                         </CollapsibleTrigger>
                                         <CardTitle className="text-lg font-bold flex items-center gap-2">
                                             <ShieldCheck className="h-5 w-5 text-primary" />
-                                            Internal Details
+                                            Range Identity
                                         </CardTitle>
                                     </div>
                                 </div>
@@ -449,8 +404,8 @@ export function ModelConfigurationEditor({
                                                     <FormItem className="space-y-3">
                                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                                             <Tag className="h-3 w-3" />
-                                                            Model Name
-                                                        </FormLabel>
+                                                            Series Display Name
+                                                        </Label>
                                                         <FormControl>
                                                             <Input 
                                                                 {...field} 
@@ -470,7 +425,7 @@ export function ModelConfigurationEditor({
                                                     <FormItem className="space-y-3">
                                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                                             <Hash className="h-3 w-3" />
-                                                            Primary Model Code
+                                                            Master Model Code
                                                         </FormLabel>
                                                         <FormControl>
                                                             <Input 
