@@ -468,216 +468,214 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
     };
 
     return (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="Boat Variants & SKUs" 
-                    count={variants?.length || 0}
-                    onAdd={() => setIsAddOpen(true)}
-                />
-                <CollapsibleContent>
-                    <CardContent className="pt-6 space-y-4">
-                        {loading ? (
-                            <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                        ) : variants && variants.length > 0 ? (
-                            <div className="grid gap-4 md:grid-cols-2">
-                                {variants.map((v, index) => (
-                                    <Card key={v.id} className="group relative flex flex-col overflow-hidden hover:border-primary/40 transition-all bg-muted/5 border-2 shadow-none rounded-xl">
-                                        <div className="relative aspect-[16/10] w-full border-b bg-secondary/30 overflow-hidden shrink-0">
-                                            {v.imageUrl ? (
-                                                <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-2" sizes="256px" />
-                                            ) : (
-                                                <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
-                                            )}
-                                        </div>
-                                        <div className="p-4 flex flex-col flex-1 gap-3">
-                                            <div className="min-w-0 pr-10">
-                                                <p className="font-black text-[11px] uppercase leading-tight truncate">{v.name}</p>
-                                                <p className="font-mono text-[9px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
-                                            </div>
-                                            
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                                <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5 shrink-0">{v.material}</Badge>
-                                                <Badge variant="outline" className="text-[8px] h-auto font-black uppercase px-1.5 whitespace-normal break-words">
-                                                    {v.colorName} {v.colorCode && `(${v.colorCode})`}
-                                                </Badge>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-3 mt-auto pt-2 border-t">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Retail (Excl)</span>
-                                                    <span className="text-[11px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex flex-col text-right">
-                                                    <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Factory Cost</span>
-                                                    <span className="text-[11px] font-black">${(v.cost || 0).toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="secondary" size="icon" className="h-7 w-7 shadow-md border bg-background/95 hover:bg-background">
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-48">
-                                                    <DropdownMenuItem onClick={() => handleEdit(v)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit Boat SKU
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => handleMove(index, 'up')} disabled={index === 0}>
-                                                        <ArrowUp className="mr-2 h-4 w-4" />
-                                                        Move Up
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleMove(index, 'down')} disabled={index === variants.length - 1}>
-                                                        <ArrowDown className="mr-2 h-4 w-4" />
-                                                        Move Down
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(v.id)}>
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Variant
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </Card>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="py-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
-                                <PackagePlus className="h-10 w-10 opacity-20 mb-2" />
-                                <p className="text-xs font-bold uppercase tracking-widest">No SKUs Added Yet</p>
-                                <Button variant="link" size="sm" onClick={() => setIsAddOpen(true)}>Create First Variant</Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </CollapsibleContent>
-
-                <Dialog open={isAddOpen} onOpenChange={(o) => !o && (setIsAddOpen(false), resetForm())}>
-                    <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>{editingVariant ? 'Edit Variant SKU' : 'Add New Boat SKU'}</DialogTitle>
-                            <DialogDescription>Individual boat details including material-specific imagery.</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-6 py-4">
-                            <div className="flex justify-center">
-                                <div className="relative h-32 w-56 bg-secondary/30 rounded border-2 border-dashed overflow-hidden group">
-                                    {vImagePreview ? (
-                                        <>
-                                            <Image src={vImagePreview} alt="SKU Preview" fill className="object-contain p-2" />
-                                            <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVImage(null); setVImagePreview(null); }}><X className="h-3 w-3" /></Button>
-                                        </>
-                                    ) : (
-                                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                            <ImageIcon className="h-6 w-6 text-muted-foreground/40 mb-1" />
-                                            <span className="text-[8px] font-black uppercase text-muted-foreground">Upload SKU Photo</span>
-                                            <Input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) { setVImage(file); setVImagePreview(URL.createObjectURL(file)); }
-                                            }} />
-                                        </label>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Variant Display Name</Label>
-                                    <Input placeholder="e.g. Storm Grey PVC" value={vName} onChange={e => setVName(e.target.value)} className="font-bold h-10" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Specific SKU (Optional)</Label>
-                                    <Input placeholder="CL310-PVC-SG" value={vSku} onChange={e => setVSku(e.target.value)} className="font-mono font-bold uppercase h-10" />
-                                </div>
-                            </div>
-                            
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Hull Material</Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Card 
-                                        className={cn(
-                                            "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
-                                            vMaterial === 'PVC' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="Boat Variants & SKUs" 
+                count={variants?.length || 0}
+                onAdd={() => setIsAddOpen(true)}
+            />
+            <CollapsibleContent>
+                <CardContent className="pt-6 space-y-4">
+                    {loading ? (
+                        <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                    ) : variants && variants.length > 0 ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {variants.map((v, index) => (
+                                <Card key={v.id} className="group relative flex flex-col overflow-hidden hover:border-primary/40 transition-all bg-muted/5 border-2 shadow-none rounded-xl">
+                                    <div className="relative aspect-[16/10] w-full border-b bg-secondary/30 overflow-hidden shrink-0">
+                                        {v.imageUrl ? (
+                                            <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-2" sizes="256px" />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
                                         )}
-                                        onClick={() => setVMaterial('PVC')}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-black text-sm uppercase">PVC</span>
-                                            {vMaterial === 'PVC' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    </div>
+                                    <div className="p-4 flex flex-col flex-1 gap-3">
+                                        <div className="min-w-0 pr-10">
+                                            <p className="font-black text-[11px] uppercase leading-tight truncate">{v.name}</p>
+                                            <p className="font-mono text-[9px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
                                         </div>
-                                        <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Standard Durability</p>
-                                    </Card>
-                                    <Card 
-                                        className={cn(
-                                            "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
-                                            vMaterial === 'HYP' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
-                                        )}
-                                        onClick={() => setVMaterial('HYP')}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-black text-sm uppercase">Hypalon (HYP)</span>
-                                            {vMaterial === 'HYP' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                        
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5 shrink-0">{v.material}</Badge>
+                                            <Badge variant="outline" className="text-[8px] h-auto font-black uppercase px-1.5 whitespace-normal break-words">
+                                                {v.colorName} {v.colorCode && `(${v.colorCode})`}
+                                            </Badge>
                                         </div>
-                                        <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Premium UV Resistance</p>
-                                    </Card>
-                                </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
-                                    <Input placeholder="Storm Grey" value={vColor} onChange={e => setVColor(e.target.value)} className="font-bold h-9" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Code</Label>
-                                    <Input placeholder="SG" value={vColorCode} onChange={e => setVColorCode(e.target.value)} className="font-mono font-bold uppercase h-9" />
-                                </div>
-                            </div>
-                            
-                            <Separator />
-
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Factory Cost</Label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
-                                            <Input type="number" placeholder="0.00" value={vCostExcl} onChange={e => updateCostExcl(e.target.value)} className="h-9 text-xs font-bold" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
-                                            <Input type="number" placeholder="0.00" value={vCostIncl} onChange={e => updateCostIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
+                                        <div className="grid grid-cols-2 gap-3 mt-auto pt-2 border-t">
+                                            <div className="flex flex-col">
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Retail (Excl)</span>
+                                                <span className="text-[11px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex flex-col text-right">
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Factory Cost</span>
+                                                <span className="text-[11px] font-black">${(v.cost || 0).toLocaleString()}</span>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="secondary" size="icon" className="h-7 w-7 shadow-md border bg-background/95 hover:bg-background">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem onClick={() => handleEdit(v)}>
+                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                    Edit Boat SKU
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleMove(index, 'up')} disabled={index === 0}>
+                                                    <ArrowUp className="mr-2 h-4 w-4" />
+                                                    Move Up
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleMove(index, 'down')} disabled={index === variants.length - 1}>
+                                                    <ArrowDown className="mr-2 h-4 w-4" />
+                                                    Move Down
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(v.id)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete Variant
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="py-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
+                            <PackagePlus className="h-10 w-10 opacity-20 mb-2" />
+                            <p className="text-xs font-bold uppercase tracking-widest">No SKUs Added Yet</p>
+                            <Button variant="link" size="sm" onClick={() => setIsAddOpen(true)}>Create First Variant</Button>
+                        </div>
+                    )}
+                </CardContent>
+            </CollapsibleContent>
+
+            <Dialog open={isAddOpen} onOpenChange={(o) => !o && (setIsAddOpen(false), resetForm())}>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>{editingVariant ? 'Edit Variant SKU' : 'Add New Boat SKU'}</DialogTitle>
+                        <DialogDescription>Individual boat details including material-specific imagery.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-6 py-4">
+                        <div className="flex justify-center">
+                            <div className="relative h-32 w-56 bg-secondary/30 rounded border-2 border-dashed overflow-hidden group">
+                                {vImagePreview ? (
+                                    <>
+                                        <Image src={vImagePreview} alt="SKU Preview" fill className="object-contain p-2" />
+                                        <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVImage(null); setVImagePreview(null); }}><X className="h-3 w-3" /></Button>
+                                    </>
+                                ) : (
+                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                        <ImageIcon className="h-6 w-6 text-muted-foreground/40 mb-1" />
+                                        <span className="text-[8px] font-black uppercase text-muted-foreground">Upload SKU Photo</span>
+                                        <Input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) { setVImage(file); setVImagePreview(URL.createObjectURL(file)); }
+                                        }} />
+                                    </label>
+                                )}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Variant Display Name</Label>
+                                <Input placeholder="e.g. Storm Grey PVC" value={vName} onChange={e => setVName(e.target.value)} className="font-bold h-10" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Specific SKU (Optional)</Label>
+                                <Input placeholder="CL310-PVC-SG" value={vSku} onChange={e => setVSku(e.target.value)} className="font-mono font-bold uppercase h-10" />
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Hull Material</Label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Card 
+                                    className={cn(
+                                        "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
+                                        vMaterial === 'PVC' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+                                    )}
+                                    onClick={() => setVMaterial('PVC')}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-black text-sm uppercase">PVC</span>
+                                        {vMaterial === 'PVC' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Standard Durability</p>
+                                </Card>
+                                <Card 
+                                    className={cn(
+                                        "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
+                                        vMaterial === 'HYP' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+                                    )}
+                                    onClick={() => setVMaterial('HYP')}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-black text-sm uppercase">Hypalon (HYP)</span>
+                                        {vMaterial === 'HYP' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Premium UV Resistance</p>
+                                </Card>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
+                                <Input placeholder="Storm Grey" value={vColor} onChange={e => setVColor(e.target.value)} className="font-bold h-9" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Code</Label>
+                                <Input placeholder="SG" value={vColorCode} onChange={e => setVColorCode(e.target.value)} className="font-mono font-bold uppercase h-9" />
+                            </div>
+                        </div>
+                        
+                        <Separator />
+
+                        <div className="grid grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Factory Cost</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={vCostExcl} onChange={e => updateCostExcl(e.target.value)} className="h-9 text-xs font-bold" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={vCostIncl} onChange={e => updateCostIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
+                                    </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Retail Sell</Label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
-                                            <Input type="number" placeholder="0.00" value={vPriceExcl} onChange={e => updatePriceExcl(e.target.value)} className="h-9 text-xs font-bold" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
-                                            <Input type="number" placeholder="0.00" value={vPriceIncl} onChange={e => updatePriceIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
-                                        </div>
+                            </div>
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Retail Sell</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={vPriceExcl} onChange={e => updatePriceExcl(e.target.value)} className="h-9 text-xs font-bold" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={vPriceIncl} onChange={e => updatePriceIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <DialogFooter className="pt-4 border-t">
-                            <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSaveVariant} disabled={isSaving || !vMaterial}>
-                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {editingVariant ? 'Update SKU' : 'Add SKU'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </Card>
+                    </div>
+                    <DialogFooter className="pt-4 border-t">
+                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveVariant} disabled={isSaving || !vMaterial}>
+                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {editingVariant ? 'Update SKU' : 'Add SKU'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Collapsible>
     );
 }
@@ -705,46 +703,44 @@ function SpecsSection() {
     };
 
     return (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="General Specifications" 
-                    count={fields.length} 
-                    onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })}
-                />
-                <CollapsibleContent>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="grid gap-3">
-                            {fields.map((field, index) => (
-                                <div key={field.id} className="flex items-center gap-2 group/field">
-                                    <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            ))}
-                        </div>
-                        <Separator />
-                        <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import Specs</Label>
-                            <Textarea 
-                                placeholder="Paste specs (e.g. Length: 5.4m) one per line..." 
-                                className="bg-background min-h-[100px]" 
-                                value={bulkSpecs} 
-                                onChange={(e) => setBulkSpecs(e.target.value)} 
-                            />
-                            <Button 
-                                type="button" 
-                                variant="secondary" 
-                                size="sm" 
-                                className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" 
-                                onClick={handleBulkImport}
-                            >
-                                Append Bulk Specs
-                            </Button>
-                        </div>
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="General Specifications" 
+                count={fields.length} 
+                onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })}
+            />
+            <CollapsibleContent>
+                <CardContent className="space-y-4 pt-6">
+                    <div className="grid gap-3">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2 group/field">
+                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
+                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                    <Separator />
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import Specs</Label>
+                        <Textarea 
+                            placeholder="Paste specs (e.g. Length: 5.4m) one per line..." 
+                            className="bg-background min-h-[100px]" 
+                            value={bulkSpecs} 
+                            onChange={(e) => setBulkSpecs(e.target.value)} 
+                        />
+                        <Button 
+                            type="button" 
+                            variant="secondary" 
+                            size="sm" 
+                            className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" 
+                            onClick={handleBulkImport}
+                        >
+                            Append Bulk Specs
+                        </Button>
+                    </div>
+                </CardContent>
+            </CollapsibleContent>
         </Collapsible>
     );
 }
@@ -755,36 +751,34 @@ function FeaturesSection() {
     const [bulkFeatures, setBulkFeatures] = useState('');
 
     return (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <CollapsibleCardHeader 
-                    title="Standard Features" 
-                    count={fields.length} 
-                    onAdd={() => append('')}
-                />
-                <CollapsibleContent>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
-                            {fields.map((field, index) => (
-                                <div key={field.id} className="flex items-center gap-2 group/feat">
-                                    <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            ))}
-                        </div>
-                        <Separator />
-                        <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
-                            <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                            <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
-                                const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-                                append(newFeatures); 
-                                setBulkFeatures(''); 
-                            }}>Append Bulk Items</Button>
-                        </div>
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="Standard Features" 
+                count={fields.length} 
+                onAdd={() => append('')}
+            />
+            <CollapsibleContent>
+                <CardContent className="space-y-4 pt-6">
+                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2 group/feat">
+                                <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                    <Separator />
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
+                        <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                        <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
+                            const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
+                            append(newFeatures); 
+                            setBulkFeatures(''); 
+                        }}>Append Bulk Items</Button>
+                    </div>
+                </CardContent>
+            </CollapsibleContent>
         </Collapsible>
     );
 }
@@ -948,173 +942,171 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
     };
 
     return (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
-                    <div className="flex items-center gap-3">
-                        <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
-                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </Button>
-                        </CollapsibleTrigger>
-                        <CardTitle className="text-lg font-bold">Business Logic Rules</CardTitle>
-                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-                            {fields.length}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button type="button" variant="secondary" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest" onClick={handleSyncRules} disabled={isSyncing}>
-                            {isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />}
-                            Sync to Series
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
+                <div className="flex items-center gap-3">
+                    <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                         </Button>
-                        <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => append({ id: `rule-${Date.now()}`, sourceType: 'option', sourceOptionId: '', type: 'include', targetOptionIds: [] })}>
-                            <Plus className="mr-1.5 h-3.5 w-3.5" />
-                            Add Rule
-                        </Button>
-                    </div>
+                    </CollapsibleTrigger>
+                    <CardTitle className="text-lg font-bold">Business Logic Rules</CardTitle>
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+                        {fields.length}
+                    </span>
                 </div>
-                <CollapsibleContent>
-                    <CardContent className="pt-6 space-y-6">
-                        {fields.length > 0 ? (
-                            fields.map((field, index) => {
-                                const sourceType = useWatch({ control, name: `rules.${index}.sourceType` as const });
-                                
-                                return (
-                                    <Card key={field.id} className="relative p-5 bg-muted/5 border-2 hover:border-primary/20 transition-all rounded-xl">
-                                        <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                        
-                                        <div className="space-y-6">
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                                                <div className="w-32 space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trigger Type:</Label>
-                                                    <FormField
-                                                        control={control}
-                                                        name={`rules.${index}.sourceType`}
-                                                        render={({ field }) => (
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <FormControl>
-                                                                    <SelectTrigger className="h-10 font-bold bg-background">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    <SelectItem value="option">Option</SelectItem>
-                                                                    <SelectItem value="material">Material</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <div className="flex-1 space-y-2 pr-12">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                                        {sourceType === 'material' ? 'If Material Is:' : 'If This Option is Selected:'}
-                                                    </Label>
-                                                    <FormField
-                                                        control={control}
-                                                        name={`rules.${index}.sourceOptionId`}
-                                                        render={({ field }) => (
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <FormControl>
-                                                                    <SelectTrigger className="h-10 font-bold bg-background">
-                                                                        <SelectValue placeholder="Select..." />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    {sourceType === 'material' ? (
-                                                                        <>
-                                                                            <SelectItem value="PVC">PVC</SelectItem>
-                                                                            <SelectItem value="HYP">Hypalon (HYP)</SelectItem>
-                                                                        </>
-                                                                    ) : (
-                                                                        featureOptions.map(opt => (
-                                                                            <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-                                                                        ))
-                                                                    )}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <div className="w-32 space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action:</Label>
-                                                    <FormField
-                                                        control={control}
-                                                        name={`rules.${index}.type`}
-                                                        render={({ field }) => (
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <FormControl>
-                                                                    <SelectTrigger className="h-10 font-black uppercase tracking-tighter bg-background">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    <SelectItem value="include" className="text-green-600 font-bold">Include</SelectItem>
-                                                                    <SelectItem value="exclude" className="text-destructive font-bold">Exclude</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        )}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                                    {useWatch({ control, name: `rules.${index}.type` }) === 'include' ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <AlertTriangle className="h-3 w-3 text-destructive" />}
-                                                    Target Options:
-                                                </Label>
-                                                
+                <div className="flex items-center gap-2">
+                    <Button type="button" variant="secondary" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest" onClick={handleSyncRules} disabled={isSyncing}>
+                        {isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />}
+                        Sync to Series
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => append({ id: `rule-${Date.now()}`, sourceType: 'option', sourceOptionId: '', type: 'include', targetOptionIds: [] })}>
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                        Add Rule
+                    </Button>
+                </div>
+            </div>
+            <CollapsibleContent>
+                <CardContent className="pt-6 space-y-6">
+                    {fields.length > 0 ? (
+                        fields.map((field, index) => {
+                            const sourceType = useWatch({ control, name: `rules.${index}.sourceType` as const });
+                            
+                            return (
+                                <Card key={field.id} className="relative p-5 bg-muted/5 border-2 hover:border-primary/20 transition-all rounded-xl">
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    
+                                    <div className="space-y-6">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                            <div className="w-32 space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trigger Type:</Label>
                                                 <FormField
                                                     control={control}
-                                                    name={`rules.${index}.targetOptionIds`}
+                                                    name={`rules.${index}.sourceType`}
                                                     render={({ field }) => (
-                                                        <div className="p-4 border rounded-lg bg-background min-h-[80px]">
-                                                            <div className="flex flex-wrap gap-2 mb-3">
-                                                                {field.value.map((id: string) => {
-                                                                    const opt = featureOptions.find(o => o.id === id);
-                                                                    return (
-                                                                        <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase whitespace-normal">
-                                                                            <span className="break-words">{opt?.label || id}</span>
-                                                                            <button type="button" onClick={() => field.onChange(field.value.filter((v: string) => v !== id))}>
-                                                                                <X className="h-3 w-3 hover:text-destructive shrink-0" />
-                                                                            </button>
-                                                                        </Badge>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                            <Select onValueChange={(val) => !field.value.includes(val) && field.onChange([...field.value, val])} value="">
-                                                                <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-widest w-full border-dashed bg-muted/20">
-                                                                    <SelectValue placeholder="Add Target Option..." />
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-10 font-bold bg-background">
+                                                                    <SelectValue />
                                                                 </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {featureOptions
-                                                                        .filter(opt => opt.id !== useWatch({ control, name: `rules.${index}.sourceOptionId` }))
-                                                                        .map(opt => (
-                                                                            <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-                                                                        ))
-                                                                    }
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="option">Option</SelectItem>
+                                                                <SelectItem value="material">Material</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="flex-1 space-y-2 pr-12">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                    {sourceType === 'material' ? 'If Material Is:' : 'If This Option is Selected:'}
+                                                </Label>
+                                                <FormField
+                                                    control={control}
+                                                    name={`rules.${index}.sourceOptionId`}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-10 font-bold bg-background">
+                                                                    <SelectValue placeholder="Select..." />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                {sourceType === 'material' ? (
+                                                                    <>
+                                                                        <SelectItem value="PVC">PVC</SelectItem>
+                                                                        <SelectItem value="HYP">Hypalon (HYP)</SelectItem>
+                                                                    </>
+                                                                ) : (
+                                                                    featureOptions.map(opt => (
+                                                                        <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                                                    ))
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="w-32 space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action:</Label>
+                                                <FormField
+                                                    control={control}
+                                                    name={`rules.${index}.type`}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="h-10 font-black uppercase tracking-tighter bg-background">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="include" className="text-green-600 font-bold">Include</SelectItem>
+                                                                <SelectItem value="exclude" className="text-destructive font-bold">Exclude</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                     )}
                                                 />
                                             </div>
                                         </div>
-                                    </Card>
-                                );
-                            })
-                        ) : (
-                            <div className="py-12 border-2 border-dashed rounded-xl bg-muted/5 flex flex-col items-center justify-center text-center">
-                                <ShieldAlert className="h-10 w-10 text-muted-foreground opacity-20 mb-4" />
-                                <p className="text-sm font-medium text-muted-foreground">No logic rules defined for this series.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
+
+                                        <div className="space-y-3">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                {useWatch({ control, name: `rules.${index}.type` }) === 'include' ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <AlertTriangle className="h-3 w-3 text-destructive" />}
+                                                Target Options:
+                                            </Label>
+                                            
+                                            <FormField
+                                                control={control}
+                                                name={`rules.${index}.targetOptionIds`}
+                                                render={({ field }) => (
+                                                    <div className="p-4 border rounded-lg bg-background min-h-[80px]">
+                                                        <div className="flex flex-wrap gap-2 mb-3">
+                                                            {field.value.map((id: string) => {
+                                                                const opt = featureOptions.find(o => o.id === id);
+                                                                return (
+                                                                    <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase whitespace-normal">
+                                                                        <span className="break-words">{opt?.label || id}</span>
+                                                                        <button type="button" onClick={() => field.onChange(field.value.filter((v: string) => v !== id))}>
+                                                                            <X className="h-3 w-3 hover:text-destructive shrink-0" />
+                                                                        </button>
+                                                                    </Badge>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <Select onValueChange={(val) => !field.value.includes(val) && field.onChange([...field.value, val])} value="">
+                                                            <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-widest w-full border-dashed bg-muted/20">
+                                                                <SelectValue placeholder="Add Target Option..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {featureOptions
+                                                                    .filter(opt => opt.id !== useWatch({ control, name: `rules.${index}.sourceOptionId` }))
+                                                                    .map(opt => (
+                                                                        <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                                                    ))
+                                                                }
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                </Card>
+                            );
+                        })
+                    ) : (
+                        <div className="py-12 border-2 border-dashed rounded-xl bg-muted/5 flex flex-col items-center justify-center text-center">
+                            <ShieldAlert className="h-10 w-10 text-muted-foreground opacity-20 mb-4" />
+                            <p className="text-sm font-medium text-muted-foreground">No logic rules defined for this series.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </CollapsibleContent>
         </Collapsible>
     );
 }
@@ -1146,52 +1138,50 @@ function MotorConfigurationsSection() {
     };
 
     return (
-        <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <Card className="border-none shadow-none rounded-none">
-                <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
-                    <div className="flex items-center gap-3">
-                        <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
-                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </Button>
-                        </CollapsibleTrigger>
-                        <CardTitle className="text-lg font-bold">Motor Configurations</CardTitle>
-                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-                            {fields.length}
-                        </span>
-                    </div>
-                    <Select onValueChange={handleAddConfig}>
-                        <SelectTrigger className="h-8 w-[180px] text-xs">
-                            <SelectValue placeholder="Add Configuration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
+                <div className="flex items-center gap-3">
+                    <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        </Button>
+                    </CollapsibleTrigger>
+                    <CardTitle className="text-lg font-bold">Motor Configurations</CardTitle>
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+                        {fields.length}
+                    </span>
                 </div>
-                <CollapsibleContent>
-                    <CardContent className="pt-6 space-y-6">
-                        {fields.map((field, index) => (
-                            <Card key={field.id} className="relative p-4 bg-muted/10 rounded-xl">
-                                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                                <div className="space-y-4">
-                                    <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                                    <div className="grid gap-4">
-                                        {(field as any).engines.map((engine: any, engineIdx: number) => (
-                                            <div key={engineIdx} className="grid grid-cols-4 gap-3 items-end border-t pt-4 first:border-0 first:pt-0">
-                                                <div className="space-y-1"><Label className="text-[10px] uppercase font-bold text-muted-foreground">{engine.label}</Label></div>
-                                                <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                                <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                                <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                            </div>
-                                        ))}
-                                    </div>
+                <Select onValueChange={handleAddConfig}>
+                    <SelectTrigger className="h-8 w-[180px] text-xs">
+                        <SelectValue placeholder="Add Configuration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <CollapsibleContent>
+                <CardContent className="pt-6 space-y-6">
+                    {fields.map((field, index) => (
+                        <Card key={field.id} className="relative p-4 bg-muted/10 rounded-xl border-none shadow-none">
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                            <div className="space-y-4">
+                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
+                                <div className="grid gap-4">
+                                    {(field as any).engines.map((engine: any, engineIdx: number) => (
+                                        <div key={engineIdx} className="grid grid-cols-4 gap-3 items-end border-t pt-4 first:border-0 first:pt-0">
+                                            <div className="space-y-1"><Label className="text-[10px] uppercase font-bold text-muted-foreground">{engine.label}</Label></div>
+                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                        </div>
+                                    ))}
                                 </div>
-                            </Card>
-                        ))}
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
+                            </div>
+                        </Card>
+                    ))}
+                </CardContent>
+            </CollapsibleContent>
         </Collapsible>
     );
 }
@@ -1249,132 +1239,130 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                     <MotorConfigurationsSection />
                 </div>
                 <div className="lg:col-span-3 lg:order-2 space-y-8">
-                    <Collapsible asChild className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                        <Card className="border-none shadow-none rounded-none">
-                            <div className="flex flex-col py-4 px-6 border-b bg-card gap-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <CollapsibleTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
-                                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                            </Button>
-                                        </CollapsibleTrigger>
-                                        <CardTitle className="text-lg font-bold">Factory Options</CardTitle>
-                                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-                                            {optionalFeatureFields.length}
-                                        </span>
+                    <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                        <div className="flex flex-col py-4 px-6 border-b bg-card gap-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <CollapsibleTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                        </Button>
+                                    </CollapsibleTrigger>
+                                    <CardTitle className="text-lg font-bold">Factory Options</CardTitle>
+                                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+                                        {optionalFeatureFields.length}
+                                    </span>
+                                </div>
+                                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '' })}>
+                                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Option
+                                </Button>
+                            </div>
+                        </div>
+
+                        <CollapsibleContent>
+                            <div className="px-6 py-4 border-b bg-muted/10">
+                                <div className="flex items-center gap-2 p-1.5 bg-background rounded-lg border border-dashed shadow-inner">
+                                    <div className="relative flex-1">
+                                        <FolderPlus className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Define New Category..." 
+                                            value={newCategoryName} 
+                                            onChange={(e) => setNewCategoryName(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+                                            className="h-8 pl-8 text-[10px] font-bold bg-transparent border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+                                        />
                                     </div>
-                                    <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '' })}>
-                                        <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Option
-                                    </Button>
+                                    <Button type="button" size="sm" variant="secondary" className="h-7 text-[9px] font-black uppercase tracking-widest px-3" onClick={handleAddCategory}>Create</Button>
                                 </div>
                             </div>
+                            <CardContent className="pt-6">
+                                <ScrollArea className="max-h-[700px] pr-4">
+                                    <div className="space-y-8">
+                                        {categories.map(cat => {
+                                            const catItems = optionalFeatureFields.filter((_, idx) => watchedOptionalFeatures[idx]?.category === cat);
 
-                            <CollapsibleContent>
-                                <div className="px-6 py-4 border-b bg-muted/10">
-                                    <div className="flex items-center gap-2 p-1.5 bg-background rounded-lg border border-dashed shadow-inner">
-                                        <div className="relative flex-1">
-                                            <FolderPlus className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                                            <Input 
-                                                placeholder="Define New Category..." 
-                                                value={newCategoryName} 
-                                                onChange={(e) => setNewCategoryName(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
-                                                className="h-8 pl-8 text-[10px] font-bold bg-transparent border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
-                                            />
-                                        </div>
-                                        <Button type="button" size="sm" variant="secondary" className="h-7 text-[9px] font-black uppercase tracking-widest px-3" onClick={handleAddCategory}>Create</Button>
-                                    </div>
-                                </div>
-                                <CardContent className="pt-6">
-                                    <ScrollArea className="max-h-[700px] pr-4">
-                                        <div className="space-y-8">
-                                            {categories.map(cat => {
-                                                const catItems = optionalFeatureFields.filter((_, idx) => watchedOptionalFeatures[idx]?.category === cat);
-
-                                                return (
-                                                    <Collapsible key={cat} className="space-y-4" defaultOpen>
-                                                        <div className="flex items-center justify-between bg-primary/5 p-3 rounded-lg border-l-4 border-primary">
-                                                            <div className="flex items-center gap-2">
-                                                                <CollapsibleTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent hover:text-accent-foreground">
-                                                                        <ChevronDown className="h-4 w-4" />
-                                                                    </Button>
-                                                                </CollapsibleTrigger>
-                                                                <h3 className="font-black text-[11px] uppercase tracking-widest text-primary">{cat}</h3>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter bg-background px-2 py-0.5 rounded-full border shadow-sm">{catItems.length} items</span>
+                                            return (
+                                                <Collapsible key={cat} className="space-y-4" defaultOpen>
+                                                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border-l-4 border-primary">
+                                                        <div className="flex items-center gap-2">
+                                                            <CollapsibleTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent hover:text-accent-foreground">
+                                                                    <ChevronDown className="h-4 w-4" />
+                                                                </Button>
+                                                            </CollapsibleTrigger>
+                                                            <h3 className="font-black text-[11px] uppercase tracking-widest text-primary">{cat}</h3>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter bg-background px-2 py-0.5 rounded-full border shadow-sm">{catItems.length} items</span>
+                                                            <Button 
+                                                                type="button" 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-6 w-6 hover:bg-primary/10 text-primary"
+                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '' })}
+                                                            >
+                                                                <PlusCircle className="h-4 w-4" />
+                                                            </Button>
+                                                            {catItems.length === 0 && !['Consoles', 'Seats'].includes(cat) && (
                                                                 <Button 
                                                                     type="button" 
                                                                     variant="ghost" 
                                                                     size="icon" 
-                                                                    className="h-6 w-6 hover:bg-primary/10 text-primary"
-                                                                    onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '' })}
+                                                                    className="h-6 w-6 hover:bg-destructive/10 text-destructive"
+                                                                    onClick={() => handleRemoveCategory(cat)}
                                                                 >
-                                                                    <PlusCircle className="h-4 w-4" />
+                                                                    <Trash2 className="h-3.5 w-3.5" />
                                                                 </Button>
-                                                                {catItems.length === 0 && !['Consoles', 'Seats'].includes(cat) && (
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="ghost" 
-                                                                        size="icon" 
-                                                                        className="h-6 w-6 hover:bg-destructive/10 text-destructive"
-                                                                        onClick={() => handleRemoveCategory(cat)}
-                                                                    >
-                                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <CollapsibleContent className="space-y-4 pt-2 ml-2 border-l-2 border-dashed border-muted pl-4">
-                                                            {catItems.length > 0 ? (
-                                                                <div className="grid grid-cols-1 gap-4">
-                                                                    {optionalFeatureFields.map((field, index) => {
-                                                                        const feat = watchedOptionalFeatures[index];
-                                                                        if (feat?.category !== cat) return null;
-                                                                        return (
-                                                                            <OptionalFeatureItem 
-                                                                                key={field.id} 
-                                                                                index={index} 
-                                                                                remove={removeOptionalFeature} 
-                                                                                gstPercentage={gstPercentage}
-                                                                                categories={categories}
-                                                                            />
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="py-6 border-2 border-dashed rounded-xl bg-muted/10 flex flex-col items-center justify-center text-center">
-                                                                    <Layers className="h-6 w-6 text-muted-foreground opacity-20 mb-2" />
-                                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Empty Category</p>
-                                                                </div>
                                                             )}
-                                                        </CollapsibleContent>
-                                                    </Collapsible>
+                                                        </div>
+                                                    </div>
+                                                    <CollapsibleContent className="space-y-4 pt-2 ml-2 border-l-2 border-dashed border-muted pl-4">
+                                                        {catItems.length > 0 ? (
+                                                            <div className="grid grid-cols-1 gap-4">
+                                                                {optionalFeatureFields.map((field, index) => {
+                                                                    const feat = watchedOptionalFeatures[index];
+                                                                    if (feat?.category !== cat) return null;
+                                                                    return (
+                                                                        <OptionalFeatureItem 
+                                                                            key={field.id} 
+                                                                            index={index} 
+                                                                            remove={removeOptionalFeature} 
+                                                                            gstPercentage={gstPercentage}
+                                                                            categories={categories}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="py-6 border-2 border-dashed rounded-xl bg-muted/10 flex flex-col items-center justify-center text-center">
+                                                                <Layers className="h-6 w-6 text-muted-foreground opacity-20 mb-2" />
+                                                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Empty Category</p>
+                                                            </div>
+                                                        )}
+                                                    </CollapsibleContent>
+                                                </Collapsible>
+                                            );
+                                        })}
+
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {optionalFeatureFields.map((field, index) => {
+                                                const feat = watchedOptionalFeatures[index];
+                                                if (feat?.category) return null;
+                                                return (
+                                                    <OptionalFeatureItem 
+                                                        key={field.id} 
+                                                        index={index} 
+                                                        remove={removeOptionalFeature} 
+                                                        gstPercentage={gstPercentage}
+                                                        categories={categories}
+                                                    />
                                                 );
                                             })}
-
-                                            <div className="grid grid-cols-1 gap-4">
-                                                {optionalFeatureFields.map((field, index) => {
-                                                    const feat = watchedOptionalFeatures[index];
-                                                    if (feat?.category) return null;
-                                                    return (
-                                                        <OptionalFeatureItem 
-                                                            key={field.id} 
-                                                            index={index} 
-                                                            remove={removeOptionalFeature} 
-                                                            gstPercentage={gstPercentage}
-                                                            categories={categories}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
                                         </div>
-                                    </ScrollArea>
-                                </CardContent>
-                            </CollapsibleContent>
-                        </Card>
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </CollapsibleContent>
                     </Collapsible>
                     <RulesSection model={model} modelCode={modelCode} />
                 </div>
