@@ -69,7 +69,8 @@ const documentSchema = z.object({
 
 const ruleSchema = z.object({
     id: z.string(),
-    sourceOptionId: z.string().min(1, 'Source option is required'),
+    sourceType: z.enum(['option', 'material']).default('option'),
+    sourceOptionId: z.string().min(1, 'Source is required'),
     type: z.enum(['include', 'exclude']),
     targetOptionIds: z.array(z.string()).min(1, 'At least one target option is required'),
 });
@@ -871,7 +872,7 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
                             {isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />}
                             Sync to Series
                         </Button>
-                        <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => append({ id: `rule-${Date.now()}`, sourceOptionId: '', type: 'include', targetOptionIds: [] })}>
+                        <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => append({ id: `rule-${Date.now()}`, sourceType: 'option', sourceOptionId: '', type: 'include', targetOptionIds: [] })}>
                             <Plus className="mr-1.5 h-3.5 w-3.5" />
                             Add Rule
                         </Button>
@@ -880,102 +881,136 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
                 <CollapsibleContent>
                     <CardContent className="pt-6 space-y-6">
                         {fields.length > 0 ? (
-                            fields.map((field, index) => (
-                                <Card key={field.id} className="relative p-5 bg-muted/5 border-2 hover:border-primary/20 transition-all">
-                                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                    
-                                    <div className="space-y-6">
-                                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                                            <div className="flex-1 space-y-2">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">If This Option is Selected:</Label>
-                                                <FormField
-                                                    control={control}
-                                                    name={`rules.${index}.sourceOptionId`}
-                                                    render={({ field }) => (
-                                                        <Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl>
-                                                                <SelectTrigger className="h-10 font-bold bg-background">
-                                                                    <SelectValue placeholder="Select trigger option..." />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                {featureOptions.map(opt => (
-                                                                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                />
+                            fields.map((field, index) => {
+                                const sourceType = useWatch({ control, name: `rules.${index}.sourceType` as const });
+                                
+                                return (
+                                    <Card key={field.id} className="relative p-5 bg-muted/5 border-2 hover:border-primary/20 transition-all">
+                                        <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                        
+                                        <div className="space-y-6">
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                                <div className="w-32 space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trigger Type:</Label>
+                                                    <FormField
+                                                        control={control}
+                                                        name={`rules.${index}.sourceType`}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <FormControl>
+                                                                    <SelectTrigger className="h-10 font-bold bg-background">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent>
+                                                                    <SelectItem value="option">Option</SelectItem>
+                                                                    <SelectItem value="material">Material</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+
+                                                <div className="flex-1 space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        {sourceType === 'material' ? 'If Material Is:' : 'If This Option is Selected:'}
+                                                    </Label>
+                                                    <FormField
+                                                        control={control}
+                                                        name={`rules.${index}.sourceOptionId`}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <FormControl>
+                                                                    <SelectTrigger className="h-10 font-bold bg-background">
+                                                                        <SelectValue placeholder="Select..." />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent>
+                                                                    {sourceType === 'material' ? (
+                                                                        <>
+                                                                            <SelectItem value="PVC">PVC</SelectItem>
+                                                                            <SelectItem value="HYP">Hypalon (HYP)</SelectItem>
+                                                                        </>
+                                                                    ) : (
+                                                                        featureOptions.map(opt => (
+                                                                            <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                                                        ))
+                                                                    )}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+
+                                                <div className="w-32 space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action:</Label>
+                                                    <FormField
+                                                        control={control}
+                                                        name={`rules.${index}.type`}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <FormControl>
+                                                                    <SelectTrigger className="h-10 font-black uppercase tracking-tighter bg-background">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent>
+                                                                    <SelectItem value="include" className="text-green-600 font-bold">Include</SelectItem>
+                                                                    <SelectItem value="exclude" className="text-destructive font-bold">Exclude</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
                                             </div>
 
-                                            <div className="w-32 space-y-2">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action:</Label>
+                                            <div className="space-y-3">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                    {useWatch({ control, name: `rules.${index}.type` }) === 'include' ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <AlertTriangle className="h-3 w-3 text-destructive" />}
+                                                    Target Options:
+                                                </Label>
+                                                
                                                 <FormField
                                                     control={control}
-                                                    name={`rules.${index}.type`}
+                                                    name={`rules.${index}.targetOptionIds`}
                                                     render={({ field }) => (
-                                                        <Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl>
-                                                                <SelectTrigger className="h-10 font-black uppercase tracking-tighter bg-background">
-                                                                    <SelectValue />
+                                                        <div className="p-4 border rounded-lg bg-background min-h-[80px]">
+                                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                                {field.value.map((id: string) => {
+                                                                    const opt = featureOptions.find(o => o.id === id);
+                                                                    return (
+                                                                        <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase">
+                                                                            {opt?.label || id}
+                                                                            <button type="button" onClick={() => field.onChange(field.value.filter((v: string) => v !== id))}>
+                                                                                <X className="h-3 w-3 hover:text-destructive" />
+                                                                            </button>
+                                                                        </Badge>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            <Select onValueChange={(val) => !field.value.includes(val) && field.onChange([...field.value, val])} value="">
+                                                                <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-widest w-full border-dashed bg-muted/20">
+                                                                    <SelectValue placeholder="Add Target Option..." />
                                                                 </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="include" className="text-green-600 font-bold">Include</SelectItem>
-                                                                <SelectItem value="exclude" className="text-destructive font-bold">Exclude</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                                {useWatch({ control, name: `rules.${index}.type` }) === 'include' ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <AlertTriangle className="h-3 w-3 text-destructive" />}
-                                                Target Options:
-                                            </Label>
-                                            
-                                            <FormField
-                                                control={control}
-                                                name={`rules.${index}.targetOptionIds`}
-                                                render={({ field }) => (
-                                                    <div className="p-4 border rounded-lg bg-background min-h-[80px]">
-                                                        <div className="flex flex-wrap gap-2 mb-3">
-                                                            {field.value.map((id: string) => {
-                                                                const opt = featureOptions.find(o => o.id === id);
-                                                                return (
-                                                                    <Badge key={id} variant="secondary" className="px-3 py-1 font-bold text-[10px] gap-1.5 uppercase">
-                                                                        {opt?.label || id}
-                                                                        <button type="button" onClick={() => field.onChange(field.value.filter((v: string) => v !== id))}>
-                                                                            <X className="h-3 w-3 hover:text-destructive" />
-                                                                        </button>
-                                                                    </Badge>
-                                                                );
-                                                            })}
+                                                                <SelectContent>
+                                                                    {featureOptions
+                                                                        .filter(opt => opt.id !== useWatch({ control, name: `rules.${index}.sourceOptionId` }))
+                                                                        .map(opt => (
+                                                                            <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                                                                        ))
+                                                                    }
+                                                                </SelectContent>
+                                                            </Select>
                                                         </div>
-                                                        <Select onValueChange={(val) => !field.value.includes(val) && field.onChange([...field.value, val])} value="">
-                                                            <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-widest w-full border-dashed bg-muted/20">
-                                                                <SelectValue placeholder="Add Target Option..." />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {featureOptions
-                                                                    .filter(opt => opt.id !== useWatch({ control, name: `rules.${index}.sourceOptionId` }))
-                                                                    .map(opt => (
-                                                                        <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-                                                                    ))
-                                                                }
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                )}
-                                            />
+                                                    )}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                </Card>
-                            ))
+                                    </Card>
+                                );
+                            })
                         ) : (
                             <div className="py-12 border-2 border-dashed rounded-xl bg-muted/5 flex flex-col items-center justify-center text-center">
                                 <ShieldAlert className="h-10 w-10 text-muted-foreground opacity-20 mb-4" />
