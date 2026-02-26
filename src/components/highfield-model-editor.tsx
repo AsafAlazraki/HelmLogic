@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
     Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, 
     Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, 
-    AlertTriangle, DollarSign, Percent, Ship, RefreshCw, 
+    AlertTriangle, DollarSign, Ship, RefreshCw, 
     PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert, Settings2, 
     Search, ListChecks 
 } from 'lucide-react';
@@ -415,8 +415,7 @@ function OptionalFeatureItem({
     const isSeat = category === 'Seats';
     const isConsoleOrSeat = isConsole || isSeat;
 
-    const currentFeature = allFeatures?.[index];
-    const currentFeatureId = currentFeature?.id;
+    const currentFeatureId = useMemo(() => allFeatures?.[index]?.id, [allFeatures, index]);
 
     const seatOptions = useMemo(() => {
         if (!allFeatures || !currentFeatureId) return [];
@@ -539,7 +538,7 @@ function OptionalFeatureItem({
                                                     type="button"
                                                     variant="outline" 
                                                     size="sm" 
-                                                    className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 hover:bg-muted/10"
+                                                    className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 text-muted-foreground hover:bg-muted/10 hover:text-primary transition-colors"
                                                     onClick={() => setIsCompDialogOpen(true)}
                                                 >
                                                     {field.value?.length > 0 ? `${field.value.length} SKUs Selected` : 'Define Variant Compatibility...'}
@@ -566,10 +565,10 @@ function OptionalFeatureItem({
                                             render={({ field }) => (
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                        <Button variant="outline" size="sm" className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 hover:bg-muted/10">
+                                                        <Button variant="outline" size="sm" className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 text-muted-foreground hover:bg-muted/10 hover:text-primary transition-colors">
                                                             {field.value ? (() => {
                                                                 const s = seatOptions.find((s: any) => s.id === field.value);
-                                                                return s ? `${s.name} ${s.code ? `(${s.code})` : ''}` : 'Seat Selected';
+                                                                return s ? `${s.name} ${s.code ? `(${s.code})` : ''} - ${s.color || 'No Color'}` : 'Seat Selected';
                                                             })() : 'No Linked Seat'}
                                                         </Button>
                                                     </PopoverTrigger>
@@ -611,6 +610,557 @@ function OptionalFeatureItem({
                         </div>
                     </div>
                 </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: any, vendorId: string, rangeId: string, gstPercentage: number }) {
+    const firestore = useFirestore();
+    const storage = useStorage();
+    const { toast } = useToast();
+    
+    const variantsQuery = useMemoFirebase(() => 
+        query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
+    [firestore, vendorId, rangeId, model.id]);
+    
+    const { data: variants, loading } = useCollection<any>(variantsQuery);
+
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [editingVariant, setEditingVariant] = useState<any | null>(null);
+
+    const [vSku, setVSku] = useState('');
+    const [vName, setVName] = useState('');
+    const [vColor, setVColor] = useState('');
+    const [vColorCode, setVColorCode] = useState('');
+    const [vMaterial, setVMaterial] = useState<'PVC' | 'HYP' | ''>('');
+    
+    const [vCostExcl, setVCostExcl] = useState('');
+    const [vCostIncl, setVCostIncl] = useState('');
+    const [vPriceExcl, setVPriceExcl] = useState('');
+    const [vPriceIncl, setVPriceIncl] = useState('');
+    
+    const [vImage, setVImage] = useState<File | null>(null);
+    const [vImagePreview, setVImagePreview] = useState<string | null>(null);
+
+    const resetForm = () => {
+        setEditingVariant(null);
+        setVSku('');
+        setVName('');
+        setVColor('');
+        setVColorCode('');
+        setVMaterial('');
+        setVCostExcl('');
+        setVCostIncl('');
+        setVPriceExcl('');
+        setVPriceIncl('');
+        setVImage(null);
+        setVImagePreview(null);
+    };
+
+    const handleSaveVariant = async () => {
+        if (!vMaterial) return;
+        setIsSaving(true);
+        try {
+            const varCol = collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`);
+            const varRef = editingVariant ? doc(varCol, editingVariant.id) : doc(varCol);
+            
+            const data: any = {
+                sku: vSku.trim().toUpperCase() || null,
+                name: vName || `${vColor} ${vMaterial}`,
+                colorName: vColor,
+                colorCode: vColorCode.toUpperCase(),
+                material: vMaterial,
+                cost: parseFloat(vCostExcl) || 0,
+                sellPriceExclGst: parseFloat(vPriceExcl) || 0,
+                updatedAt: serverTimestamp(),
+            };
+
+            if (!editingVariant) {
+                data.createdAt = serverTimestamp();
+                data.order = Date.now();
+            }
+
+            if (vImage && storage) {
+                const path = `highfield/variants/${varRef.id}/photo-${Date.now()}`;
+                data.imageUrl = await uploadFileToStorage(storage, vImage, path);
+            }
+
+            await setDoc(varRef, data, { merge: true });
+            toast({ title: "SKU Saved" });
+            setIsAddOpen(false);
+            resetForm();
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Save failed" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleEdit = (v: any) => {
+        setEditingVariant(v);
+        setVSku(v.sku || '');
+        setVName(v.name);
+        setVColor(v.colorName || '');
+        setVColorCode(v.colorCode || '');
+        setVMaterial(v.material || '');
+        
+        const cost = v.cost || 0;
+        const taxRate = gstPercentage / 100;
+        setVCostExcl(cost.toFixed(2));
+        setVCostIncl((cost * (1 + taxRate)).toFixed(2));
+        
+        const price = v.sellPriceExclGst || 0;
+        setVPriceExcl(price.toFixed(2));
+        setVPriceIncl((price * (1 + taxRate)).toFixed(2));
+        
+        setVImagePreview(v.imageUrl || null);
+        setIsAddOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await deleteDoc(doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, id));
+            toast({ title: "SKU Deleted" });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Delete failed" });
+        }
+    };
+
+    const handleMove = async (index: number, direction: 'up' | 'down') => {
+        if (!variants) return;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= variants.length) return;
+
+        const v1 = variants[index];
+        const v2 = variants[newIndex];
+
+        const batch = writeBatch(firestore);
+        const ref1 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v1.id);
+        const ref2 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v2.id);
+
+        batch.update(ref1, { order: v2.order ?? newIndex });
+        batch.update(ref2, { order: v1.order ?? index });
+
+        await batch.commit();
+    };
+
+    const updateCostExcl = (val: string) => {
+        setVCostExcl(val);
+        const num = parseFloat(val);
+        const taxRate = gstPercentage / 100;
+        if (!isNaN(num)) setVCostIncl((num * (1 + taxRate)).toFixed(2));
+        else setVCostIncl('');
+    };
+    const updateCostIncl = (val: string) => {
+        setVCostIncl(val);
+        const num = parseFloat(val);
+        const taxRate = gstPercentage / 100;
+        if (!isNaN(num)) setVCostExcl((num / (1 + taxRate)).toFixed(2));
+        else setVCostExcl('');
+    };
+    const updatePriceExcl = (val: string) => {
+        setVPriceExcl(val);
+        const num = parseFloat(val);
+        const taxRate = gstPercentage / 100;
+        if (!isNaN(num)) setVPriceIncl((num * (1 + taxRate)).toFixed(2));
+        else setVPriceIncl('');
+    };
+    const updatePriceIncl = (val: string) => {
+        setVPriceIncl(val);
+        const num = parseFloat(val);
+        const taxRate = gstPercentage / 100;
+        if (!isNaN(num)) setVPriceExcl((num / (1 + taxRate)).toFixed(2));
+        else setVPriceExcl('');
+    };
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="Boat Variants & SKUs" 
+                count={variants?.length || 0}
+                onAdd={() => setIsAddOpen(true)}
+            />
+            <CollapsibleContent>
+                <CardContent className="pt-6 space-y-4">
+                    {loading ? (
+                        <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                    ) : variants && variants.length > 0 ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {variants.map((v, index) => (
+                                <Card key={v.id} className="group relative flex flex-col overflow-hidden hover:border-primary/40 transition-all bg-muted/5 border-2 shadow-none rounded-xl">
+                                    <div className="relative aspect-[16/10] w-full border-b bg-secondary/30 overflow-hidden shrink-0">
+                                        {v.imageUrl ? (
+                                            <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-2" sizes="256px" />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
+                                        )}
+                                    </div>
+                                    <div className="p-4 flex flex-col flex-1 gap-3">
+                                        <div className="min-w-0 pr-10">
+                                            <p className="font-black text-[11px] uppercase leading-tight truncate">{v.name}</p>
+                                            <p className="font-mono text-[9px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
+                                        </div>
+                                        
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5 shrink-0">{v.material}</Badge>
+                                            <Badge variant="outline" className="text-[8px] h-auto font-black uppercase px-1.5 whitespace-normal break-words">
+                                                {v.colorName} {v.colorCode && `(${v.colorCode})`}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 mt-auto pt-2 border-t">
+                                            <div className="flex flex-col">
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Retail (Excl)</span>
+                                                <span className="text-[11px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex flex-col text-right">
+                                                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Factory Cost</span>
+                                                <span className="text-[11px] font-black">${(v.cost || 0).toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="secondary" size="icon" className="h-7 w-7 shadow-md border bg-background/95 hover:bg-background">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem onClick={() => handleEdit(v)}>
+                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                    Edit Boat SKU
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleMove(index, 'up')} disabled={index === 0}>
+                                                    <ArrowUp className="mr-2 h-4 w-4" />
+                                                    Move Up
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleMove(index, 'down')} disabled={index === variants.length - 1}>
+                                                    <ArrowDown className="mr-2 h-4 w-4" />
+                                                    Move Down
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(v.id)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete Variant
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="py-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
+                            <PackagePlus className="h-10 w-10 opacity-20 mb-2" />
+                            <p className="text-xs font-bold uppercase tracking-widest">No SKUs Added Yet</p>
+                            <Button variant="link" size="sm" onClick={() => setIsAddOpen(true)}>Create First Variant</Button>
+                        </div>
+                    )}
+                </CardContent>
+            </CollapsibleContent>
+
+            <Dialog open={isAddOpen} onOpenChange={(o) => !o && (setIsAddOpen(false), resetForm())}>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>{editingVariant ? 'Edit Variant SKU' : 'Add New Boat SKU'}</DialogTitle>
+                        <DialogDescription>Individual boat details including material-specific imagery.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-6 py-4">
+                        <div className="flex justify-center">
+                            <div className="relative h-32 w-56 bg-secondary/30 rounded border-2 border-dashed overflow-hidden group">
+                                {vImagePreview ? (
+                                    <>
+                                        <Image src={vImagePreview} alt="SKU Preview" fill className="object-contain p-2" />
+                                        <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVImage(null); setVImagePreview(null); }}><X className="h-3 w-3" /></Button>
+                                    </>
+                                ) : (
+                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50 transition-colors">
+                                        <ImageIcon className="h-6 w-6 text-muted-foreground/40 mb-1" />
+                                        <span className="text-[8px] font-black uppercase text-muted-foreground">Upload SKU Photo</span>
+                                        <Input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) { setVImage(file); setVImagePreview(URL.createObjectURL(file)); }
+                                        }} />
+                                    </label>
+                                )}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Variant Display Name</Label>
+                                <Input placeholder="e.g. Storm Grey PVC" value={vName} onChange={e => setVName(e.target.value)} className="font-bold h-10" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Specific SKU (Optional)</Label>
+                                <Input placeholder="CL310-PVC-SG" value={vSku} onChange={e => setVSku(e.target.value)} className="font-mono font-bold uppercase h-10" />
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Hull Material</Label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Card 
+                                    className={cn(
+                                        "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
+                                        vMaterial === 'PVC' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+                                    )}
+                                    onClick={() => setVMaterial('PVC')}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-black text-sm uppercase">PVC</span>
+                                        {vMaterial === 'PVC' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Standard Durability</p>
+                                </Card>
+                                <Card 
+                                    className={cn(
+                                        "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
+                                        vMaterial === 'HYP' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
+                                    )}
+                                    onClick={() => setVMaterial('HYP')}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-black text-sm uppercase">Hypalon (HYP)</span>
+                                        {vMaterial === 'HYP' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Premium UV Resistance</p>
+                                </Card>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
+                                <Input placeholder="Storm Grey" value={vColor} onChange={e => setVColor(e.target.value)} className="font-bold h-9" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Code</Label>
+                                <Input placeholder="SG" value={vColorCode} onChange={e => setVColorCode(e.target.value)} className="font-mono font-bold uppercase h-9" />
+                            </div>
+                        </div>
+                        
+                        <Separator />
+
+                        <div className="grid grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Factory Cost</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/40 uppercase ml-0.5">Excl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={vCostExcl} onChange={e => updateCostExcl(e.target.value)} className="h-9 text-xs font-bold" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/40 uppercase ml-0.5">Incl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={vCostIncl} onChange={e => updateCostIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Retail Sell</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/40 uppercase ml-0.5">Excl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={vPriceExcl} onChange={e => updatePriceExcl(e.target.value)} className="h-9 text-xs font-bold" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground/40 uppercase ml-0.5">Incl. GST</Label>
+                                        <Input type="number" placeholder="0.00" value={vPriceIncl} onChange={e => updatePriceIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="pt-4 border-t">
+                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveVariant} disabled={isSaving || !vMaterial}>
+                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {editingVariant ? 'Update SKU' : 'Add SKU'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Collapsible>
+    );
+}
+
+function FeaturesSection() {
+    const { control, watch } = useFormContext<ModelFormData>();
+    const { fields, append, remove, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
+    const [bulkFeatures, setBulkFeatures] = useState('');
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="Standard Features" 
+                count={fields.length} 
+                onAdd={() => append('')}
+            />
+            <CollapsibleContent>
+                <CardContent className="space-y-4 pt-6">
+                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2 group/feat">
+                                <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                    <Separator />
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
+                        <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
+                        <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
+                            const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
+                            replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
+                            setBulkFeatures(''); 
+                        }}>Append Bulk Items</Button>
+                    </div>
+                </CardContent>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+function SpecsSection() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
+    const [bulkSpecs, setBulkSpecs] = useState('');
+
+    const handleBulkImport = () => {
+        const lines = bulkSpecs.split('\n').filter(line => line.trim() !== '');
+        const newSpecs = lines.map(line => {
+            const separatorIndex = line.indexOf(':');
+            let label = line.trim();
+            let value = '';
+            if (separatorIndex !== -1) {
+                label = line.substring(0, separatorIndex).trim();
+                value = line.substring(separatorIndex + 1).trim();
+            }
+            return { id: `spec-${Date.now()}-${Math.random()}`, label, value };
+        });
+
+        append(newSpecs);
+        setBulkSpecs('');
+    };
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="General Specifications" 
+                count={fields.length} 
+                onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })}
+            />
+            <CollapsibleContent>
+                <CardContent className="space-y-4 pt-6">
+                    <div className="grid gap-3">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2 group/field">
+                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
+                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                    <Separator />
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import Specs</Label>
+                        <Textarea 
+                            placeholder="Paste specs (e.g. Length: 5.4m) one per line..." 
+                            className="bg-background min-h-[100px]" 
+                            value={bulkSpecs} 
+                            onChange={(e) => setBulkSpecs(e.target.value)} 
+                        />
+                        <Button 
+                            type="button" 
+                            variant="secondary" 
+                            size="sm" 
+                            className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" 
+                            onClick={handleBulkImport}
+                        >
+                            Append Bulk Specs
+                        </Button>
+                    </div>
+                </CardContent>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+function MotorConfigurationsSection() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" });
+
+    const configOptions = [
+        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
+        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
+        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
+        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
+        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
+    ];
+
+    const handleAddConfig = (type: string) => {
+        const option = configOptions.find(o => o.id === type);
+        if (!option) return;
+        append({
+            type,
+            engines: Array.from({ length: option.engineCount }, (_, i) => ({
+                label: option.engineLabels[i],
+                minHp: 0,
+                maxHp: 0,
+                recommendedHp: 0
+            }))
+        });
+    };
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
+                <div className="flex items-center gap-3">
+                    <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        </Button>
+                    </CollapsibleTrigger>
+                    <CardTitle className="text-lg font-bold">Motor Configurations</CardTitle>
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+                        {fields.length}
+                    </span>
+                </div>
+                <Select onValueChange={handleAddConfig}>
+                    <SelectTrigger className="h-8 w-[180px] text-xs">
+                        <SelectValue placeholder="Add Configuration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <CollapsibleContent>
+                <CardContent className="pt-6 space-y-6">
+                    {fields.map((field, index) => (
+                        <Card key={field.id} className="relative p-4 bg-muted/10 rounded-xl border-none shadow-none">
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                            <div className="space-y-4">
+                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
+                                <div className="grid gap-4">
+                                    {(field as any).engines.map((engine: any, engineIdx: number) => (
+                                        <div key={engineIdx} className="grid grid-cols-4 gap-3 items-end border-t pt-4 first:border-0 first:pt-0">
+                                            <div className="space-y-1"><Label className="text-[10px] uppercase font-bold text-muted-foreground">{engine.label}</Label></div>
+                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </Card>
+                    ))}
+                </CardContent>
             </CollapsibleContent>
         </Collapsible>
     );
@@ -827,184 +1377,6 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
     );
 }
 
-function MotorConfigurationsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" });
-
-    const configOptions = [
-        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
-        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
-        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
-        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
-        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
-    ];
-
-    const handleAddConfig = (type: string) => {
-        const option = configOptions.find(o => o.id === type);
-        if (!option) return;
-        append({
-            type,
-            engines: Array.from({ length: option.engineCount }, (_, i) => ({
-                label: option.engineLabels[i],
-                minHp: 0,
-                maxHp: 0,
-                recommendedHp: 0
-            }))
-        });
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
-                <div className="flex items-center gap-3">
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                        </Button>
-                    </CollapsibleTrigger>
-                    <CardTitle className="text-lg font-bold">Motor Configurations</CardTitle>
-                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-                        {fields.length}
-                    </span>
-                </div>
-                <Select onValueChange={handleAddConfig}>
-                    <SelectTrigger className="h-8 w-[180px] text-xs">
-                        <SelectValue placeholder="Add Configuration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            <CollapsibleContent>
-                <CardContent className="pt-6 space-y-6">
-                    {fields.map((field, index) => (
-                        <Card key={field.id} className="relative p-4 bg-muted/10 rounded-xl border-none shadow-none">
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                            <div className="space-y-4">
-                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                                <div className="grid gap-4">
-                                    {(field as any).engines.map((engine: any, engineIdx: number) => (
-                                        <div key={engineIdx} className="grid grid-cols-4 gap-3 items-end border-t pt-4 first:border-0 first:pt-0">
-                                            <div className="space-y-1"><Label className="text-[10px] uppercase font-bold text-muted-foreground">{engine.label}</Label></div>
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </Card>
-                    ))}
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function SpecsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
-    const [bulkSpecs, setBulkSpecs] = useState('');
-
-    const handleBulkImport = () => {
-        const lines = bulkSpecs.split('\n').filter(line => line.trim() !== '');
-        const newSpecs = lines.map(line => {
-            const separatorIndex = line.indexOf(':');
-            let label = line.trim();
-            let value = '';
-            if (separatorIndex !== -1) {
-                label = line.substring(0, separatorIndex).trim();
-                value = line.substring(separatorIndex + 1).trim();
-            }
-            return { id: `spec-${Date.now()}-${Math.random()}`, label, value };
-        });
-
-        append(newSpecs);
-        setBulkSpecs('');
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="General Specifications" 
-                count={fields.length} 
-                onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })}
-            />
-            <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="grid gap-3">
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 group/field">
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
-                    </div>
-                    <Separator />
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import Specs</Label>
-                        <Textarea 
-                            placeholder="Paste specs (e.g. Length: 5.4m) one per line..." 
-                            className="bg-background min-h-[100px]" 
-                            value={bulkSpecs} 
-                            onChange={(e) => setBulkSpecs(e.target.value)} 
-                        />
-                        <Button 
-                            type="button" 
-                            variant="secondary" 
-                            size="sm" 
-                            className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" 
-                            onClick={handleBulkImport}
-                        >
-                            Append Bulk Specs
-                        </Button>
-                    </div>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function FeaturesSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "standardFeatures" });
-    const [bulkFeatures, setBulkFeatures] = useState('');
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="Standard Features" 
-                count={fields.length} 
-                onAdd={() => append('')}
-            />
-            <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 group/feat">
-                                <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
-                    </div>
-                    <Separator />
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
-                        <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                        <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
-                            const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-                            append(newFeatures); 
-                            setBulkFeatures(''); 
-                        }}>Append Bulk Items</Button>
-                    </div>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
 function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
     const { control, watch, setValue } = useFormContext<ModelFormData>();
     const storage = useStorage();
@@ -1073,374 +1445,6 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                     </div>
                 </div>
             </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: any, vendorId: string, rangeId: string, gstPercentage: number }) {
-    const firestore = useFirestore();
-    const storage = useStorage();
-    const { toast } = useToast();
-    
-    const variantsQuery = useMemoFirebase(() => 
-        query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
-    [firestore, vendorId, rangeId, model.id]);
-    
-    const { data: variants, loading } = useCollection<any>(variantsQuery);
-
-    const [isAddOpen, setIsAddOpen] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [editingVariant, setEditingVariant] = useState<any | null>(null);
-
-    const [vSku, setVSku] = useState('');
-    const [vName, setVName] = useState('');
-    const [vColor, setVColor] = useState('');
-    const [vColorCode, setVColorCode] = useState('');
-    const [vMaterial, setVMaterial] = useState<'PVC' | 'HYP' | ''>('');
-    
-    const [vCostExcl, setVCostExcl] = useState('');
-    const [vCostIncl, setVCostIncl] = useState('');
-    const [vPriceExcl, setVPriceExcl] = useState('');
-    const [vPriceIncl, setVPriceIncl] = useState('');
-    
-    const [vImage, setVImage] = useState<File | null>(null);
-    const [vImagePreview, setVImagePreview] = useState<string | null>(null);
-
-    const resetForm = () => {
-        setEditingVariant(null);
-        setVSku('');
-        setVName('');
-        setVColor('');
-        setVColorCode('');
-        setVMaterial('');
-        setVCostExcl('');
-        setVCostIncl('');
-        setVPriceExcl('');
-        setVPriceIncl('');
-        setVImage(null);
-        setVImagePreview(null);
-    };
-
-    const handleSaveVariant = async () => {
-        if (!vMaterial) return;
-        setIsSaving(true);
-        try {
-            const varCol = collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`);
-            const varRef = editingVariant ? doc(varCol, editingVariant.id) : doc(varCol);
-            
-            const data: any = {
-                sku: vSku.trim().toUpperCase() || null,
-                name: vName || `${vColor} ${vMaterial}`,
-                colorName: vColor,
-                colorCode: vColorCode.toUpperCase(),
-                material: vMaterial,
-                cost: parseFloat(vCostExcl) || 0,
-                sellPriceExclGst: parseFloat(vPriceExcl) || 0,
-                updatedAt: serverTimestamp(),
-            };
-
-            if (!editingVariant) {
-                data.createdAt = serverTimestamp();
-                data.order = Date.now();
-            }
-
-            if (vImage && storage) {
-                const path = `highfield/variants/${varRef.id}/photo-${Date.now()}`;
-                data.imageUrl = await uploadFileToStorage(storage, vImage, path);
-            }
-
-            await setDoc(varRef, data, { merge: true });
-            toast({ title: "SKU Saved" });
-            setIsAddOpen(false);
-            resetForm();
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Save failed" });
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleEdit = (v: any) => {
-        setEditingVariant(v);
-        setVSku(v.sku || '');
-        setVName(v.name);
-        setVColor(v.colorName || '');
-        setVColorCode(v.colorCode || '');
-        setVMaterial(v.material || '');
-        
-        const cost = v.cost || 0;
-        setVCostExcl(cost.toFixed(2));
-        setVCostIncl((cost * (1 + (gstPercentage/100))).toFixed(2));
-        
-        const price = v.sellPriceExclGst || 0;
-        setVPriceExcl(price.toFixed(2));
-        setVPriceIncl((price * (1 + (gstPercentage/100))).toFixed(2));
-        
-        setVImagePreview(v.imageUrl || null);
-        setIsAddOpen(true);
-    };
-
-    const handleDelete = async (id: string) => {
-        try {
-            await deleteDoc(doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, id));
-            toast({ title: "SKU Deleted" });
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Delete failed" });
-        }
-    };
-
-    const handleMove = async (index: number, direction: 'up' | 'down') => {
-        if (!variants) return;
-        const newIndex = direction === 'up' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= variants.length) return;
-
-        const v1 = variants[index];
-        const v2 = variants[newIndex];
-
-        const batch = writeBatch(firestore);
-        const ref1 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v1.id);
-        const ref2 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v2.id);
-
-        batch.update(ref1, { order: v2.order ?? newIndex });
-        batch.update(ref2, { order: v1.order ?? index });
-
-        await batch.commit();
-    };
-
-    const updateCostExcl = (val: string) => {
-        setVCostExcl(val);
-        const num = parseFloat(val);
-        if (!isNaN(num)) setVCostIncl((num * (1 + (gstPercentage/100))).toFixed(2));
-        else setVCostIncl('');
-    };
-    const updateCostIncl = (val: string) => {
-        setVCostIncl(val);
-        const num = parseFloat(val);
-        if (!isNaN(num)) setVCostExcl((num / (1 + (gstPercentage/100))).toFixed(2));
-        else setVCostExcl('');
-    };
-    const updatePriceExcl = (val: string) => {
-        setVPriceExcl(val);
-        const num = parseFloat(val);
-        if (!isNaN(num)) setVPriceIncl((num * (1 + (gstPercentage/100))).toFixed(2));
-        else setVPriceIncl('');
-    };
-    const updatePriceIncl = (val: string) => {
-        setVPriceIncl(val);
-        const num = parseFloat(val);
-        if (!isNaN(num)) setVPriceExcl((num / (1 + (gstPercentage/100))).toFixed(2));
-        else setVPriceExcl('');
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="Boat Variants & SKUs" 
-                count={variants?.length || 0}
-                onAdd={() => setIsAddOpen(true)}
-            />
-            <CollapsibleContent>
-                <CardContent className="pt-6 space-y-4">
-                    {loading ? (
-                        <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                    ) : variants && variants.length > 0 ? (
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {variants.map((v, index) => (
-                                <Card key={v.id} className="group relative flex flex-col overflow-hidden hover:border-primary/40 transition-all bg-muted/5 border-2 shadow-none rounded-xl">
-                                    <div className="relative aspect-[16/10] w-full border-b bg-secondary/30 overflow-hidden shrink-0">
-                                        {v.imageUrl ? (
-                                            <Image src={v.imageUrl} alt={v.sku || 'Variant'} fill className="object-contain p-2" sizes="256px" />
-                                        ) : (
-                                            <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 text-muted-foreground/20" /></div>
-                                        )}
-                                    </div>
-                                    <div className="p-4 flex flex-col flex-1 gap-3">
-                                        <div className="min-w-0 pr-10">
-                                            <p className="font-black text-[11px] uppercase leading-tight truncate">{v.name}</p>
-                                            <p className="font-mono text-[9px] font-bold text-primary mt-1.5 uppercase truncate">{v.sku || 'NO SKU'}</p>
-                                        </div>
-                                        
-                                        <div className="flex flex-wrap items-center gap-1.5">
-                                            <Badge variant="secondary" className="text-[8px] h-4 font-black uppercase px-1.5 shrink-0">{v.material}</Badge>
-                                            <Badge variant="outline" className="text-[8px] h-auto font-black uppercase px-1.5 whitespace-normal break-words">
-                                                {v.colorName} {v.colorCode && `(${v.colorCode})`}
-                                            </Badge>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-3 mt-auto pt-2 border-t">
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Retail (Excl)</span>
-                                                <span className="text-[11px] font-black">${(v.sellPriceExclGst || 0).toLocaleString()}</span>
-                                            </div>
-                                            <div className="flex flex-col text-right">
-                                                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Factory Cost</span>
-                                                <span className="text-[11px] font-black">${(v.cost || 0).toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="secondary" size="icon" className="h-7 w-7 shadow-md border bg-background/95 hover:bg-background">
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-48">
-                                                <DropdownMenuItem onClick={() => handleEdit(v)}>
-                                                    <Pencil className="mr-2 h-4 w-4" />
-                                                    Edit Boat SKU
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleMove(index, 'up')} disabled={index === 0}>
-                                                    <ArrowUp className="mr-2 h-4 w-4" />
-                                                    Move Up
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleMove(index, 'down')} disabled={index === variants.length - 1}>
-                                                    <ArrowDown className="mr-2 h-4 w-4" />
-                                                    Move Down
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(v.id)}>
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Delete Variant
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="py-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
-                            <PackagePlus className="h-10 w-10 opacity-20 mb-2" />
-                            <p className="text-xs font-bold uppercase tracking-widest">No SKUs Added Yet</p>
-                            <Button variant="link" size="sm" onClick={() => setIsAddOpen(true)}>Create First Variant</Button>
-                        </div>
-                    )}
-                </CardContent>
-            </CollapsibleContent>
-
-            <Dialog open={isAddOpen} onOpenChange={(o) => !o && (setIsAddOpen(false), resetForm())}>
-                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>{editingVariant ? 'Edit Variant SKU' : 'Add New Boat SKU'}</DialogTitle>
-                        <DialogDescription>Individual boat details including material-specific imagery.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-6 py-4">
-                        <div className="flex justify-center">
-                            <div className="relative h-32 w-56 bg-secondary/30 rounded border-2 border-dashed overflow-hidden group">
-                                {vImagePreview ? (
-                                    <>
-                                        <Image src={vImagePreview} alt="SKU Preview" fill className="object-contain p-2" />
-                                        <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVImage(null); setVImagePreview(null); }}><X className="h-3 w-3" /></Button>
-                                    </>
-                                ) : (
-                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50 transition-colors">
-                                        <ImageIcon className="h-6 w-6 text-muted-foreground/40 mb-1" />
-                                        <span className="text-[8px] font-black uppercase text-muted-foreground">Upload SKU Photo</span>
-                                        <Input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) { setVImage(file); setVImagePreview(URL.createObjectURL(file)); }
-                                        }} />
-                                    </label>
-                                )}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Variant Display Name</Label>
-                                <Input placeholder="e.g. Storm Grey PVC" value={vName} onChange={e => setVName(e.target.value)} className="font-bold h-10" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Specific SKU (Optional)</Label>
-                                <Input placeholder="CL310-PVC-SG" value={vSku} onChange={e => setVSku(e.target.value)} className="font-mono font-bold uppercase h-10" />
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Hull Material</Label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Card 
-                                    className={cn(
-                                        "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
-                                        vMaterial === 'PVC' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
-                                    )}
-                                    onClick={() => setVMaterial('PVC')}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-black text-sm uppercase">PVC</span>
-                                        {vMaterial === 'PVC' && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                                    </div>
-                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Standard Durability</p>
-                                </Card>
-                                <Card 
-                                    className={cn(
-                                        "p-4 cursor-pointer border-2 transition-all hover:bg-muted/50 rounded-xl",
-                                        vMaterial === 'HYP' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border"
-                                    )}
-                                    onClick={() => setVMaterial('HYP')}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-black text-sm uppercase">Hypalon (HYP)</span>
-                                        {vMaterial === 'HYP' && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                                    </div>
-                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold">Premium UV Resistance</p>
-                                </Card>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Name</Label>
-                                <Input placeholder="Storm Grey" value={vColor} onChange={e => setVColor(e.target.value)} className="font-bold h-9" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Color Code</Label>
-                                <Input placeholder="SG" value={vColorCode} onChange={e => setVColorCode(e.target.value)} className="font-mono font-bold uppercase h-9" />
-                            </div>
-                        </div>
-                        
-                        <Separator />
-
-                        <div className="grid grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Factory Cost</Label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
-                                        <Input type="number" placeholder="0.00" value={vCostExcl} onChange={e => updateCostExcl(e.target.value)} className="h-9 text-xs font-bold" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
-                                        <Input type="number" placeholder="0.00" value={vCostIncl} onChange={e => updateCostIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Retail Sell</Label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Excl. GST</Label>
-                                        <Input type="number" placeholder="0.00" value={vPriceExcl} onChange={e => updatePriceExcl(e.target.value)} className="h-9 text-xs font-bold" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-bold text-muted-foreground/50 uppercase">Incl. GST</Label>
-                                        <Input type="number" placeholder="0.00" value={vPriceIncl} onChange={e => updatePriceIncl(e.target.value)} className="h-9 text-xs font-bold bg-muted/20" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <DialogFooter className="pt-4 border-t">
-                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSaveVariant} disabled={isSaving || !vMaterial}>
-                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {editingVariant ? 'Update SKU' : 'Add SKU'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </Collapsible>
     );
 }
