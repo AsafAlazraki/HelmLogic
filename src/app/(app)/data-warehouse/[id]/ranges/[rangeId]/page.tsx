@@ -8,10 +8,11 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy, ChevronRight, Hash, ShieldCheck, Tag, Anchor } from 'lucide-react';
+import { Loader2, LayoutGrid, List, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, Copy, ChevronRight, ChevronDown, Hash, ShieldCheck, Tag, Anchor } from 'lucide-react';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from "@/components/ui/badge";
 import {
     Table,
     TableBody,
@@ -268,7 +269,7 @@ function HighfieldGroupedView({
                     </div>
                     <CollapsibleContent className="pt-2">
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {codeModels.map((model, idx) => (
+                            {codeModels.map((model) => (
                                 <Card key={model.id} className="group relative hover:border-primary transition-all overflow-hidden bg-card/50">
                                     <div className="p-4 flex flex-col gap-3">
                                         <div className="flex items-start justify-between">
@@ -332,9 +333,9 @@ export default function RangeDetailsPage() {
     // Duplicate State
     const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
     const [duplicatingModel, setDuplicatingModel] = useState<Model | null>(null);
-    const [dupName, setDupName] = useState('');
-    const [dupCode, setDupCode] = useState('');
-    const [dupSku, setDupSku] = useState('');
+    const [dupName, setDupName] = useState(`${duplicatingModel?.name} - Copy`);
+    const [dupCode, setDupCode] = useState(duplicatingModel?.modelCode || '');
+    const [dupSku, setDupSku] = useState(`${duplicatingModel?.sku || ''}COPY`);
     const [isDuplicating, setIsDuplicating] = useState(false);
 
     const { toast } = useToast();
