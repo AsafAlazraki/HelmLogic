@@ -657,11 +657,17 @@ export default function ModuleDetailsPage() {
 
     const handleChoiceSelect = (choice: 'bmt' | 'quote' | 'operations') => {
         if (choice === 'bmt' && pendingMotor) {
-            // Navigate to nice configuration page for motor
             router.push(`/modules/${moduleData.slug || moduleData.id}/motor/${pendingMotor.id}?vendor=${moduleData.mainVendorId}&set=${selectedMotorDataSetId}`);
             setIsChoiceDialogOpen(false);
             return;
         }
+        
+        if (choice === 'quote' && selectedModel && mainVendor?.slug === 'highfield') {
+            router.push(`/modules/${moduleData.slug || moduleData.id}/quote/${selectedModel.id}?range=${selectedRange?.id}&vendor=${mainVendor.id}`);
+            setIsChoiceDialogOpen(false);
+            return;
+        }
+
         setView(choice);
         setIsChoiceDialogOpen(false);
     };
@@ -1018,7 +1024,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
