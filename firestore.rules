@@ -16,6 +16,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
+    }
+
     // --- Collection Rules ---
 
     match /users/{userId} {
@@ -29,7 +33,7 @@ service cloud.firestore {
     match /organisations/{orgId} {
       // Members can read their org. For MVP, we allow any signed-in user read access.
       allow read: if isSignedIn();
-      allow write: if false; // System/Admin only
+      allow write: if isAdmin(); // System/Admin only
       
       match /dealerFitSelections/{id} { allow read, write: if isSignedIn(); }
       match /quotes/{id} { allow read, write: if isSignedIn(); }
@@ -40,28 +44,34 @@ service cloud.firestore {
 
     match /modules/{moduleId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     match /data-warehouse/{vendorId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if isAdmin();
       
       match /dataSets/{setId} {
         allow read: if isSignedIn();
+        allow write: if isAdmin();
         match /rows/{rowId} {
           allow read: if isSignedIn();
+          allow write: if isAdmin();
         }
       }
       match /masterDataSet/{rowId} {
         allow read: if isSignedIn();
+        allow write: if isAdmin();
       }
       match /ranges/{rangeId} {
         allow read: if isSignedIn();
+        allow write: if isAdmin();
         match /models/{modelId} {
           allow read: if isSignedIn();
+          allow write: if isAdmin();
           match /{allPaths=**} {
             allow read: if isSignedIn();
+            allow write: if isAdmin();
           }
         }
       }
@@ -69,6 +79,7 @@ service cloud.firestore {
 
     match /dealerFitCategories/{id} {
       allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     match /inventory/{id} {

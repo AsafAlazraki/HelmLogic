@@ -51,6 +51,8 @@ import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { Label } from '@/components/ui/label';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { MotorModuleBrowser } from '@/components/motor-module-browser';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { 
     Select, 
     SelectContent, 
@@ -394,7 +396,7 @@ function ModuleConfigurationBreadcrumbs({ module, range, model, pendingMotor, vi
             {pendingMotor && (view === 'bmt' || view === 'quote' || view === 'operations') && (
                 <>
                     <ChevronRight className="h-4 w-4 mx-1" />
-                    <span className="font-medium text-foreground">{pendingMotor['Model Name'] || pendingMotor['Model_Name'] || pendingMotor.name || 'Motor'}</span>
+                    <span className="font-medium text-foreground">{pendingMotor['Model Name'] || pendingMotor.name}</span>
                 </>
             )}
         </div>
@@ -521,6 +523,15 @@ export default function ModuleDetailsPage() {
         }
     }, [viewContextOrgId, isAdmin]);
 
+    useEffect(() => {
+        if (allOrganisations && moduleData) {
+            const subs = allOrganisations
+                .filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id))
+                .map(org => org.id);
+            setTempSubscribedOrgIds(subs);
+        }
+    }, [allOrganisations, moduleData]);
+
     const settingsForm = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: { name: '', mainVendorId: '', associatedVendorIds: [] },
@@ -582,8 +593,28 @@ export default function ModuleDetailsPage() {
         try {
             await batch.commit();
             toast({ title: "Subscriptions updated." });
-        } catch (error) {
-            toast({ variant: "destructive", title: "Failed to save subscriptions." });
+        } catch (serverError: any) {
+            console.error("Subscription save failed:", serverError);
+            
+            // Create contextual error for developer debugging
+            const permissionError = new FirestorePermissionError({
+                path: 'organisations',
+                operation: 'write',
+                requestResourceData: { tempSubscribedOrgIds },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+
+            // Revert UI state to match the last known server data
+            const actualSubs = allOrganisations
+                .filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id))
+                .map(org => org.id);
+            setTempSubscribedOrgIds(actualSubs);
+
+            toast({ 
+                variant: "destructive", 
+                title: "Failed to save subscriptions.",
+                description: "You may not have sufficient permissions to modify organization settings."
+            });
         } finally {
             setIsSavingSubscriptions(false);
         }
@@ -706,14 +737,6 @@ export default function ModuleDetailsPage() {
 
     const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
     const isMotorBrand = mainVendor?.vendorType === 'Motor Brand';
-
-    const getMotorChoiceInfo = () => {
-        if (!pendingMotor) return { name: '', code: '' };
-        const name = pendingMotor['Model Name'] || pendingMotor['Model_Name'] || pendingMotor.name || 'Motor';
-        const code = pendingMotor['Part Number'] || pendingMotor['Model Code'] || pendingMotor['SKU'];
-        return { name, code };
-    };
-    const motorChoice = getMotorChoiceInfo();
 
     return (
         <div className="space-y-4">
@@ -1023,7 +1046,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
@@ -1124,11 +1147,11 @@ export default function ModuleDetailsPage() {
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-1">
                                 <DialogTitle className="text-3xl font-black uppercase tracking-tight">
-                                    {selectedModel?.name || motorChoice.name}
+                                    {selectedModel?.name || pendingMotor?.['Model Name'] || pendingMotor?.name}
                                 </DialogTitle>
-                                {(selectedModel?.modelCode || motorChoice.code) && (
+                                {(selectedModel?.modelCode || pendingMotor?.['Part Number']) && (
                                     <span className="font-mono text-xs text-primary font-bold uppercase bg-primary/10 px-2 py-1 rounded w-fit">
-                                        {selectedModel?.modelCode || motorChoice.code}
+                                        {selectedModel?.modelCode || pendingMotor?.['Part Number']}
                                     </span>
                                 )}
                             </div>
