@@ -3,132 +3,84 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FIRESTORE SECURITY RULES DOCUMENTATION
-     *
-     * Core Philosophy:
-     * This ruleset implements a dual-layer security model. Product catalog data (Brands, Products, Options) 
-     * is treated as public read-only "Reference Data" to enable browsing and configuration by any user. 
-     * User-generated content (Configured Motor Instances) follows a strict "User-Ownership" model 
-     * where data is siloed under unique user IDs.
-     *
-     * Data Structure:
-     * 1. Public Catalog: /motorBrands, /configurationOptionTypes (and their subcollections).
-     * 2. Private User Data: /users/{userId}/configuredMotorInstances/{instanceId}.
-     *
-     * Key Security Decisions:
-     * - Public Read Access: Browsing motors and configuration options does not require authentication 
-     *   to minimize friction for potential customers.
-     * - Ownership Enforcement: All personal configurations are secured via path-based authorization 
-     *   matching the authenticated Firebase Auth UID to the {userId} path variable.
-     * - Write Protection: Catalog data is protected from client-side writes. Only administrative 
-     *   tools (not defined in this IR) should modify these collections.
-     *
-     * Denormalization for Authorization:
-     * - Relational integrity is enforced by requiring the `userId` within a `ConfiguredMotorInstance` 
-     *   document to match the path it is stored in. 
-     * - This ensures that queries filtered by `userId` are automatically secured by the rules.
-     *
-     * Structural Segregation:
-     * - Public product data is kept in top-level collections distinct from user data, 
-     *   ensuring that a misconfiguration in one area does not leak data in another.
+     * FIRESTORE SECURITY RULES
+     * Core Philosophy: Standardized access for MVP development.
      */
 
     // --- Helper Functions ---
-
-    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Combined check for document existence and ownership for updates/deletes. */
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
     // --- Collection Rules ---
 
-    /**
-     * @description Publicly readable motor brands.
-     * @path /motorBrands/{motorBrandId}
-     * @allow (get) Any user can view a specific brand.
-     * @deny (update) Any user attempting to modify brand details.
-     * @principle Public Read with Restricted Writes.
-     */
-    match /motorBrands/{motorBrandId} {
-      allow get, list: if true;
-      // CRITICAL: Cannot implement owner-only writes. The 'MotorBrand' entity is missing an 'ownerId' or 'authorId' field.
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      match /notifications/{id} {
+        allow read, write: if isOwner(userId);
+      }
+    }
 
-      /**
-       * @description Motor products associated with a brand.
-       * @path /motorBrands/{motorBrandId}/motorProducts/{motorProductId}
-       * @allow (list) A user browsing products for a specific brand.
-       * @deny (create) A user trying to add a product to the catalog.
-       * @principle Public Read with Restricted Writes.
-       */
-      match /motorProducts/{motorProductId} {
-        allow get, list: if true;
-        // CRITICAL: Cannot implement owner-only writes. The 'MotorProduct' entity is missing an 'ownerId' or 'authorId' field.
-        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    match /organisations/{orgId} {
+      // Members can read their org. For MVP, we allow any signed-in user read access.
+      allow read: if isSignedIn();
+      allow write: if false; // System/Admin only
+      
+      match /dealerFitSelections/{id} { allow read, write: if isSignedIn(); }
+      match /quotes/{id} { allow read, write: if isSignedIn(); }
+      match /productPrices/{id} { allow read, write: if isSignedIn(); }
+      match /priceLevelDefinitions/{id} { allow read, write: if isSignedIn(); }
+      match /inventory/{id} { allow read, write: if isSignedIn(); }
+    }
 
-        /**
-         * @description Available configuration options for a specific product.
-         * @path /motorBrands/{motorBrandId}/motorProducts/{motorProductId}/configurableOptions/{configOptionId}
-         * @allow (get) The configuration engine fetching available options for a motor.
-         * @deny (delete) Any client-side attempt to remove configuration logic.
-         */
-        match /configurableOptions/{configOptionId} {
-          allow get, list: if true;
-          allow create, update, delete: if false;
+    match /modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /data-warehouse/{vendorId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+      
+      match /dataSets/{setId} {
+        allow read: if isSignedIn();
+        match /rows/{rowId} {
+          allow read: if isSignedIn();
+        }
+      }
+      match /masterDataSet/{rowId} {
+        allow read: if isSignedIn();
+      }
+      match /ranges/{rangeId} {
+        allow read: if isSignedIn();
+        match /models/{modelId} {
+          allow read: if isSignedIn();
+          match /{allPaths=**} {
+            allow read: if isSignedIn();
+          }
         }
       }
     }
 
-    /**
-     * @description Global categories for configuration options (e.g., "Shaft Length").
-     * @path /configurationOptionTypes/{optionTypeId}
-     * @allow (list) Fetching all types of options for the UI.
-     * @deny (update) Unauthorized modification of option metadata.
-     */
-    match /configurationOptionTypes/{optionTypeId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-
-      /**
-       * @description Specific values for an option type (e.g., "20 inches").
-       * @path /configurationOptionTypes/{optionTypeId}/optionValues/{optionValueId}
-       * @allow (get) Retrieving the price impact of a specific selection.
-       * @deny (create) Attempting to inject new price values.
-       */
-      match /optionValues/{optionValueId} {
-        allow get, list: if true;
-        allow create, update, delete: if false;
-      }
+    match /dealerFitCategories/{id} {
+      allow read: if isSignedIn();
     }
-
-    /**
-     * @description User-owned motor configurations.
-     * @path /users/{userId}/configuredMotorInstances/{instanceId}
-     * @allow (create) User 'abc' creating a configuration at /users/abc/...
-     * @deny (get) User 'xyz' attempting to read configurations owned by 'abc'.
-     * @principle Path-based Ownership and Relational Integrity.
-     */
-    match /users/{userId}/configuredMotorInstances/{instanceId} {
-      allow get, list: if isOwner(userId);
-      
-      // On Create: Ensure the internal userId field matches the path and the auth state.
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      
-      // On Update: Ensure the document exists, belongs to the user, and the userId field is immutable.
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      
-      // On Delete: Ensure the document exists and belongs to the user.
-      allow delete: if isExistingOwner(userId);
+    
+    match /inventory/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /vessels/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /vesselReservations/{id} {
+      allow read, write: if isSignedIn();
     }
   }
 }

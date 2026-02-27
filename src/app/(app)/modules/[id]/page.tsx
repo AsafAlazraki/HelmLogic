@@ -28,7 +28,8 @@ import {
     PlusCircle,
     Pencil,
     Trash2,
-    DollarSign
+    DollarSign,
+    Ship
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
@@ -41,7 +42,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createSlug, cn } from '@/lib/utils';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
@@ -49,6 +49,7 @@ import { InventoryList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { Label } from '@/components/ui/label';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
+import { MotorModuleBrowser } from '@/components/motor-module-browser';
 
 interface Vendor {
     id: string;
@@ -366,7 +367,7 @@ const formSchema = z.object({
   associatedVendorIds: z.array(z.string()).default([]),
 });
 
-function ModuleConfigurationBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: 'ranges' | 'models' | 'bmt' | 'quote' | 'operations' | 'pricing', onBreadcrumbClick: (level: 'ranges' | 'models') => void }) {
+function ModuleConfigurationBreadcrumbs({ module, range, model, pendingMotor, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; pendingMotor: any; view: 'ranges' | 'models' | 'motors' | 'bmt' | 'quote' | 'operations' | 'pricing', onBreadcrumbClick: (level: 'ranges' | 'models' | 'motors') => void }) {
     return (
         <div className="flex items-center text-sm text-muted-foreground">
             <button type="button" className="hover:text-primary" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
@@ -382,6 +383,12 @@ function ModuleConfigurationBreadcrumbs({ module, range, model, view, onBreadcru
                     <span className="font-medium text-foreground">{model.name}</span>
                 </>
             )}
+            {pendingMotor && (view === 'bmt' || view === 'quote' || view === 'operations') && (
+                <>
+                    <ChevronRight className="h-4 w-4 mx-1" />
+                    <span className="font-medium text-foreground">{pendingMotor['Model Name'] || pendingMotor.name}</span>
+                </>
+            )}
         </div>
     );
 }
@@ -394,9 +401,11 @@ export default function ModuleDetailsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
 
-    const [view, setView] = useState<'ranges' | 'models' | 'bmt' | 'quote' | 'operations' | 'pricing'>('ranges');
+    const [view, setView] = useState<'ranges' | 'models' | 'motors' | 'bmt' | 'quote' | 'operations' | 'pricing'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+    const [pendingMotor, setPendingMotor] = useState<any | null>(null);
+    const [selectedMotorDataSetId, setSelectedMotorDataSetId] = useState<string | null>(null);
     const [isChoiceDialogOpen, setIsChoiceDialogOpen] = useState(false);
     
     const [isSavingModule, setIsSavingModule] = useState(false);
@@ -631,22 +640,40 @@ export default function ModuleDetailsPage() {
     
     const handleModelSelect = (model: Model) => {
         setSelectedModel(model);
+        setPendingMotor(null);
+        setIsChoiceDialogOpen(true);
+    };
+
+    const handleMotorSelect = (motor: any, dataSetId: string) => {
+        setPendingMotor(motor);
+        setSelectedMotorDataSetId(dataSetId);
+        setSelectedModel(null);
         setIsChoiceDialogOpen(true);
     };
 
     const handleChoiceSelect = (choice: 'bmt' | 'quote' | 'operations') => {
+        if (choice === 'bmt' && pendingMotor) {
+            // Navigate to nice configuration page for motor
+            router.push(`/modules/${moduleData.slug || moduleData.id}/motor/${pendingMotor.id}?vendor=${moduleData.mainVendorId}&set=${selectedMotorDataSetId}`);
+            setIsChoiceDialogOpen(false);
+            return;
+        }
         setView(choice);
         setIsChoiceDialogOpen(false);
     };
     
-    const handleBreadcrumbClick = (level: 'ranges' | 'models') => {
+    const handleBreadcrumbClick = (level: 'ranges' | 'models' | 'motors') => {
         if (level === 'ranges') {
             setView('ranges');
             setSelectedRange(null);
             setSelectedModel(null);
+            setPendingMotor(null);
         } else if (level === 'models') {
             setView('models');
             setSelectedModel(null);
+        } else if (level === 'motors') {
+            setView('motors');
+            setPendingMotor(null);
         }
     };
     
@@ -676,6 +703,9 @@ export default function ModuleDetailsPage() {
     const showSubDealersTab = isViewingOrg && dashboardOrg?.subDealersEnabled && userPermissions.can_view_subdealers;
     const tabGridCols = (isAdmin && !viewContextOrgId) ? "grid-cols-5" : showSubDealersTab ? "grid-cols-6" : "grid-cols-5";
 
+    const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
+    const isMotorBrand = mainVendor?.vendorType === 'Motor Brand';
+
     return (
         <div className="space-y-4">
              <div className="flex items-start justify-between">
@@ -690,13 +720,13 @@ export default function ModuleDetailsPage() {
                                         value={viewContextOrgId || 'master'} 
                                         onValueChange={(val) => setViewContextOrgId(val === 'master' ? null : val)}
                                     >
-                                        <SelectTrigger className={cn("w-[220px] h-9 hover:bg-accent hover:text-accent-foreground transition-colors", isImpersonating && "border-primary ring-1 ring-primary bg-primary/5")}>
+                                        <SelectTrigger className={cn("w-[220px] h-9 hover:bg-accent hover:text-accent-foreground transition-colors font-bold", isImpersonating && "border-primary ring-1 ring-primary bg-primary/5")}>
                                             <Eye className="h-4 w-4 mr-2" />
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {availableContexts.map(ctx => (
-                                                <SelectItem key={ctx.id} value={ctx.id}>{ctx.name}</SelectItem>
+                                                <SelectItem key={ctx.id} value={ctx.id} className="font-bold">{ctx.name}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -833,21 +863,28 @@ export default function ModuleDetailsPage() {
                 )}
 
                 <TabsContent value="bmt">
-                   {view === 'ranges' || view === 'models' ? (
-                        <Card>
-                            <CardHeader>
+                   {(view === 'ranges' || view === 'models' || view === 'motors') ? (
+                        <Card className="rounded-xl border-2 shadow-lg">
+                            <CardHeader className="bg-muted/10 border-b">
                                 <div className="flex items-center justify-between">
-                                    <CardTitle>{view === 'ranges' ? 'Select a Product Range' : `Models in ${selectedRange?.name}`}</CardTitle>
+                                    <CardTitle className="font-black uppercase tracking-tight">
+                                        {view === 'ranges' ? 'Select product range' : view === 'models' ? `Available models in ${selectedRange?.name}` : `Engine Catalog: ${mainVendor?.name}`}
+                                    </CardTitle>
                                     {isImpersonating && <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20"><Eye className="h-4 w-4 mr-2" /> PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
                                 </div>
-                                <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />
+                                <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} pendingMotor={pendingMotor} view={view} onBreadcrumbClick={handleBreadcrumbClick} />
                             </CardHeader>
-                            <CardContent>
-                                {mainVendor && (mainVendor.vendorType === 'Boat Brand') ? (
+                            <CardContent className="pt-6">
+                                {isBoatBrand && mainVendor ? (
                                     <>
                                         {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
                                         {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} isAdmin={isAdmin && !viewContextOrgId} />}
                                     </>
+                                ) : isMotorBrand && mainVendor ? (
+                                    <MotorModuleBrowser 
+                                        vendor={mainVendor} 
+                                        onMotorSelect={handleMotorSelect} 
+                                    />
                                 ) : (
                                     <p className="text-muted-foreground">No configuration view available for this vendor type.</p>
                                 )}
@@ -861,7 +898,7 @@ export default function ModuleDetailsPage() {
                                     docPath={`data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} 
                                     vendor={mainVendor} 
                                     module={moduleData} 
-                                    breadcrumbs={<ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
+                                    breadcrumbs={<ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} pendingMotor={pendingMotor} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
                                     user={user}
                                     isAdmin={isAdmin}
                                     organisationId={dashboardOrg?.id}
@@ -872,7 +909,7 @@ export default function ModuleDetailsPage() {
                                 <div className="flex h-96 w-full items-center justify-center rounded-lg border-2 border-dashed">
                                     <div className="text-center">
                                         <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-                                        <p className="mt-4 text-muted-foreground capitalize">Preparing {view} engine for {currentContextLabel}...</p>
+                                        <p className="mt-4 text-muted-foreground font-bold uppercase tracking-widest text-xs">Preparing {view} engine for {currentContextLabel}...</p>
                                     </div>
                                 </div>
                             )}
@@ -968,7 +1005,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all flex flex-col", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
@@ -990,10 +1027,10 @@ export default function ModuleDetailsPage() {
                                                             </div>
                                                             {hasAccess && (
                                                                 <div className="flex gap-2">
-                                                                    <Button variant="outline" size="sm" className="flex-1 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { setViewContextOrgId(sd.id); setActiveTab('dashboard'); }}>
+                                                                    <Button variant="outline" size="sm" className="flex-1 hover:bg-accent hover:text-accent-foreground transition-colors font-bold" onClick={() => { setViewContextOrgId(sd.id); setActiveTab('dashboard'); }}>
                                                                         <Eye className="mr-2 h-4 w-4" /> View
                                                                     </Button>
-                                                                    <Button variant="outline" size="sm" className="flex-1 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setSelectedOrgId(sd.id)}>
+                                                                    <Button variant="outline" size="sm" className="flex-1 hover:bg-accent hover:text-accent-foreground transition-colors font-bold" onClick={() => setSelectedOrgId(sd.id)}>
                                                                         <Settings2 className="mr-2 h-4 w-4" /> Config
                                                                     </Button>
                                                                 </div>
@@ -1027,8 +1064,8 @@ export default function ModuleDetailsPage() {
                                     <CardContent className="space-y-6">
                                         <FormField control={settingsForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Module Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                         <FormField control={settingsForm.control} name="mainVendorId" render={({ field }) => ( <FormItem><FormLabel>Main Vendor</FormLabel><Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl><SelectTrigger className="hover:bg-accent hover:text-accent-foreground transition-colors"><SelectValue placeholder="Select main vendor" /></SelectTrigger></FormControl>
-                                            <SelectContent>{allVendors?.map(v => (<SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>))}</SelectContent>
+                                            <FormControl><SelectTrigger className="hover:bg-accent hover:text-accent-foreground transition-colors font-bold"><SelectValue placeholder="Select main vendor" /></SelectTrigger></FormControl>
+                                            <SelectContent>{allVendors?.map(v => (<SelectItem key={v.id} value={v.id} className="font-bold">{v.name}</SelectItem>))}</SelectContent>
                                         </Select></FormItem> )} />
                                         <FormField control={settingsForm.control} name="associatedVendorIds" render={() => (
                                             <FormItem>
@@ -1064,34 +1101,40 @@ export default function ModuleDetailsPage() {
                 )}
             </Tabs>
              <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
-                <DialogContent className="sm:max-w-3xl">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-3xl rounded-2xl p-0 overflow-hidden border-2">
+                    <DialogHeader className="p-8 bg-muted/10 border-b">
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-1">
-                                <DialogTitle className="text-2xl font-semibold">{selectedModel?.name}</DialogTitle>
-                                {selectedModel?.modelCode && <span className="font-mono text-xs text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded w-fit">{selectedModel.modelCode}</span>}
+                                <DialogTitle className="text-3xl font-black uppercase tracking-tight">
+                                    {selectedModel?.name || pendingMotor?.['Model Name'] || pendingMotor?.name}
+                                </DialogTitle>
+                                {(selectedModel?.modelCode || pendingMotor?.['Part Number']) && (
+                                    <span className="font-mono text-xs text-primary font-bold uppercase bg-primary/10 px-2 py-1 rounded w-fit">
+                                        {selectedModel?.modelCode || pendingMotor?.['Part Number']}
+                                    </span>
+                                )}
                             </div>
                             {isImpersonating && <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
                         </div>
-                        <DialogDescription className="text-lg">What would you like to do with this model for {currentContextLabel}?</DialogDescription>
+                        <DialogDescription className="text-lg font-medium opacity-60">What would you like to do with this item for {currentContextLabel}?</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
-                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('bmt')}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-8">
+                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1 shadow-md border-2" onClick={() => handleChoiceSelect('bmt')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4 text-center">
                                 <Wrench className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
-                                <p className="font-semibold text-xl">Configuration</p>
+                                <p className="font-black uppercase tracking-widest text-xs">Configuration</p>
                             </CardContent>
                         </Card>
-                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('quote')}>
+                        <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1 shadow-md border-2" onClick={() => handleChoiceSelect('quote')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4 text-center">
                                 <FileText className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
-                                <p className="font-semibold text-xl">Quotation</p>
+                                <p className="font-black uppercase tracking-widest text-xs">Quotation</p>
                             </CardContent>
                          </Card>
-                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1" onClick={() => handleChoiceSelect('operations')}>
+                         <Card className="group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 transform hover:-translate-y-1 shadow-md border-2" onClick={() => handleChoiceSelect('operations')}>
                             <CardContent className="flex flex-col items-center justify-center p-8 gap-4 text-center">
                                 <ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
-                                <p className="font-semibold text-xl">Operations</p>
+                                <p className="font-black uppercase tracking-widest text-xs">Operations</p>
                             </CardContent>
                         </Card>
                     </div>
