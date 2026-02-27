@@ -19,6 +19,7 @@ interface Organisation {
   id: string;
   dealerFitCategories?: string[];
   dataWarehouseSubscriptions?: string[];
+  moduleAssociatedVendorAccess?: Record<string, string[]>;
 }
 
 interface DealerFitSelection {
@@ -44,6 +45,7 @@ export function DealerFitOptions({
 }) {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   
   const orgRef = useMemoFirebase(() => 
     organisationId ? doc(firestore, 'organisations', organisationId) : null, 
@@ -81,6 +83,14 @@ export function DealerFitOptions({
       return acc;
     }, new Map<string, DealerFitSelection[]>());
   }, [selections]);
+
+  const allowedVendorIds = useMemo(() => {
+    if (!module || !organisation) return [];
+    const mainVendor = module.mainVendorId;
+    const associatedFromOrg = organisation.moduleAssociatedVendorAccess?.[module.id] || [];
+    // Only allow the module's main vendor and the associated vendors explicitly granted to this org for this module
+    return [...new Set([mainVendor, ...associatedFromOrg])].filter(Boolean);
+  }, [module, organisation]);
 
   const handleOpenBrowser = (categoryId: string) => {
     setActiveCategoryId(categoryId);
@@ -196,6 +206,7 @@ export function DealerFitOptions({
           organisation={organisation}
           categoryId={activeCategoryId}
           onSave={handleSaveSelection}
+          allowedVendorIds={allowedVendorIds}
         />
       )}
     </>

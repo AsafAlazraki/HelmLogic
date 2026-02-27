@@ -1538,8 +1538,8 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                 </div>
                             </div>
                             <CardContent className="pt-6">
-                                <ScrollArea className="max-h-[700px] pr-4">
-                                    <div className="space-y-8">
+                                <ScrollArea className="h-[700px] pr-4">
+                                    <div className="space-y-8 pb-40">
                                         {categories.map(cat => {
                                             const catItems = optionalFeatureFields.filter((_, idx) => watchedOptionalFeatures[idx]?.category === cat);
 

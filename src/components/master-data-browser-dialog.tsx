@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -64,7 +63,8 @@ export function MasterDataBrowserDialog({
   title = "Master Data Browser",
   description = "Select items from your subscribed vendors to build a new selection.",
   initialVendorId,
-  initialStagedItems = []
+  initialStagedItems = [],
+  allowedVendorIds
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -76,6 +76,7 @@ export function MasterDataBrowserDialog({
   description?: string;
   initialVendorId?: string;
   initialStagedItems?: { vendorId: string; vendorName: string; row: any }[];
+  allowedVendorIds?: string[];
 }) {
   const firestore = useFirestore();
   const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
@@ -117,9 +118,12 @@ export function MasterDataBrowserDialog({
   const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
 
   const subscribedVendors = useMemo(() => {
-    if (!allVendors || !organisation.dataWarehouseSubscriptions) return [];
-    return allVendors.filter(v => organisation.dataWarehouseSubscriptions?.includes(v.id));
-  }, [allVendors, organisation.dataWarehouseSubscriptions]);
+    if (!allVendors) return [];
+    // If allowedVendorIds is provided, we restrict to that set.
+    // Otherwise, fallback to the organization's global data warehouse subscriptions.
+    const effectiveAllowedIds = allowedVendorIds || organisation.dataWarehouseSubscriptions || [];
+    return allVendors.filter(v => effectiveAllowedIds.includes(v.id));
+  }, [allVendors, organisation.dataWarehouseSubscriptions, allowedVendorIds]);
 
   const filteredData = useMemo(() => {
     if (!masterData) return [];
