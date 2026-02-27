@@ -485,9 +485,9 @@ export default function ModuleDetailsPage() {
             can_access_settings: true,
         };
         const roleId = userProfile?.organisationRole;
-        if (!roleId || !organisation?.permissions?.[roleId]) return { can_access_module: false };
-        return organisation.permissions[roleId];
-    }, [isAdmin, userProfile, organisation]);
+        if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return { can_access_module: false };
+        return currentMemberOrg.permissions[roleId];
+    }, [isAdmin, userProfile, currentMemberOrg]);
 
     const availableContexts = useMemo(() => {
         const contexts = [];
@@ -1011,7 +1011,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
@@ -1122,6 +1122,7 @@ export default function ModuleDetailsPage() {
                             </div>
                             {isImpersonating && <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
                         </div>
+                        <DialogTitle className="hidden">Selection Dialog</DialogTitle>
                         <DialogDescription className="text-lg font-medium opacity-60">What would you like to do with this item for {currentContextLabel}?</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-8">
