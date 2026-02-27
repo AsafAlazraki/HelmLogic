@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -28,23 +29,25 @@ export function JsonDataVisualizer({
         if (typeof value !== 'string') return false;
         const k = key.toLowerCase();
         const isKnownKey = k.includes('image') || k.includes('logo') || k.includes('photo') || k === 'summaryimage';
-        const isUrl = value.startsWith('http') || value.startsWith('/') || value.startsWith('data:image');
+        const isUrl = value.startsWith('http') || value.startsWith('/') || value.startsWith('\\') || value.startsWith('data:image');
         return isKnownKey && isUrl;
     };
 
     const getImageUrl = (value: string) => {
         if (!value) return '';
+        // Handle backslashes first
         const path = value.trim().replace(/\\/g, '/');
+        
         if (path.startsWith('http') || path.startsWith('data:image')) {
             return path;
         }
-        if (path.startsWith('/') && !path.startsWith('//')) {
-            return `https://www.yamaha-motor.com.au${path}`;
-        }
-        // Fallback for Yamaha paths without leading slash
+        
+        // Handle Yamaha specifically
         if (path.includes('images/products') || path.includes('images/accessories')) {
-            return `https://www.yamaha-motor.com.au/${path}`;
+            const cleanPath = path.startsWith('/') ? path : `/${path}`;
+            return `https://www.yamaha-motor.com.au${cleanPath}`;
         }
+        
         return path;
     };
 
