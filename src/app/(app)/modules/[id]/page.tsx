@@ -50,6 +50,13 @@ import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { Label } from '@/components/ui/label';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { MotorModuleBrowser } from '@/components/motor-module-browser';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 
 interface Vendor {
     id: string;
@@ -478,16 +485,9 @@ export default function ModuleDetailsPage() {
             can_access_settings: true,
         };
         const roleId = userProfile?.organisationRole;
-        if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return {
-            can_access_module: false,
-            can_create_quotes: false,
-            can_edit_boat_data: false,
-            can_view_subdealers: false,
-            can_see_parent_inventory: false,
-            can_access_settings: false,
-        };
-        return currentMemberOrg.permissions[roleId];
-    }, [isAdmin, userProfile, currentMemberOrg]);
+        if (!roleId || !organisation?.permissions?.[roleId]) return { can_access_module: false };
+        return organisation.permissions[roleId];
+    }, [isAdmin, userProfile, organisation]);
 
     const availableContexts = useMemo(() => {
         const contexts = [];
@@ -711,7 +711,13 @@ export default function ModuleDetailsPage() {
              <div className="flex items-start justify-between">
                 <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
-                        <h1 className="text-2xl font-semibold">Module: {moduleData.name}</h1>
+                        {moduleData.logoUrl ? (
+                            <div className="relative h-12 w-48">
+                                <Image src={moduleData.logoUrl} alt={moduleData.name} fill className="object-contain object-left" unoptimized />
+                            </div>
+                        ) : (
+                            <h1 className="text-2xl font-semibold">Module: {moduleData.name}</h1>
+                        )}
                         <div className="flex items-center gap-2">
                             {isAdmin && (
                                 <>
@@ -1005,9 +1011,9 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                                 return (
-                                                    <Card key={sd.id} className={cn("relative group transition-all flex flex-col", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
+                                                    <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-3">
