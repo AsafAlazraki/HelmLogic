@@ -89,7 +89,7 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
                     </div>
 
                     <div className="shrink-0 flex flex-col items-center md:items-end gap-2.5">
-                        <div className="h-20 w-20 relative bg-white/10 backdrop-blur-md rounded-2xl p-2.5 border border-white/20 shadow-xl group hover:scale-105 transition-transform">
+                        <div className="h-20 w-20 relative bg-white rounded-2xl p-2.5 border border-white/20 shadow-xl group hover:scale-105 transition-transform">
                             {organisation?.primaryLogoUrl ? (
                                 <Image 
                                     src={organisation.primaryLogoUrl} 
@@ -99,7 +99,7 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
                                 />
                             ) : (
                                 <div className="h-full w-full flex items-center justify-center">
-                                    <Blocks className="h-8 w-8 text-white opacity-40"/>
+                                    <Blocks className="h-8 w-8 text-primary opacity-40"/>
                                 </div>
                             )}
                         </div>
