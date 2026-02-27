@@ -23,6 +23,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { Badge } from './ui/badge';
+import { ScrollArea } from './ui/scroll-area';
 
 interface Variant {
     id: string;
@@ -113,8 +114,8 @@ export function HighfieldQuoteFlow({
     }
 
     return (
-        <div className="min-h-screen -mt-6 -mx-6 bg-background flex flex-col relative overflow-hidden">
-            {/* Immersive Background Blur - Visual stunning effect */}
+        <div className="h-[calc(100vh-64px)] -mt-6 -mx-6 bg-background flex flex-col relative overflow-hidden">
+            {/* Immersive Background Blur */}
             <div className="absolute inset-0 z-0">
                 {model.coverImageUrl && (
                     <div className="relative h-full w-full opacity-10 blur-3xl scale-110">
@@ -125,15 +126,15 @@ export function HighfieldQuoteFlow({
             </div>
 
             {/* Top Navigation / Progress Header */}
-            <div className="relative z-10 p-6 flex flex-col items-center gap-6 border-b bg-card/50 backdrop-blur-md">
-                <div className="w-full max-w-5xl flex items-center justify-between">
+            <div className="relative z-20 p-6 flex flex-col items-center gap-6 border-b bg-card/80 backdrop-blur-xl shrink-0">
+                <div className="w-full max-w-7xl flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
-                            <Ship className="h-6 w-6 text-white" />
+                        <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                            <Ship className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-black uppercase tracking-tight">{model.name}</h1>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{vendor.name} • Quote Flow</p>
+                            <h1 className="text-lg font-black uppercase tracking-tight leading-tight">{model.name}</h1>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{vendor.name} • Quotation</p>
                         </div>
                     </div>
 
@@ -141,228 +142,223 @@ export function HighfieldQuoteFlow({
                         {STEPS.map((step) => (
                             <div key={step.id} className="flex items-center gap-3">
                                 <div className={cn(
-                                    "h-8 w-8 rounded-full flex items-center justify-center text-xs font-black transition-all border-2",
+                                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2",
                                     currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-lg" : 
                                     currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground"
                                 )}>
-                                    {currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}
+                                    {currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}
                                 </div>
                                 <span className={cn(
-                                    "text-[10px] font-black uppercase tracking-widest transition-colors",
+                                    "text-[9px] font-black uppercase tracking-widest transition-colors",
                                     currentStep === step.id ? "text-foreground" : "text-muted-foreground"
                                 )}>
                                     {step.label}
                                 </span>
-                                {step.id < STEPS.length && <ChevronRight className="h-4 w-4 text-muted-foreground/30" />}
+                                {step.id < STEPS.length && <ChevronRight className="h-3 w-3 text-muted-foreground/30" />}
                             </div>
                         ))}
                     </div>
 
-                    <Button variant="ghost" className="font-bold text-destructive hover:bg-destructive/10" onClick={() => window.history.back()}>
-                        Cancel
+                    <Button variant="ghost" size="sm" className="font-bold text-destructive hover:bg-destructive/10" onClick={() => window.history.back()}>
+                        Exit
                     </Button>
                 </div>
             </div>
 
-            {/* Main Configuration Content */}
-            <main className="relative z-10 flex-1 overflow-auto">
-                <div className="max-w-7xl mx-auto p-6 md:p-10 h-full">
-                    {currentStep === 1 && (
-                        <div className="grid lg:grid-cols-12 gap-10 h-full">
+            {/* Main Workspace */}
+            <div className="relative z-10 flex-1 flex overflow-hidden">
+                <div className="flex-1 flex flex-col lg:flex-row max-w-full">
+                    
+                    {/* Fixed Preview Section (Left) */}
+                    <div className="w-full lg:w-7/12 h-[40vh] lg:h-full relative bg-muted/5 border-r border-white/5">
+                        <div className="absolute inset-0 flex flex-col p-8 md:p-12">
+                            <div className="z-20">
+                                <Badge variant="secondary" className="px-4 py-1.5 font-black uppercase tracking-widest text-[10px] shadow-sm bg-background/80 backdrop-blur-sm border-white/20">
+                                    Visualizer
+                                </Badge>
+                            </div>
                             
-                            {/* Visual Preview Panel */}
-                            <div className="lg:col-span-7 flex flex-col gap-6">
-                                <Card className="flex-1 bg-card/40 backdrop-blur-md border-2 overflow-hidden shadow-2xl rounded-3xl relative">
-                                    <div className="absolute top-6 left-6 z-20">
-                                        <Badge variant="secondary" className="px-4 py-1.5 font-black uppercase tracking-widest text-[10px] shadow-sm bg-background/80 backdrop-blur-sm">
-                                            Visual Preview
-                                        </Badge>
-                                    </div>
-                                    <div className="relative h-full w-full min-h-[400px] flex items-center justify-center p-10">
-                                        {(activeVariant?.imageUrl || model.coverImageUrl) ? (
-                                            <Image 
-                                                src={activeVariant?.imageUrl || model.coverImageUrl} 
-                                                alt="Boat Preview" 
-                                                fill 
-                                                className="object-contain p-4 drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-in fade-in zoom-in duration-500" 
-                                                unoptimized
-                                            />
-                                        ) : (
-                                            <Ship className="h-32 w-32 opacity-10" />
-                                        )}
-                                    </div>
-                                    
-                                    {activeVariant && (
-                                        <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-background/90 to-transparent pt-20">
-                                            <div className="flex items-end justify-between gap-4">
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">Active Selection</p>
-                                                    <h3 className="text-2xl font-black uppercase tracking-tight">{activeVariant.name}</h3>
-                                                    <p className="font-mono text-xs font-bold opacity-60 mt-1">{activeVariant.sku || 'MASTER-SKU'}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Retail Price (Excl)</p>
-                                                    <div className="text-3xl font-black flex items-center gap-1">
-                                                        <DollarSign className="h-5 w-5 text-primary" />
-                                                        {(activeVariant.sellPriceExclGst || 0).toLocaleString()}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </Card>
+                            <div className="flex-1 relative w-full flex items-center justify-center">
+                                {(activeVariant?.imageUrl || model.coverImageUrl) ? (
+                                    <Image 
+                                        src={activeVariant?.imageUrl || model.coverImageUrl} 
+                                        alt="Boat Preview" 
+                                        fill 
+                                        className="object-contain p-4 drop-shadow-[0_35px_60px_rgba(0,0,0,0.3)] animate-in fade-in zoom-in duration-700" 
+                                        unoptimized
+                                    />
+                                ) : (
+                                    <Ship className="h-32 w-32 opacity-5" />
+                                )}
                             </div>
 
-                            {/* Selection Panel */}
-                            <div className="lg:col-span-5 space-y-8 animate-in slide-in-from-right-4 duration-500">
-                                <div className="space-y-2">
-                                    <h2 className="text-3xl font-black uppercase tracking-tight">Configure Foundation</h2>
-                                    <p className="text-muted-foreground font-medium">Select your preferred tube material and color scheme to begin the quotation process.</p>
-                                </div>
-
-                                {/* Material Toggle */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-1 flex-1 bg-primary/10 rounded-full overflow-hidden">
-                                            <div className={cn("h-full bg-primary transition-all duration-500", selectedMaterial ? "w-1/2" : "w-0")} />
+                            {activeVariant && (
+                                <div className="mt-auto animate-in slide-in-from-bottom-4 duration-500">
+                                    <div className="bg-background/40 backdrop-blur-md border border-white/10 p-6 rounded-2xl flex items-end justify-between gap-4 shadow-2xl">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">Staged SKU</p>
+                                            <h3 className="text-2xl font-black uppercase tracking-tight leading-none">{activeVariant.name}</h3>
+                                            <p className="font-mono text-[10px] font-bold opacity-50 mt-2 tracking-tighter">{activeVariant.sku || 'MASTER-SKU'}</p>
                                         </div>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Step 1.1: Material</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {availableMaterials.map((mat) => (
-                                            <button
-                                                key={mat}
-                                                onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }}
-                                                className={cn(
-                                                    "group relative flex flex-col items-center justify-center p-6 border-2 rounded-2xl transition-all duration-300",
-                                                    selectedMaterial === mat ? "bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-[1.02]" : "bg-card hover:border-primary/40 text-card-foreground"
-                                                )}
-                                            >
-                                                <div className={cn(
-                                                    "h-10 w-10 rounded-full flex items-center justify-center mb-3 transition-colors",
-                                                    selectedMaterial === mat ? "bg-white/20" : "bg-muted group-hover:bg-primary/10"
-                                                )}>
-                                                    <Box className={cn("h-5 w-5", selectedMaterial === mat ? "text-white" : "text-muted-foreground group-hover:text-primary")} />
-                                                </div>
-                                                <span className="text-lg font-black uppercase tracking-tight">{mat}</span>
-                                                <p className={cn("text-[9px] font-bold mt-1 uppercase opacity-60", selectedMaterial === mat ? "text-white" : "text-muted-foreground")}>
-                                                    {mat === 'PVC' ? 'Robust Standard' : 'Premium Durability'}
-                                                </p>
-                                                {selectedMaterial === mat && (
-                                                    <div className="absolute top-2 right-2">
-                                                        <CheckCircle2 className="h-4 w-4 text-white" />
-                                                    </div>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Color Selection */}
-                                {selectedMaterial && (
-                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-1 flex-1 bg-primary/10 rounded-full overflow-hidden">
-                                                <div className={cn("h-full bg-primary transition-all duration-500", selectedColor ? "w-full" : "w-1/2")} />
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Base Price</p>
+                                            <div className="text-3xl font-black flex items-center justify-end gap-1">
+                                                <span className="text-primary text-xl">$</span>
+                                                {(activeVariant.sellPriceExclGst || 0).toLocaleString()}
                                             </div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Step 1.2: Color Scheme</span>
                                         </div>
-                                        
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Scrollable Config Section (Right) */}
+                    <ScrollArea className="w-full lg:w-5/12 h-full bg-background/20 backdrop-blur-sm">
+                        <div className="p-8 md:p-12 space-y-10">
+                            {currentStep === 1 && (
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
+                                    <div className="space-y-3">
+                                        <h2 className="text-3xl font-black uppercase tracking-tight leading-none">The Foundation</h2>
+                                        <p className="text-muted-foreground font-medium text-sm leading-relaxed max-w-md">Select your hull material and tube color to initialize the build specifications.</p>
+                                    </div>
+
+                                    {/* Material Selection */}
+                                    <div className="space-y-5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">1. Tube Material</span>
+                                            {selectedMaterial && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                        </div>
                                         <div className="grid grid-cols-2 gap-4">
-                                            {availableColors.map((color) => (
+                                            {availableMaterials.map((mat) => (
                                                 <button
-                                                    key={color.id}
-                                                    onClick={() => setSelectedColor(color.id)}
+                                                    key={mat}
+                                                    onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }}
                                                     className={cn(
-                                                        "group flex flex-col border-2 rounded-2xl overflow-hidden transition-all duration-300",
-                                                        selectedColor === color.id ? "border-primary ring-2 ring-primary/20 shadow-xl" : "border-border hover:border-primary/20"
+                                                        "group relative flex flex-col items-start p-5 border-2 rounded-2xl transition-all duration-300",
+                                                        selectedMaterial === mat ? "bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-[1.02]" : "bg-card hover:border-primary/40"
                                                     )}
                                                 >
-                                                    <div className="relative aspect-video bg-muted/30 w-full shrink-0">
-                                                        {color.imageUrl ? (
-                                                            <Image src={color.imageUrl} alt={color.name} fill className="object-contain p-2" unoptimized />
-                                                        ) : (
-                                                            <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-6 w-6"/></div>
-                                                        )}
-                                                    </div>
                                                     <div className={cn(
-                                                        "p-3 w-full text-left transition-colors",
-                                                        selectedColor === color.id ? "bg-primary text-white" : "bg-card"
+                                                        "h-8 w-8 rounded-lg flex items-center justify-center mb-4 transition-colors",
+                                                        selectedMaterial === mat ? "bg-white/20" : "bg-muted"
                                                     )}>
-                                                        <p className="text-[10px] font-black uppercase tracking-tight leading-none">{color.name}</p>
-                                                        {color.code && <p className={cn("text-[8px] font-bold mt-1.5 opacity-60 uppercase", selectedColor === color.id ? "text-white" : "text-muted-foreground")}>{color.code}</p>}
+                                                        <Box className={cn("h-4 w-4", selectedMaterial === mat ? "text-white" : "text-muted-foreground")} />
                                                     </div>
+                                                    <span className="text-sm font-black uppercase tracking-tight">{mat}</span>
+                                                    <p className={cn("text-[8px] font-bold mt-1 uppercase opacity-60", selectedMaterial === mat ? "text-white" : "text-muted-foreground")}>
+                                                        {mat === 'PVC' ? 'Robust Standard' : 'Premium UV Resistance'}
+                                                    </p>
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
-                                )}
 
-                                {/* Next Step Call to Action */}
-                                <div className="pt-6 mt-auto">
-                                    <Button 
-                                        size="lg" 
-                                        className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 transition-all active:scale-95 group"
-                                        disabled={!isStep1Complete}
-                                        onClick={nextStep}
-                                    >
-                                        Proceed to Options
-                                        <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                                    </Button>
-                                    <div className="flex items-center justify-center gap-2 mt-4 text-muted-foreground">
-                                        <Info className="h-3 w-3" />
-                                        <span className="text-[9px] font-bold uppercase tracking-widest">Configuration saves automatically to draft</span>
+                                    {/* Color Selection */}
+                                    {selectedMaterial && (
+                                        <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-500">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">2. Available Colors</span>
+                                                {selectedColor && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {availableColors.map((color) => (
+                                                    <button
+                                                        key={color.id}
+                                                        onClick={() => setSelectedColor(color.id)}
+                                                        className={cn(
+                                                            "group flex flex-col border-2 rounded-2xl overflow-hidden transition-all duration-300 text-left",
+                                                            selectedColor === color.id ? "border-primary ring-2 ring-primary/10 shadow-xl" : "border-border hover:border-primary/20"
+                                                        )}
+                                                    >
+                                                        {/* White background specifically for highfield renders */}
+                                                        <div className="relative aspect-video bg-white w-full shrink-0 border-b">
+                                                            {color.imageUrl ? (
+                                                                <Image src={color.imageUrl} alt={color.name} fill className="object-contain p-2" unoptimized />
+                                                            ) : (
+                                                                <div className="flex h-full w-full items-center justify-center opacity-5 bg-muted"><Ship className="h-6 w-6"/></div>
+                                                            )}
+                                                        </div>
+                                                        <div className={cn(
+                                                            "p-3 w-full transition-colors",
+                                                            selectedColor === color.id ? "bg-primary text-white" : "bg-card"
+                                                        )}>
+                                                            <p className="text-[10px] font-black uppercase tracking-tight truncate">{color.name}</p>
+                                                            {color.code && <p className={cn("text-[8px] font-bold mt-1 uppercase", selectedColor === color.id ? "text-white/60" : "text-muted-foreground")}>{color.code}</p>}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Persistent Footer Call to Action */}
+                                    <div className="pt-10 sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pb-4">
+                                        <Button 
+                                            size="lg" 
+                                            className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 transition-all active:scale-95 group"
+                                            disabled={!isStep1Complete}
+                                            onClick={nextStep}
+                                        >
+                                            Next: Options & Accessories
+                                            <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                                        </Button>
+                                        <div className="flex items-center justify-center gap-2 mt-4 text-muted-foreground">
+                                            <ShieldCheck className="h-3 w-3" />
+                                            <span className="text-[8px] font-bold uppercase tracking-widest">Configuration values synced to draft</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
+                            )}
 
-                    {currentStep === 2 && (
-                        <div className="flex flex-col items-center justify-center h-full py-20 animate-in fade-in duration-500">
-                            <Card className="max-w-xl w-full border-2 border-dashed bg-muted/5 flex flex-col items-center justify-center p-12 text-center gap-6 rounded-3xl">
-                                <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                                    <Wrench className="h-10 w-10" />
+                            {currentStep === 2 && (
+                                <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-500">
+                                    <Card className="w-full border-2 border-dashed bg-muted/5 flex flex-col items-center justify-center p-12 text-center gap-6 rounded-3xl">
+                                        <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                                            <Box className="h-8 w-8" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-black uppercase tracking-tight">Rigging & Options</h3>
+                                            <p className="text-xs text-muted-foreground mt-2 font-medium">Continue to customize consoles, seating, and technical accessories.</p>
+                                        </div>
+                                        <div className="flex flex-col gap-3 w-full">
+                                            <Button size="lg" className="w-full h-14 font-black uppercase tracking-widest text-xs" onClick={nextStep}>
+                                                Continue Build <ChevronRight className="ml-2 h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" className="font-bold text-xs" onClick={prevStep}>
+                                                <ChevronLeft className="mr-2 h-4 w-4" /> Back to Base
+                                            </Button>
+                                        </div>
+                                    </Card>
                                 </div>
-                                <div>
-                                    <h3 className="text-2xl font-black uppercase tracking-tight">Options & Accessories</h3>
-                                    <p className="text-muted-foreground mt-2">Next up: Customizing the {model.name} with consoles, seating, and electronics.</p>
-                                </div>
-                                <div className="flex gap-4 w-full pt-4">
-                                    <Button variant="outline" size="lg" className="flex-1 font-bold" onClick={prevStep}>
-                                        <ChevronLeft className="mr-2 h-4 w-4" /> Back
-                                    </Button>
-                                    <Button size="lg" className="flex-1 font-black uppercase tracking-widest" onClick={nextStep}>
-                                        Continue <ChevronRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </Card>
-                        </div>
-                    )}
+                            )}
 
-                    {currentStep === 3 && (
-                        <div className="flex flex-col items-center justify-center h-full py-20 animate-in fade-in duration-500">
-                            <Card className="max-w-xl w-full border-2 border-dashed bg-muted/5 flex flex-col items-center justify-center p-12 text-center gap-6 rounded-3xl">
-                                <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                                    <ClipboardList className="h-10 w-10" />
+                            {currentStep === 3 && (
+                                <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-500">
+                                    <Card className="w-full border-2 border-dashed bg-muted/5 flex flex-col items-center justify-center p-12 text-center gap-6 rounded-3xl">
+                                        <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                                            <CheckCircle2 className="h-8 w-8" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-black uppercase tracking-tight">Generate Proposal</h3>
+                                            <p className="text-xs text-muted-foreground mt-2 font-medium">Review the complete build list and pricing summary before finalizing the quote.</p>
+                                        </div>
+                                        <div className="flex flex-col gap-3 w-full">
+                                            <Button size="lg" className="w-full h-14 font-black uppercase tracking-widest text-xs">
+                                                Finalize Quote <ArrowRight className="ml-2 h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" className="font-bold text-xs" onClick={prevStep}>
+                                                <ChevronLeft className="mr-2 h-4 w-4" /> Back to Options
+                                            </Button>
+                                        </div>
+                                    </Card>
                                 </div>
-                                <div>
-                                    <h3 className="text-2xl font-black uppercase tracking-tight">Review Quote</h3>
-                                    <p className="text-muted-foreground mt-2">Final Step: Generate the official proposal for your configuration.</p>
-                                </div>
-                                <div className="flex gap-4 w-full pt-4">
-                                    <Button variant="outline" size="lg" className="flex-1 font-bold" onClick={prevStep}>
-                                        <ChevronLeft className="mr-2 h-4 w-4" /> Back
-                                    </Button>
-                                    <Button size="lg" className="flex-1 font-black uppercase tracking-widest">
-                                        Generate Quote <CheckCircle2 className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </Card>
+                            )}
                         </div>
-                    )}
+                    </ScrollArea>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }
