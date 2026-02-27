@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -14,7 +13,7 @@ import { useCollection, useDoc, useFirestore, useMemoFirebase, useStorage } from
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, DollarSign, TrendingUp } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -41,7 +40,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn, createSlug } from '@/lib/utils';
 import { ModuleVendorAccessDialog } from '@/components/module-vendor-access-dialog';
-import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
@@ -72,7 +70,6 @@ const formSchema = z.object({
   primaryLogoUrl: z.string().nullable().optional(),
   secondaryLogoUrl: z.string().nullable().optional(),
   subDealersEnabled: z.boolean().optional(),
-  tradingCurrency: z.string().default('AUD'),
   gstPercentage: z.coerce.number().min(0).max(100).default(10),
   brandMargins: z.record(z.string(), z.coerce.number()).optional(),
   moduleMargins: z.record(z.string(), z.coerce.number()).optional(),
@@ -117,7 +114,6 @@ const permissionsConfig = [
     { id: 'can_create_quotes', label: 'Create Quotes' },
     { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
-    { id: 'can_access_price_book', label: 'Access Price Book' },
     { id: 'can_see_parent_inventory', label: 'Access Parent Inventory' },
     { id: 'can_access_settings', label: 'Access Settings' },
 ];
@@ -168,7 +164,7 @@ export default function OrganisationDetailsPage() {
         return query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', organisation.id));
     }, [firestore, organisation]);
 
-    const { data: subDealers, loading: subDealersLoading } = useCollection<OrganisationFormData>(subDealersQuery);
+    const { data: subDealers } = useCollection<OrganisationFormData>(subDealersQuery);
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
@@ -179,7 +175,6 @@ export default function OrganisationDetailsPage() {
             dataWarehouseSubscriptions: [],
             enabledModuleSubscriptions: [],
             dealerFitCategories: [],
-            tradingCurrency: 'AUD',
             gstPercentage: 10,
             brandMargins: {},
             moduleMargins: {},
@@ -198,7 +193,6 @@ export default function OrganisationDetailsPage() {
 
     useEffect(() => {
         if (organisation) {
-            // Deep clone permissions to avoid direct mutation issues
             const initialPermissions = JSON.parse(JSON.stringify(organisation.permissions || {}));
             (organisation.roles || []).forEach(role => {
                 if (!initialPermissions[role.id]) {
@@ -210,7 +204,6 @@ export default function OrganisationDetailsPage() {
                 ...organisation, 
                 permissions: initialPermissions,
                 subDealersEnabled: organisation.subDealersEnabled || false,
-                tradingCurrency: organisation.tradingCurrency || 'AUD',
                 gstPercentage: organisation.gstPercentage ?? 10,
                 brandMargins: organisation.brandMargins || {},
                 moduleMargins: organisation.moduleMargins || {},
@@ -285,7 +278,6 @@ export default function OrganisationDetailsPage() {
                 roles: values.roles || [],
                 permissions: values.permissions || {},
                 subDealersEnabled: values.subDealersEnabled || false,
-                tradingCurrency: values.tradingCurrency,
                 gstPercentage: values.gstPercentage,
                 brandMargins: values.brandMargins || {},
                 moduleMargins: values.moduleMargins || {},
@@ -298,35 +290,18 @@ export default function OrganisationDetailsPage() {
             if (values.primaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
                 dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
-            } else if (values.primaryLogoUrl === '') {
-                dataToUpdate.primaryLogoUrl = null;
-            } else if (organisation.primaryLogoUrl) {
-                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl;
             }
             
             if (values.secondaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
                 dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
-            } else if (values.secondaryLogoUrl === '') {
-                dataToUpdate.secondaryLogoUrl = null;
-            } else if (organisation.secondaryLogoUrl) {
-                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl;
             }
 
-            await updateDoc(orgDocRef, dataToUpdate)
-                .catch((serverError) => {
-                    const permissionError = new FirestorePermissionError({
-                        path: orgDocRef.path, operation: 'update', requestResourceData: dataToUpdate,
-                    });
-                    errorEmitter.emit('permission-error', permissionError);
-                    throw serverError;
-                });
-
+            await updateDoc(orgDocRef, dataToUpdate);
             toast({ title: 'Organisation updated' });
             if (dataToUpdate.slug !== slugOrId) {
                 router.replace(`/organisations/${dataToUpdate.slug}`);
             }
-
         } catch (error: any) {
             console.error("Failed to update organisation:", error);
             toast({ variant: 'destructive', title: 'Failed to update organisation', description: error.message });
@@ -335,30 +310,15 @@ export default function OrganisationDetailsPage() {
         }
     }
 
-    const onInvalid = (errors: any) => {
-        console.error("Form Validation Errors:", errors);
-        toast({
-            variant: "destructive",
-            title: "Validation Error",
-            description: "Please check the form for errors. Missing required fields or invalid data types.",
-        });
-    };
-
     const handleDelete = async () => {
         if (!organisation) return;
         try {
             const orgDocRef = doc(firestore, 'organisations', organisation.id);
-            await deleteDoc(orgDocRef).catch((serverError) => {
-                const permissionError = new FirestorePermissionError({ path: orgDocRef.path, operation: 'delete' });
-                errorEmitter.emit('permission-error', permissionError);
-                throw serverError;
-            });
+            await deleteDoc(orgDocRef);
             toast({ title: 'Organisation deleted' });
             window.location.href = '/organisations';
         } catch (error) {
-            console.error("Failed to delete organisation:", error);
             toast({ variant: 'destructive', title: 'Deletion failed' });
-            setIsDeleteDialogOpen(false);
         }
     };
 
@@ -394,7 +354,7 @@ export default function OrganisationDetailsPage() {
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : organisation ? (
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <div className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-2xl font-semibold">Edit {organisation.name}</h1>
@@ -454,32 +414,6 @@ export default function OrganisationDetailsPage() {
                                                 <CardDescription>Global financial settings for this organisation.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-6">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="tradingCurrency"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="flex items-center gap-2">
-                                                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                                                Trading Currency
-                                                            </FormLabel>
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <FormControl>
-                                                                    <SelectTrigger>
-                                                                        <SelectValue placeholder="Select currency" />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    {SUPPORTED_CURRENCIES.map(curr => (
-                                                                        <SelectItem key={curr.code} value={curr.code}>{curr.label}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <FormDescription>The primary currency used for quoting and local pricing.</FormDescription>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
                                                 <FormField
                                                     control={form.control}
                                                     name="gstPercentage"
@@ -589,7 +523,7 @@ export default function OrganisationDetailsPage() {
                                                 <Form {...inviteForm}>
                                                     <div className="mt-4 space-y-4 max-w-lg">
                                                         <FormField control={inviteForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="name@example.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={inviteForm.control} name="roleId" render={({ field }) => ( <FormItem><FormLabel>Role</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a role to assign" /></SelectTrigger></FormControl><SelectContent>{organisation.roles?.map(role => (<SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )} />
+                                                        <FormField control={inviteForm.control} name="roleId" render={({ field }) => ( <FormItem><FormLabel>Role</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a role to assign" /></SelectTrigger></FormControl><SelectContent>{organisation.roles?.map(role => (<SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>))}</Select><FormMessage /></FormItem> )} />
                                                         <Button type="button" disabled={isInviting} onClick={inviteForm.handleSubmit(onInviteSubmit)}>
                                                             {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                             <Mail className="mr-2 h-4 w-4" /> Send Invite
@@ -808,9 +742,7 @@ export default function OrganisationDetailsPage() {
                                             <Button asChild><Link href={`/organisations/${organisation.slug || organisation.id}/add-sub-dealer`}><PlusCircle className="mr-2 h-4 w-4" />Add Sub Dealer</Link></Button>
                                         </CardHeader>
                                         <CardContent>
-                                            {subDealersLoading ? (
-                                                <div className="flex justify-center items-center py-12"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
-                                            ) : subDealers && subDealers.length > 0 ? (
+                                            {subDealers && subDealers.length > 0 ? (
                                                 <Table>
                                                     <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Address</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                                     <TableBody>
@@ -836,18 +768,22 @@ export default function OrganisationDetailsPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete <strong>{organisation?.name}</strong> and all its data.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction></AlertDialogFooter>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Yes, delete it</AlertDialogAction>
+                    </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
             
             <AlertDialog open={!!vendorToUnsubscribe} onOpenChange={(open) => !open && setVendorToUnsubscribe(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader><AlertDialogTitle>Confirm Unsubscription</AlertDialogTitle><AlertDialogDescription>Remove access to <strong>{vendorToUnsubscribe?.name}</strong> for this organisation?</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel onClick={() => setVendorToUnsubscribe(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => {
-                        const currentSubs = form.getValues('dataWarehouseSubscriptions') || [];
-                        form.setValue('dataWarehouseSubscriptions', currentSubs.filter((id) => id !== vendorToUnsubscribe?.id), { shouldDirty: true });
-                        setVendorToUnsubscribe(null);
-                    }} className="bg-destructive hover:bg-destructive/90">Yes, Unsubscribe</AlertDialogAction></AlertDialogFooter>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setVendorToUnsubscribe(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => {
+                            const currentSubs = form.getValues('dataWarehouseSubscriptions') || [];
+                            form.setValue('dataWarehouseSubscriptions', currentSubs.filter((id) => id !== vendorToUnsubscribe?.id), { shouldDirty: true });
+                            setVendorToUnsubscribe(null);
+                        }} className="bg-destructive hover:bg-destructive/90">Yes, Unsubscribe</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 

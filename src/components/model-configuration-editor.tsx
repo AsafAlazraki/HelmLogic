@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, FormProvider } from 'react-hook-form';
@@ -7,16 +6,16 @@ import { z } from 'zod';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Globe, DollarSign } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag } from 'lucide-react';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor, jeanneauModelSchema } from '@/components/jeanneau-model-editor';
@@ -34,13 +33,6 @@ interface Permissions {
     can_create_quotes: boolean;
     can_edit_boat_data: boolean;
     can_view_subdealers: boolean;
-}
-
-interface Organisation {
-    id: string;
-    name: string;
-    tradingCurrency?: string;
-    gstPercentage?: number;
 }
 
 const motorConfigOptions = [
@@ -206,15 +198,8 @@ export function ModelConfigurationEditor({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    const orgRef = useMemoFirebase(() => organisationId ? doc(firestore, 'organisations', organisationId) : null, [firestore, organisationId]);
-    const { data: organisation } = useDoc<Organisation>(orgRef);
-
-    const currentSchema = getVendorSchema(vendor?.slug);
     const isModuleView = module?.id !== 'master';
-
-    const masterCurrency = vendor?.currency || 'AUD';
-    const tradingCurrency = isAdmin ? masterCurrency : (organisation?.tradingCurrency || 'AUD');
-    const gstPercentage = organisation?.gstPercentage ?? 10;
+    const currentSchema = getVendorSchema(vendor?.slug);
 
     const form = useForm({
         resolver: zodResolver(currentSchema),
@@ -245,7 +230,7 @@ export function ModelConfigurationEditor({
             if (isAdmin) {
                 const modelDocRef = doc(firestore, docPath);
                 await setDoc(modelDocRef, sanitizedValues, { merge: true });
-                toast({ title: "Master Configuration Updated", description: "Changes have been saved to the Data Warehouse." });
+                toast({ title: "Master Configuration Updated" });
             } else {
                 if (!organisationId || !user) throw new Error("Missing context for organization save");
                 const quotesColRef = collection(firestore, `organisations/${organisationId}/quotes`);
@@ -259,35 +244,13 @@ export function ModelConfigurationEditor({
                     customerName: 'Local Configuration',
                     pricingSummary: {},
                 });
-                toast({ title: "Local Configuration Saved", description: "Successfully saved to your organisation workspace." });
+                toast({ title: "Local Configuration Saved" });
             }
         } catch (e: any) {
-            console.error("Save failed:", e);
             toast({ variant: "destructive", title: "Error", description: e.message || "Could not save changes." });
-            if (e.code === 'permission-denied') {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: docPath, operation: 'update', requestResourceData: values,
-                }));
-            }
         } finally {
             setIsSubmitting(false);
         }
-    };
-
-    const onInvalid = (errors: any) => {
-        const errorEntries = Object.entries(errors);
-        let errorMsg = "Please check the required fields.";
-        
-        if (errorEntries.length > 0) {
-            const [field, error]: [string, any] = errorEntries[0];
-            errorMsg = `Error in ${field.replace(/_/g, ' ')}: ${error.message || 'Invalid value'}`;
-        }
-        
-        toast({ 
-            variant: "destructive", 
-            title: "Validation Error", 
-            description: errorMsg
-        });
     };
 
     const getModelEditor = () => {
@@ -302,9 +265,7 @@ export function ModelConfigurationEditor({
             vendorId: vId,
             rangeId: rId,
             isModuleView: !!isModuleView,
-            gstPercentage,
-            tradingCurrency,
-            masterCurrency
+            gstPercentage: 10
         };
         switch (vendor.slug) {
             case 'highfield': return <HighfieldModelEditor {...commonProps} />;
@@ -312,7 +273,7 @@ export function ModelConfigurationEditor({
             case 'stacer': return <StacerModelEditor {...commonProps} />;
             case 'stabicraft': return <StabicraftModelEditor {...commonProps} />;
             case 'surtees': return <SurteesModelEditor {...commonProps} />;
-            default: return <Card><CardHeader><CardTitle>Editor Not Available</CardTitle></CardHeader><CardContent>A specific editor has not been configured for this vendor brand.</CardContent></Card>;
+            default: return <p>Editor Not Available</p>;
         }
     };
 
@@ -320,7 +281,7 @@ export function ModelConfigurationEditor({
 
     return (
         <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
                 <div className="space-y-6">
                     <Card className="border-primary/20 bg-primary/5 rounded-xl">
                         <CardContent className="p-4">
@@ -335,26 +296,13 @@ export function ModelConfigurationEditor({
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    {isModuleView && (
-                                        <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-background border border-primary/20 shadow-sm">
-                                            <div className="flex items-center gap-1.5">
-                                                <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Master: {masterCurrency}</span>
-                                            </div>
-                                            <div className="h-3 w-px bg-border" />
-                                            <div className="flex items-center gap-1.5">
-                                                <DollarSign className="h-3.5 w-3.5 text-primary" />
-                                                <span className="text-[10px] font-bold uppercase text-primary tracking-tighter">Trading: {tradingCurrency}</span>
-                                            </div>
-                                        </div>
-                                    )}
                                     {isModuleView && (permissions.can_create_quotes || isAdmin) && (
-                                        <Button type="button" variant="outline" onClick={() => {}} className="hover:bg-accent hover:text-accent-foreground transition-colors">
+                                        <Button type="button" variant="outline">
                                             Create Quote
                                         </Button>
                                     )}
                                     {canEdit && (
-                                        <Button type="submit" disabled={isSubmitting} className="hover:opacity-90 transition-opacity">
+                                        <Button type="submit" disabled={isSubmitting}>
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             <Save className="mr-2 h-4 w-4" />
                                             {isAdmin ? 'Save Master Changes' : 'Save Configuration'}

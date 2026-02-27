@@ -11,21 +11,19 @@ import {
     TableHeader, 
     TableRow 
 } from '@/components/ui/table';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
     Loader2, 
     TrendingUp, 
-    DollarSign, 
-    ArrowRightLeft, 
     Search, 
     Save,
     ChevronRight,
     Calculator,
     Percent
 } from 'lucide-react';
-import { formatCurrency, convertCurrency, getExchangeRate } from '@/lib/currency-utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
@@ -46,7 +44,6 @@ interface Model {
 
 interface Organisation {
     id: string;
-    tradingCurrency?: string;
     gstPercentage?: number;
     brandMargins?: Record<string, number>;
     rangeMargins?: Record<string, number>;
@@ -66,8 +63,6 @@ export function ModulePricingDashboard({
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    
-    // Local state for margins to allow editing before save
     const [localMargins, setLocalMargins] = useState<Record<string, number>>({});
 
     const rangesQuery = useMemoFirebase(() => 
@@ -76,7 +71,6 @@ export function ModulePricingDashboard({
     
     const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
 
-    // Flat list of all models for the dashboard
     const [allModels, setAllModels] = useState<Model[]>([]);
     const [modelsLoading, setModelsLoading] = useState(true);
 
@@ -87,7 +81,7 @@ export function ModulePricingDashboard({
         try {
             for (const range of ranges) {
                 const q = query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
-                const snap = await (firestore as any).getDocs(q); // Helper bypass for bulk fetch in effect
+                const snap = await (firestore as any).getDocs(q);
                 snap.forEach((doc: any) => {
                     models.push({ id: doc.id, ...doc.data() } as Model);
                 });
@@ -100,9 +94,6 @@ export function ModulePricingDashboard({
         }
     }, [ranges, vendor.id, firestore]);
 
-    const sourceCurrency = vendor.currency || 'AUD';
-    const tradingCurrency = organisation.tradingCurrency || 'AUD';
-    const exchangeRate = getExchangeRate(sourceCurrency, tradingCurrency);
     const gstRate = (organisation.gstPercentage ?? 10) / 100;
 
     const filteredModels = useMemo(() => {
@@ -123,7 +114,6 @@ export function ModulePricingDashboard({
     };
 
     const getActiveMargin = (model: Model) => {
-        // Hierarchy: Local Model > Local Range > Global Brand
         const modelMargin = localMargins[model.id] ?? organisation.modelMargins?.[model.id];
         if (modelMargin !== undefined) return { value: modelMargin, source: 'model' };
 
@@ -137,8 +127,6 @@ export function ModulePricingDashboard({
         setIsSaving(true);
         try {
             const orgRef = doc(firestore, 'organisations', organisation.id);
-            
-            // Separate range and model margins
             const newRangeMargins = { ...(organisation.rangeMargins || {}) };
             const newModelMargins = { ...(organisation.modelMargins || {}) };
 
@@ -155,7 +143,7 @@ export function ModulePricingDashboard({
                 modelMargins: newModelMargins
             });
 
-            toast({ title: "Pricing Updated", description: "Margins have been saved successfully." });
+            toast({ title: "Pricing Updated" });
             setLocalMargins({});
         } catch (e) {
             toast({ variant: 'destructive', title: "Save Failed" });
@@ -164,14 +152,8 @@ export function ModulePricingDashboard({
         }
     };
 
-    const loading = rangesLoading || modelsLoading;
-
-    if (loading) {
-        return (
-            <div className="flex h-96 w-full items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
+    if (rangesLoading || modelsLoading) {
+        return <div className="flex h-96 w-full items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
     }
 
     return (
@@ -187,10 +169,6 @@ export function ModulePricingDashboard({
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Badge variant="secondary" className="h-10 px-4 flex items-center gap-2">
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                        <span>1 {sourceCurrency} = {exchangeRate.toFixed(4)} {tradingCurrency}</span>
-                    </Badge>
                 </div>
                 <Button onClick={handleSave} disabled={isSaving || Object.keys(localMargins).length === 0} className="h-10 px-6">
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -204,11 +182,7 @@ export function ModulePricingDashboard({
                         <TableHeader className="bg-muted/50">
                             <TableRow className="hover:bg-transparent">
                                 <TableHead className="w-[300px] py-4">Model & Code</TableHead>
-                                <TableHead className="text-right">Master Cost ({sourceCurrency})</TableHead>
-                                <TableHead className="text-center w-12">
-                                    <div className="flex justify-center"><ArrowRightLeft className="h-4 w-4 text-muted-foreground" /></div>
-                                </TableHead>
-                                <TableHead className="text-right">Local Cost ({tradingCurrency})</TableHead>
+                                <TableHead className="text-right">Base Cost</TableHead>
                                 <TableHead className="w-[140px] text-center">
                                     <div className="flex items-center justify-center gap-1.5">
                                         <Percent className="h-3.5 w-3.5" />
@@ -229,7 +203,7 @@ export function ModulePricingDashboard({
                                 return (
                                     <React.Fragment key={range.id}>
                                         <TableRow className="bg-muted/30 hover:bg-muted/40 transition-colors border-y-2 border-border/50">
-                                            <TableCell colSpan={4} className="py-3">
+                                            <TableCell colSpan={2} className="py-3">
                                                 <div className="flex items-center gap-2">
                                                     <ChevronRight className="h-4 w-4 text-primary" />
                                                     <span className="font-black uppercase tracking-widest text-[11px] text-muted-foreground">{range.name} RANGE</span>
@@ -255,13 +229,9 @@ export function ModulePricingDashboard({
                                         </TableRow>
                                         {rangeModels.map(model => {
                                             const cost = model.cost ?? 0;
-                                            const localCost = convertCurrency(cost, sourceCurrency, tradingCurrency);
                                             const activeMargin = getActiveMargin(model);
-                                            
-                                            // Calculate Sell Price: cost / (1 - margin)
-                                            // E.g. $100 cost with 20% margin ($100 / 0.8) = $125 sell
                                             const marginFactor = 1 - (activeMargin.value / 100);
-                                            const sellExcl = marginFactor > 0 ? localCost / marginFactor : localCost;
+                                            const sellExcl = marginFactor > 0 ? cost / marginFactor : cost;
                                             const sellIncl = sellExcl * (1 + gstRate);
 
                                             return (
@@ -273,13 +243,7 @@ export function ModulePricingDashboard({
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">
-                                                        {formatCurrency(cost, sourceCurrency)}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        <div className="h-1 w-4 bg-muted mx-auto rounded-full group-hover:bg-primary/20 transition-colors" />
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-bold text-muted-foreground/80">
-                                                        {formatCurrency(localCost, tradingCurrency)}
+                                                        {formatCurrency(cost)}
                                                     </TableCell>
                                                     <TableCell className="p-2">
                                                         <div className="relative max-w-[100px] mx-auto">
@@ -293,18 +257,13 @@ export function ModulePricingDashboard({
                                                                 )}
                                                             />
                                                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">%</span>
-                                                            {localMargins[model.id] === undefined && activeMargin.source !== 'model' && (
-                                                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full px-1.5 py-0.5 rounded bg-muted text-[8px] font-black uppercase text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                                                                    Inherited ({activeMargin.source})
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-right font-black text-primary text-sm">
-                                                        {formatCurrency(sellExcl, tradingCurrency)}
+                                                        {formatCurrency(sellExcl)}
                                                     </TableCell>
                                                     <TableCell className="text-right font-black text-foreground bg-primary/5 text-sm pr-6 border-l-2 border-primary/10">
-                                                        {formatCurrency(sellIncl, tradingCurrency)}
+                                                        {formatCurrency(sellIncl)}
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -316,42 +275,6 @@ export function ModulePricingDashboard({
                     </Table>
                 </div>
             </Card>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-primary/5 border-primary/10">
-                    <CardHeader className="py-4">
-                        <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                            <Calculator className="h-4 w-4" />
-                            Margin Logic
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-[11px] text-muted-foreground leading-relaxed">
-                        Retail Sell Prices are calculated using the <strong>Cost / (1 - Margin)</strong> formula to ensure your target profit percentage is preserved relative to the final sale price.
-                    </CardContent>
-                </Card>
-                <Card className="bg-muted/30 border-muted-foreground/10">
-                    <CardHeader className="py-4">
-                        <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4" />
-                            Inheritance
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-[11px] text-muted-foreground leading-relaxed">
-                        Models inherit their margin from the <strong>Range</strong> setting if defined, otherwise from the global <strong>Brand</strong> setting. Specific model overrides take top priority.
-                    </CardContent>
-                </Card>
-                <Card className="bg-muted/30 border-muted-foreground/10">
-                    <CardHeader className="py-4">
-                        <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <Percent className="h-4 w-4" />
-                            Tax Inclusion
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-[11px] text-muted-foreground leading-relaxed">
-                        The final column shows the retail price inclusive of your organisation's <strong>{organisation.gstPercentage ?? 10}% GST</strong> setting.
-                    </CardContent>
-                </Card>
-            </div>
         </div>
     );
 }
