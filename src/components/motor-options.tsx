@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, doc, getDocs, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Settings2, Package, Check, X, ShieldCheck, Ship, ChevronRight } from 'lucide-react';
+import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
 import { Button } from './ui/button';
@@ -92,7 +92,7 @@ function AccessoryCategory({
                     variant="ghost" 
                     size="icon" 
                     className="h-6 w-6 rounded-full hover:bg-primary/10 text-primary transition-all opacity-40 group-hover/cat:opacity-100"
-                    onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}
                 >
                     <PlusCircle className="h-3.5 w-3.5" />
                 </Button>
@@ -107,13 +107,13 @@ function AccessoryCategory({
                             variant="ghost" 
                             size="icon" 
                             className="h-5 w-5 text-destructive hover:bg-destructive/10 opacity-0 group-hover/opt:opacity-100 transition-opacity"
-                            onClick={(e) => { e.stopPropagation(); onRemove(i); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(i); }}
                         >
                             <X className="h-3 w-3" />
                         </Button>
                     </div>
                 )) : (
-                    <div className="py-3 border border-dashed rounded-lg flex items-center justify-center text-[8px] text-muted-foreground/30 uppercase font-black tracking-widest">
+                    <div className="py-3 border border-dashed rounded-lg flex items-center justify-center text-[8px] text-muted-foreground/30 uppercase font-black tracking-widest bg-muted/5">
                         None Linked
                     </div>
                 )}
@@ -153,19 +153,21 @@ function MotorCard({
         }
         return undefined;
     };
-    const modelNameKey = findKey(['Model Name', 'ModelName', 'name']);
+    
+    // Improved name detection for Yamaha data
+    const modelNameKey = findKey(['Model Name', 'ModelName', 'Model', 'Description', 'name']);
     const modelName = modelNameKey ? motor[modelNameKey] : 'Unknown Motor';
     const hpRating = motor['HP Rating'];
 
     const categorized = {
-        Propeller: options.filter(o => o.category === 'Propeller'),
-        Rigging: options.filter(o => o.category === 'Rigging'),
-        Other: options.filter(o => !o.category || o.category === 'Other')
+        Propeller: (options || []).filter(o => o.category === 'Propeller'),
+        Rigging: (options || []).filter(o => o.category === 'Rigging'),
+        Other: (options || []).filter(o => !o.category || o.category === 'Other')
     };
 
     return (
-        <Card className="overflow-hidden flex flex-col border-2 shadow-sm hover:border-primary/20 transition-all rounded-xl h-full min-w-0 max-w-full">
-            <div className="relative h-32 bg-muted/30 shrink-0 border-b">
+        <Card className="overflow-hidden flex flex-col border-2 shadow-sm hover:border-primary/20 transition-all rounded-xl h-full min-w-0 max-w-full bg-card">
+            <div className="relative h-36 bg-muted/30 shrink-0 border-b">
                  {itemImageUrl ? (
                     <Image 
                         src={itemImageUrl} 
@@ -180,26 +182,28 @@ function MotorCard({
                         <Ship className="w-10 h-10"/>
                     </div>
                 )}
-                {hpRating && (
-                    <div className="absolute top-2 left-2">
-                        <Badge variant="default" className="font-black text-[9px] bg-primary shadow-md uppercase tracking-tighter px-2">
-                            {hpRating} HP
-                        </Badge>
-                    </div>
-                )}
                 <div className="absolute bottom-2 right-2">
-                    <Badge variant="secondary" className="font-mono text-[9px] font-bold bg-background/90 backdrop-blur-md border shadow-sm px-1.5">
+                    <Badge variant="secondary" className="font-mono text-[9px] font-bold bg-background/90 backdrop-blur-md border shadow-sm px-1.5 opacity-60">
                         {motor.id.slice(-6).toUpperCase()}
                     </Badge>
                 </div>
             </div>
             
             <CardContent className="p-4 flex-1 flex flex-col gap-5 min-w-0">
-                <div className="min-w-0">
-                    <p className="text-[12px] font-black uppercase leading-[1.3] text-foreground tracking-tight break-words">{String(modelName)}</p>
+                <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                        {hpRating && (
+                            <Badge variant="default" className="font-black text-[10px] bg-primary shadow-sm uppercase tracking-tighter shrink-0 px-2 py-0.5">
+                                {hpRating} HP
+                            </Badge>
+                        )}
+                        <p className="text-[12px] font-black uppercase leading-tight text-foreground tracking-tight break-words flex-1">
+                            {String(modelName)}
+                        </p>
+                    </div>
                     {motor['Part Number'] && (
-                        <div className="flex items-center gap-1.5 mt-1.5 opacity-60">
-                            <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Serial:</span>
+                        <div className="flex items-center gap-1.5 opacity-60">
+                            <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Part No:</span>
                             <span className="text-[9px] font-mono font-bold text-primary uppercase">{motor['Part Number']}</span>
                         </div>
                     )}
@@ -211,7 +215,7 @@ function MotorCard({
                         items={categorized.Propeller} 
                         onAdd={() => onAddOption('Propeller')}
                         onRemove={(idx) => {
-                            const actualIdx = options.findIndex(o => o === categorized.Propeller[idx]);
+                            const actualIdx = (options || []).findIndex(o => o === categorized.Propeller[idx]);
                             onRemoveOption(actualIdx);
                         }}
                     />
@@ -220,7 +224,7 @@ function MotorCard({
                         items={categorized.Rigging} 
                         onAdd={() => onAddOption('Rigging')}
                         onRemove={(idx) => {
-                            const actualIdx = options.findIndex(o => o === categorized.Rigging[idx]);
+                            const actualIdx = (options || []).findIndex(o => o === categorized.Rigging[idx]);
                             onRemoveOption(actualIdx);
                         }}
                     />
@@ -229,7 +233,7 @@ function MotorCard({
                         items={categorized.Other} 
                         onAdd={() => onAddOption('Other')}
                         onRemove={(idx) => {
-                            const actualIdx = options.findIndex(o => o === categorized.Other[idx]);
+                            const actualIdx = (options || []).findIndex(o => o === categorized.Other[idx]);
                             onRemoveOption(actualIdx);
                         }}
                     />
@@ -362,7 +366,20 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const handleSaveOption = (selection: any) => {
         if (!activeMotorId) return;
         const currentOptions = motorFactoryOptions[activeMotorId] || [];
-        const newOptions = [...currentOptions, selection];
+        // Ensure the selection has the target category
+        const itemsWithCategory = selection.items.map((item: any) => ({
+            ...item,
+            category: activeCategory
+        }));
+        
+        // We actually want to store the package name and items
+        const newEntry = {
+            name: selection.name,
+            category: activeCategory,
+            items: itemsWithCategory
+        };
+
+        const newOptions = [...currentOptions, newEntry];
         setValue('motorFactoryOptions', { ...motorFactoryOptions, [activeMotorId]: newOptions }, { shouldDirty: true });
         setIsBrowserOpen(false);
         setActiveMotorId(null);
@@ -375,7 +392,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
 
     return (
         <div className="space-y-6">
-            <Card className="rounded-xl border shadow-sm overflow-hidden">
+            <Card className="rounded-xl border shadow-sm overflow-hidden bg-background">
                 <CardHeader className="bg-muted/10 border-b">
                     <div className="flex items-center justify-between">
                         <div>
@@ -405,9 +422,9 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                             </div>
                                         </div>
                                     </AccordionTrigger>
-                                    <AccordionContent className="p-6">
-                                        <ScrollArea className="h-full max-h-[700px] pr-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <AccordionContent className="p-0">
+                                        <ScrollArea className="h-full max-h-[600px]">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
                                                 {configGroup.combinations.map((combo, comboIdx) => (
                                                     <div key={comboIdx} className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 border-2 rounded-2xl bg-muted/5 relative group/combo">
                                                         {combo.map((motor, motorIdx) => (
