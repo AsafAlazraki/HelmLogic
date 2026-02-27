@@ -89,18 +89,19 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
                     </div>
 
                     <div className="shrink-0 flex flex-col items-center md:items-end gap-2.5">
-                        {/* Refined Glassmorphism Logo Container */}
-                        <div className="h-20 w-20 relative bg-white/10 backdrop-blur-md rounded-2xl p-2.5 border border-white/20 shadow-2xl group hover:scale-105 transition-all">
+                        {/* Soft Brand Plate for Logos */}
+                        <div className="h-20 w-20 relative bg-white/90 backdrop-blur-sm rounded-3xl p-3 border border-white/40 shadow-2xl group hover:scale-105 transition-all">
                             {organisation?.primaryLogoUrl ? (
                                 <Image 
                                     src={organisation.primaryLogoUrl} 
                                     alt={`${organisation.name} logo`} 
                                     fill 
                                     className="object-contain p-2" 
+                                    unoptimized
                                 />
                             ) : (
                                 <div className="h-full w-full flex items-center justify-center">
-                                    <Blocks className="h-8 w-8 text-white opacity-40"/>
+                                    <Blocks className="h-8 w-8 text-primary/40"/>
                                 </div>
                             )}
                         </div>
