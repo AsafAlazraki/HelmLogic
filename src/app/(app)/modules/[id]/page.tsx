@@ -42,7 +42,7 @@ import { ModelConfigurationEditor } from '@/components/model-configuration-edito
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel, FormDescription } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createSlug, cn } from '@/lib/utils';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
@@ -156,7 +156,7 @@ function PackageDialog({
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <Label htmlFor="name">Package Name</Label>
+                                        <FormLabel htmlFor="name">Package Name</FormLabel>
                                         <FormControl>
                                             <Input id="name" {...field} />
                                         </FormControl>
@@ -394,7 +394,7 @@ function ModuleConfigurationBreadcrumbs({ module, range, model, pendingMotor, vi
             {pendingMotor && (view === 'bmt' || view === 'quote' || view === 'operations') && (
                 <>
                     <ChevronRight className="h-4 w-4 mx-1" />
-                    <span className="font-medium text-foreground">{pendingMotor['Model Name'] || pendingMotor.name}</span>
+                    <span className="font-medium text-foreground">{pendingMotor['Model Name'] || pendingMotor['Model_Name'] || pendingMotor.name || 'Motor'}</span>
                 </>
             )}
         </div>
@@ -706,6 +706,14 @@ export default function ModuleDetailsPage() {
 
     const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
     const isMotorBrand = mainVendor?.vendorType === 'Motor Brand';
+
+    const getMotorChoiceInfo = () => {
+        if (!pendingMotor) return { name: '', code: '' };
+        const name = pendingMotor['Model Name'] || pendingMotor['Model_Name'] || pendingMotor.name || 'Motor';
+        const code = pendingMotor['Part Number'] || pendingMotor['Model Code'] || pendingMotor['SKU'];
+        return { name, code };
+    };
+    const motorChoice = getMotorChoiceInfo();
 
     return (
         <div className="space-y-4">
@@ -1116,11 +1124,11 @@ export default function ModuleDetailsPage() {
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-1">
                                 <DialogTitle className="text-3xl font-black uppercase tracking-tight">
-                                    {selectedModel?.name || pendingMotor?.['Model Name'] || pendingMotor?.name}
+                                    {selectedModel?.name || motorChoice.name}
                                 </DialogTitle>
-                                {(selectedModel?.modelCode || pendingMotor?.['Part Number']) && (
+                                {(selectedModel?.modelCode || motorChoice.code) && (
                                     <span className="font-mono text-xs text-primary font-bold uppercase bg-primary/10 px-2 py-1 rounded w-fit">
-                                        {selectedModel?.modelCode || pendingMotor?.['Part Number']}
+                                        {selectedModel?.modelCode || motorChoice.code}
                                     </span>
                                 )}
                             </div>
