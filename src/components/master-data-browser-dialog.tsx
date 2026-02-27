@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Loader2, PackagePlus, X, Plus, Table as TableIcon, Search, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, PackagePlus, X, Plus, Table as TableIcon, Search, PlusCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -119,11 +120,9 @@ export function MasterDataBrowserDialog({
 
   const subscribedVendors = useMemo(() => {
     if (!allVendors) return [];
-    // If allowedVendorIds is provided, we restrict to that set.
-    // Otherwise, fallback to the organization's global data warehouse subscriptions.
-    const effectiveAllowedIds = allowedVendorIds || organisation.dataWarehouseSubscriptions || [];
+    const effectiveAllowedIds = allowedVendorIds || organisation?.dataWarehouseSubscriptions || [];
     return allVendors.filter(v => effectiveAllowedIds.includes(v.id));
-  }, [allVendors, organisation.dataWarehouseSubscriptions, allowedVendorIds]);
+  }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
 
   const filteredData = useMemo(() => {
     if (!masterData) return [];
@@ -292,11 +291,23 @@ export function MasterDataBrowserDialog({
                         </Table>
                     </ScrollArea>
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-12 text-center opacity-40">
-                        <TableIcon className="h-12 w-12 mb-4" />
-                        <p className="text-sm font-bold uppercase tracking-widest">
-                            {selectedVendorId ? 'No items found in this list.' : 'Choose a vendor to browse products.'}
-                        </p>
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-12 text-center">
+                        {selectedVendorId && !selectedDataSetId && dataSets && dataSets.length > 0 ? (
+                            <div className="flex flex-col items-center gap-4 bg-muted/10 p-8 rounded-xl border-2 border-dashed border-primary/20 animate-in zoom-in duration-300">
+                                <AlertCircle className="h-12 w-12 text-primary/40" />
+                                <div className="max-w-xs">
+                                    <p className="text-sm font-bold uppercase tracking-widest text-foreground">Select a Data Table</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground mt-2 uppercase">This vendor organizes data into multiple tables. Please select one from the dropdown above to browse items.</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="opacity-40">
+                                <TableIcon className="h-12 w-12 mb-4 mx-auto" />
+                                <p className="text-sm font-bold uppercase tracking-widest">
+                                    {selectedVendorId ? 'No items found in this list.' : 'Choose a vendor to browse products.'}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

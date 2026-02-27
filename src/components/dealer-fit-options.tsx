@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -85,12 +86,21 @@ export function DealerFitOptions({
   }, [selections]);
 
   const allowedVendorIds = useMemo(() => {
-    if (!module || !organisation) return [];
+    if (!module) return [];
+    
+    // For Admins viewing the module in a "Master" context (no orgId), show all vendors tied to the module
+    if (isAdmin && !organisationId) {
+        return [...new Set([module.mainVendorId, ...(module.associatedVendorIds || [])])].filter(Boolean);
+    }
+
+    if (!organisation) return [];
+    
     const mainVendor = module.mainVendorId;
     const associatedFromOrg = organisation.moduleAssociatedVendorAccess?.[module.id] || [];
-    // Only allow the module's main vendor and the associated vendors explicitly granted to this org for this module
+    
+    // Combine the module's main vendor with any associated vendors the organisation has been granted access to
     return [...new Set([mainVendor, ...associatedFromOrg])].filter(Boolean);
-  }, [module, organisation]);
+  }, [module, organisation, organisationId, isAdmin]);
 
   const handleOpenBrowser = (categoryId: string) => {
     setActiveCategoryId(categoryId);
@@ -199,11 +209,11 @@ export function DealerFitOptions({
           )
         })}
       </div>
-       {activeCategoryId && organisation && (
+       {activeCategoryId && (organisation || isAdmin) && (
         <MasterDataBrowserDialog
           isOpen={isBrowserOpen}
           onClose={() => setIsBrowserOpen(false)}
-          organisation={organisation}
+          organisation={(organisation || { id: 'admin-preview' }) as any}
           categoryId={activeCategoryId}
           onSave={handleSaveSelection}
           allowedVendorIds={allowedVendorIds}

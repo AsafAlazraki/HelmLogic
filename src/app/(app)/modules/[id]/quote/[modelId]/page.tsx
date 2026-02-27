@@ -4,11 +4,11 @@
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { doc, query, collection, where } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { Button } from '@/components/ui/button';
 
 export default function QuoteFlowPage() {
     const params = useParams();
@@ -29,7 +29,7 @@ export default function QuoteFlowPage() {
     const modelRef = useMemoFirebase(() => 
         vendorId && rangeId ? doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models`, modelId) : null,
     [firestore, vendorId, rangeId, modelId]);
-    const { data: model, loading: modelLoading } = useDoc<any>(modelRef);
+    const { data: model, loading: modelDetailsLoading } = useDoc<any>(modelRef);
 
     // 3. Fetch Vendor
     const vendorRef = useMemoFirebase(() => 
@@ -37,7 +37,7 @@ export default function QuoteFlowPage() {
     [firestore, vendorId]);
     const { data: vendor, loading: vendorLoading } = useDoc<any>(vendorRef);
 
-    const loading = moduleLoading || modelLoading || vendorLoading;
+    const loading = moduleLoading || modelDetailsLoading || vendorLoading;
 
     if (loading) {
         return (
