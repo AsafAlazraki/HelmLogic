@@ -3,8 +3,9 @@
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
@@ -16,18 +17,29 @@ export default function QuoteFlowPage() {
     const firestore = useFirestore();
     const router = useRouter();
 
-    const moduleId = params.id as string;
+    const slugOrId = params.id as string;
     const modelId = params.modelId as string;
     const rangeId = searchParams.get('range');
     const vendorId = searchParams.get('vendor');
 
-    // 1. Fetch Module Context
-    const moduleRef = useMemoFirebase(() => doc(firestore, 'modules', moduleId), [firestore, moduleId]);
-    const { data: moduleData, loading: moduleLoading } = useDoc<any>(moduleRef);
+    // 1. Fetch Module Context (Handle Slug or ID)
+    const moduleQueryBySlug = useMemoFirebase(() => {
+        if (!slugOrId) return null;
+        return query(collection(firestore, 'modules'), where('slug', '==', slugOrId));
+    }, [firestore, slugOrId]);
+    const { data: modulesBySlug, loading: slugLoading } = useCollection<any>(moduleQueryBySlug);
+
+    const moduleByIdRef = useMemoFirebase(() => 
+        slugOrId ? doc(firestore, 'modules', slugOrId) : null,
+    [firestore, slugOrId]);
+    const { data: moduleById, loading: idLoading } = useDoc<any>(moduleByIdRef);
+
+    const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
+    const moduleLoading = slugLoading || idLoading;
 
     // 2. Fetch Model Details
     const modelRef = useMemoFirebase(() => 
-        vendorId && rangeId ? doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models`, modelId) : null,
+        vendorId && rangeId && modelId ? doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models`, modelId) : null,
     [firestore, vendorId, rangeId, modelId]);
     const { data: model, loading: modelDetailsLoading } = useDoc<any>(modelRef);
 
