@@ -46,7 +46,7 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
 
     const userPermissions = useMemo(() => {
         const roleId = userProfile?.organisationRole;
-        if (!roleId || !organisation?.permissions?.[roleId]) return { can_access_module: false };
+        if (!roleId || !organisation?.permissions?.[roleId]) return { can_access_module: false, can_access_settings: false };
         return organisation.permissions[roleId];
     }, [userProfile, organisation]);
 
@@ -70,26 +70,26 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Hero Welcome Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-accent p-8 text-primary-foreground shadow-2xl">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-accent p-6 text-primary-foreground shadow-xl border border-white/10">
                 <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
                 <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
                 
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] opacity-80">
-                            <Ship className="h-4 w-4" />
-                            <span>HelmLogic Platform</span>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-70">
+                            <Ship className="h-3 w-3" />
+                            <span>HelmLogic Workspace</span>
                         </div>
-                        <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
-                            Welcome, {userProfile?.displayName?.split(' ')[0] || 'Partner'}
+                        <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+                            Welcome, {userProfile?.displayName?.split(' ')[0] || 'Bill'}
                         </h1>
-                        <p className="text-lg font-medium opacity-90 max-w-xl leading-relaxed">
-                            Your unified workspace for maritime operations and business intelligence. Let's make something great today.
+                        <p className="text-base font-medium opacity-80 max-w-xl leading-relaxed">
+                            Your unified hub for maritime operations and intelligence.
                         </p>
                     </div>
 
-                    <div className="shrink-0 flex flex-col items-center md:items-end gap-3">
-                        <div className="h-24 w-24 relative bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/20 shadow-xl group hover:scale-105 transition-transform">
+                    <div className="shrink-0 flex flex-col items-center md:items-end gap-2.5">
+                        <div className="h-20 w-20 relative bg-white/10 backdrop-blur-md rounded-2xl p-2.5 border border-white/20 shadow-xl group hover:scale-105 transition-transform">
                             {organisation?.primaryLogoUrl ? (
                                 <Image 
                                     src={organisation.primaryLogoUrl} 
@@ -99,15 +99,15 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
                                 />
                             ) : (
                                 <div className="h-full w-full flex items-center justify-center">
-                                    <Blocks className="h-10 w-10 text-white opacity-40"/>
+                                    <Blocks className="h-8 w-8 text-white opacity-40"/>
                                 </div>
                             )}
                         </div>
                         <div className="text-right">
-                            <p className="text-sm font-black uppercase tracking-widest">{organisation?.name}</p>
-                            <div className="flex items-center justify-end gap-1.5 mt-1 opacity-70">
-                                <ShieldCheck className="h-3 w-3" />
-                                <span className="text-[10px] font-bold uppercase">Verified Organisation</span>
+                            <p className="text-xs font-black uppercase tracking-widest">{organisation?.name}</p>
+                            <div className="flex items-center justify-end gap-1.5 mt-0.5 opacity-60">
+                                <ShieldCheck className="h-2.5 w-2.5" />
+                                <span className="text-[9px] font-bold uppercase">Verified Network</span>
                             </div>
                         </div>
                     </div>
@@ -116,18 +116,20 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
 
             {/* Modules Grid */}
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between px-1">
                     <div className="flex items-center gap-3">
                         <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
                             <LayoutGrid className="h-4 w-4" />
                         </div>
-                        <h2 className="text-xl font-black uppercase tracking-tight">Active Subscriptions</h2>
+                        <h2 className="text-xl font-black uppercase tracking-tight">My Modules</h2>
                     </div>
                     <div className="h-[1px] flex-1 mx-6 bg-border hidden sm:block" />
-                    <Link href="/manage" className="text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors flex items-center gap-2">
-                        Settings
-                        <ArrowRight className="h-3 w-3" />
-                    </Link>
+                    {userPermissions.can_access_settings && (
+                        <Link href="/manage" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
+                            Settings
+                            <ArrowRight className="h-3 w-3 transform transition-transform group-hover:translate-x-1" />
+                        </Link>
+                    )}
                 </div>
 
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -146,12 +148,16 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
                                         )}
                                     </CardHeader>
                                     <CardContent className="p-5 flex-grow flex flex-col justify-between gap-4">
-                                        <div className="space-y-1">
-                                            <CardTitle className="text-lg font-black uppercase tracking-tight">{module.name}</CardTitle>
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Premium Module</p>
+                                        <div className="space-y-2">
+                                            <CardTitle className="text-lg font-black uppercase tracking-tight leading-tight">{module.name}</CardTitle>
+                                            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
+                                                {module.name.toLowerCase().includes('outboard') || module.name.toLowerCase().includes('motor') 
+                                                    ? "Manage engine technical specs, factory rigging, and propellers." 
+                                                    : "Configure boat packages, BMT options, and generate sales quotes."}
+                                            </p>
                                         </div>
                                         <div className="flex items-center justify-between pt-4 border-t border-dashed">
-                                            <span className="text-[10px] font-black uppercase tracking-tighter text-primary">Open Module</span>
+                                            <span className="text-[10px] font-black uppercase tracking-tighter text-primary">Enter Module</span>
                                             <ArrowRight className="h-4 w-4 text-primary transform -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
                                         </div>
                                     </CardContent>
