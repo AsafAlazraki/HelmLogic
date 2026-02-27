@@ -1,19 +1,18 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { collection, query, doc, updateDoc, getDocs, where, limit } from 'firebase/firestore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Settings2, Package, Check, X, ShieldCheck } from 'lucide-react';
+import { collection, query, doc, getDocs, orderBy } from 'firebase/firestore';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, AlertCircle, Star, PlusCircle, Settings2, Package, Check, X, ShieldCheck, Ship } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
 import { Button } from './ui/button';
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface Vendor {
     id: string;
@@ -84,22 +83,21 @@ const combinationsWithReplacement = (arr: any[], size: number): any[][] => {
 function MotorCard({ 
     motor, 
     onAddOption,
-    options = []
+    options = [],
+    onRemoveOption
 }: { 
     motor: Motor, 
     onAddOption: () => void,
-    options?: any[]
+    options?: any[],
+    onRemoveOption: (index: number) => void
 }) {
     let itemImageUrl: string | null = null;
     if (motor.SummaryImage && typeof motor.SummaryImage === 'string') {
         const path = motor.SummaryImage.trim().replace(/\\/g, '');
         if (path) {
-            try {
-                itemImageUrl = new URL(path, 'https://www.yamaha-motor.com.au').toString();
-            } catch (e) {
-                console.error("Invalid image URL path:", path, e);
-                itemImageUrl = null;
-            }
+            // Handle Yamaha specific paths
+            const cleanPath = path.startsWith('/') ? path : `/${path}`;
+            itemImageUrl = `https://www.yamaha-motor.com.au${cleanPath}`;
         }
     }
 
@@ -121,10 +119,17 @@ function MotorCard({
         <Card className="overflow-hidden flex flex-col border-2 shadow-none hover:border-primary/20 transition-all rounded-xl">
             <div className="relative h-28 bg-secondary/30 shrink-0">
                  {itemImageUrl ? (
-                    <Image src={String(itemImageUrl)} alt={String(modelName)} fill className="object-contain p-2" sizes="200px" />
+                    <Image 
+                        src={itemImageUrl} 
+                        alt={String(modelName)} 
+                        fill 
+                        className="object-contain p-2" 
+                        sizes="200px"
+                        unoptimized // Yamaha CDN can be finicky with Next.js optimization headers
+                    />
                 ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground/20">
-                        <AlertCircle className="w-8 h-8"/>
+                        <Ship className="w-8 h-8"/>
                     </div>
                 )}
                 <div className="absolute bottom-2 right-2">
@@ -140,7 +145,7 @@ function MotorCard({
                 </div>
 
                 <div className="space-y-2 mt-auto">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 mb-1 justify-between">
                         <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Factory Options</span>
                         <Button 
                             variant="ghost" 
@@ -157,9 +162,13 @@ function MotorCard({
                             <div key={i} className="flex items-center gap-2 p-1.5 rounded bg-muted/50 border border-transparent hover:border-primary/10 transition-colors group/opt">
                                 <Package className="h-3 w-3 text-muted-foreground shrink-0" />
                                 <span className="text-[9px] font-bold truncate flex-1">{opt.name}</span>
-                                <span className="text-[8px] opacity-40 group-hover/opt:hidden">{opt.items?.length || 1}</span>
-                                <Button variant="ghost" size="icon" className="h-4 w-4 hidden group-hover/opt:flex text-destructive hover:bg-destructive/10">
-                                    <X className="h-2 w-2" />
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-4 w-4 opacity-0 group-hover/opt:opacity-100 text-destructive hover:bg-destructive/10"
+                                    onClick={(e) => { e.stopPropagation(); onRemoveOption(i); }}
+                                >
+                                    <X className="h-2.5 w-2.5" />
                                 </Button>
                             </div>
                         )) : (
@@ -178,6 +187,7 @@ function MotorCard({
 export function MotorOptions({ model, module }: { model: any, module: any }) {
     const { watch, setValue } = useFormContext();
     const firestore = useFirestore();
+    const { toast } = useToast();
     
     const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
@@ -191,23 +201,25 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         return allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
     }, [allVendors, module]);
 
-    // Fetch datasets for the motor vendor to find the right table
     const [targetDataSet, setTargetDataSet] = useState<any>(null);
     useEffect(() => {
         const findDataSet = async () => {
             if (!motorVendor) return;
-            const dsRef = collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets');
-            const dsSnap = await getDocs(dsRef);
-            const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            
-            // Prioritize tables with "Outboards", "Motors", or "Engines"
-            const preferred = datasets.find((s: any) => 
-                s.name.toLowerCase().includes('outboard') || 
-                s.name.toLowerCase().includes('motor') ||
-                s.name.toLowerCase().includes('engine')
-            ) || datasets[0];
-            
-            setTargetDataSet(preferred);
+            try {
+                const dsRef = collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets');
+                const dsSnap = await getDocs(dsRef);
+                const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                const preferred = datasets.find((s: any) => 
+                    s.name.toLowerCase().includes('outboard') || 
+                    s.name.toLowerCase().includes('motor') ||
+                    s.name.toLowerCase().includes('engine')
+                ) || datasets[0];
+                
+                setTargetDataSet(preferred);
+            } catch (e) {
+                console.error("Error finding datasets:", e);
+            }
         };
         findDataSet();
     }, [motorVendor, firestore]);
@@ -217,7 +229,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         if (targetDataSet) {
             return collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets', targetDataSet.id, 'rows');
         }
-        // Fallback to masterDataSet if no specific tables found
         return collection(firestore, 'data-warehouse', motorVendor.id, 'masterDataSet');
     }, [firestore, motorVendor, targetDataSet]);
 
@@ -226,7 +237,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const [isBrowserOpen, setIsBrowserOpen] = useState(false);
     const [activeMotorId, setActiveMotorId] = useState<string | null>(null);
 
-    // Dummy organization context for the browser dialog
     const dummyOrg: Organisation = {
         id: 'config-context',
         name: 'Configuration Manager',
@@ -304,6 +314,16 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         setIsBrowserOpen(true);
     };
 
+    const handleRemoveOption = (motorId: string, optionIndex: number) => {
+        const currentOptions = motorFactoryOptions[motorId] || [];
+        const newOptions = currentOptions.filter((_: any, i: number) => i !== optionIndex);
+        
+        setValue('motorFactoryOptions', {
+            ...motorFactoryOptions,
+            [motorId]: newOptions
+        }, { shouldDirty: true });
+    };
+
     const handleSaveOption = (selection: any) => {
         if (!activeMotorId) return;
         const currentOptions = motorFactoryOptions[activeMotorId] || [];
@@ -369,7 +389,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                         <div className="flex items-center gap-3 bg-background border rounded-lg px-3 py-1.5 shadow-sm">
                             {motorVendor.logoUrl ? (
                                 <div className="relative h-8 w-16">
-                                    <Image src={motorVendor.logoUrl} alt={motorVendor.name} fill className="object-contain" />
+                                    <Image src={motorVendor.logoUrl} alt={motorVendor.name} fill className="object-contain" sizes="64px" />
                                 </div>
                             ) : <Settings2 className="h-4 w-4 text-muted-foreground" />}
                             <span className="text-[10px] font-black uppercase tracking-tighter">{motorVendor.name}</span>
@@ -403,6 +423,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                                                 motor={motor} 
                                                                 onAddOption={() => handleAddOptionToMotor(motor.id)}
                                                                 options={motorFactoryOptions[motor.id]}
+                                                                onRemoveOption={(idx) => handleRemoveOption(motor.id, idx)}
                                                             />
                                                         ))}
                                                         <div className="absolute top-2 right-2 opacity-0 group-hover/combo:opacity-100 transition-opacity">
@@ -441,24 +462,4 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             />
         </div>
     );
-}
-
-function combinationsWithReplacement(arr: any[], size: number): any[][] {
-    if (!arr.length || size <= 0) return [];
-    if (size === 1) return arr.map(item => [item]);
-    const result: any[][] = [];
-    const recurse = (temp: any[], start: number) => {
-        if (temp.length === size) { result.push(temp.slice()); return; }
-        for (let i = start; i < arr.length; i++) { temp.push(arr[i]); recurse(temp, i); temp.pop(); }
-    };
-    recurse([], 0);
-    return result;
-}
-
-function cartesian(...a: any[][]) {
-    return a.reduce((acc, val) => acc.flatMap(d => val.map(e => [d, e].flat())));
-}
-
-function toast({ title, description, variant }: any) {
-    // console.log(`[Toast] ${title}: ${description}`);
 }
