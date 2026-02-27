@@ -3,9 +3,9 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { collection, query, doc, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, doc, getDocs, orderBy, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown } from 'lucide-react';
+import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import Image from 'next/image';
@@ -29,6 +29,7 @@ interface Motor {
     id: string;
     SummaryImage?: string;
     'HP Rating'?: string;
+    masterAccessories?: any[];
     [key: string]: any;
 }
 
@@ -128,16 +129,16 @@ function AccessoryCategory({
 function MotorCard({ 
     motor, 
     onAddOption,
-    options = [],
     onRemoveOption,
     onHide
 }: { 
     motor: Motor, 
     onAddOption: (cat: string) => void,
-    options?: any[],
     onRemoveOption: (index: number) => void,
     onHide: () => void
 }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+
     let itemImageUrl: string | null = null;
     if (motor.SummaryImage && typeof motor.SummaryImage === 'string') {
         const path = motor.SummaryImage.trim().replace(/\\/g, '/');
@@ -151,109 +152,121 @@ function MotorCard({
     const normalize = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
     const findKey = (potentials: string[]) => {
         const normalizedPotentials = potentials.map(normalize);
-        for (const key of allKeys) {
-            if (normalizedPotentials.includes(normalize(key))) {
-                return key;
-            }
-        }
-        return undefined;
+        const matchingKey = allKeys.find(key => normalizedPotentials.includes(normalize(key)));
+        return matchingKey;
     };
     
     const modelNameKey = findKey(['Model Name', 'ModelName', 'Model', 'Description', 'name']);
     const modelName = modelNameKey ? motor[modelNameKey] : 'Unknown Motor';
     const hpRating = motor['HP Rating'];
 
+    const masterAccessories = motor.masterAccessories || [];
     const categorized = {
-        Propeller: (options || []).filter(o => o.category === 'Propeller'),
-        Rigging: (options || []).filter(o => o.category === 'Rigging'),
-        Other: (options || []).filter(o => !o.category || o.category === 'Other')
+        Propeller: masterAccessories.filter(o => o.category === 'Propeller'),
+        Rigging: masterAccessories.filter(o => o.category === 'Rigging'),
+        Other: masterAccessories.filter(o => !o.category || o.category === 'Other')
     };
 
     return (
-        <Card className="overflow-hidden flex flex-col border-2 shadow-sm hover:border-primary/20 transition-all rounded-xl h-full min-w-0 max-w-full bg-card group/motor">
-            <div className="relative h-36 bg-muted/30 shrink-0 border-b">
-                 {itemImageUrl ? (
-                    <Image 
-                        src={itemImageUrl} 
-                        alt={String(modelName)} 
-                        fill 
-                        className="object-contain p-3" 
-                        sizes="300px"
-                        unoptimized
-                    />
-                ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground/10">
-                        <Ship className="w-10 h-10"/>
+        <Card className="overflow-hidden flex flex-col border-2 shadow-sm hover:border-primary/20 transition-all rounded-xl h-fit min-w-0 max-w-full bg-card group/motor">
+            {/* Header Area (Always Visible) */}
+            <div 
+                className="relative cursor-pointer"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                <div className="relative h-32 bg-muted/30 border-b flex items-center justify-center">
+                    {itemImageUrl ? (
+                        <Image 
+                            src={itemImageUrl} 
+                            alt={String(modelName)} 
+                            fill 
+                            className="object-contain p-2 group-hover/motor:scale-105 transition-transform" 
+                            sizes="300px"
+                            unoptimized
+                        />
+                    ) : (
+                        <div className="text-muted-foreground/10">
+                            <Ship className="w-10 h-10"/>
+                        </div>
+                    )}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover/motor:opacity-100 transition-opacity flex items-center gap-1">
+                        <Button 
+                            variant="destructive" 
+                            size="icon" 
+                            className="h-6 w-6 rounded-full shadow-lg"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onHide(); }}
+                        >
+                            <X className="h-3 w-3" />
+                        </Button>
                     </div>
-                )}
-                <div className="absolute top-2 right-2 opacity-0 group-hover/motor:opacity-100 transition-opacity">
-                    <Button 
-                        variant="destructive" 
-                        size="icon" 
-                        className="h-7 w-7 rounded-full shadow-lg"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onHide(); }}
-                        title="Remove from compatible list"
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
+                    {hpRating && !isExpanded && (
+                        <Badge variant="default" className="absolute bottom-2 left-2 font-black text-[8px] bg-primary shadow-sm uppercase tracking-tighter px-1.5 py-0">
+                            {hpRating} HP
+                        </Badge>
+                    )}
                 </div>
-                <div className="absolute bottom-2 right-2">
-                    <Badge variant="secondary" className="font-mono text-[9px] font-bold bg-background/90 backdrop-blur-md border shadow-sm px-1.5 opacity-60">
-                        {motor.id.slice(-6).toUpperCase()}
-                    </Badge>
+                
+                <div className="p-3 bg-background flex items-center justify-between gap-2 border-b">
+                    <p className="text-[10px] font-black uppercase leading-tight text-foreground tracking-tight truncate flex-1">
+                        {String(modelName)}
+                    </p>
+                    <ChevronDown className={cn("h-3 w-3 text-muted-foreground transition-transform shrink-0", isExpanded && "rotate-180")} />
                 </div>
             </div>
             
-            <CardContent className="p-4 flex-1 flex flex-col gap-5 min-w-0">
-                <div className="space-y-2">
-                    <div className="flex items-start gap-2">
-                        {hpRating && (
-                            <Badge variant="default" className="font-black text-[10px] bg-primary shadow-sm uppercase tracking-tighter shrink-0 px-2 py-0.5">
-                                {hpRating} HP
+            {/* Expandable Content Area */}
+            {isExpanded && (
+                <CardContent className="p-4 space-y-5 min-w-0 animate-in slide-in-from-top-2 duration-200">
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            {hpRating && (
+                                <Badge variant="default" className="font-black text-[10px] bg-primary shadow-sm uppercase tracking-tighter shrink-0 px-2 py-0.5">
+                                    {hpRating} HP
+                                </Badge>
+                            )}
+                            <Badge variant="secondary" className="font-mono text-[9px] font-bold opacity-60">
+                                {motor.id.slice(-6).toUpperCase()}
                             </Badge>
-                        )}
-                        <p className="text-[12px] font-black uppercase leading-tight text-foreground tracking-tight break-words flex-1">
-                            {String(modelName)}
-                        </p>
-                    </div>
-                    {motor['Part Number'] && (
-                        <div className="flex items-center gap-1.5 opacity-60">
-                            <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Part No:</span>
-                            <span className="text-[9px] font-mono font-bold text-primary uppercase">{motor['Part Number']}</span>
                         </div>
-                    )}
-                </div>
+                        {motor['Part Number'] && (
+                            <div className="flex items-center gap-1.5 opacity-60">
+                                <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Part No:</span>
+                                <span className="text-[9px] font-mono font-bold text-primary uppercase">{motor['Part Number']}</span>
+                            </div>
+                        )}
+                    </div>
 
-                <div className="space-y-5 mt-auto pt-4 border-t border-dashed">
-                    <AccessoryCategory 
-                        label="Propeller" 
-                        items={categorized.Propeller} 
-                        onAdd={() => onAddOption('Propeller')}
-                        onRemove={(idx) => {
-                            const actualIdx = (options || []).findIndex(o => o === categorized.Propeller[idx]);
-                            onRemoveOption(actualIdx);
-                        }}
-                    />
-                    <AccessoryCategory 
-                        label="Rigging" 
-                        items={categorized.Rigging} 
-                        onAdd={() => onAddOption('Rigging')}
-                        onRemove={(idx) => {
-                            const actualIdx = (options || []).findIndex(o => o === categorized.Rigging[idx]);
-                            onRemoveOption(actualIdx);
-                        }}
-                    />
-                    <AccessoryCategory 
-                        label="Other Parts" 
-                        items={categorized.Other} 
-                        onAdd={() => onAddOption('Other')}
-                        onRemove={(idx) => {
-                            const actualIdx = (options || []).findIndex(o => o === categorized.Other[idx]);
-                            onRemoveOption(actualIdx);
-                        }}
-                    />
-                </div>
-            </CardContent>
+                    <div className="space-y-5 pt-4 border-t border-dashed">
+                        <AccessoryCategory 
+                            label="Propeller" 
+                            items={categorized.Propeller} 
+                            onAdd={() => onAddOption('Propeller')}
+                            onRemove={(idx) => {
+                                const actualIdx = masterAccessories.findIndex(o => o === categorized.Propeller[idx]);
+                                onRemoveOption(actualIdx);
+                            }}
+                        />
+                        <AccessoryCategory 
+                            label="Rigging" 
+                            items={categorized.Rigging} 
+                            onAdd={() => onAddOption('Rigging')}
+                            onRemove={(idx) => {
+                                const actualIdx = masterAccessories.findIndex(o => o === categorized.Rigging[idx]);
+                                onRemoveOption(actualIdx);
+                            }}
+                        />
+                        <AccessoryCategory 
+                            label="Other Parts" 
+                            items={categorized.Other} 
+                            onAdd={() => onAddOption('Other')}
+                            onRemove={(idx) => {
+                                const actualIdx = masterAccessories.findIndex(o => o === categorized.Other[idx]);
+                                onRemoveOption(actualIdx);
+                            }}
+                        />
+                    </div>
+                </CardContent>
+            )}
         </Card>
     );
 }
@@ -267,7 +280,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
     
     const motorConfigurations = watch('specifications.motorConfigurations') || model.specifications?.motorConfigurations || [];
-    const motorFactoryOptions = watch('motorFactoryOptions') || {};
     const motorOverrides = watch('motorOverrides') || {};
 
     const motorVendor = useMemo(() => {
@@ -377,10 +389,21 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         setIsBrowserOpen(true);
     };
 
-    const handleRemoveOption = (motorId: string, optionIndex: number) => {
-        const currentOptions = motorFactoryOptions[motorId] || [];
-        const newOptions = currentOptions.filter((_: any, i: number) => i !== optionIndex);
-        setValue('motorFactoryOptions', { ...motorFactoryOptions, [motorId]: newOptions }, { shouldDirty: true });
+    const handleRemoveOption = async (motorId: string, optionIndex: number) => {
+        if (!motorVendor || !targetDataSet) return;
+        const motorDoc = motorDataSet?.find(m => m.id === motorId);
+        if (!motorDoc) return;
+
+        try {
+            const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, motorId);
+            const currentAccessories = motorDoc.masterAccessories || [];
+            const newAccessories = currentAccessories.filter((_: any, i: number) => i !== optionIndex);
+            
+            await updateDoc(motorRef, { masterAccessories: newAccessories });
+            toast({ title: "Master Accessory Removed" });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Failed to update master record" });
+        }
     };
 
     const handleHideMotor = (configType: string, motorId: string) => {
@@ -406,15 +429,32 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         toast({ title: "Engine Added" });
     };
 
-    const handleSaveOption = (selection: any) => {
-        if (!activeMotorId) return;
-        const currentOptions = motorFactoryOptions[activeMotorId] || [];
-        const itemsWithCategory = selection.items.map((item: any) => ({ ...item, category: activeCategory }));
-        const newEntry = { name: selection.name, category: activeCategory, items: itemsWithCategory };
-        setValue('motorFactoryOptions', { ...motorFactoryOptions, [activeMotorId]: [...currentOptions, newEntry] }, { shouldDirty: true });
-        setIsBrowserOpen(false);
-        setActiveMotorId(null);
-        toast({ title: "Motor Option Linked" });
+    const handleSaveOption = async (selection: any) => {
+        if (!activeMotorId || !motorVendor || !targetDataSet) return;
+        const motorDoc = motorDataSet?.find(m => m.id === activeMotorId);
+        if (!motorDoc) return;
+
+        try {
+            const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, activeMotorId);
+            const currentAccessories = motorDoc.masterAccessories || [];
+            
+            const newEntry = { 
+                id: `acc-${Date.now()}`,
+                name: selection.name, 
+                category: activeCategory, 
+                items: selection.items 
+            };
+            
+            await updateDoc(motorRef, {
+                masterAccessories: [...currentAccessories, newEntry]
+            });
+            
+            toast({ title: "Master Accessory Linked" });
+            setIsBrowserOpen(false);
+            setActiveMotorId(null);
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Failed to update master record" });
+        }
     };
 
     const loading = vendorsLoading || motorsLoading;
@@ -481,16 +521,15 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                         </Button>
                                     </div>
                                     <AccordionContent className="p-0">
-                                        <ScrollArea className="h-[500px] w-full">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                                        <ScrollArea className="h-[600px] w-full">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
                                                 {configGroup.combinations.map((combo, comboIdx) => (
-                                                    <div key={comboIdx} className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 border-2 rounded-2xl bg-muted/5 relative group/combo">
+                                                    <div key={comboIdx} className="relative group/combo h-full">
                                                         {combo.map((motor, motorIdx) => (
                                                             <MotorCard 
                                                                 key={`${motor.id}-${motorIdx}`} 
                                                                 motor={motor} 
                                                                 onAddOption={(cat) => handleAddOptionToMotor(motor.id, cat)}
-                                                                options={motorFactoryOptions[motor.id]}
                                                                 onRemoveOption={(idx) => handleRemoveOption(motor.id, idx)}
                                                                 onHide={() => handleHideMotor(configGroup.configType, motor.id)}
                                                             />
