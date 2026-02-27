@@ -5,8 +5,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, doc, getDocs, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2 } from 'lucide-react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown } from 'lucide-react';
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
+import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import Image from 'next/image';
 import { Button } from './ui/button';
 import { useFormContext } from 'react-hook-form';
@@ -267,7 +268,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     
     const motorConfigurations = watch('specifications.motorConfigurations') || model.specifications?.motorConfigurations || [];
     const motorFactoryOptions = watch('motorFactoryOptions') || {};
-    const motorOverrides = watch('motorOverrides') || {}; // { [configType]: { hiddenIds: string[], manualIds: string[] } }
+    const motorOverrides = watch('motorOverrides') || {};
 
     const motorVendor = useMemo(() => {
         if (!allVendors || !module) return null;
@@ -331,7 +332,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             let baseMotors: Motor[] = [];
             const overrides = motorOverrides[config.type] || { hiddenIds: [], manualIds: [] };
             
-            // Auto-detect compatible motors
             if (config.type === 'Twin') {
                 baseMotors = motorDataSet.filter(motor => {
                     const parsed = parseHpRating(motor['HP Rating']);
@@ -362,11 +362,8 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 });
             }
 
-            // Combine with manual additions
             const manualMotors = motorDataSet.filter(m => overrides.manualIds.includes(m.id));
             const allPossible = [...new Map([...baseMotors, ...manualMotors].map(m => [m.id, m])).values()];
-
-            // Filter out hidden ones
             const visibleMotors = allPossible.filter(m => !overrides.hiddenIds.includes(m.id));
             
             return { configType: config.type, combinations: visibleMotors.map(m => [m]) };
@@ -390,14 +387,13 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         const current = motorOverrides[configType] || { hiddenIds: [], manualIds: [] };
         const newHidden = [...new Set([...current.hiddenIds, motorId])];
         setValue('motorOverrides', { ...motorOverrides, [configType]: { ...current, hiddenIds: newHidden } }, { shouldDirty: true });
-        toast({ title: "Motor Hidden", description: "Successfully removed from compatible list." });
+        toast({ title: "Motor Hidden" });
     };
 
     const handleAddManualEngine = (selection: any) => {
         if (!activeConfigType) return;
         const current = motorOverrides[activeConfigType] || { hiddenIds: [], manualIds: [] };
         const newManualIds = [...new Set([...current.manualIds, ...selection.items.map((i: any) => i.rowId)])];
-        // Also ensure it's not hidden
         const newHidden = current.hiddenIds.filter(id => !newManualIds.includes(id));
         
         setValue('motorOverrides', { 
@@ -407,25 +403,15 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         
         setIsEngineManagerOpen(false);
         setActiveConfigType(null);
-        toast({ title: "Engine Added", description: "Manual engine added to compatible list." });
+        toast({ title: "Engine Added" });
     };
 
     const handleSaveOption = (selection: any) => {
         if (!activeMotorId) return;
         const currentOptions = motorFactoryOptions[activeMotorId] || [];
-        const itemsWithCategory = selection.items.map((item: any) => ({
-            ...item,
-            category: activeCategory
-        }));
-        
-        const newEntry = {
-            name: selection.name,
-            category: activeCategory,
-            items: itemsWithCategory
-        };
-
-        const newOptions = [...currentOptions, newEntry];
-        setValue('motorFactoryOptions', { ...motorFactoryOptions, [activeMotorId]: newOptions }, { shouldDirty: true });
+        const itemsWithCategory = selection.items.map((item: any) => ({ ...item, category: activeCategory }));
+        const newEntry = { name: selection.name, category: activeCategory, items: itemsWithCategory };
+        setValue('motorFactoryOptions', { ...motorFactoryOptions, [activeMotorId]: [...currentOptions, newEntry] }, { shouldDirty: true });
         setIsBrowserOpen(false);
         setActiveMotorId(null);
         toast({ title: "Motor Option Linked" });
@@ -458,26 +444,34 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                         <Accordion type="multiple" className="w-full space-y-4" defaultValue={['config-0']}>
                             {motorCombinations.map((configGroup, index) => (
                                 <AccordionItem value={`config-${index}`} key={configGroup.configType} className="border rounded-xl overflow-hidden shadow-sm bg-background">
-                                    <AccordionTrigger className="px-6 py-4 hover:no-underline bg-muted/20 hover:bg-muted/30 transition-colors group/trigger">
-                                        <div className="flex items-center justify-between w-full pr-6">
+                                    <AccordionPrimitive.Header className="flex border-b bg-muted/20 hover:bg-muted/30 transition-colors group/trigger">
+                                        <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-6 py-4 font-medium transition-all hover:no-underline [&[data-state=open]>svg]:rotate-180 text-left">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Star className="h-4 w-4" /></div>
-                                                <div className="text-left">
+                                                <div>
                                                     <p className="font-black text-xs uppercase tracking-widest">{formatConfigType(configGroup.configType)} Layout</p>
                                                     <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">{configGroup.combinations.length} Variations Available</p>
                                                 </div>
                                             </div>
+                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                        </AccordionPrimitive.Trigger>
+                                        <div className="flex items-center pr-6">
                                             <Button 
                                                 variant="outline" 
                                                 size="sm" 
                                                 className="h-8 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover/trigger:opacity-100 transition-opacity"
-                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveConfigType(configGroup.configType); setIsEngineManagerOpen(true); }}
+                                                onClick={(e) => { 
+                                                    e.preventDefault(); 
+                                                    e.stopPropagation(); 
+                                                    setActiveConfigType(configGroup.configType); 
+                                                    setIsEngineManagerOpen(true); 
+                                                }}
                                             >
                                                 <Settings2 className="h-3 w-3 mr-1.5" />
                                                 Manage Engines
                                             </Button>
                                         </div>
-                                    </AccordionTrigger>
+                                    </AccordionPrimitive.Header>
                                     <AccordionContent className="p-0">
                                         <ScrollArea className="h-full max-h-[700px] w-full">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
@@ -506,7 +500,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                             <AlertCircle className="h-12 w-12 text-muted-foreground opacity-20" />
                             <div className="max-w-xs mx-auto">
                                 <p className="text-sm font-black uppercase tracking-widest">No Motor Matches Found</p>
-                                <p className="text-[10px] text-muted-foreground/60 mt-2 leading-relaxed uppercase font-bold">Adjust the boat's min/max HP ratings or use the engine manager to add motors manually.</p>
+                                <p className="text-[10px] text-muted-foreground/60 mt-2 leading-relaxed uppercase font-bold">Adjust the boat's ratings or use the engine manager to add motors manually.</p>
                             </div>
                         </div>
                     )}
@@ -521,7 +515,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 initialCategory={activeCategory}
                 onSave={handleSaveOption}
                 title="Motor Factory Options"
-                description={`Browse rigging, propellers and accessories for ${activeMotorId?.slice(-6).toUpperCase()}.`}
+                description={`Browse rigging and accessories for ${activeMotorId?.slice(-6).toUpperCase()}.`}
             />
 
             <MasterDataBrowserDialog 
@@ -531,7 +525,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 categoryId="manual-engines"
                 onSave={handleAddManualEngine}
                 title={`Manage Engines: ${formatConfigType(activeConfigType || '')}`}
-                description="Search the full outboard catalog to manually add compatible engines to this configuration."
+                description="Search the catalog to manually add compatible engines."
             />
         </div>
     );

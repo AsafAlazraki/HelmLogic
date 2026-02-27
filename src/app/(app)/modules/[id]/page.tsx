@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -523,15 +524,6 @@ export default function ModuleDetailsPage() {
         }
     }, [viewContextOrgId, isAdmin]);
 
-    useEffect(() => {
-        if (allOrganisations && moduleData) {
-            const subs = allOrganisations
-                .filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id))
-                .map(org => org.id);
-            setTempSubscribedOrgIds(subs);
-        }
-    }, [allOrganisations, moduleData]);
-
     const settingsForm = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: { name: '', mainVendorId: '', associatedVendorIds: [] },
@@ -593,28 +585,8 @@ export default function ModuleDetailsPage() {
         try {
             await batch.commit();
             toast({ title: "Subscriptions updated." });
-        } catch (serverError: any) {
-            console.error("Subscription save failed:", serverError);
-            
-            // Create contextual error for developer debugging
-            const permissionError = new FirestorePermissionError({
-                path: 'organisations',
-                operation: 'write',
-                requestResourceData: { tempSubscribedOrgIds },
-            });
-            errorEmitter.emit('permission-error', permissionError);
-
-            // Revert UI state to match the last known server data
-            const actualSubs = allOrganisations
-                .filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id))
-                .map(org => org.id);
-            setTempSubscribedOrgIds(actualSubs);
-
-            toast({ 
-                variant: "destructive", 
-                title: "Failed to save subscriptions.",
-                description: "You may not have sufficient permissions to modify organization settings."
-            });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Failed to save subscriptions." });
         } finally {
             setIsSavingSubscriptions(false);
         }
@@ -1046,7 +1018,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
