@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Loader2, PackagePlus, X, Plus, Table as TableIcon, Search } from 'lucide-react';
+import { Loader2, PackagePlus, X, Plus, Table as TableIcon, Search, PlusCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -86,7 +86,7 @@ export function MasterDataBrowserDialog({
   // Fetch rows for either the specific dataset or the global master set
   const masterDataQuery = useMemoFirebase(() => {
     if (!selectedVendorId) return null;
-    if (selectedDataSetId) {
+    if (selectedDataSetId && selectedDataSetId !== 'master') {
         return collection(firestore, 'data-warehouse', selectedVendorId, 'dataSets', selectedDataSetId, 'rows');
     }
     return collection(firestore, 'data-warehouse', selectedVendorId, 'masterDataSet');
@@ -167,7 +167,7 @@ export function MasterDataBrowserDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={resetState}>
-      <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-xl">
         <DialogHeader className="p-6 border-b bg-muted/10">
           <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
           <DialogDescription className="text-xs font-black uppercase tracking-widest opacity-60">
@@ -175,7 +175,7 @@ export function MasterDataBrowserDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row">
           {/* Left Side: Browser */}
           <div className="flex-1 flex flex-col min-w-0 border-r">
             <div className="p-4 bg-muted/5 border-b space-y-4">
@@ -306,7 +306,7 @@ export function MasterDataBrowserDialog({
             <ScrollArea className="flex-1 p-4">
                 <div className="space-y-2">
                     {stagedItems.length > 0 ? stagedItems.map((item, index) => (
-                        <Card key={`${item.row.id}-${index}`} className="relative border-2 border-transparent hover:border-primary/20 transition-all bg-background shadow-sm overflow-hidden group">
+                        <Card key={`${item.row.id}-${index}`} className="relative border-2 border-transparent hover:border-primary/20 transition-all bg-background shadow-sm overflow-hidden group rounded-lg">
                             <div className="p-3 pr-10">
                                 <p className="text-[11px] font-black uppercase leading-tight truncate">
                                     {item.row.Description || item.row.name || item.row['Model Name'] || 'Unnamed Item'}
@@ -335,7 +335,7 @@ export function MasterDataBrowserDialog({
                 <Button 
                     onClick={handleSavePackage} 
                     disabled={stagedItems.length === 0}
-                    className="w-full h-11 font-black uppercase tracking-widest shadow-lg"
+                    className="w-full h-11 font-black uppercase tracking-widest shadow-lg rounded-xl"
                 >
                     <CheckCircle2 className="mr-2 h-4 w-4" />
                     Apply Selection
