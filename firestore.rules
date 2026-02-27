@@ -3,123 +3,132 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * HELMLOGIC SECURITY RULES
+     * FIRESTORE SECURITY RULES DOCUMENTATION
      *
-     * Global Admin bypass + Multi-tenant organization model.
+     * Core Philosophy:
+     * This ruleset implements a dual-layer security model. Product catalog data (Brands, Products, Options) 
+     * is treated as public read-only "Reference Data" to enable browsing and configuration by any user. 
+     * User-generated content (Configured Motor Instances) follows a strict "User-Ownership" model 
+     * where data is siloed under unique user IDs.
+     *
+     * Data Structure:
+     * 1. Public Catalog: /motorBrands, /configurationOptionTypes (and their subcollections).
+     * 2. Private User Data: /users/{userId}/configuredMotorInstances/{instanceId}.
+     *
+     * Key Security Decisions:
+     * - Public Read Access: Browsing motors and configuration options does not require authentication 
+     *   to minimize friction for potential customers.
+     * - Ownership Enforcement: All personal configurations are secured via path-based authorization 
+     *   matching the authenticated Firebase Auth UID to the {userId} path variable.
+     * - Write Protection: Catalog data is protected from client-side writes. Only administrative 
+     *   tools (not defined in this IR) should modify these collections.
+     *
+     * Denormalization for Authorization:
+     * - Relational integrity is enforced by requiring the `userId` within a `ConfiguredMotorInstance` 
+     *   document to match the path it is stored in. 
+     * - This ensures that queries filtered by `userId` are automatically secured by the rules.
+     *
+     * Structural Segregation:
+     * - Public product data is kept in top-level collections distinct from user data, 
+     *   ensuring that a misconfiguration in one area does not leak data in another.
      */
 
-    // --- GLOBAL HELPER FUNCTIONS ---
+    // --- Helper Functions ---
 
-    /** @description Checks if the user is authenticated. */
+    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the user has the HelmLogic Admin role in their profile. */
-    function isAdmin() {
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('appRole', '') == 'HelmLogic Admin';
+    /** @description Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks if the user is a member of a specific organisation, a global admin, or a member of the parent organisation. */
-    function isOrgMember(orgId) {
-      if (!isSignedIn()) return false;
-      if (isAdmin()) return true;
-      
-      // Get user's primary organisation
-      let userProfilePath = /databases/$(database)/documents/users/$(request.auth.uid);
-      let userOrgId = exists(userProfilePath) ? get(userProfilePath).data.get('organisationId', '') : '';
-      
-      // 1. Direct membership via profile
-      if (userOrgId == orgId) return true;
-      
-      // 2. Parent-Child relationship (Org managers can manage their sub-dealers)
-      let targetOrgPath = /databases/$(database)/documents/organisations/$(orgId);
-      if (exists(targetOrgPath)) {
-        let targetOrg = get(targetOrgPath).data;
-        // If the target's parent is the user's org, allow access
-        if (targetOrg.get('parentOrganisationId', '') == userOrgId) return true;
-        // Direct membership via members array
-        if (request.auth.uid in targetOrg.get('members', [])) return true;
-      }
-      
-      return false;
+    /** @description Combined check for document existence and ownership for updates/deletes. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
     }
 
-    // --- GLOBAL ADMIN BYPASS ---
-    
-    /** 
-     * @description HelmLogic Admins can do everything. 
-     * This is the master override for all paths.
-     */
-    match /{allPaths=**} {
-      allow read, write: if isAdmin();
-    }
-
-    // --- COLLECTION RULES ---
+    // --- Collection Rules ---
 
     /**
-     * @description Rules for User Profiles.
+     * @description Publicly readable motor brands.
+     * @path /motorBrands/{motorBrandId}
+     * @allow (get) Any user can view a specific brand.
+     * @deny (update) Any user attempting to modify brand details.
+     * @principle Public Read with Restricted Writes.
      */
-    match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAdmin();
-      
-      match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      }
-    }
-
-    /**
-     * @description Rules for Organisations.
-     */
-    match /organisations/{organisationId} {
-      // Allow get/list for discovery and context switching
-      allow get, list: if isSignedIn(); 
-      // Allow creation for signups or admin
-      allow create: if isSignedIn();
-      // Allow update if member, admin, or parent organization member
-      allow update: if isSignedIn() && isOrgMember(organisationId);
+    match /motorBrands/{motorBrandId} {
+      allow get, list: if true;
+      // CRITICAL: Cannot implement owner-only writes. The 'MotorBrand' entity is missing an 'ownerId' or 'authorId' field.
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
 
       /**
-       * Sub-collections: priceLevelDefinitions, productPrices, quotes, dealerFitSelections, inventory, etc.
+       * @description Motor products associated with a brand.
+       * @path /motorBrands/{motorBrandId}/motorProducts/{motorProductId}
+       * @allow (list) A user browsing products for a specific brand.
+       * @deny (create) A user trying to add a product to the catalog.
+       * @principle Public Read with Restricted Writes.
        */
-      match /{allSubcollections=**} {
-        allow read, write: if isSignedIn() && isOrgMember(organisationId);
+      match /motorProducts/{motorProductId} {
+        allow get, list: if true;
+        // CRITICAL: Cannot implement owner-only writes. The 'MotorProduct' entity is missing an 'ownerId' or 'authorId' field.
+        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+
+        /**
+         * @description Available configuration options for a specific product.
+         * @path /motorBrands/{motorBrandId}/motorProducts/{motorProductId}/configurableOptions/{configOptionId}
+         * @allow (get) The configuration engine fetching available options for a motor.
+         * @deny (delete) Any client-side attempt to remove configuration logic.
+         */
+        match /configurableOptions/{configOptionId} {
+          allow get, list: if true;
+          allow create, update, delete: if false;
+        }
       }
     }
 
     /**
-     * @description Rules for the Data Warehouse.
+     * @description Global categories for configuration options (e.g., "Shaft Length").
+     * @path /configurationOptionTypes/{optionTypeId}
+     * @allow (list) Fetching all types of options for the UI.
+     * @deny (update) Unauthorized modification of option metadata.
      */
-    match /data-warehouse/{vendorId} {
-      allow get, list: if isSignedIn();
-      match /{allSubcollections=**} {
-        allow get, list: if isSignedIn();
+    match /configurationOptionTypes/{optionTypeId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+
+      /**
+       * @description Specific values for an option type (e.g., "20 inches").
+       * @path /configurationOptionTypes/{optionTypeId}/optionValues/{optionValueId}
+       * @allow (get) Retrieving the price impact of a specific selection.
+       * @deny (create) Attempting to inject new price values.
+       */
+      match /optionValues/{optionValueId} {
+        allow get, list: if true;
+        allow create, update, delete: if false;
       }
     }
 
     /**
-     * @description Global collections for inventory/vessels.
+     * @description User-owned motor configurations.
+     * @path /users/{userId}/configuredMotorInstances/{instanceId}
+     * @allow (create) User 'abc' creating a configuration at /users/abc/...
+     * @deny (get) User 'xyz' attempting to read configurations owned by 'abc'.
+     * @principle Path-based Ownership and Relational Integrity.
      */
-    match /inventory/{itemId} { 
-      allow read, write: if isSignedIn() && (isAdmin() || isOrgMember(resource.data.get('organisationId', ''))); 
+    match /users/{userId}/configuredMotorInstances/{instanceId} {
+      allow get, list: if isOwner(userId);
+      
+      // On Create: Ensure the internal userId field matches the path and the auth state.
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      
+      // On Update: Ensure the document exists, belongs to the user, and the userId field is immutable.
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      
+      // On Delete: Ensure the document exists and belongs to the user.
+      allow delete: if isExistingOwner(userId);
     }
-    match /vessels/{vesselId} { 
-      allow read, write: if isSignedIn() && (isAdmin() || isOrgMember(resource.data.get('organisationId', ''))); 
-    }
-    match /vesselReservations/{resId} { 
-      allow read, write: if isSignedIn(); 
-    }
-    
-    /**
-     * @description Global reference data.
-     */
-    match /brands/{brandId} { allow get, list: if isSignedIn(); }
-    match /products/{productId} { allow get, list: if isSignedIn(); }
-    match /modules/{moduleId} { allow get, list: if isSignedIn(); }
-    match /dealerFitCategories/{catId} { allow get, list: if isSignedIn(); }
   }
 }
