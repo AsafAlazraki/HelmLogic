@@ -59,7 +59,6 @@ export function AppSidebar() {
     
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
     const isOrgMember = !!userProfile?.organisationId;
-    const subDealersEnabled = !!organisation?.subDealersEnabled;
     const roleId = userProfile?.organisationRole;
     const userPermissions = roleId && organisation?.permissions?.[roleId] ? organisation.permissions[roleId] : {};
 
@@ -70,15 +69,10 @@ export function AppSidebar() {
       if (link.label === 'Dashboard' && isAdmin) {
         return false; // Hide Dashboard for admins
       }
-      if (link.label === 'Manage') {
+      if (link.label === 'Settings') {
         if (isAdmin) return false;
         if (!isOrgMember) return false;
         return !!userPermissions.can_access_settings;
-      }
-      if (link.label === 'Sub Dealers') {
-        if (isAdmin) return false;
-        if (!isOrgMember || !subDealersEnabled) return false;
-        return !!userPermissions.can_view_subdealers;
       }
       return true;
     });
