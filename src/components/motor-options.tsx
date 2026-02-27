@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -25,6 +26,7 @@ interface Vendor {
 interface Motor {
     id: string;
     SummaryImage?: string;
+    'HP Rating'?: string;
     [key: string]: any;
 }
 
@@ -50,34 +52,26 @@ const formatConfigType = (type: string) => {
     return type.replace(/([A-Z])/g, ' $1').trim();
 };
 
-const getHpFromModelName = (modelName?: string): number | null => {
-    if (!modelName) return null;
-    const match = modelName.match(/(\d+(\.\d+)?)/);
-    return match ? parseFloat(match[0]) : null;
-};
-
-// Helper function for cartesian product
-const cartesian = (...a: any[][]) => a.reduce((acc, val) => acc.flatMap(d => val.map(e => [d, e].flat())));
-
-// Helper function for combinations with replacement
-const combinationsWithReplacement = (arr: any[], size: number): any[][] => {
-    if (!arr.length || size <= 0) return [];
-    if (size === 1) return arr.map(item => [item]);
-
-    const result: any[][] = [];
-    const recurse = (temp: any[], start: number) => {
-        if (temp.length === size) {
-            result.push(temp.slice());
-            return;
-        }
-        for (let i = start; i < arr.length; i++) {
-            temp.push(arr[i]);
-            recurse(temp, i);
-            temp.pop();
-        }
-    };
-    recurse([], 0);
-    return result;
+/**
+ * Parses HP Rating strings like "90", "450", or "2 x 300"
+ */
+const parseHpRating = (rating?: any): { count: number, hp: number } | null => {
+    if (!rating) return null;
+    const str = String(rating).toLowerCase().trim();
+    
+    // Match "2 x 300"
+    const twinMatch = str.match(/^(\d+)\s*x\s*(\d+)/);
+    if (twinMatch) {
+        return { count: parseInt(twinMatch[1]), hp: parseInt(twinMatch[2]) };
+    }
+    
+    // Match "90" or "450"
+    const singleMatch = str.match(/^(\d+)/);
+    if (singleMatch) {
+        return { count: 1, hp: parseInt(singleMatch[1]) };
+    }
+    
+    return null;
 };
 
 function MotorCard({ 
@@ -95,7 +89,6 @@ function MotorCard({
     if (motor.SummaryImage && typeof motor.SummaryImage === 'string') {
         const path = motor.SummaryImage.trim().replace(/\\/g, '');
         if (path) {
-            // Handle Yamaha specific paths
             const cleanPath = path.startsWith('/') ? path : `/${path}`;
             itemImageUrl = `https://www.yamaha-motor.com.au${cleanPath}`;
         }
@@ -114,6 +107,7 @@ function MotorCard({
     };
     const modelNameKey = findKey(['Model Name', 'ModelName', 'name']);
     const modelName = modelNameKey ? motor[modelNameKey] : 'Unknown Motor';
+    const hpRating = motor['HP Rating'];
 
     return (
         <Card className="overflow-hidden flex flex-col border-2 shadow-none hover:border-primary/20 transition-all rounded-xl">
@@ -125,15 +119,22 @@ function MotorCard({
                         fill 
                         className="object-contain p-2" 
                         sizes="200px"
-                        unoptimized // Yamaha CDN can be finicky with Next.js optimization headers
+                        unoptimized
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground/20">
                         <Ship className="w-8 h-8"/>
                     </div>
                 )}
+                {hpRating && (
+                    <div className="absolute top-2 left-2">
+                        <Badge variant="default" className="font-black text-[9px] bg-primary shadow-sm uppercase">
+                            {hpRating} HP
+                        </Badge>
+                    </div>
+                )}
                 <div className="absolute bottom-2 right-2">
-                    <Badge variant="secondary" className="font-mono text-[9px] font-bold bg-background/80 backdrop-blur-sm">
+                    <Badge variant="secondary" className="font-mono text-[9px] font-bold bg-background/80 backdrop-blur-sm border">
                         {motor.id.slice(-6).toUpperCase()}
                     </Badge>
                 </div>
@@ -141,12 +142,12 @@ function MotorCard({
             <CardContent className="p-3 flex-1 flex flex-col gap-3">
                 <div>
                     <p className="text-[11px] font-black uppercase leading-tight line-clamp-2">{String(modelName)}</p>
-                    {motor['Part Number'] && <p className="text-[9px] font-mono font-bold text-primary mt-1">{motor['Part Number']}</p>}
+                    {motor['Part Number'] && <p className="text-[9px] font-mono font-bold text-primary mt-1 uppercase opacity-60">{motor['Part Number']}</p>}
                 </div>
 
-                <div className="space-y-2 mt-auto">
+                <div className="space-y-2 mt-auto pt-2 border-t border-dashed">
                     <div className="flex items-center gap-2 mb-1 justify-between">
-                        <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Factory Options</span>
+                        <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Motor Accessories</span>
                         <Button 
                             variant="ghost" 
                             size="icon" 
@@ -174,7 +175,7 @@ function MotorCard({
                         )) : (
                             <div className="py-4 border border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground opacity-30">
                                 <PlusCircle className="h-4 w-4 mb-1" />
-                                <span className="text-[8px] font-black uppercase">Add Prop/Rigging</span>
+                                <span className="text-[8px] font-black uppercase">Propeller / Rigging</span>
                             </div>
                         )}
                     </div>
@@ -193,7 +194,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
     
     const motorConfigurations = watch('specifications.motorConfigurations') || model.specifications?.motorConfigurations || [];
-    const motorFactoryOptions = watch('motorFactoryOptions') || {}; // Map: Record<motorId, Option[]>
+    const motorFactoryOptions = watch('motorFactoryOptions') || {};
 
     const motorVendor = useMemo(() => {
         if (!allVendors || !module) return null;
@@ -210,7 +211,9 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 const dsSnap = await getDocs(dsRef);
                 const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 
+                // Prioritize "Yamaha Outboards" or generic outboard/motor names
                 const preferred = datasets.find((s: any) => 
+                    s.name.toLowerCase().includes('yamaha outboards') ||
                     s.name.toLowerCase().includes('outboard') || 
                     s.name.toLowerCase().includes('motor') ||
                     s.name.toLowerCase().includes('engine')
@@ -246,59 +249,51 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         ]
     };
 
-    const getHpFromMotor = (motor: Motor): number | null => {
-        const allKeys = Object.keys(motor);
-        const normalize = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
-        const findKey = (potentials: string[]) => {
-            const normalizedPotentials = potentials.map(normalize);
-            for (const key of allKeys) {
-                if (normalizedPotentials.includes(normalize(key))) {
-                    return key;
-                }
-            }
-            return undefined;
-        };
-        const modelNameKey = findKey(['Model Name', 'ModelName', 'name']);
-        if (modelNameKey && typeof motor[modelNameKey] === 'string') {
-            return getHpFromModelName(motor[modelNameKey] as string);
-        }
-        return null;
-    };
-    
     const motorCombinations = useMemo(() => {
         if (!motorDataSet || motorConfigurations.length === 0 || !motorVendor) return [];
 
         return motorConfigurations.map((config: MotorConfig) => {
             let combinations: Motor[][] = [];
             
-            const compatibleMotorsPerEngine = config.engines.map(engineSpec => 
-                motorDataSet.filter(motor => {
-                    const motorHp = getHpFromMotor(motor);
-                    if (motorHp === undefined || motorHp === null || isNaN(motorHp)) return false;
+            // Per instructions: "under the twin section, only show the ones that start HP Rating with a 2 x"
+            if (config.type === 'Twin') {
+                const twinMotors = motorDataSet.filter(motor => {
+                    const parsed = parseHpRating(motor['HP Rating']);
+                    if (!parsed || parsed.count !== 2) return false;
                     
-                    const minHp = Number(engineSpec.minHp ?? 0);
-                    const maxHp = Number(engineSpec.maxHp ?? 0);
-
-                    if (maxHp > 0) {
-                        return motorHp >= minHp && motorHp <= maxHp;
-                    } else if (minHp > 0) {
-                        return motorHp >= minHp;
-                    }
+                    // Check if it fits the engine spec (usually twins same, so use first engine)
+                    const spec = config.engines[0];
+                    const min = Number(spec.minHp || 0);
+                    const max = Number(spec.maxHp || 0);
                     
-                    return false;
-                })
-            );
-
-            if(config.type === 'Single' && compatibleMotorsPerEngine.length > 0) {
-                combinations = compatibleMotorsPerEngine[0].map(m => [m]);
-            } else if (config.type === 'Twin' && compatibleMotorsPerEngine.length > 0 && compatibleMotorsPerEngine[0].length > 0) {
-                combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 2);
-            } else if (config.type === 'Triple' && compatibleMotorsPerEngine.length > 0 && compatibleMotorsPerEngine[0].length > 0) {
-                combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 3);
-            } else if (config.type === 'Quad' && compatibleMotorsPerEngine.length > 0 && compatibleMotorsPerEngine[0].length > 0) {
-                combinations = combinationsWithReplacement(compatibleMotorsPerEngine[0], 4);
-            } else if (config.type === 'SingleWithAux' && compatibleMotorsPerEngine.length === 2) {
-                combinations = cartesian(compatibleMotorsPerEngine[0], compatibleMotorsPerEngine[1]);
+                    if (max > 0) return parsed.hp >= min && parsed.hp <= max;
+                    return parsed.hp >= min;
+                });
+                combinations = twinMotors.map(m => [m]);
+            } else if (config.type === 'Single') {
+                const singleMotors = motorDataSet.filter(motor => {
+                    const parsed = parseHpRating(motor['HP Rating']);
+                    if (!parsed || parsed.count !== 1) return false;
+                    
+                    const spec = config.engines[0];
+                    const min = Number(spec.minHp || 0);
+                    const max = Number(spec.maxHp || 0);
+                    
+                    if (max > 0) return parsed.hp >= min && parsed.hp <= max;
+                    return parsed.hp >= min;
+                });
+                combinations = singleMotors.map(m => [m]);
+            } else {
+                // For Triple/Quad etc., fallback to combination logic or specific parsing if available
+                const engineCountMap: Record<string, number> = { 'Triple': 3, 'Quad': 4, 'SingleWithAux': 2 };
+                const targetCount = engineCountMap[config.type] || 1;
+                
+                const filtered = motorDataSet.filter(motor => {
+                    const parsed = parseHpRating(motor['HP Rating']);
+                    if (!parsed) return false;
+                    return parsed.count === targetCount;
+                });
+                combinations = filtered.map(m => [m]);
             }
             
             return {
@@ -336,7 +331,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         
         setIsBrowserOpen(false);
         setActiveMotorId(null);
-        toast({ title: "Factory Option Added", description: `Linked ${selection.name} to the selected motor variant.` });
+        toast({ title: "Factory Option Added" });
     };
 
     const loading = vendorsLoading || motorsLoading;
@@ -346,30 +341,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             <Card className="rounded-xl border shadow-sm">
                 <CardContent className="flex justify-center items-center h-64">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </CardContent>
-            </Card>
-        );
-    }
-
-    if (!motorVendor) {
-        return (
-            <Card className="rounded-xl border-2 border-dashed bg-muted/5">
-                <CardContent className="flex flex-col items-center justify-center h-64 text-center">
-                    <AlertCircle className="h-10 w-10 text-muted-foreground opacity-20 mb-4" />
-                    <p className="font-bold uppercase tracking-widest text-xs text-muted-foreground">No Motor Vendor Configured</p>
-                    <p className="text-sm text-muted-foreground/60 mt-2">Associate a motor brand in the module settings to enable engine configuration.</p>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    if (!motorDataSet || motorDataSet.length === 0) {
-        return (
-            <Card className="rounded-xl border-2 border-dashed bg-muted/5">
-                <CardContent className="flex flex-col items-center justify-center h-64 text-center">
-                    <ShieldCheck className="h-10 w-10 text-muted-foreground opacity-20 mb-4" />
-                    <p className="font-bold uppercase tracking-widest text-xs text-muted-foreground">No Engine Data Found</p>
-                    <p className="text-sm text-muted-foreground/60 mt-2">The master data set for {motorVendor.name} appears to be empty.</p>
                 </CardContent>
             </Card>
         );
@@ -387,12 +358,16 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-3 bg-background border rounded-lg px-3 py-1.5 shadow-sm">
-                            {motorVendor.logoUrl ? (
-                                <div className="relative h-8 w-16">
-                                    <Image src={motorVendor.logoUrl} alt={motorVendor.name} fill className="object-contain" sizes="64px" />
+                            {motorVendor?.logoUrl ? (
+                                <div className="relative h-8 w-24">
+                                    <Image src={motorVendor.logoUrl} alt={motorVendor.name} fill className="object-contain" sizes="96px" />
                                 </div>
-                            ) : <Settings2 className="h-4 w-4 text-muted-foreground" />}
-                            <span className="text-[10px] font-black uppercase tracking-tighter">{motorVendor.name}</span>
+                            ) : motorVendor && (
+                                <div className="flex items-center gap-2">
+                                    <Settings2 className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-[10px] font-black uppercase tracking-tighter">{motorVendor.name}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </CardHeader>
