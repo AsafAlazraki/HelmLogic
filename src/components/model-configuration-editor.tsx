@@ -12,7 +12,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag } from 'lucide-react';
@@ -327,7 +327,7 @@ export function ModelConfigurationEditor({
                         
                         <TabsContent value="boat" className="mt-6 space-y-8">
                             <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                                <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
+                                <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b bg-card select-none">
                                     <div className="flex items-center gap-3">
                                         <CollapsibleTrigger asChild>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
@@ -339,7 +339,7 @@ export function ModelConfigurationEditor({
                                             Range Identity
                                         </CardTitle>
                                     </div>
-                                </div>
+                                </CardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="pt-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
