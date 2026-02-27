@@ -421,6 +421,14 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
 
     if (loading) return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
+    const currentStagedEngines = (configType: string) => {
+        const overrides = motorOverrides[configType] || { manualIds: [] };
+        if (!motorDataSet) return [];
+        return motorDataSet
+            .filter(m => overrides.manualIds.includes(m.id))
+            .map(m => ({ vendorId: motorVendor?.id || '', vendorName: motorVendor?.name || '', row: m }));
+    };
+
     return (
         <div className="space-y-6">
             <Card className="rounded-xl border shadow-sm overflow-hidden bg-background">
@@ -444,36 +452,36 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                         <Accordion type="multiple" className="w-full space-y-4" defaultValue={['config-0']}>
                             {motorCombinations.map((configGroup, index) => (
                                 <AccordionItem value={`config-${index}`} key={configGroup.configType} className="border rounded-xl overflow-hidden shadow-sm bg-background">
-                                    <AccordionPrimitive.Header className="flex border-b bg-muted/20 hover:bg-muted/30 transition-colors group/trigger">
-                                        <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-6 py-4 font-medium transition-all hover:no-underline [&[data-state=open]>svg]:rotate-180 text-left">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Star className="h-4 w-4" /></div>
-                                                <div>
-                                                    <p className="font-black text-xs uppercase tracking-widest">{formatConfigType(configGroup.configType)} Layout</p>
-                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">{configGroup.combinations.length} Variations Available</p>
+                                    <div className="flex border-b bg-muted/20 hover:bg-muted/30 transition-colors group/trigger items-center justify-between pr-6">
+                                        <AccordionPrimitive.Header className="flex flex-1">
+                                            <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-6 py-4 font-medium transition-all hover:no-underline [&[data-state=open]>svg]:rotate-180 text-left">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Star className="h-4 w-4" /></div>
+                                                    <div>
+                                                        <p className="font-black text-xs uppercase tracking-widest">{formatConfigType(configGroup.configType)} Layout</p>
+                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">{configGroup.combinations.length} Variations Available</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                        </AccordionPrimitive.Trigger>
-                                        <div className="flex items-center pr-6">
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="h-8 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover/trigger:opacity-100 transition-opacity"
-                                                onClick={(e) => { 
-                                                    e.preventDefault(); 
-                                                    e.stopPropagation(); 
-                                                    setActiveConfigType(configGroup.configType); 
-                                                    setIsEngineManagerOpen(true); 
-                                                }}
-                                            >
-                                                <Settings2 className="h-3 w-3 mr-1.5" />
-                                                Manage Engines
-                                            </Button>
-                                        </div>
-                                    </AccordionPrimitive.Header>
+                                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                            </AccordionPrimitive.Trigger>
+                                        </AccordionPrimitive.Header>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="h-8 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover/trigger:opacity-100 transition-opacity"
+                                            onClick={(e) => { 
+                                                e.preventDefault(); 
+                                                e.stopPropagation(); 
+                                                setActiveConfigType(configGroup.configType); 
+                                                setIsEngineManagerOpen(true); 
+                                            }}
+                                        >
+                                            <Settings2 className="h-3 w-3 mr-1.5" />
+                                            Manage Engines
+                                        </Button>
+                                    </div>
                                     <AccordionContent className="p-0">
-                                        <ScrollArea className="h-full max-h-[700px] w-full">
+                                        <ScrollArea className="h-[500px] w-full">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
                                                 {configGroup.combinations.map((combo, comboIdx) => (
                                                     <div key={comboIdx} className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 border-2 rounded-2xl bg-muted/5 relative group/combo">
@@ -516,6 +524,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 onSave={handleSaveOption}
                 title="Motor Factory Options"
                 description={`Browse rigging and accessories for ${activeMotorId?.slice(-6).toUpperCase()}.`}
+                initialVendorId={motorVendor?.id}
             />
 
             <MasterDataBrowserDialog 
@@ -526,6 +535,8 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 onSave={handleAddManualEngine}
                 title={`Manage Engines: ${formatConfigType(activeConfigType || '')}`}
                 description="Search the catalog to manually add compatible engines."
+                initialVendorId={motorVendor?.id}
+                initialStagedItems={activeConfigType ? currentStagedEngines(activeConfigType) : []}
             />
         </div>
     );

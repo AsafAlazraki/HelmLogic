@@ -62,7 +62,9 @@ export function MasterDataBrowserDialog({
   initialCategory,
   onSave,
   title = "Master Data Browser",
-  description = "Select items from your subscribed vendors to build a new selection."
+  description = "Select items from your subscribed vendors to build a new selection.",
+  initialVendorId,
+  initialStagedItems = []
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -72,6 +74,8 @@ export function MasterDataBrowserDialog({
   onSave: (selection: Omit<DealerFitSelection, 'id'>) => void;
   title?: string;
   description?: string;
+  initialVendorId?: string;
+  initialStagedItems?: { vendorId: string; vendorName: string; row: any }[];
 }) {
   const firestore = useFirestore();
   const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
@@ -81,11 +85,17 @@ export function MasterDataBrowserDialog({
   const [selectedDataSetId, setSelectedDataSetId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [targetCategory, setTargetCategory] = useState(initialCategory || 'Other');
-  
-  // Update target category when initialCategory changes
+  const [stagedItems, setStagedItems] = useState<{ vendorId: string; vendorName: string; row: any }[]>([]);
+  const [packageName, setPackageName] = useState('');
+
+  // Sync initial state when dialog opens
   useEffect(() => {
-    if (initialCategory) setTargetCategory(initialCategory);
-  }, [initialCategory]);
+    if (isOpen) {
+      if (initialVendorId) setSelectedVendorId(initialVendorId);
+      if (initialStagedItems.length > 0) setStagedItems(initialStagedItems);
+      if (initialCategory) setTargetCategory(initialCategory);
+    }
+  }, [isOpen, initialVendorId, initialStagedItems, initialCategory]);
 
   // Fetch datasets for the selected vendor
   const dataSetsQuery = useMemoFirebase(() => {
@@ -105,9 +115,6 @@ export function MasterDataBrowserDialog({
   }, [firestore, selectedVendorId, selectedDataSetId]);
   
   const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
-
-  const [stagedItems, setStagedItems] = useState<{ vendorId: string; vendorName: string; row: any }[]>([]);
-  const [packageName, setPackageName] = useState('');
 
   const subscribedVendors = useMemo(() => {
     if (!allVendors || !organisation.dataWarehouseSubscriptions) return [];
@@ -180,7 +187,7 @@ export function MasterDataBrowserDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={resetState}>
-      <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-xl">
+      <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-xl">
         <DialogHeader className="p-6 border-b bg-muted/10">
           <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
           <DialogDescription className="text-xs font-black uppercase tracking-widest opacity-60">
