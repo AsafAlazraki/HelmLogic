@@ -6,7 +6,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, LayoutGrid, List, Ship } from 'lucide-react';
+import { Loader2, Search, LayoutGrid, List, Ship, Hash, Tag } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
@@ -56,6 +56,22 @@ export function MotorModuleBrowser({
         );
     }, [rows, searchTerm]);
 
+    const getModelDetails = (row: any) => {
+        const allKeys = Object.keys(row);
+        const normalize = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
+        
+        const findValue = (potentials: string[]) => {
+            const normalizedPotentials = potentials.map(normalize);
+            const matchingKey = allKeys.find(key => normalizedPotentials.includes(normalize(key)));
+            return matchingKey ? row[matchingKey] : null;
+        };
+
+        const name = findValue(['Model Name', 'ModelName', 'Name', 'Description', 'Model']) || 'Unnamed Motor';
+        const code = findValue(['Model Code', 'ModelCode', 'Part Number', 'PartNumber', 'SKU', 'PartNo']) || row.id.slice(-6).toUpperCase();
+        
+        return { name, code };
+    };
+
     if (setsLoading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>;
 
     return (
@@ -96,6 +112,7 @@ export function MotorModuleBrowser({
                         : "space-y-3"
                 )}>
                     {filteredRows.map(row => {
+                        const { name, code } = getModelDetails(row);
                         const imgPath = row.SummaryImage || row.imageUrl;
                         const getImageUrl = (path: string) => {
                             if (!path) return null;
@@ -106,7 +123,6 @@ export function MotorModuleBrowser({
                         };
                         const imgUrl = getImageUrl(imgPath);
                         const hpRating = row['HP Rating'] || row.hp;
-                        const modelName = row['Model Name'] || row.name || row.Description || 'Unnamed Motor';
 
                         if (viewMode === 'grid') {
                             return (
@@ -119,7 +135,7 @@ export function MotorModuleBrowser({
                                         {imgUrl ? (
                                             <Image 
                                                 src={imgUrl} 
-                                                alt={String(modelName)} 
+                                                alt={String(name)} 
                                                 fill 
                                                 className="object-contain p-4 group-hover:scale-105 transition-transform" 
                                                 unoptimized
@@ -128,12 +144,20 @@ export function MotorModuleBrowser({
                                             <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>
                                         )}
                                         {hpRating && (
-                                            <Badge className="absolute top-2 left-2 font-black shadow-md">{hpRating} HP</Badge>
+                                            <Badge className="absolute top-2 left-2 font-black shadow-md bg-primary uppercase tracking-tighter">
+                                                {hpRating} HP
+                                            </Badge>
                                         )}
                                     </div>
-                                    <CardHeader className="p-4 flex-grow flex flex-col items-center justify-center gap-1">
-                                        <CardTitle className="text-xs font-black uppercase tracking-tight line-clamp-2 text-center leading-tight">{modelName}</CardTitle>
-                                        {row['Part Number'] && <CardDescription className="text-[9px] font-mono text-center uppercase font-bold text-primary/60">{row['Part Number']}</CardDescription>}
+                                    <CardHeader className="p-4 flex-grow flex flex-col items-center justify-center gap-1.5">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className="text-[10px] font-mono font-black text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+                                                {code}
+                                            </span>
+                                            <CardTitle className="text-xs font-black uppercase tracking-tight line-clamp-2 text-center leading-tight mt-1">
+                                                {name}
+                                            </CardTitle>
+                                        </div>
                                     </CardHeader>
                                 </Card>
                             );
@@ -150,8 +174,12 @@ export function MotorModuleBrowser({
                                         {imgUrl ? <Image src={imgUrl} alt="Motor" fill className="object-contain p-1" unoptimized /> : <Ship className="h-6 w-6 m-auto mt-4 opacity-10" />}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="font-black text-sm uppercase tracking-tight truncate">{modelName}</p>
-                                        <p className="text-[10px] font-mono text-muted-foreground uppercase">{row['Part Number'] || 'No Part Number'}</p>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="font-mono text-[9px] font-black uppercase text-primary border-primary/20">
+                                                {code}
+                                            </Badge>
+                                            <p className="font-black text-sm uppercase tracking-tight truncate">{name}</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">

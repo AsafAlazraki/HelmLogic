@@ -29,7 +29,8 @@ import {
     Pencil,
     Trash2,
     DollarSign,
-    Ship
+    Ship,
+    Cog
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
@@ -755,7 +756,10 @@ export default function ModuleDetailsPage() {
              <Tabs value={activeTab} onValueChange={setActiveTab}>
                  <TabsList className={cn("grid w-full", tabGridCols)}>
                     {isViewingOrg && <TabsTrigger value="dashboard"><LayoutDashboard className="h-4 w-4 mr-2" /> Dashboard</TabsTrigger>}
-                    <TabsTrigger value="bmt"><Wrench className="h-4 w-4 mr-2" /> BMT</TabsTrigger>
+                    <TabsTrigger value="bmt">
+                        {isMotorBrand ? <Cog className="h-4 w-4 mr-2" /> : <Wrench className="h-4 w-4 mr-2" />}
+                        {isMotorBrand ? 'Motors' : 'BMT'}
+                    </TabsTrigger>
                     <TabsTrigger value="operations"><ClipboardList className="h-4 w-4 mr-2" /> Operations</TabsTrigger>
                     {isViewingOrg && userPermissions.can_access_settings && <TabsTrigger value="pricing"><DollarSign className="h-4 w-4 mr-2" /> Pricing</TabsTrigger>}
                     {isAdmin && !viewContextOrgId && <TabsTrigger value="organisations"><Building className="h-4 w-4 mr-2" /> Organisations</TabsTrigger>}
@@ -874,7 +878,7 @@ export default function ModuleDetailsPage() {
                             <CardHeader className="bg-muted/10 border-b">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="font-black uppercase tracking-tight">
-                                        {view === 'ranges' ? 'Select product range' : view === 'models' ? `Available models in ${selectedRange?.name}` : `Engine Catalog: ${mainVendor?.name}`}
+                                        {isMotorBrand ? 'Engine Catalog' : view === 'ranges' ? 'Select product range' : view === 'models' ? `Available models in ${selectedRange?.name}` : `Engine Catalog: ${mainVendor?.name}`}
                                     </CardTitle>
                                     {isImpersonating && <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20"><Eye className="h-4 w-4 mr-2" /> PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
                                 </div>
@@ -1122,7 +1126,6 @@ export default function ModuleDetailsPage() {
                             </div>
                             {isImpersonating && <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
                         </div>
-                        <DialogTitle className="hidden">Selection Dialog</DialogTitle>
                         <DialogDescription className="text-lg font-medium opacity-60">What would you like to do with this item for {currentContextLabel}?</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-8">
