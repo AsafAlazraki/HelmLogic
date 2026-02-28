@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -227,6 +226,19 @@ export function HighfieldQuoteFlow({
         );
     };
 
+    const handleMaterialSelect = (mat: string) => {
+        setSelectedMaterial(mat as any);
+        setSelectedColor(null);
+        
+        // Smooth scroll to colors section
+        setTimeout(() => {
+            const colorsSection = document.getElementById('available-colors-section');
+            if (colorsSection) {
+                colorsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100);
+    };
+
     if (variantsLoading) {
         return (
             <div className="flex h-[60vh] w-full items-center justify-center">
@@ -251,13 +263,7 @@ export function HighfieldQuoteFlow({
             <div className="relative z-20 p-6 flex flex-col items-center gap-6 border-b bg-card/80 backdrop-blur-xl shrink-0 shadow-sm">
                 <div className="w-full max-w-7xl flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                            <Ship className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-black uppercase tracking-tight leading-tight">{model.name}</h1>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{vendor.name} • Professional Quote Flow</p>
-                        </div>
+                        <h1 className="text-xl font-black uppercase tracking-tight leading-tight">{model.name}</h1>
                     </div>
 
                     <div className="hidden md:flex items-center gap-8">
@@ -281,7 +287,7 @@ export function HighfieldQuoteFlow({
                         ))}
                     </div>
 
-                    <Button variant="ghost" size="sm" className="font-bold text-destructive hover:bg-destructive/10" onClick={() => window.history.back()}>
+                    <Button variant="ghost" size="sm" className="font-bold text-destructive hover:bg-destructive/10 uppercase tracking-widest text-[10px]" onClick={() => window.history.back()}>
                         Exit Build
                     </Button>
                 </div>
@@ -365,7 +371,7 @@ export function HighfieldQuoteFlow({
                                             {availableMaterials.map((mat) => (
                                                 <button
                                                     key={mat}
-                                                    onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }}
+                                                    onClick={() => handleMaterialSelect(mat)}
                                                     className={cn(
                                                         "group relative flex flex-col items-start p-5 border-2 rounded-2xl transition-all duration-300",
                                                         selectedMaterial === mat ? "bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-[1.02]" : "bg-card hover:border-primary/40"
@@ -388,7 +394,7 @@ export function HighfieldQuoteFlow({
 
                                     {/* Color Selection */}
                                     {selectedMaterial && (
-                                        <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-500">
+                                        <div id="available-colors-section" className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-500 pt-10">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-primary">2. Available Colors</span>
                                                 {selectedColor && <CheckCircle2 className="h-4 w-4 text-green-500" />}
