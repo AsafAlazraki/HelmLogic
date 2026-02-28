@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -71,6 +71,7 @@ export function HighfieldQuoteFlow({
 }) {
     const firestore = useFirestore();
     const [currentStep, setCurrentStep] = useState(1);
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
     
     // Selection State
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
@@ -86,7 +87,7 @@ export function HighfieldQuoteFlow({
     
     const { data: variants, loading: variantsLoading } = useCollection<Variant>(variantsQuery);
 
-    // 2. Fetch Compatible Motors (based on model HP rating)
+    // 2. Fetch Compatible Motors
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
@@ -95,14 +96,12 @@ export function HighfieldQuoteFlow({
             if (currentStep !== 3) return;
             setMotorsLoading(true);
             try {
-                // Find the motor brand vendor linked to this module
                 const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
                 const allVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                 const allModuleVendorIds = [...(module.associatedVendorIds || []), module.mainVendorId].filter(Boolean);
                 const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
 
                 if (motorVendor) {
-                    // Find the primary dataset for outboards
                     const dsRef = collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets');
                     const dsSnap = await getDocs(dsRef);
                     const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
@@ -113,9 +112,6 @@ export function HighfieldQuoteFlow({
                         const rowsRef = collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`);
                         const rowsSnap = await getDocs(rowsRef);
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                        
-                        // Filter by boat model's recommended HP if possible
-                        // For MVP we show all from that dataset
                         setMotors(allRows);
                     }
                 }
@@ -127,6 +123,36 @@ export function HighfieldQuoteFlow({
         };
         fetchMotors();
     }, [currentStep, firestore, module, model]);
+
+    // Scroll to top on step change
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) {
+                viewport.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+    }, [currentStep]);
+
+    // Highfield Seats Rule: Unselect seats if their parent console is unselected
+    useEffect(() => {
+        const options = model.optionalFeatures || [];
+        const selectedConsoles = options.filter((f: any) => 
+            f.category === 'Consoles' && selectedOptionIds.includes(f.id)
+        );
+        const allowedSeatIds = selectedConsoles.map((c: any) => c.associatedSeatId).filter(Boolean);
+
+        const currentSeats = selectedOptionIds.filter(id => {
+            const opt = options.find((f: any) => f.id === id);
+            return opt?.category === 'Seats';
+        });
+
+        const orphanedSeats = currentSeats.filter(id => !allowedSeatIds.includes(id));
+
+        if (orphanedSeats.length > 0) {
+            setSelectedOptionIds(prev => prev.filter(id => !orphanedSeats.includes(id)));
+        }
+    }, [selectedOptionIds, model.optionalFeatures]);
 
     // Data Derivations
     const activeVariant = useMemo(() => {
@@ -154,17 +180,34 @@ export function HighfieldQuoteFlow({
         const options = model.optionalFeatures || [];
         const rules = model.rules || [];
 
-        // 1. Filter by SKU compatibility
+        // Seats whitelisting based on selected consoles
+        const selectedConsoleIds = selectedOptionIds.filter(id => {
+            const opt = options.find((f: any) => f.id === id);
+            return opt?.category === 'Consoles';
+        });
+        const whitelistedSeatIds = selectedConsoleIds.map(id => {
+            const opt = options.find((f: any) => f.id === id);
+            return opt?.associatedSeatId;
+        }).filter(Boolean);
+
+        // 1. Basic filtering (Variant compatibility + Highfield Seats Rule)
         let filtered = options.filter((opt: any) => {
             if (!activeVariant) return false;
-            // If option has applicableVariantIds, it must include our active variant
+            
+            // SKU Compatibility
             if (opt.applicableVariantIds && opt.applicableVariantIds.length > 0) {
-                return opt.applicableVariantIds.includes(activeVariant.id);
+                if (!opt.applicableVariantIds.includes(activeVariant.id)) return false;
             }
+
+            // Highfield specific: Seats only show if linked console is selected
+            if (opt.category === 'Seats') {
+                return whitelistedSeatIds.includes(opt.id);
+            }
+
             return true;
         });
 
-        // 2. Apply Rule Logic (Exclusions based on selected options)
+        // 2. Logic Rules (Exclusions)
         selectedOptionIds.forEach(selectedId => {
             const rule = rules.find((r: any) => r.sourceOptionId === selectedId && r.type === 'exclude');
             if (rule) {
@@ -172,7 +215,7 @@ export function HighfieldQuoteFlow({
             }
         });
 
-        // 3. Apply Rule Logic (Material-based exclusions)
+        // 3. Material-based Rules
         if (selectedMaterial) {
             rules.forEach((rule: any) => {
                 if (rule.sourceType === 'material' && rule.sourceOptionId === selectedMaterial && rule.type === 'exclude') {
@@ -185,24 +228,35 @@ export function HighfieldQuoteFlow({
     }, [model.optionalFeatures, model.rules, activeVariant, selectedOptionIds, selectedMaterial]);
 
     const groupedOptions = useMemo(() => {
-        return factoryOptions.reduce((acc: any, opt: any) => {
+        const groups = factoryOptions.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;
         }, {});
+
+        // Prioritize: Consoles -> Seats -> Others -> General
+        const sortedKeys = Object.keys(groups).sort((a, b) => {
+            if (a === 'Consoles') return -1;
+            if (b === 'Consoles') return 1;
+            if (a === 'Seats') return -1;
+            if (b === 'Seats') return 1;
+            if (a === 'General Options') return 1;
+            if (b === 'General Options') return -1;
+            return a.localeCompare(b);
+        });
+
+        const sortedGroups: any = {};
+        sortedKeys.forEach(key => { sortedGroups[key] = groups[key]; });
+        return sortedGroups;
     }, [factoryOptions]);
 
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
-        
-        // Add Factory Options
         selectedOptionIds.forEach(id => {
             const opt = model.optionalFeatures?.find((f: any) => f.id === id);
             if (opt) total += (opt.sellPriceExclGst || 0);
         });
-
-        // Add Motor & Linked Accessories
         if (selectedMotor) {
             total += (selectedMotor.sellPriceExclGst || 0);
             selectedMotor.masterAccessories?.forEach((acc: any) => {
@@ -211,11 +265,9 @@ export function HighfieldQuoteFlow({
                 });
             });
         }
-
         return total;
     }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor]);
 
-    // UI Handlers
     const isStep1Complete = !!(selectedMaterial && selectedColor);
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
@@ -229,8 +281,6 @@ export function HighfieldQuoteFlow({
     const handleMaterialSelect = (mat: string) => {
         setSelectedMaterial(mat as any);
         setSelectedColor(null);
-        
-        // Smooth scroll to colors section
         setTimeout(() => {
             const colorsSection = document.getElementById('available-colors-section');
             if (colorsSection) {
@@ -239,17 +289,8 @@ export function HighfieldQuoteFlow({
         }, 100);
     };
 
-    if (variantsLoading) {
-        return (
-            <div className="flex h-[60vh] w-full items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
-    }
-
     return (
         <div className="h-[calc(100vh-64px)] -mt-6 -mx-6 bg-background flex flex-col relative overflow-hidden">
-            {/* Immersive Background Blur */}
             <div className="absolute inset-0 z-0">
                 {model.coverImageUrl && (
                     <div className="relative h-full w-full opacity-10 blur-3xl scale-110">
@@ -259,7 +300,6 @@ export function HighfieldQuoteFlow({
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
             </div>
 
-            {/* Top Navigation / Progress Header */}
             <div className="relative z-20 p-6 flex flex-col items-center gap-6 border-b bg-card/80 backdrop-blur-xl shrink-0 shadow-sm">
                 <div className="w-full max-w-7xl flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -293,11 +333,9 @@ export function HighfieldQuoteFlow({
                 </div>
             </div>
 
-            {/* Main Workspace */}
             <div className="relative z-10 flex-1 flex overflow-hidden">
                 <div className="flex-1 flex flex-col lg:flex-row max-w-full">
                     
-                    {/* Fixed Visual Preview Section (Left) */}
                     <div className="w-full lg:w-7/12 h-[40vh] lg:h-full relative bg-muted/5 border-r border-white/5">
                         <div className="absolute inset-0 flex flex-col p-8 md:p-12">
                             <div className="z-20 flex items-center gap-3">
@@ -325,7 +363,6 @@ export function HighfieldQuoteFlow({
                                 )}
                             </div>
 
-                            {/* Staged Configuration Summary */}
                             <div className="mt-auto animate-in slide-in-from-bottom-4 duration-500">
                                 <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-6 rounded-2xl flex flex-col md:flex-row md:items-end justify-between gap-6 shadow-2xl">
                                     <div className="space-y-4">
@@ -350,10 +387,8 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
 
-                    {/* Scrollable Config Section (Right) */}
-                    <ScrollArea className="w-full lg:w-5/12 h-full bg-background/40 backdrop-blur-md">
+                    <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-background/40 backdrop-blur-md">
                         <div className="p-8 md:p-12 pb-24">
-                            {/* Step 1: Base Configuration */}
                             {currentStep === 1 && (
                                 <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                     <div className="space-y-3">
@@ -361,7 +396,6 @@ export function HighfieldQuoteFlow({
                                         <p className="text-muted-foreground font-medium text-sm leading-relaxed max-w-md">Select your hull material and tube color to initialize the build specifications.</p>
                                     </div>
 
-                                    {/* Material Selection */}
                                     <div className="space-y-5">
                                         <div className="flex items-center justify-between">
                                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">1. Tube Material</span>
@@ -392,7 +426,6 @@ export function HighfieldQuoteFlow({
                                         </div>
                                     </div>
 
-                                    {/* Color Selection */}
                                     {selectedMaterial && (
                                         <div id="available-colors-section" className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-500 pt-10">
                                             <div className="flex items-center justify-between">
@@ -432,7 +465,6 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
 
-                            {/* Step 2: Factory Options */}
                             {currentStep === 2 && (
                                 <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                     <div className="space-y-3">
@@ -491,7 +523,6 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
 
-                            {/* Step 3: Engine & Rigging */}
                             {currentStep === 3 && (
                                 <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                     <div className="space-y-3">
@@ -545,7 +576,6 @@ export function HighfieldQuoteFlow({
                                                                 </div>
                                                             </button>
 
-                                                            {/* Linked Accessories Preview */}
                                                             {isSelected && motor.masterAccessories && (
                                                                 <div className="p-5 bg-muted/10 border-2 border-dashed rounded-2xl space-y-4 animate-in slide-in-from-top-2">
                                                                     <div className="flex items-center gap-2">
@@ -571,7 +601,6 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
 
-                            {/* Persistent Footer Call to Action */}
                             <div className="pt-16 sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pb-4 mt-auto">
                                 <div className="flex gap-3">
                                     {currentStep > 1 && (
