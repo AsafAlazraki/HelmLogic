@@ -51,9 +51,9 @@ import {
 } from "@/components/ui/dialog";
 import {
     Tooltip,
+    TooltipContent,
     TooltipProvider,
     TooltipTrigger,
-    TooltipContent
 } from "@/components/ui/tooltip";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -397,20 +397,26 @@ export function HighfieldQuoteFlow({
                         <div className="w-full h-full flex flex-col gap-8 max-w-5xl">
                             
                             {/* The "Soft Cube" Visualizer */}
-                            <div className="relative flex-1 w-full flex items-center justify-center bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0 p-4 md:p-8">
+                            <div className="relative flex-1 w-full flex items-center justify-center bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0 p-8 md:p-16">
+                                {/* Visualizer Pill */}
+                                <div className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-100 shadow-sm">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">3D Visualizer</span>
+                                </div>
+
                                 <Carousel className="w-full h-full" opts={{ loop: true }}>
                                     <CarouselContent className="h-full">
                                         {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
                                             <CarouselItem key={`${url}-${idx}`} className="h-full w-full">
                                                 <div 
-                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in active:scale-[0.98] transition-transform duration-500 rounded-3xl overflow-hidden"
+                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in active:scale-[0.98] transition-transform duration-500 rounded-[2.5rem] overflow-hidden bg-white"
                                                     onClick={() => setLightboxImage(url)}
                                                 >
                                                     <Image 
                                                         src={url} 
                                                         alt={`Boat View ${idx}`} 
                                                         fill 
-                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.12)]" 
+                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.12)] rounded-[2rem]" 
                                                         unoptimized
                                                     />
                                                 </div>
@@ -425,17 +431,17 @@ export function HighfieldQuoteFlow({
                                     </CarouselContent>
                                     {carouselImages.length > 1 && (
                                         <>
-                                            <CarouselPrevious className="left-6 h-10 w-10 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary" />
-                                            <CarouselNext className="right-6 h-10 w-10 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary" />
+                                            <CarouselPrevious className="left-6 h-10 w-10 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
+                                            <CarouselNext className="right-6 h-10 w-10 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
                                         </>
                                     )}
                                 </Carousel>
                             </div>
 
-                            {/* Build Summary Card */}
-                            <div className="bg-white border-2 border-slate-50 p-8 md:p-10 rounded-[2.5rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.05)] shrink-0 transition-all">
+                            {/* Build Summary Hub */}
+                            <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-8 md:p-10 rounded-[2.5rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shrink-0 transition-all">
                                 <div className="flex flex-col md:flex-row md:items-center gap-8 min-w-0 flex-1">
-                                    {/* 3-Color Inline Identity */}
+                                    {/* 3-Color Inline Build Identity */}
                                     <div className="flex items-center gap-3 text-3xl font-black uppercase tracking-tight min-w-0">
                                         <span className="text-slate-400 whitespace-nowrap">Current Build</span>
                                         {rangePart && <span className="text-primary whitespace-nowrap">{rangePart}</span>}
