@@ -10,7 +10,20 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initializeFirebase } from '@/firebase';
-import { collection, query, where, getDocs, doc, getDoc, limit, collectionGroup } from 'firebase/firestore';
+import { collection, getDocs, collectionGroup } from 'firebase/firestore';
+
+// --- Utility Functions ---
+
+/**
+ * Normalizes a string for search by removing quotes, special characters, and converting to lowercase.
+ */
+const normalize = (s: string) => {
+    return String(s || '').toLowerCase()
+        .replace(/['"]/g, '') // Remove quotes
+        .replace(/[^a-z0-9\s]/g, ' ') // Replace non-alphanumeric with space
+        .replace(/\s+/g, ' ') // Collapse spaces
+        .trim();
+};
 
 // --- Data Retrieval Tools ---
 
@@ -22,9 +35,9 @@ import { collection, query, where, getDocs, doc, getDoc, limit, collectionGroup 
 const searchBoatModels = ai.defineTool(
   {
     name: 'searchBoatModels',
-    description: 'Searches the data warehouse for boat models. Use this for queries like "Highfield Classic 380" or just "380".',
+    description: 'Searches the data warehouse for boat models. Use this for queries like "Highfield Classic 380", "380", or "Classic 310 PVC".',
     inputSchema: z.object({
-      searchTerm: z.string().describe('The search query (e.g., "Classic 380" or "Stacer 429").'),
+      searchTerm: z.string().describe('The search query (e.g., "Highfield Classic 380").'),
     }),
     outputSchema: z.array(z.object({
       id: z.string(),
@@ -60,9 +73,11 @@ const searchBoatModels = ai.defineTool(
         // 2. Fetch all models
         const modelsSnap = await getDocs(collectionGroup(firestore, 'models'));
         
-        const searchLower = input.searchTerm.toLowerCase();
-        // Split search into keywords, ignore very short ones
-        const searchParts = searchLower.split(/[\s-]+/).filter(p => p.length > 1);
+        const searchNormalized = normalize(input.searchTerm);
+        // Split search into keywords
+        const searchParts = searchNormalized.split(' ').filter(p => p.length > 0);
+
+        if (searchParts.length === 0) return [];
 
         modelsSnap.docs.forEach(modelDoc => {
             const modelData = modelDoc.data();
@@ -78,12 +93,10 @@ const searchBoatModels = ai.defineTool(
             
             // Build a rich searchable string: "Highfield Classic 380 CL380"
             const fullName = `${vendorName} ${rangeName} ${name}`.trim();
-            const searchableText = `${vendorName} ${rangeName} ${name} ${code}`.toLowerCase();
+            const searchableText = normalize(`${vendorName} ${rangeName} ${name} ${code}`);
 
             // Match if ALL parts of the user's query are present in our searchable text
-            const isMatch = searchParts.length > 0 
-                ? searchParts.every(part => searchableText.includes(part))
-                : searchableText.includes(searchLower);
+            const isMatch = searchParts.every(part => searchableText.includes(part));
 
             if (isMatch) {
                 results.push({
@@ -112,7 +125,7 @@ const searchBoatModels = ai.defineTool(
 const getModelSpecs = ai.defineTool(
     {
         name: 'getModelSpecs',
-        description: 'Retrieves technical specifications and engine requirements for a identified boat model.',
+        description: 'Retrieves technical specifications and engine requirements for an identified boat model.',
         inputSchema: z.object({
             modelNameOrId: z.string().describe('The name or ID of the boat to look up.'),
         }),
@@ -122,23 +135,23 @@ const getModelSpecs = ai.defineTool(
         const { firestore } = initializeFirebase();
         
         try {
-            const searchLower = input.modelNameOrId.toLowerCase();
+            const searchNormalized = normalize(input.modelNameOrId);
             const modelsSnap = await getDocs(collectionGroup(firestore, 'models'));
             
             // 1. Try exact match on ID, Name or Model Code
             let match = modelsSnap.docs.find(d => {
                 const data = d.data();
                 return d.id === input.modelNameOrId || 
-                       (data.name?.toLowerCase() === searchLower) || 
-                       (data.modelCode?.toLowerCase() === searchLower);
+                       normalize(data.name) === searchNormalized || 
+                       normalize(data.modelCode) === searchNormalized;
             });
 
             // 2. Fallback: Search for the most relevant match if no exact hit
             if (!match) {
                 match = modelsSnap.docs.find(d => {
                     const data = d.data();
-                    const searchable = `${data.name} ${data.modelCode}`.toLowerCase();
-                    return searchable.includes(searchLower) || searchLower.includes(data.name?.toLowerCase() || '___');
+                    const searchable = normalize(`${data.name} ${data.modelCode}`);
+                    return searchable.includes(searchNormalized) || searchNormalized.includes(normalize(data.name));
                 });
             }
 
@@ -169,7 +182,7 @@ const getModelSpecs = ai.defineTool(
 const searchMotors = ai.defineTool(
     {
         name: 'searchMotors',
-        description: 'Searches for outboard motors. Filter by HP or search by model name/part number.',
+        description: 'Searches for outboard motors. Filter by HP or search by motor model name/part number.',
         inputSchema: z.object({
             hpRating: z.number().optional().describe('Filter by specific Horsepower rating.'),
             searchTerm: z.string().optional().describe('Search by motor model name or part number.'),
@@ -182,17 +195,17 @@ const searchMotors = ai.defineTool(
 
         try {
             // 1. Find Motor Brand vendors
-            const vendorsSnap = await getDocs(query(collection(firestore, 'data-warehouse'), where('vendorType', '==', 'Motor Brand')));
+            const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
+            const motorVendors = vendorsSnap.docs.filter(d => d.data().vendorType === 'Motor Brand');
             
-            for (const vendorDoc of vendorsSnap.docs) {
+            for (const vendorDoc of motorVendors) {
                 const dsSnap = await getDocs(collection(firestore, `data-warehouse/${vendorDoc.id}/dataSets`));
                 
                 for (const dsDoc of dsSnap.docs) {
                     const dsData = dsDoc.data();
                     // Only search in motor/outboard related datasets
-                    const isMotorDataset = dsData.name.toLowerCase().includes('outboard') || 
-                                         dsData.name.toLowerCase().includes('motor') ||
-                                         dsData.name.toLowerCase().includes('engine');
+                    const name = normalize(dsData.name);
+                    const isMotorDataset = name.includes('outboard') || name.includes('motor') || name.includes('engine');
                                          
                     if (isMotorDataset) {
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${vendorDoc.id}/dataSets/${dsDoc.id}/rows`));
@@ -207,10 +220,10 @@ const searchMotors = ai.defineTool(
                         }
 
                         if (input.searchTerm) {
-                            const s = input.searchTerm.toLowerCase();
+                            const s = normalize(input.searchTerm);
                             filtered = filtered.filter(r => 
-                                (r['Model Name'] || r.name || '').toLowerCase().includes(s) || 
-                                (r['Part Number'] || r.sku || '').toLowerCase().includes(s)
+                                normalize(r['Model Name'] || r.name || '').includes(s) || 
+                                normalize(r['Part Number'] || r.sku || '').includes(s)
                             );
                         }
                         results.push(...filtered);
@@ -254,18 +267,23 @@ const assistantPrompt = ai.definePrompt({
   
   Your primary objective is to help sales staff find accurate technical information from our Data Warehouse.
   
-  SPECIAL THINKING PROTOCOL:
-  When a user provides a name like "Highfield Classic 380", they are giving you a hierarchy: Brand (Highfield), Range (Classic), and Model (380).
-  1. ALWAYS use 'searchBoatModels' first. Do not guess specs.
-  2. If the user provides a string with multiple parts, search for the most specific part (e.g., "380") or the full string.
-  3. Once you get search results, confirm the Brand and Range match the user's intent.
-  4. Use the specific 'id' or 'name' from the search results to call 'getModelSpecs'.
-  5. If looking for motors, use the 'Max HP' from 'getModelSpecs' to call 'searchMotors'.
+  SPECIAL THINKING PROTOCOL FOR HIERARCHICAL QUERIES:
+  When a user provides a name like "Highfield Classic 380" or "'Highfield' 'Classic 380'", they are providing a Brand (Highfield), a Range (Classic), and a Model (380).
+  
+  1. ANALYZE: Break down the user's message into Brand, Range, and Model components.
+  2. SEARCH: 
+     - First, call 'searchBoatModels' with the full string (e.g., "Highfield Classic 380").
+     - If no results, call it again with just the model part (e.g., "380").
+     - If still no results, try the Range + Model (e.g., "Classic 380").
+  3. VERIFY: Confirm that the Brand and Range returned by the search match the user's intent.
+  4. RETRIEVE: Use the specific 'id' or 'name' from the search results to call 'getModelSpecs' for technical data.
+  5. COMPARE: If looking for motors, get the 'Max HP' from 'getModelSpecs' and call 'searchMotors' with that HP rating.
   
   GUIDELINES:
   - Be precise and technical.
-  - If you cannot find a boat after searching, ask for the Brand and Model Code separately.
+  - If you cannot find a boat after exhaustive searching, ask the user if they have the specific Model Code (e.g., CL380).
   - Recommended motors must ALWAYS be equal to or less than the boat's Max HP rating.
+  - Ignore quotes or extra spaces in the user's input; focus on the keywords.
   - Always respond with a professional tone.
   
   Always respond with a valid JSON object containing a 'text' field.`,
