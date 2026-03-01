@@ -20,16 +20,17 @@ import { collection, query, where, getDocs, doc, getDoc, limit, collectionGroup 
 const searchBoatModels = ai.defineTool(
   {
     name: 'searchBoatModels',
-    description: 'Searches the data warehouse for boat models by name or partial name across all brands.',
+    description: 'Searches the data warehouse for boat models. Handles partial names and combinations like "Highfield Classic 380".',
     inputSchema: z.object({
-      searchTerm: z.string().describe('The name or partial name of the boat model to search for.'),
+      searchTerm: z.string().describe('The name or partial name of the boat model to search for (e.g., "Classic 380" or "Highfield 380").'),
     }),
     outputSchema: z.array(z.object({
       id: z.string(),
       name: z.string(),
-      vendorName: z.string().optional(),
-      rangeName: z.string().optional(),
+      vendorName: z.string(),
+      rangeName: z.string(),
       modelCode: z.string().optional(),
+      fullName: z.string().describe('The complete name including Brand and Range.'),
     })),
   },
   async (input) => {
@@ -37,33 +38,56 @@ const searchBoatModels = ai.defineTool(
     const results: any[] = [];
 
     try {
-        // 1. Fetch all vendors once to have a name map
+        // 1. Fetch all vendors once
         const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
         const vendorMap = new Map();
         vendorsSnap.docs.forEach(d => vendorMap.set(d.id, d.data().name));
 
-        // 2. Fetch all models using optimized collectionGroup
-        // This avoids deep nested loops
+        // 2. Fetch all ranges once to resolve range names
+        // Path: data-warehouse/{v}/ranges/{r}
+        const rangesSnap = await getDocs(collectionGroup(firestore, 'ranges'));
+        const rangeMap = new Map();
+        rangesSnap.docs.forEach(d => {
+            const vendorId = d.ref.parent.parent?.id;
+            if (vendorId) {
+                rangeMap.set(`${vendorId}/${d.id}`, d.data().name);
+            }
+        });
+
+        // 3. Fetch all models
         const modelsSnap = await getDocs(collectionGroup(firestore, 'models'));
         
         const searchLower = input.searchTerm.toLowerCase();
+        const searchParts = searchLower.split(' ').filter(p => p.length > 1);
 
         modelsSnap.docs.forEach(modelDoc => {
             const modelData = modelDoc.data();
             const name = modelData.name || '';
             const code = modelData.modelCode || '';
+            
+            const pathParts = modelDoc.ref.path.split('/');
+            const vendorId = pathParts[1];
+            const rangeId = pathParts[3];
+            
+            const vendorName = vendorMap.get(vendorId) || 'Unknown';
+            const rangeName = rangeMap.get(`${vendorId}/${rangeId}`) || 'Unknown';
+            
+            const fullName = `${vendorName} ${rangeName} ${name}`.trim();
+            const searchableText = `${fullName} ${code}`.toLowerCase();
 
-            if (name.toLowerCase().includes(searchLower) || code.toLowerCase().includes(searchLower)) {
-                // Try to resolve vendor name from parent path if not in doc
-                // Path format: data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}
-                const pathParts = modelDoc.ref.path.split('/');
-                const vendorId = pathParts[1];
-                
+            // Match if all parts of the search term are present in the model's metadata
+            const isMatch = searchParts.length > 0 
+                ? searchParts.every(part => searchableText.includes(part))
+                : searchableText.includes(searchLower);
+
+            if (isMatch) {
                 results.push({
                     id: modelDoc.id,
                     name: name,
-                    vendorName: vendorMap.get(vendorId) || 'Unknown Vendor',
+                    vendorName,
+                    rangeName,
                     modelCode: code,
+                    fullName,
                 });
             }
         });
@@ -81,7 +105,7 @@ const searchBoatModels = ai.defineTool(
 const getModelSpecs = ai.defineTool(
     {
         name: 'getModelSpecs',
-        description: 'Retrieves technical specifications and engine requirements for a specific boat model.',
+        description: 'Retrieves technical specifications and engine requirements for a boat model.',
         inputSchema: z.object({
             modelName: z.string().describe('The specific name or model code of the boat.'),
         }),
@@ -91,18 +115,28 @@ const getModelSpecs = ai.defineTool(
         const { firestore } = initializeFirebase();
         
         try {
-            const modelsSnap = await getDocs(collectionGroup(firestore, 'models'));
             const searchLower = input.modelName.toLowerCase();
+            const modelsSnap = await getDocs(collectionGroup(firestore, 'models'));
             
-            const match = modelsSnap.docs.find(d => {
+            // Try exact match first
+            let match = modelsSnap.docs.find(d => {
                 const data = d.data();
                 return (data.name?.toLowerCase() === searchLower) || (data.modelCode?.toLowerCase() === searchLower);
             });
 
-            if (!match) return { error: 'Model not found' };
+            // If no exact match, try to see if the search term contains the model name
+            if (!match) {
+                match = modelsSnap.docs.find(d => {
+                    const data = d.data();
+                    const name = data.name?.toLowerCase();
+                    const code = data.modelCode?.toLowerCase();
+                    return (name && searchLower.includes(name)) || (code && searchLower.includes(code));
+                });
+            }
+
+            if (!match) return { error: 'Model not found. Please try searching first to get the correct name.' };
             
             const data = match.data();
-            // Flatten specs for the AI
             return {
                 name: data.name,
                 modelCode: data.modelCode,
@@ -138,37 +172,33 @@ const searchMotors = ai.defineTool(
             const vendorsSnap = await getDocs(query(collection(firestore, 'data-warehouse'), where('vendorType', '==', 'Motor Brand')));
             
             for (const vendorDoc of vendorsSnap.docs) {
-                // 2. Fetch rows directly from masterDataSet if it exists, or look for datasets
-                const masterSnap = await getDocs(collection(firestore, `data-warehouse/${vendorDoc.id}/masterDataSet`));
+                const dsSnap = await getDocs(collection(firestore, `data-warehouse/${vendorDoc.id}/dataSets`));
                 
-                let rows = masterSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-                // 3. Fallback to dataSets if master is empty
-                if (rows.length === 0) {
-                    const dsSnap = await getDocs(collection(firestore, `data-warehouse/${vendorDoc.id}/dataSets`));
-                    for (const dsDoc of dsSnap.docs) {
+                for (const dsDoc of dsSnap.docs) {
+                    const dsData = dsDoc.data();
+                    // Only search in motor/outboard related datasets
+                    if (dsData.name.toLowerCase().includes('outboard') || dsData.name.toLowerCase().includes('motor')) {
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${vendorDoc.id}/dataSets/${dsDoc.id}/rows`));
-                        rows = rows.concat(rowsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        const rows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                        let filtered = rows;
+                        if (input.hpRating) {
+                            filtered = filtered.filter(r => {
+                                const hp = parseInt(r['HP Rating'] || r.hp || '0');
+                                return hp === input.hpRating;
+                            });
+                        }
+
+                        if (input.searchTerm) {
+                            const s = input.searchTerm.toLowerCase();
+                            filtered = filtered.filter(r => 
+                                (r['Model Name'] || r.name || '').toLowerCase().includes(s) || 
+                                (r['Part Number'] || r.sku || '').toLowerCase().includes(s)
+                            );
+                        }
+                        results.push(...filtered);
                     }
                 }
-
-                // 4. Filter
-                if (input.hpRating) {
-                    rows = rows.filter(r => {
-                        const hp = parseInt(r['HP Rating'] || r.hp || '0');
-                        return hp === input.hpRating;
-                    });
-                }
-
-                if (input.searchTerm) {
-                    const s = input.searchTerm.toLowerCase();
-                    rows = rows.filter(r => 
-                        (r['Model Name'] || r.name || '').toLowerCase().includes(s) || 
-                        (r['Part Number'] || r.sku || '').toLowerCase().includes(s)
-                    );
-                }
-
-                results.push(...rows);
             }
         } catch (e) {
             console.error("Tool 'searchMotors' failed:", e);
@@ -207,13 +237,15 @@ const assistantPrompt = ai.definePrompt({
   
   Your goal is to help sales staff and technicians find accurate information from our Data Warehouse.
   
+  CORE WORKFLOW:
+  1. If a user mentions a boat (e.g., "Highfield Classic 380"), ALWAYS use 'searchBoatModels' first to resolve the brand, range, and model name.
+  2. Once the boat is identified, use 'getModelSpecs' with the model name or code to get technical data (Max HP, Weight, etc.).
+  3. Use 'searchMotors' to find compatible engines based on the boat's 'Max HP' rating.
+  
   GUIDELINES:
-  1. Use 'searchBoatModels' to find boats if the user is broad (e.g. "Show me Highfield boats").
-  2. Use 'getModelSpecs' to get specific technical data (Max HP, Weight, etc.) once a boat is identified.
-  3. Use 'searchMotors' to find outboards.
-  4. If asked "What motors fit X boat?", FIRST use 'getModelSpecs' to find the boat's Max HP, then use 'searchMotors' to find engines within that range.
-  5. Always recommend motors that are EQUAL TO or LESS THAN the boat's Max HP rating.
-  6. Be professional, concise, and technically accurate.
+  - Be professional, concise, and technically accurate.
+  - Always recommend motors that are EQUAL TO or LESS THAN the boat's Max HP rating.
+  - If you can't find a direct match, offer to show similar models or ask for more details.
   
   Always respond with a valid JSON object containing a 'text' field.`,
   prompt: `
