@@ -51,9 +51,9 @@ import {
 } from "@/components/ui/dialog";
 import {
     Tooltip,
-    TooltipContent,
     TooltipProvider,
     TooltipTrigger,
+    TooltipContent
 } from "@/components/ui/tooltip";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -207,19 +207,6 @@ export function HighfieldQuoteFlow({
         }
     }, [currentStep]);
 
-    // Prevent main app scroll
-    useEffect(() => {
-        const main = document.querySelector('main');
-        if (main) {
-            main.style.overflow = 'hidden';
-        }
-        return () => {
-            if (main) {
-                main.style.overflow = 'auto';
-            }
-        };
-    }, []);
-
     // Data Derivations
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
@@ -282,15 +269,6 @@ export function HighfieldQuoteFlow({
 
         return filtered;
     }, [model.optionalFeatures, model.rules, activeVariant, selectedOptionIds]);
-
-    useEffect(() => {
-        if (selectedOptionIds.length === 0) return;
-        const validOptionIds = factoryOptions.map((o: any) => o.id);
-        const nextIds = selectedOptionIds.filter(id => validOptionIds.includes(id));
-        if (nextIds.length !== selectedOptionIds.length) {
-            setSelectedOptionIds(nextIds);
-        }
-    }, [factoryOptions, selectedOptionIds]);
 
     const groupedOptions = useMemo(() => {
         const groups = factoryOptions.reduce((acc: any, opt: any) => {
@@ -371,70 +349,75 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="h-[calc(100vh-64px)] -mt-6 md:-mt-8 -mx-4 md:-mx-6 bg-background flex flex-col relative overflow-hidden">
+            {/* Ambient Background */}
             <div className="absolute inset-0 z-0">
                 {model.coverImageUrl && (
-                    <div className="relative h-full w-full opacity-10 blur-3xl scale-110">
+                    <div className="relative h-full w-full opacity-5 blur-3xl scale-110">
                         <Image src={model.coverImageUrl} alt="Bg" fill className="object-cover" unoptimized />
                     </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
             </div>
 
+            {/* Sticky Step Header */}
             <div className="sticky top-0 z-30 p-6 flex flex-col items-center gap-6 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all">
-                <div className="w-full max-w-7xl flex items-center justify-between">
-                    <h1 className="text-xl font-black uppercase tracking-tight leading-tight">{model.name}</h1>
-                    <div className="hidden md:flex items-center gap-8">
+                <div className="w-full max-w-7xl flex items-center justify-between px-4">
+                    <h1 className="text-xl font-black uppercase tracking-tight leading-tight hidden lg:block">Quotation Engine</h1>
+                    <div className="flex flex-1 md:flex-none items-center justify-center gap-4 md:gap-8">
                         {STEPS.map((step) => (
-                            <div key={step.id} className="flex items-center gap-3">
+                            <div key={step.id} className="flex items-center gap-2 md:gap-3">
                                 <div className={cn(
-                                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2",
+                                    "h-6 w-6 md:h-7 md:w-7 rounded-full flex items-center justify-center text-[9px] md:text-[10px] font-black transition-all border-2",
                                     currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-lg" : 
                                     currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground"
                                 )}>
                                     {currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}
                                 </div>
                                 <span className={cn(
-                                    "text-[9px] font-black uppercase tracking-widest transition-colors",
+                                    "text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-colors hidden sm:block",
                                     currentStep === step.id ? "text-foreground" : "text-muted-foreground"
                                 )}>
                                     {step.label}
                                 </span>
-                                {step.id < STEPS.length && <ChevronRight className="h-3 w-3 text-muted-foreground/30" />}
+                                {step.id < STEPS.length && <ChevronRight className="h-3 w-3 text-muted-foreground/30 hidden md:block" />}
                             </div>
                         ))}
                     </div>
                     <Button variant="ghost" size="sm" className="font-bold text-destructive hover:bg-destructive/10 uppercase tracking-widest text-[10px]" onClick={() => window.history.back()}>
-                        Exit Build
+                        Exit
                     </Button>
                 </div>
             </div>
 
+            {/* Main Content Area */}
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden h-full min-h-0">
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in-95 duration-700">
-                        <div className="w-full h-full flex flex-col gap-6">
+                {/* Visualizer Command Center (Left) */}
+                <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden h-full min-h-0 bg-white">
+                    <div className="w-full h-full flex flex-col items-center justify-center p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
+                        <div className="w-full h-full flex flex-col gap-8 max-w-5xl">
                             
-                            <div className="relative flex-1 w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden group min-h-0">
+                            {/* The "Soft Cube" Visualizer */}
+                            <div className="relative flex-1 w-full flex items-center justify-center bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0 p-12 md:p-20">
                                 <Carousel className="w-full h-full" opts={{ loop: true }}>
                                     <CarouselContent className="h-full">
                                         {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
                                             <CarouselItem key={`${url}-${idx}`} className="h-full w-full">
                                                 <div 
-                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in active:scale-[0.98] transition-transform duration-500"
+                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in active:scale-[0.98] transition-transform duration-500 rounded-3xl overflow-hidden"
                                                     onClick={() => setLightboxImage(url)}
                                                 >
                                                     <Image 
                                                         src={url} 
                                                         alt={`Boat View ${idx}`} 
                                                         fill 
-                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.35)]" 
+                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.12)]" 
                                                         unoptimized
                                                     />
                                                 </div>
                                             </CarouselItem>
                                         )) : (
                                             <CarouselItem className="h-full">
-                                                <div className="flex h-full w-full items-center justify-center text-muted-foreground opacity-20">
+                                                <div className="flex h-full w-full items-center justify-center text-muted-foreground opacity-5">
                                                     <Ship className="h-24 w-24" />
                                                 </div>
                                             </CarouselItem>
@@ -442,29 +425,32 @@ export function HighfieldQuoteFlow({
                                     </CarouselContent>
                                     {carouselImages.length > 1 && (
                                         <>
-                                            <CarouselPrevious className="left-8 z-40 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-90 transition-all bg-white/80 backdrop-blur-md border-none shadow-md" />
-                                            <CarouselNext className="right-8 z-40 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-90 transition-all bg-white/80 backdrop-blur-md border-none shadow-md" />
+                                            <CarouselPrevious className="left-6 h-10 w-10 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary" />
+                                            <CarouselNext className="right-6 h-10 w-10 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary" />
                                         </>
                                     )}
                                 </Carousel>
                             </div>
 
-                            <div className="bg-white/90 backdrop-blur-2xl border border-white/20 p-8 rounded-[2.5rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-[0_20px_50px_rgba(0,0,0,0.1)] shrink-0 transition-all">
-                                <div className="flex flex-col md:flex-row md:items-center gap-6 min-w-0 flex-1">
+                            {/* Build Summary Card */}
+                            <div className="bg-white border-2 border-slate-50 p-8 md:p-10 rounded-[2.5rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.05)] shrink-0 transition-all">
+                                <div className="flex flex-col md:flex-row md:items-center gap-8 min-w-0 flex-1">
+                                    {/* 3-Color Inline Identity */}
                                     <div className="flex items-center gap-3 text-3xl font-black uppercase tracking-tight min-w-0">
                                         <span className="text-slate-400 whitespace-nowrap">Current Build</span>
                                         {rangePart && <span className="text-primary whitespace-nowrap">{rangePart}</span>}
                                         <span className="text-slate-950 whitespace-nowrap">{modelPart}</span>
                                     </div>
                                     
-                                    <div className="flex items-center gap-2 bg-slate-100/80 backdrop-blur-md p-1.5 rounded-full border border-slate-200 shrink-0 shadow-inner">
+                                    {/* Isolated Spec Buttons */}
+                                    <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-full border border-slate-100 shrink-0 shadow-sm">
                                         <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                        className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
                                                         onClick={() => setShowStandardFeatures(true)}
                                                     >
                                                         <ListChecks className="h-5 w-5" />
@@ -482,7 +468,7 @@ export function HighfieldQuoteFlow({
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                        className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
                                                         onClick={() => setShowGeneralSpecs(true)}
                                                     >
                                                         <ClipboardList className="h-5 w-5" />
@@ -507,7 +493,8 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
-                <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-background/40 backdrop-blur-md border-l border-white/5">
+                {/* Configuration Panel (Right) */}
+                <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100">
                     <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
                         
                         {currentStep === 1 && (
@@ -525,8 +512,8 @@ export function HighfieldQuoteFlow({
                                                 key={mat}
                                                 onClick={() => handleMaterialSelect(mat)}
                                                 className={cn(
-                                                    "group relative flex flex-col items-start p-6 border-2 rounded-3xl transition-all duration-300",
-                                                    selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-card border-border/50 hover:border-primary/40"
+                                                    "group relative flex flex-col items-start p-6 border-2 rounded-[2rem] transition-all duration-300",
+                                                    selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
                                                 )}
                                             >
                                                 <span className="text-base font-black uppercase tracking-tight">{mat}</span>
@@ -547,8 +534,8 @@ export function HighfieldQuoteFlow({
                                                     key={color.id}
                                                     onClick={() => setSelectedColor(color.id)}
                                                     className={cn(
-                                                        "group flex flex-col border-2 rounded-3xl overflow-hidden transition-all duration-300 text-left bg-white",
-                                                        selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-border/50 hover:border-primary/20"
+                                                        "group flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all duration-300 text-left bg-white",
+                                                        selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-slate-100 hover:border-primary/20"
                                                     )}
                                                 >
                                                     <div className="relative aspect-video w-full border-b bg-white">
@@ -558,7 +545,7 @@ export function HighfieldQuoteFlow({
                                                             <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-8 w-8"/></div>
                                                         )}
                                                     </div>
-                                                    <div className={cn("p-4", selectedColor === color.id ? "bg-primary text-white" : "bg-card")}>
+                                                    <div className={cn("p-4", selectedColor === color.id ? "bg-primary text-white" : "bg-white")}>
                                                         <p className="text-[11px] font-black uppercase tracking-tight truncate">{color.name}</p>
                                                         <p className={cn("text-[9px] font-bold uppercase", selectedColor === color.id ? "text-white/60" : "text-muted-foreground")}>{color.code}</p>
                                                     </div>
@@ -584,37 +571,26 @@ export function HighfieldQuoteFlow({
                                             <div className="grid gap-3">
                                                 {options.map((opt: any) => {
                                                     const isSelected = selectedOptionIds.includes(opt.id);
-                                                    const isLocked = !!model.optionalFeatures?.find((f: any) => 
-                                                        f.category === 'Consoles' && 
-                                                        f.associatedSeatId === opt.id && 
-                                                        selectedOptionIds.includes(f.id)
-                                                    );
-
                                                     return (
                                                         <button
                                                             key={opt.id}
-                                                            onClick={() => !isLocked && toggleOption(opt.id)}
+                                                            onClick={() => toggleOption(opt.id)}
                                                             className={cn(
-                                                                "group flex items-center justify-between p-5 border-2 rounded-3xl transition-all duration-300 text-left",
-                                                                isSelected ? "bg-primary/5 border-primary shadow-lg" : "bg-card border-border/50 hover:border-primary/20",
-                                                                isLocked && "opacity-80 cursor-default ring-1 ring-primary/20"
+                                                                "group flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all duration-300 text-left",
+                                                                isSelected ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-slate-100 hover:border-primary/20"
                                                             )}
                                                         >
                                                             <div className="flex items-center gap-5 min-w-0">
-                                                                <div className="h-14 w-14 relative rounded-2xl bg-muted/30 border overflow-hidden shrink-0 shadow-inner">
-                                                                    {opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-cover" unoptimized /> : <Package className="h-6 w-6 m-auto mt-4 opacity-10" />}
+                                                                <div className="h-14 w-14 relative rounded-xl bg-slate-50 border overflow-hidden shrink-0 shadow-inner">
+                                                                    {opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-cover" unoptimized /> : <Package className="h-6 w-6 m-auto mt-4 opacity-5" />}
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{opt.name}</p>
-                                                                        {isLocked && <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
-                                                                    </div>
+                                                                    <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{opt.name}</p>
                                                                     {opt.code && <p className="text-[10px] font-mono text-muted-foreground uppercase mt-1">{opt.code}</p>}
-                                                                    {isLocked && <p className="text-[9px] font-bold text-primary/60 uppercase mt-0.5">Package: Included with Console</p>}
                                                                 </div>
                                                             </div>
                                                             <p className={cn("text-sm font-black ml-4 shrink-0", isSelected ? "text-primary" : "text-foreground")}>
-                                                                {isLocked ? "INCLUDED" : `+${(opt.sellPriceExclGst || 0).toLocaleString()}`}
+                                                                +${(opt.sellPriceExclGst || 0).toLocaleString()}
                                                             </p>
                                                         </button>
                                                     );
@@ -656,8 +632,8 @@ export function HighfieldQuoteFlow({
                                                         <button
                                                             onClick={() => setSelectedMotor(isSelected ? null : motor)}
                                                             className={cn(
-                                                                "w-full flex items-center justify-between p-6 border-2 rounded-3xl transition-all duration-300 text-left group",
-                                                                isSelected ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-card border-border/50 hover:border-primary/40"
+                                                                "w-full flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all duration-300 text-left group",
+                                                                isSelected ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
                                                             )}
                                                         >
                                                             <div className="flex items-center gap-6">
@@ -679,14 +655,14 @@ export function HighfieldQuoteFlow({
                                                         </button>
 
                                                         {isSelected && motor.masterAccessories && (
-                                                            <div className="p-6 bg-muted/10 border-2 border-dashed rounded-3xl space-y-5 animate-in slide-in-from-top-2 duration-300">
+                                                            <div className="p-6 bg-slate-50 border-2 border-dashed rounded-[2rem] space-y-5 animate-in slide-in-from-top-2 duration-300">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="h-6 w-6 bg-primary/10 rounded-full flex items-center justify-center"><Wrench className="h-3 w-3 text-primary" /></div>
                                                                     <span className="text-[11px] font-black uppercase tracking-widest">Linked Rigging & Props</span>
                                                                 </div>
                                                                 <div className="space-y-2.5">
                                                                     {motor.masterAccessories.map((acc: any, i: number) => (
-                                                                        <div key={i} className="flex items-center justify-between text-xs font-medium p-3.5 bg-background/50 rounded-xl border border-white/5 shadow-sm">
+                                                                        <div key={i} className="flex items-center justify-between text-xs font-medium p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm">
                                                                             <span className="truncate pr-4 uppercase tracking-tight">{acc.name}</span>
                                                                             <span className="font-black text-primary shrink-0">${(acc.items?.[0]?.data?.sellPriceExclGst || 0).toLocaleString()}</span>
                                                                         </div>
@@ -703,10 +679,10 @@ export function HighfieldQuoteFlow({
                             </div>
                         )}
 
-                        <div className="pt-20 sticky bottom-0 bg-gradient-to-t from-background via-background/95 to-transparent pb-6 mt-auto">
+                        <div className="pt-20 sticky bottom-0 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent pb-6 mt-auto">
                             <div className="flex gap-4">
                                 {currentStep > 1 && (
-                                    <Button variant="outline" size="lg" className="h-16 w-24 rounded-2xl border-2 hover:bg-muted/50 transition-all active:scale-95" onClick={prevStep}>
+                                    <Button variant="outline" size="lg" className="h-16 w-24 rounded-2xl border-2 hover:bg-white transition-all active:scale-95" onClick={prevStep}>
                                         <ChevronLeft className="h-6 w-6" />
                                     </Button>
                                 )}
@@ -725,18 +701,19 @@ export function HighfieldQuoteFlow({
                 </ScrollArea>
             </div>
 
+            {/* Standard Features Overlay */}
             <Dialog open={showStandardFeatures} onOpenChange={setShowStandardFeatures}>
-                <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl">
-                    <DialogHeader className="p-4">
+                <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 bg-slate-50 border-b">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight">Standard Features</DialogTitle>
-                        <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary mt-1">Everything included in the base {model.name}</DialogDescription>
+                        <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary mt-1">Included in base {model.name}</DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="max-h-[60vh] pr-4 px-4 pb-6">
-                        <div className="grid gap-3">
+                    <ScrollArea className="max-h-[60vh]">
+                        <div className="p-8 grid gap-3">
                             {model.standardFeatures?.map((feat: string, i: number) => (
-                                <div key={i} className="flex items-start gap-4 p-4 bg-muted/30 rounded-2xl border border-white/5 transition-colors hover:bg-muted/50">
+                                <div key={i} className="flex items-start gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                     <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                                    <span className="text-sm font-semibold text-foreground/80 leading-relaxed">{feat}</span>
+                                    <span className="text-sm font-semibold text-slate-700 leading-relaxed">{feat}</span>
                                 </div>
                             ))}
                         </div>
@@ -744,29 +721,39 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
+            {/* General Specs Overlay */}
             <Dialog open={showGeneralSpecs} onOpenChange={setShowGeneralSpecs}>
-                <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl">
-                    <DialogHeader className="p-4">
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Technical Specifications</DialogTitle>
-                        <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary mt-1">Master build data for {model.name}</DialogDescription>
+                <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 bg-slate-50 border-b">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Technical Specs</DialogTitle>
+                        <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary mt-1">Master data for {model.name}</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-2 gap-4 p-4 pb-8">
+                    <div className="grid grid-cols-2 gap-4 p-8">
                         {model.specifications?.otherSpecs?.map((spec: any) => (
-                            <div key={spec.id} className="p-5 bg-muted/30 rounded-[1.5rem] border border-white/5 space-y-1.5 transition-all hover:border-primary/20">
-                                <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">{spec.label}</p>
-                                <p className="text-base font-black text-foreground">{spec.value}</p>
+                            <div key={spec.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-1.5">
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{spec.label}</p>
+                                <p className="text-base font-black text-slate-950">{spec.value}</p>
                             </div>
                         ))}
                     </div>
                 </DialogContent>
             </Dialog>
 
+            {/* Immersive Lightbox */}
             <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
-                <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 border-none bg-black/95 backdrop-blur-3xl shadow-none flex items-center justify-center animate-in fade-in duration-500 [&>button]:h-12 [&>button]:w-12 [&>button]:rounded-full [&>button]:bg-white/10 [&>button]:backdrop-blur-xl [&>button]:text-white [&>button]:hover:bg-white/20 [&>button]:border [&>button]:border-white/10 [&>button]:transition-all">
+                <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 border-none bg-black/95 backdrop-blur-3xl shadow-none flex items-center justify-center animate-in fade-in duration-500">
                     <DialogTitle className="sr-only">Image Preview</DialogTitle>
                     {lightboxImage && (
-                        <div className="relative w-full h-full p-12 flex items-center justify-center animate-in zoom-in-95 duration-500">
+                        <div className="relative w-full h-full p-12 md:p-24 flex items-center justify-center animate-in zoom-in-95 duration-500">
                             <Image src={lightboxImage} alt="Lightbox View" fill className="object-contain drop-shadow-[0_0_100px_rgba(255,255,255,0.1)]" unoptimized />
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="absolute top-8 right-8 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md"
+                                onClick={() => setLightboxImage(null)}
+                            >
+                                <X className="h-6 w-6" />
+                            </Button>
                         </div>
                     )}
                 </DialogContent>
