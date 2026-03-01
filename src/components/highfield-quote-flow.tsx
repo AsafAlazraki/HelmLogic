@@ -362,9 +362,9 @@ export function HighfieldQuoteFlow({
             </div>
 
             {/* Sticky Step Header */}
-            <div className="sticky top-0 z-30 p-6 flex flex-col items-center gap-6 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all">
-                <div className="w-full max-w-7xl flex items-center justify-between px-4">
-                    <div className="flex flex-1 items-center justify-center gap-4 md:gap-8">
+            <div className="sticky top-0 z-30 px-6 md:px-12 py-6 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all">
+                <div className="w-full flex items-center justify-between">
+                    <div className="flex flex-1 items-center justify-start gap-6 md:gap-12">
                         {STEPS.map((step) => (
                             <div key={step.id} className="flex items-center gap-2 md:gap-3">
                                 <div className={cn(
@@ -395,16 +395,10 @@ export function HighfieldQuoteFlow({
                 {/* Visualizer Command Center (Left) */}
                 <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden h-full min-h-0 bg-slate-50/50">
                     <div className="w-full h-full flex flex-col items-center justify-center p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
-                        <div className="w-full h-full flex flex-col gap-8 max-w-5xl">
+                        <div className="w-full h-full flex flex-col gap-8">
                             
                             {/* The "Soft Cube" Visualizer */}
                             <div className="relative flex-1 w-full flex items-center justify-center bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0 p-8 md:p-16">
-                                {/* Visualizer Pill */}
-                                <div className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-100 shadow-sm">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">3D Visualizer</span>
-                                </div>
-
                                 <Carousel className="w-full h-full" opts={{ loop: true }}>
                                     <CarouselContent className="h-full">
                                         {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
