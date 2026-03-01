@@ -47,6 +47,12 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
@@ -402,19 +408,50 @@ export function HighfieldQuoteFlow({
 
                             <div className="mt-auto animate-in slide-in-from-bottom-4 duration-500">
                                 <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-6 rounded-2xl flex flex-col md:flex-row md:items-end justify-between gap-6 shadow-2xl">
-                                    <div className="space-y-4">
+                                    <div className="space-y-4 min-w-0 flex-1">
                                         <div className="flex items-center justify-between gap-4">
-                                            <div>
+                                            <div className="min-w-0">
                                                 <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">Current Build</p>
-                                                <h3 className="text-2xl font-black uppercase tracking-tight leading-none">{activeVariant?.name || model.name}</h3>
+                                                <h3 className="text-2xl font-black uppercase tracking-tight leading-none truncate pr-4">{activeVariant?.name || model.name}</h3>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <Button variant="outline" size="icon" className="rounded-full h-8 w-8 bg-background/50 hover:bg-primary hover:text-white transition-colors" onClick={() => setShowStandardFeatures(true)}>
-                                                    <ListChecks className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="icon" className="rounded-full h-8 w-8 bg-background/50 hover:bg-primary hover:text-white transition-colors" onClick={() => setShowGeneralSpecs(true)}>
-                                                    <ClipboardList className="h-4 w-4" />
-                                                </Button>
+                                            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-sm shrink-0">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                                onClick={() => setShowStandardFeatures(true)}
+                                                            >
+                                                                <ListChecks className="h-5 w-5" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="font-bold text-[10px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                            Standard Features
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                                
+                                                <div className="w-[1px] h-4 bg-primary/10" />
+
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                                onClick={() => setShowGeneralSpecs(true)}
+                                                            >
+                                                                <ClipboardList className="h-5 w-5" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="font-bold text-[10px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                            Technical Specifications
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -422,7 +459,7 @@ export function HighfieldQuoteFlow({
                                             {selectedMotor && <Badge variant="secondary" className="text-[8px] uppercase font-black px-2 bg-primary/10 text-primary border-primary/20">{selectedMotor['Model Name']}</Badge>}
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right shrink-0">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Build Total (Excl. Tax)</p>
                                         <div className="text-4xl font-black flex items-center justify-end gap-1 text-foreground">
                                             <span className="text-primary text-xl">$</span>

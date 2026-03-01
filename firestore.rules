@@ -48,29 +48,30 @@ service cloud.firestore {
     }
 
     match /data-warehouse/{vendorId} {
-      allow read: if isSignedIn();
+      // Data warehouse is a public catalog used by AI tools and configurators.
+      allow read: if true;
       allow write: if isAdmin();
       
       match /dataSets/{setId} {
-        allow read: if isSignedIn();
+        allow read: if true;
         allow write: if isAdmin();
         match /rows/{rowId} {
-          allow read: if isSignedIn();
+          allow read: if true;
           allow write: if isAdmin();
         }
       }
       match /masterDataSet/{rowId} {
-        allow read: if isSignedIn();
+        allow read: if true;
         allow write: if isAdmin();
       }
       match /ranges/{rangeId} {
-        allow read: if isSignedIn();
+        allow read: if true;
         allow write: if isAdmin();
         match /models/{modelId} {
-          allow read: if isSignedIn();
+          allow read: if true;
           allow write: if isAdmin();
           match /{allPaths=**} {
-            allow read: if isSignedIn();
+            allow read: if true;
             allow write: if isAdmin();
           }
         }

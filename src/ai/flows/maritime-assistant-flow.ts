@@ -64,7 +64,9 @@ const searchBoatModels = ai.defineTool(
 
         const rangeMap = new Map();
         rangesSnap.docs.forEach(d => {
-            const vendorId = d.ref.parent.parent?.id;
+            // Path is data-warehouse/{vendorId}/ranges/{rangeId}
+            const pathParts = d.ref.path.split('/');
+            const vendorId = pathParts[1];
             if (vendorId) {
                 rangeMap.set(`${vendorId}/${d.id}`, d.data().name);
             }
@@ -84,6 +86,7 @@ const searchBoatModels = ai.defineTool(
             const name = modelData.name || '';
             const code = modelData.modelCode || '';
             
+            // Path: data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}
             const pathParts = modelDoc.ref.path.split('/');
             const vendorId = pathParts[1];
             const rangeId = pathParts[3];
@@ -95,7 +98,7 @@ const searchBoatModels = ai.defineTool(
             const fullName = `${vendorName} ${rangeName} ${name}`.trim();
             const searchableText = normalize(`${vendorName} ${rangeName} ${name} ${code}`);
 
-            // Match if ALL parts of the user's query are present in our searchable text
+            // Match if ALL parts of the user's query are present in our searchable text (Hierarchical AND match)
             const isMatch = searchParts.every(part => searchableText.includes(part));
 
             if (isMatch) {
@@ -109,12 +112,37 @@ const searchBoatModels = ai.defineTool(
                 });
             }
         });
+
+        // Fallback: If no strict hierarchical matches, try matching just the model part
+        if (results.length === 0 && searchParts.length > 1) {
+            const lastPart = searchParts[searchParts.length - 1];
+            modelsSnap.docs.forEach(modelDoc => {
+                const modelData = modelDoc.data();
+                const searchableText = normalize(`${modelData.name} ${modelData.modelCode}`);
+                if (searchableText.includes(lastPart)) {
+                    const pathParts = modelDoc.ref.path.split('/');
+                    const vendorId = pathParts[1];
+                    const rangeId = pathParts[3];
+                    const vendorName = vendorMap.get(vendorId) || '';
+                    const rangeName = rangeMap.get(`${vendorId}/${rangeId}`) || '';
+                    results.push({
+                        id: modelDoc.id,
+                        name: modelData.name,
+                        vendorName,
+                        rangeName,
+                        modelCode: modelData.modelCode,
+                        fullName: `${vendorName} ${rangeName} ${modelData.name}`.trim(),
+                    });
+                }
+            });
+        }
     } catch (e) {
         console.error("Tool 'searchBoatModels' failed:", e);
     }
 
-    // Return the best 10 matches
-    return results.slice(0, 10);
+    // Return the best 10 unique matches
+    const uniqueResults = Array.from(new Map(results.map(item => [item.id, item])).values());
+    return uniqueResults.slice(0, 10);
   }
 );
 
