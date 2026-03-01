@@ -199,7 +199,7 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model]);
 
-    // Scroll Reset on Step Change
+    // Independent Panel Scrolling
     useEffect(() => {
         if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -350,7 +350,7 @@ export function HighfieldQuoteFlow({
         : fullModelName;
 
     return (
-        <div className="h-full -mt-6 md:-mt-8 -mx-4 md:-mx-6 bg-background flex flex-col relative overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
             {/* Ambient Background */}
             <div className="absolute inset-0 z-0">
                 {model.coverImageUrl && (
@@ -361,12 +361,12 @@ export function HighfieldQuoteFlow({
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
             </div>
 
-            {/* Sticky Step Header - Spaced Out Evenly */}
-            <div className="sticky top-0 z-30 px-6 md:px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all flex items-center">
+            {/* Step Header - Distributed Spacing */}
+            <div className="sticky top-0 z-30 px-6 md:px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm flex items-center">
                 <div className="w-full flex items-center justify-between">
-                    <div className="flex-1 flex items-center justify-between mr-8 md:mr-16">
+                    <div className="flex-1 flex items-center justify-between mr-12 md:mr-24">
                         {STEPS.map((step) => (
-                            <div key={step.id} className="flex items-center gap-2">
+                            <div key={step.id} className="flex items-center gap-3">
                                 <div className={cn(
                                     "h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2",
                                     currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-lg" : 
@@ -375,52 +375,48 @@ export function HighfieldQuoteFlow({
                                     {currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}
                                 </div>
                                 <span className={cn(
-                                    "text-[9px] font-black uppercase tracking-widest transition-colors hidden sm:block whitespace-nowrap",
+                                    "text-[9px] font-black uppercase tracking-[0.2em] transition-colors hidden sm:block whitespace-nowrap",
                                     currentStep === step.id ? "text-foreground" : "text-muted-foreground"
                                 )}>
                                     {step.label}
                                 </span>
-                                {step.id < STEPS.length && <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/30 hidden lg:block ml-2" />}
                             </div>
                         ))}
                     </div>
                     <button 
-                        className="font-black text-destructive hover:text-destructive/80 transition-colors uppercase tracking-[0.15em] text-[10px] h-8 flex items-center px-4 shrink-0 border border-destructive/10 rounded-full hover:bg-destructive/5" 
+                        className="font-black text-destructive hover:text-destructive/80 transition-colors uppercase tracking-[0.15em] text-[10px] h-8 flex items-center px-5 shrink-0 border-2 border-destructive/10 rounded-full hover:bg-destructive/5" 
                         onClick={() => window.history.back()}
                     >
-                        Exit
+                        Exit Build
                     </button>
                 </div>
             </div>
 
-            {/* Main Content Area */}
+            {/* Main Build Workspace */}
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
                 {/* Visualizer Panel (Left) */}
-                <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden h-full min-h-0 bg-slate-50/50">
-                    <div className="w-full h-full flex flex-col items-center justify-center p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
+                <div className="w-full lg:w-7/12 relative flex flex-col overflow-hidden h-full min-h-0 bg-slate-50/50">
+                    <div className="w-full h-full flex flex-col p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full flex flex-col gap-8">
                             
-                            {/* The "Soft Cube" Visualizer */}
-                            <div className="relative flex-1 w-full flex flex-col bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0 p-2">
-                                <div className="flex-1 w-full min-h-0 relative flex items-center justify-center">
+                            {/* The Seamless Visualizer Card */}
+                            <div className="relative flex-1 w-full flex flex-col bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0">
+                                <div className="flex-1 w-full min-h-0 relative">
                                     <Carousel className="w-full h-full" opts={{ loop: true }}>
                                         <CarouselContent className="h-full">
                                             {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
-                                                <CarouselItem key={`${url}-${idx}`} className="h-full w-full p-4">
+                                                <CarouselItem key={`${url}-${idx}`} className="h-full w-full p-0">
                                                     <div 
-                                                        className="relative h-full w-full flex items-center justify-center cursor-zoom-in active:scale-[0.98] transition-all duration-500"
+                                                        className="relative h-full w-full cursor-zoom-in active:scale-[0.99] transition-all duration-500 flex items-center justify-center bg-white"
                                                         onClick={() => setLightboxImage(url)}
                                                     >
-                                                        {/* Rounding and soft external fade container */}
-                                                        <div className="relative w-[95%] h-[95%] rounded-[2.5rem] overflow-hidden bg-white shadow-[0_25px_70px_-15px_rgba(0,0,0,0.15)] border border-slate-50 transition-shadow">
-                                                            <Image 
-                                                                src={url} 
-                                                                alt={`Boat View ${idx}`} 
-                                                                fill 
-                                                                className="object-contain p-4 md:p-6" 
-                                                                unoptimized
-                                                            />
-                                                        </div>
+                                                        <Image 
+                                                            src={url} 
+                                                            alt={`Boat View ${idx}`} 
+                                                            fill 
+                                                            className="object-contain" 
+                                                            unoptimized
+                                                        />
                                                     </div>
                                                 </CarouselItem>
                                             )) : (
@@ -433,28 +429,28 @@ export function HighfieldQuoteFlow({
                                         </CarouselContent>
                                         {carouselImages.length > 1 && (
                                             <>
-                                                <CarouselPrevious className="left-6 h-12 w-12 opacity-100 transition-all bg-white/90 backdrop-blur-md border border-slate-100 shadow-xl text-primary hover:bg-primary hover:text-white z-30" />
-                                                <CarouselNext className="right-6 h-12 w-12 opacity-100 transition-all bg-white/90 backdrop-blur-md border border-slate-100 shadow-xl text-primary hover:bg-primary hover:text-white z-30" />
+                                                <CarouselPrevious className="left-6 h-12 w-12 opacity-100 transition-all bg-white shadow-xl border-none text-primary hover:bg-primary hover:text-white z-30" />
+                                                <CarouselNext className="right-6 h-12 w-12 opacity-100 transition-all bg-white shadow-xl border-none text-primary hover:bg-primary hover:text-white z-30" />
                                             </>
                                         )}
                                     </Carousel>
                                 </div>
 
-                                {/* Tech Hub Footer */}
-                                <div className="flex items-center justify-center gap-2 py-4 border-t border-slate-50 mt-auto shrink-0 bg-slate-50/30">
+                                {/* Tech Hub Footer (Seamlessly Integrated) */}
+                                <div className="flex items-center justify-center gap-3 py-5 border-t border-slate-50 mt-auto shrink-0 bg-slate-50/30">
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
+                                                    className="rounded-full h-11 w-11 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
                                                     onClick={() => setShowStandardFeatures(true)}
                                                 >
                                                     <ListChecks className="h-5 w-5" />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
+                                            <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none px-3 py-2">
                                                 Standard Features
                                             </TooltipContent>
                                         </Tooltip>
@@ -466,20 +462,20 @@ export function HighfieldQuoteFlow({
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
+                                                    className="rounded-full h-11 w-11 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
                                                     onClick={() => setShowGeneralSpecs(true)}
                                                 >
                                                     <ClipboardList className="h-5 w-5" />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
+                                            <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none px-3 py-2">
                                                 Technical Specs
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
 
                                     {model.documents && model.documents.length > 0 && (
-                                        <div className="flex items-center gap-2 border-l border-slate-200 pl-2 ml-1">
+                                        <div className="flex items-center gap-2 border-l border-slate-200 pl-3 ml-1">
                                             {model.documents.map((doc: any, i: number) => (
                                                 <TooltipProvider key={doc.id || i}>
                                                     <Tooltip>
@@ -487,7 +483,7 @@ export function HighfieldQuoteFlow({
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="icon" 
-                                                                className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
+                                                                className="rounded-full h-11 w-11 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
                                                                 asChild
                                                             >
                                                                 <a href={doc.url} target="_blank" rel="noopener noreferrer">
@@ -495,7 +491,7 @@ export function HighfieldQuoteFlow({
                                                                 </a>
                                                             </Button>
                                                         </TooltipTrigger>
-                                                        <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
+                                                        <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none px-3 py-2">
                                                             {doc.name || 'View Document'}
                                                         </TooltipContent>
                                                     </Tooltip>
@@ -506,14 +502,14 @@ export function HighfieldQuoteFlow({
                                 </div>
                             </div>
 
-                            {/* Build Summary Hub (Dual-Row Layout) */}
-                            <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-8 md:p-10 rounded-[2.5rem] flex flex-col gap-2 shrink-0 transition-all">
-                                {/* Row 1: Labels */}
+                            {/* Refined Build Summary Hub */}
+                            <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-10 rounded-[2.5rem] flex flex-col gap-2 shrink-0">
+                                {/* Row 1: Slate Grey Labels */}
                                 <div className="flex items-center justify-between px-1">
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Current Build</span>
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Total (Excl. Tax)</span>
                                 </div>
-                                {/* Row 2: Values */}
+                                {/* Row 2: Range (Blue Regular) | Model (Black Bold) | Price (Bold) */}
                                 <div className="flex items-center justify-between px-1">
                                     <div className="flex items-center gap-3 text-4xl tracking-tight min-w-0">
                                         {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
@@ -529,7 +525,7 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
-                {/* Configuration Panel (Right) - Isolated Scrolling */}
+                {/* Configuration Area (Right) */}
                 <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100">
                     <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
                         
@@ -743,9 +739,9 @@ export function HighfieldQuoteFlow({
                 </ScrollArea>
             </div>
 
-            {/* Lightbox - Gallery Scale */}
+            {/* Gallery Lightbox */}
             <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
-                <DialogContent className="max-w-4xl h-auto max-h-[85vh] p-0 border-none bg-black/90 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
+                <DialogContent className="max-w-4xl h-auto max-h-[85vh] p-0 border-none bg-black/95 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
                     <DialogTitle className="sr-only">Image Preview</DialogTitle>
                     {lightboxImage && (
                         <div className="relative w-full h-full p-4 md:p-12 flex items-center justify-center min-h-[300px]">
