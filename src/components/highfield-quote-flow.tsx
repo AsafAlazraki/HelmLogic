@@ -228,19 +228,14 @@ export function HighfieldQuoteFlow({
 
     const carouselImages = useMemo(() => {
         const images = [];
-        // Active variant or cover image
         if (activeVariant?.imageUrl) {
             images.push(activeVariant.imageUrl);
         } else if (model.coverImageUrl) {
             images.push(model.coverImageUrl);
         }
-        
-        // Gallery images
         if (model.galleryImageUrls && Array.isArray(model.galleryImageUrls)) {
             images.push(...model.galleryImageUrls);
         }
-        
-        // Clean unique list
         return [...new Set(images)].filter(img => typeof img === 'string' && img.trim() !== ''); 
     }, [activeVariant, model]);
 
@@ -367,7 +362,6 @@ export function HighfieldQuoteFlow({
         }, 100);
     };
 
-    // Refined multi-color build name logic
     const rangeName = range?.name || '';
     const fullModelName = model.name;
     const modelPart = fullModelName.toLowerCase().startsWith(rangeName.toLowerCase()) 
@@ -386,7 +380,6 @@ export function HighfieldQuoteFlow({
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
             </div>
 
-            {/* Sticky Progress Navbar */}
             <div className="sticky top-0 z-30 p-6 flex flex-col items-center gap-6 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all">
                 <div className="w-full max-w-7xl flex items-center justify-between">
                     <h1 className="text-xl font-black uppercase tracking-tight leading-tight">{model.name}</h1>
@@ -417,19 +410,17 @@ export function HighfieldQuoteFlow({
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Left Side: Visualizer */}
                 <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden h-full min-h-0">
                     <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full flex flex-col gap-6">
                             
-                            {/* Carousel Container - Maximized Scaling */}
                             <div className="relative flex-1 w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden group min-h-0">
                                 <Carousel className="w-full h-full" opts={{ loop: true }}>
                                     <CarouselContent className="h-full">
                                         {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
                                             <CarouselItem key={`${url}-${idx}`} className="h-full w-full">
                                                 <div 
-                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in group/item transition-transform active:scale-[0.98] duration-500"
+                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in active:scale-[0.98] transition-transform duration-500"
                                                     onClick={() => setLightboxImage(url)}
                                                 >
                                                     <Image 
@@ -451,56 +442,53 @@ export function HighfieldQuoteFlow({
                                     </CarouselContent>
                                     {carouselImages.length > 1 && (
                                         <>
-                                            <CarouselPrevious className="left-8 z-40 h-10 w-10 opacity-0 group-hover:opacity-30 hover:!opacity-80 transition-all bg-background/60 backdrop-blur-md border border-white/10 shadow-lg" />
-                                            <CarouselNext className="right-8 z-40 h-10 w-10 opacity-0 group-hover:opacity-30 hover:!opacity-80 transition-all bg-background/60 backdrop-blur-md border border-white/10 shadow-lg" />
+                                            <CarouselPrevious className="left-8 z-40 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-90 transition-all bg-white/80 backdrop-blur-md border-none shadow-md" />
+                                            <CarouselNext className="right-8 z-40 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-90 transition-all bg-white/80 backdrop-blur-md border-none shadow-md" />
                                         </>
                                     )}
                                 </Carousel>
                             </div>
 
-                            {/* Build Summary Hub - Rebuilt with premium 3-color typography */}
-                            <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl shrink-0">
-                                <div className="flex items-center gap-6 min-w-0 flex-1">
-                                    <div className="flex items-baseline gap-3 text-3xl font-black uppercase tracking-tight min-w-0">
-                                        <span className="text-muted-foreground/40 whitespace-nowrap">Current Build</span>
+                            <div className="bg-white/90 backdrop-blur-2xl border border-white/20 p-8 rounded-[2.5rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-[0_20px_50px_rgba(0,0,0,0.1)] shrink-0 transition-all">
+                                <div className="flex flex-col md:flex-row md:items-center gap-6 min-w-0 flex-1">
+                                    <div className="flex items-center gap-3 text-3xl font-black uppercase tracking-tight min-w-0">
+                                        <span className="text-slate-400 whitespace-nowrap">Current Build</span>
                                         {rangePart && <span className="text-primary whitespace-nowrap">{rangePart}</span>}
-                                        <span className="text-foreground whitespace-nowrap">{modelPart}</span>
+                                        <span className="text-slate-950 whitespace-nowrap">{modelPart}</span>
                                     </div>
                                     
-                                    <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-sm shrink-0 ml-2">
+                                    <div className="flex items-center gap-2 bg-slate-100/80 backdrop-blur-md p-1.5 rounded-full border border-slate-200 shrink-0 shadow-inner">
                                         <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                        className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
                                                         onClick={() => setShowStandardFeatures(true)}
                                                     >
                                                         <ListChecks className="h-5 w-5" />
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
                                                     Standard Features
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
                                         
-                                        <div className="w-[1px] h-4 bg-primary/10 mx-0.5" />
-
                                         <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                        className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
                                                         onClick={() => setShowGeneralSpecs(true)}
                                                     >
                                                         <ClipboardList className="h-5 w-5" />
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
                                                     General Specs
                                                 </TooltipContent>
                                             </Tooltip>
@@ -508,8 +496,8 @@ export function HighfieldQuoteFlow({
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1 opacity-60">Build Total (Excl. Tax)</p>
-                                    <div className="text-5xl font-black flex items-center justify-end gap-1.5 text-foreground tracking-tighter">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Build Total (Excl. Tax)</p>
+                                    <div className="text-5xl font-black flex items-center justify-end gap-1.5 text-slate-950 tracking-tighter">
                                         <span className="text-primary text-2xl">$</span>
                                         {totalPrice.toLocaleString()}
                                     </div>
@@ -519,7 +507,6 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
-                {/* Right Side: Scrollable Config */}
                 <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-background/40 backdrop-blur-md border-l border-white/5">
                     <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
                         
@@ -738,7 +725,6 @@ export function HighfieldQuoteFlow({
                 </ScrollArea>
             </div>
 
-            {/* Dialogs */}
             <Dialog open={showStandardFeatures} onOpenChange={setShowStandardFeatures}>
                 <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl">
                     <DialogHeader className="p-4">
