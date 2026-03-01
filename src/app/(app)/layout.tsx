@@ -9,6 +9,7 @@ import { useUser } from "@/firebase/auth/use-user";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { ChatBot } from "@/components/chat-bot";
 
 const AppSidebar = dynamic(
   () => import("@/components/app-sidebar").then((mod) => mod.AppSidebar),
@@ -44,6 +45,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0">
             {children}
           </main>
+          <ChatBot />
         </SidebarInset>
       </SidebarProvider>
   )
