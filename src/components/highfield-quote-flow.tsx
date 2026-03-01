@@ -116,7 +116,7 @@ export function HighfieldQuoteFlow({
     
     const { data: variants, loading: variantsLoading } = useCollection<Variant>(variantsQuery);
 
-    // 2. Fetch Compatible Motors (Configurator Driven)
+    // 2. Fetch Compatible Motors
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
@@ -185,7 +185,7 @@ export function HighfieldQuoteFlow({
                     }
                 }
             } catch (e) {
-                // error handled by emitter
+                // error handled
             } finally {
                 setMotorsLoading(false);
             }
@@ -203,7 +203,7 @@ export function HighfieldQuoteFlow({
         }
     }, [currentStep]);
 
-    // Prevent main app scroll when quote flow is active
+    // Prevent main app scroll
     useEffect(() => {
         const main = document.querySelector('main');
         if (main) {
@@ -230,7 +230,7 @@ export function HighfieldQuoteFlow({
         if (model.galleryImageUrls && Array.isArray(model.galleryImageUrls)) {
             images.push(...model.galleryImageUrls);
         }
-        return [...new Set(images)]; 
+        return [...new Set(images)].filter(Boolean); 
     }, [activeVariant, model]);
 
     const availableMaterials = useMemo(() => {
@@ -277,13 +277,10 @@ export function HighfieldQuoteFlow({
         return filtered;
     }, [model.optionalFeatures, model.rules, activeVariant, selectedOptionIds]);
 
-    // Handle Option Dependencies
     useEffect(() => {
         if (selectedOptionIds.length === 0) return;
-        
         const validOptionIds = factoryOptions.map((o: any) => o.id);
         const nextIds = selectedOptionIds.filter(id => validOptionIds.includes(id));
-        
         if (nextIds.length !== selectedOptionIds.length) {
             setSelectedOptionIds(nextIds);
         }
@@ -302,7 +299,6 @@ export function HighfieldQuoteFlow({
             if (b === 'Consoles') return 1;
             if (a === 'Seats') return -1;
             if (b === 'Seats') return 1;
-            if (a === 'General Options') return 1;
             return a.localeCompare(b);
         });
 
@@ -337,14 +333,12 @@ export function HighfieldQuoteFlow({
         const isSelected = selectedOptionIds.includes(id);
 
         if (isSelected) {
-            // Deselecting
             let toRemove = [id];
             if (option?.category === 'Consoles' && option.associatedSeatId) {
                 toRemove.push(option.associatedSeatId);
             }
             setSelectedOptionIds(prev => prev.filter(i => !toRemove.includes(i)));
         } else {
-            // Selecting
             let toAdd = [id];
             if (option?.category === 'Consoles' && option.associatedSeatId) {
                 toAdd.push(option.associatedSeatId);
@@ -373,7 +367,7 @@ export function HighfieldQuoteFlow({
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
             </div>
 
-            {/* Sticky Header with Build Steps */}
+            {/* Sticky Progress Navbar */}
             <div className="sticky top-0 z-30 p-6 flex flex-col items-center gap-6 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all">
                 <div className="w-full max-w-7xl flex items-center justify-between">
                     <h1 className="text-xl font-black uppercase tracking-tight leading-tight">{model.name}</h1>
@@ -404,16 +398,16 @@ export function HighfieldQuoteFlow({
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Left Side: Visualizer Unit (Centered) */}
-                <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden">
+                {/* Left Side: Visualizer (Maximized Render) */}
+                <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden h-full min-h-0">
                     <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full max-w-6xl flex flex-col gap-6">
                             
-                            {/* Main Carousel - Maximized */}
-                            <div className="relative flex-1 w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden group">
+                            {/* Carousel Container - Full Scale */}
+                            <div className="relative flex-1 w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden group min-h-0">
                                 <Carousel className="w-full h-full" opts={{ loop: true }}>
                                     <CarouselContent className="h-full items-center">
-                                        {carouselImages.map((url, idx) => (
+                                        {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
                                             <CarouselItem key={`${url}-${idx}`} className="h-full">
                                                 <div className="relative h-full w-full flex items-center justify-center">
                                                     <Image 
@@ -425,61 +419,26 @@ export function HighfieldQuoteFlow({
                                                     />
                                                 </div>
                                             </CarouselItem>
-                                        ))}
+                                        )) : (
+                                            <CarouselItem className="h-full">
+                                                <div className="flex h-full w-full items-center justify-center text-muted-foreground opacity-20">
+                                                    <Ship className="h-24 w-24" />
+                                                </div>
+                                            </CarouselItem>
+                                        )}
                                     </CarouselContent>
                                     <CarouselPrevious className="left-8 z-40 h-14 w-14 opacity-0 group-hover:opacity-100 transition-all bg-background/80 backdrop-blur-md border-white/20 shadow-xl hover:scale-110 active:scale-95" />
                                     <CarouselNext className="right-8 z-40 h-14 w-14 opacity-0 group-hover:opacity-100 transition-all bg-background/80 backdrop-blur-md border-white/20 shadow-xl hover:scale-110 active:scale-95" />
                                 </Carousel>
                             </div>
 
-                            {/* Refined Build Summary Hub */}
-                            <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl">
+                            {/* Build Summary Hub */}
+                            <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl shrink-0">
                                 <div className="space-y-4 min-w-0 flex-1">
                                     <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-4">
                                         <div className="min-w-0 flex-1">
                                             <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1 opacity-70">Current Build</p>
                                             <h3 className="text-3xl font-black uppercase tracking-tight leading-none truncate">{activeVariant?.name || model.name}</h3>
-                                        </div>
-                                        
-                                        {/* Specification Controls */}
-                                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-sm shrink-0">
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95" 
-                                                            onClick={() => setShowStandardFeatures(true)}
-                                                        >
-                                                            <ListChecks className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
-                                                        Standard Features
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                            
-                                            <div className="w-[1px] h-4 bg-primary/10" />
-
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95" 
-                                                            onClick={() => setShowGeneralSpecs(true)}
-                                                        >
-                                                            <ClipboardList className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
-                                                        General Specs
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -499,9 +458,54 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
-                {/* Right Side: Configuration Scroll */}
+                {/* Right Side: Scrollable Config */}
                 <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-background/40 backdrop-blur-md border-l border-white/5">
                     <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
+                        
+                        {/* Header with Relocated Spec Buttons */}
+                        <div className="flex items-center justify-between gap-4 mb-10 shrink-0">
+                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-primary/20" />
+                            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-sm shrink-0">
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                onClick={() => setShowStandardFeatures(true)}
+                                            >
+                                                <ListChecks className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                            Standard Features
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                
+                                <div className="w-[1px] h-4 bg-primary/10" />
+
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                onClick={() => setShowGeneralSpecs(true)}
+                                            >
+                                                <ClipboardList className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                            General Specs
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </div>
+                        </div>
+
                         {currentStep === 1 && (
                             <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                 <div className="space-y-3">
@@ -695,38 +699,6 @@ export function HighfieldQuoteFlow({
                             </div>
                         )}
 
-                        {currentStep === 4 && (
-                            <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                                <div className="space-y-3">
-                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Trailer Selection</h2>
-                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Choose a matching trailer for your Highfield build.</p>
-                                </div>
-                                <div className="py-24 text-center border-2 border-dashed rounded-[2.5rem] bg-muted/5 flex flex-col items-center gap-6">
-                                    <Ship className="h-16 w-16 opacity-10" />
-                                    <div className="space-y-2">
-                                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Module Integration</p>
-                                        <p className="text-sm font-bold text-muted-foreground">Trailer catalogs will be available shortly.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {currentStep === 5 && (
-                            <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                                <div className="space-y-3">
-                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Dealer Fit Options</h2>
-                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Local dealership accessories and custom technical installations.</p>
-                                </div>
-                                <div className="py-24 text-center border-2 border-dashed rounded-[2.5rem] bg-muted/5 flex flex-col items-center gap-6">
-                                    <Layers className="h-16 w-16 opacity-10" />
-                                    <div className="space-y-2">
-                                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Local Workspace</p>
-                                        <p className="text-sm font-bold text-muted-foreground">Your dealer-fit selections are being initialized...</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                         <div className="pt-20 sticky bottom-0 bg-gradient-to-t from-background via-background/95 to-transparent pb-6 mt-auto">
                             <div className="flex gap-4">
                                 {currentStep > 1 && (
@@ -749,8 +721,8 @@ export function HighfieldQuoteFlow({
                 </ScrollArea>
             </div>
 
-            {/* Standard Features Dialog */}
-            <Dialog open={showStandardFeatures} onOpenChange={showStandardFeatures ? setShowStandardFeatures : undefined}>
+            {/* Dialogs */}
+            <Dialog open={showStandardFeatures} onOpenChange={setShowStandardFeatures}>
                 <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl">
                     <DialogHeader className="p-4">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight">Standard Features</DialogTitle>
@@ -769,8 +741,7 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
-            {/* General Specs Dialog */}
-            <Dialog open={showGeneralSpecs} onOpenChange={showGeneralSpecs ? setShowGeneralSpecs : undefined}>
+            <Dialog open={showGeneralSpecs} onOpenChange={setShowGeneralSpecs}>
                 <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl">
                     <DialogHeader className="p-4">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight">Technical Specifications</DialogTitle>
