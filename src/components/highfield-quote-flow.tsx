@@ -782,6 +782,7 @@ export function HighfieldQuoteFlow({
 
             <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
                 <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-none bg-transparent shadow-none flex items-center justify-center">
+                    <DialogTitle className="sr-only">Image Preview</DialogTitle>
                     {lightboxImage && (
                         <div className="relative w-full h-[90vh] animate-in fade-in zoom-in-95 duration-300">
                             <Image src={lightboxImage} alt="Lightbox View" fill className="object-contain" unoptimized />
