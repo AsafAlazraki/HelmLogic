@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -16,6 +15,8 @@ import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface Vendor {
     id: string;
@@ -294,7 +295,13 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             if (!motorVendor) return;
             try {
                 const dsRef = collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets');
-                const dsSnap = await getDocs(dsRef);
+                const dsSnap = await getDocs(dsRef).catch(e => {
+                    errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: dsRef.path,
+                        operation: 'list'
+                    }));
+                    throw e;
+                });
                 const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 
                 const preferred = datasets.find((s: any) => 
@@ -306,7 +313,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 
                 setTargetDataSet(preferred);
             } catch (e) {
-                console.error("Error finding datasets:", e);
+                // error handled by emitter
             }
         };
         findDataSet();
@@ -399,10 +406,18 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             const currentAccessories = motorDoc.masterAccessories || [];
             const newAccessories = currentAccessories.filter((_: any, i: number) => i !== optionIndex);
             
-            await updateDoc(motorRef, { masterAccessories: newAccessories });
+            await updateDoc(motorRef, { masterAccessories: newAccessories })
+                .catch(e => {
+                    errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: motorRef.path,
+                        operation: 'update',
+                        requestResourceData: { masterAccessories: newAccessories }
+                    }));
+                    throw e;
+                });
             toast({ title: "Master Accessory Removed" });
         } catch (e) {
-            toast({ variant: 'destructive', title: "Failed to update master record" });
+            // error handled by emitter
         }
     };
 
@@ -447,13 +462,20 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             
             await updateDoc(motorRef, {
                 masterAccessories: [...currentAccessories, newEntry]
+            }).catch(e => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: motorRef.path,
+                    operation: 'update',
+                    requestResourceData: { masterAccessories: [...currentAccessories, newEntry] }
+                }));
+                throw e;
             });
             
             toast({ title: "Master Accessory Linked" });
             setIsBrowserOpen(false);
             setActiveMotorId(null);
         } catch (e) {
-            toast({ variant: 'destructive', title: "Failed to update master record" });
+            // error handled by emitter
         }
     };
 

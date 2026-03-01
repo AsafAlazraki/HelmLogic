@@ -47,6 +47,8 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface Variant {
     id: string;
@@ -117,37 +119,57 @@ export function HighfieldQuoteFlow({
             setMotorsLoading(true);
             try {
                 // Find Motor Vendor
-                const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
+                const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'))
+                    .catch(e => {
+                        errorEmitter.emit('permission-error', new FirestorePermissionError({
+                            path: 'data-warehouse',
+                            operation: 'list'
+                        }));
+                        throw e;
+                    });
+
                 const allVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                 const allModuleVendorIds = [...(module.associatedVendorIds || []), module.mainVendorId].filter(Boolean);
                 const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
 
                 if (motorVendor) {
                     const dsRef = collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets');
-                    const dsSnap = await getDocs(dsRef);
+                    const dsSnap = await getDocs(dsRef)
+                        .catch(e => {
+                            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                                path: dsRef.path,
+                                operation: 'list'
+                            }));
+                            throw e;
+                        });
+
                     const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                     const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
                     
                     if (targetDS) {
                         setSelectedMotorDataSetId(targetDS.id);
                         const rowsRef = collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`);
-                        const rowsSnap = await getDocs(rowsRef);
+                        const rowsSnap = await getDocs(rowsRef)
+                            .catch(e => {
+                                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                                    path: rowsRef.path,
+                                    operation: 'list'
+                                }));
+                                throw e;
+                            });
+
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
 
                         // FILTER BY CONFIGURATOR SETTINGS
-                        // Highfield usually uses a specific engine config. For simplicity we check motorOverrides
                         const motorOverrides = model.motorOverrides || {};
-                        // We look at all configurations (Single, Twin etc) and merge manual IDs
                         const allowedIds = new Set<string>();
                         Object.values(motorOverrides).forEach((ov: any) => {
                             if (ov.manualIds) ov.manualIds.forEach((id: string) => allowedIds.add(id));
                         });
 
-                        // If the admin has set up specific manual IDs, we prioritize those
                         if (allowedIds.size > 0) {
                             setMotors(allRows.filter(r => allowedIds.has(r.id)));
                         } else {
-                            // Fallback to HP matching if no manual IDs are defined
                             const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
                             const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
                             setMotors(allRows.filter(r => {
@@ -158,7 +180,7 @@ export function HighfieldQuoteFlow({
                     }
                 }
             } catch (e) {
-                console.error("Motor fetch failed", e);
+                // Silently handled by emitter logic above if it was a permission error
             } finally {
                 setMotorsLoading(false);
             }
