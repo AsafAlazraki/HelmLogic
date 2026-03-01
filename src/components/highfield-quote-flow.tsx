@@ -400,9 +400,8 @@ export function HighfieldQuoteFlow({
                     <div className="w-full h-full flex flex-col items-center justify-center p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full flex flex-col gap-8">
                             
-                            {/* The "Soft Cube" Visualizer - Redesigned for maximized renders with rounding and fade */}
+                            {/* The "Soft Cube" Visualizer */}
                             <div className="relative flex-1 w-full flex flex-col bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0 p-2">
-                                {/* Main Image Carousel area */}
                                 <div className="flex-1 w-full min-h-0 relative flex items-center justify-center">
                                     <Carousel className="w-full h-full" opts={{ loop: true }}>
                                         <CarouselContent className="h-full">
@@ -413,12 +412,12 @@ export function HighfieldQuoteFlow({
                                                         onClick={() => setLightboxImage(url)}
                                                     >
                                                         {/* Rounding and soft external fade container */}
-                                                        <div className="relative w-[95%] h-[95%] rounded-[2.5rem] overflow-hidden bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] border border-slate-50 transition-shadow">
+                                                        <div className="relative w-[95%] h-[95%] rounded-[2.5rem] overflow-hidden bg-white shadow-[0_25px_70px_-15px_rgba(0,0,0,0.15)] border border-slate-50 transition-shadow">
                                                             <Image 
                                                                 src={url} 
                                                                 alt={`Boat View ${idx}`} 
                                                                 fill 
-                                                                className="object-contain p-6 md:p-10" 
+                                                                className="object-contain p-4 md:p-6" 
                                                                 unoptimized
                                                             />
                                                         </div>
@@ -434,14 +433,14 @@ export function HighfieldQuoteFlow({
                                         </CarouselContent>
                                         {carouselImages.length > 1 && (
                                             <>
-                                                <CarouselPrevious className="left-4 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
-                                                <CarouselNext className="right-4 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
+                                                <CarouselPrevious className="left-6 h-12 w-12 opacity-100 transition-all bg-white/90 backdrop-blur-md border border-slate-100 shadow-xl text-primary hover:bg-primary hover:text-white z-30" />
+                                                <CarouselNext className="right-6 h-12 w-12 opacity-100 transition-all bg-white/90 backdrop-blur-md border border-slate-100 shadow-xl text-primary hover:bg-primary hover:text-white z-30" />
                                             </>
                                         )}
                                     </Carousel>
                                 </div>
 
-                                {/* Tech Hub Footer - Non-overlapping center of bottom card */}
+                                {/* Tech Hub Footer */}
                                 <div className="flex items-center justify-center gap-2 py-4 border-t border-slate-50 mt-auto shrink-0 bg-slate-50/30">
                                     <TooltipProvider>
                                         <Tooltip>
