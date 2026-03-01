@@ -202,6 +202,19 @@ export function HighfieldQuoteFlow({
         }
     }, [currentStep]);
 
+    // Prevent main app scroll when quote flow is active
+    useEffect(() => {
+        const main = document.querySelector('main');
+        if (main) {
+            main.style.overflow = 'hidden';
+        }
+        return () => {
+            if (main) {
+                main.style.overflow = 'auto';
+            }
+        };
+    }, []);
+
     // Data Derivations
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
@@ -263,7 +276,7 @@ export function HighfieldQuoteFlow({
         return filtered;
     }, [model.optionalFeatures, model.rules, activeVariant, selectedOptionIds]);
 
-    // Handle Option Dependencies (e.g. Seats requiring Consoles)
+    // Handle Option Dependencies
     useEffect(() => {
         if (selectedOptionIds.length === 0) return;
         
@@ -334,7 +347,7 @@ export function HighfieldQuoteFlow({
     };
 
     return (
-        <div className="h-full -mt-6 md:-mt-8 -mx-4 md:-mx-6 bg-background flex flex-col relative overflow-hidden">
+        <div className="h-[calc(100vh-64px)] -mt-6 md:-mt-8 -mx-4 md:-mx-6 bg-background flex flex-col relative overflow-hidden">
             <div className="absolute inset-0 z-0">
                 {model.coverImageUrl && (
                     <div className="relative h-full w-full opacity-10 blur-3xl scale-110">
@@ -375,58 +388,53 @@ export function HighfieldQuoteFlow({
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Left Side: Visualizer Carousel */}
-                <div className="w-full lg:w-7/12 h-[45vh] lg:h-full relative bg-muted/5 border-r border-white/5 flex flex-col overflow-hidden">
-                    <div className="flex-1 flex flex-col p-8 md:p-12 relative overflow-hidden">
-                        <div className="z-20 flex items-center gap-3 relative">
-                            <Badge variant="secondary" className="px-4 py-1.5 font-black uppercase tracking-widest text-[10px] shadow-sm bg-background/80 backdrop-blur-sm border-white/20">
-                                Visualizer
-                            </Badge>
-                            {activeVariant && (
-                                <Badge variant="outline" className="px-4 py-1.5 font-black uppercase tracking-widest text-[10px] bg-primary/10 border-primary/20 text-primary">
-                                    {activeVariant.material} Edition
+                {/* Left Side: Visualizer Unit (Centered) */}
+                <div className="w-full lg:w-7/12 relative bg-muted/5 border-r border-white/5 flex flex-col items-center justify-center overflow-hidden">
+                    <div className="w-full max-w-5xl flex flex-col p-8 md:p-12 gap-8 animate-in fade-in zoom-in-95 duration-700">
+                        <div className="relative space-y-8">
+                            <div className="relative">
+                                <Badge variant="secondary" className="absolute -top-4 -left-4 z-20 px-4 py-1.5 font-black uppercase tracking-widest text-[10px] shadow-lg bg-background/80 backdrop-blur-sm border-white/20">
+                                    Visualizer
                                 </Badge>
-                            )}
-                        </div>
-                        
-                        <div className="flex-1 relative w-full flex items-center justify-center min-h-0">
-                            <Carousel className="w-full max-w-4xl" opts={{ loop: true }}>
-                                <CarouselContent className="items-center">
-                                    {carouselImages.map((url, idx) => (
-                                        <CarouselItem key={`${url}-${idx}`}>
-                                            <div className="relative aspect-[16/10] w-full flex items-center justify-center">
-                                                <Image 
-                                                    src={url} 
-                                                    alt={`Boat View ${idx}`} 
-                                                    fill 
-                                                    className="object-contain p-4 drop-shadow-[0_35px_60px_rgba(0,0,0,0.3)]" 
-                                                    unoptimized
-                                                />
-                                            </div>
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
-                                <CarouselPrevious className="left-4 z-30 opacity-70 hover:opacity-100 transition-opacity bg-background/50 border-white/20" />
-                                <CarouselNext className="right-4 z-30 opacity-70 hover:opacity-100 transition-opacity bg-background/50 border-white/20" />
-                            </Carousel>
-                        </div>
+                                
+                                <div className="relative aspect-[16/10] w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-3xl border border-white/10 shadow-2xl overflow-hidden group">
+                                    <Carousel className="w-full h-full" opts={{ loop: true }}>
+                                        <CarouselContent className="h-full items-center">
+                                            {carouselImages.map((url, idx) => (
+                                                <CarouselItem key={`${url}-${idx}`} className="h-full">
+                                                    <div className="relative h-full w-full flex items-center justify-center p-8">
+                                                        <Image 
+                                                            src={url} 
+                                                            alt={`Boat View ${idx}`} 
+                                                            fill 
+                                                            className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.3)] transition-transform duration-700" 
+                                                            unoptimized
+                                                        />
+                                                    </div>
+                                                </CarouselItem>
+                                            ))}
+                                        </CarouselContent>
+                                        <CarouselPrevious className="left-6 z-40 h-12 w-12 opacity-0 group-hover:opacity-100 transition-all bg-background/80 backdrop-blur-md border-white/20 shadow-xl hover:scale-110 active:scale-95" />
+                                        <CarouselNext className="right-6 z-40 h-12 w-12 opacity-0 group-hover:opacity-100 transition-all bg-background/80 backdrop-blur-md border-white/20 shadow-xl hover:scale-110 active:scale-95" />
+                                    </Carousel>
+                                </div>
+                            </div>
 
-                        <div className="animate-in slide-in-from-bottom-4 duration-500 mt-auto">
-                            <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-6 rounded-2xl flex flex-col md:flex-row md:items-end justify-between gap-6 shadow-2xl">
+                            <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl">
                                 <div className="space-y-4 min-w-0 flex-1">
                                     <div className="flex items-center justify-between gap-4">
                                         <div className="min-w-0">
-                                            <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">Current Build</p>
-                                            <h3 className="text-2xl font-black uppercase tracking-tight leading-none truncate pr-4">{activeVariant?.name || model.name}</h3>
+                                            <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1 opacity-70">Current Build</p>
+                                            <h3 className="text-3xl font-black uppercase tracking-tight leading-none truncate pr-4">{activeVariant?.name || model.name}</h3>
                                         </div>
-                                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-sm shrink-0">
+                                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-2 rounded-full border border-white/20 shadow-sm shrink-0">
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
-                                                            className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                            className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
                                                             onClick={() => setShowStandardFeatures(true)}
                                                         >
                                                             <ListChecks className="h-5 w-5" />
@@ -438,7 +446,7 @@ export function HighfieldQuoteFlow({
                                                 </Tooltip>
                                             </TooltipProvider>
                                             
-                                            <div className="w-[1px] h-4 bg-primary/10" />
+                                            <div className="w-[1px] h-5 bg-primary/10" />
 
                                             <TooltipProvider>
                                                 <Tooltip>
@@ -446,7 +454,7 @@ export function HighfieldQuoteFlow({
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
-                                                            className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                            className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
                                                             onClick={() => setShowGeneralSpecs(true)}
                                                         >
                                                             <ClipboardList className="h-5 w-5" />
@@ -460,14 +468,14 @@ export function HighfieldQuoteFlow({
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        {selectedOptionIds.length > 0 && <Badge variant="secondary" className="text-[8px] uppercase font-black px-2">{selectedOptionIds.length} Factory Options</Badge>}
-                                        {selectedMotor && <Badge variant="secondary" className="text-[8px] uppercase font-black px-2 bg-primary/10 text-primary border-primary/20">{selectedMotor['Model Name']}</Badge>}
+                                        {selectedOptionIds.length > 0 && <Badge variant="secondary" className="text-[9px] uppercase font-black px-3 py-1 bg-muted/50 border-white/10">{selectedOptionIds.length} Factory Options</Badge>}
+                                        {selectedMotor && <Badge variant="secondary" className="text-[9px] uppercase font-black px-3 py-1 bg-primary/10 text-primary border-primary/20">{selectedMotor['Model Name']}</Badge>}
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Build Total (Excl. Tax)</p>
-                                    <div className="text-4xl font-black flex items-center justify-end gap-1 text-foreground">
-                                        <span className="text-primary text-xl">$</span>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1 opacity-60">Build Total (Excl. Tax)</p>
+                                    <div className="text-5xl font-black flex items-center justify-end gap-1.5 text-foreground tracking-tighter">
+                                        <span className="text-primary text-2xl">$</span>
                                         {totalPrice.toLocaleString()}
                                     </div>
                                 </div>
@@ -477,29 +485,29 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 {/* Right Side: Configuration Scroll */}
-                <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-background/40 backdrop-blur-md">
-                    <div className="p-8 md:p-12 pb-24 min-h-full flex flex-col">
+                <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-background/40 backdrop-blur-md border-l border-white/5">
+                    <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
                         {currentStep === 1 && (
                             <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                 <div className="space-y-3">
-                                    <h2 className="text-3xl font-black uppercase tracking-tight leading-none">The Foundation</h2>
-                                    <p className="text-muted-foreground font-medium text-sm leading-relaxed max-w-md">Select your hull material and tube color to initialize the build specifications.</p>
+                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">The Foundation</h2>
+                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select your hull material and tube color to initialize the build specifications.</p>
                                 </div>
 
                                 <div className="space-y-5">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">1. Tube Material</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">1. Tube Material</span>
                                     <div className="grid grid-cols-2 gap-4">
                                         {availableMaterials.map((mat) => (
                                             <button
                                                 key={mat}
                                                 onClick={() => handleMaterialSelect(mat)}
                                                 className={cn(
-                                                    "group relative flex flex-col items-start p-5 border-2 rounded-2xl transition-all duration-300",
-                                                    selectedMaterial === mat ? "bg-primary border-primary text-white shadow-xl shadow-primary/20" : "bg-card hover:border-primary/40"
+                                                    "group relative flex flex-col items-start p-6 border-2 rounded-3xl transition-all duration-300",
+                                                    selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-card border-border/50 hover:border-primary/40"
                                                 )}
                                             >
-                                                <span className="text-sm font-black uppercase tracking-tight">{mat}</span>
-                                                <p className={cn("text-[8px] font-bold mt-1 uppercase", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>
+                                                <span className="text-base font-black uppercase tracking-tight">{mat}</span>
+                                                <p className={cn("text-[9px] font-bold mt-1 uppercase", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>
                                                     {mat === 'PVC' ? 'Robust Standard' : 'Premium HYP'}
                                                 </p>
                                             </button>
@@ -509,27 +517,27 @@ export function HighfieldQuoteFlow({
 
                                 {selectedMaterial && (
                                     <div id="available-colors-section" className="space-y-5 pt-10">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">2. Available Colors</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">2. Available Colors</span>
                                         <div className="grid grid-cols-2 gap-4">
                                             {availableColors.map((color) => (
                                                 <button
                                                     key={color.id}
                                                     onClick={() => setSelectedColor(color.id)}
                                                     className={cn(
-                                                        "group flex flex-col border-2 rounded-2xl overflow-hidden transition-all duration-300 text-left bg-white",
-                                                        selectedColor === color.id ? "border-primary shadow-xl" : "border-border hover:border-primary/20"
+                                                        "group flex flex-col border-2 rounded-3xl overflow-hidden transition-all duration-300 text-left bg-white",
+                                                        selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-border/50 hover:border-primary/20"
                                                     )}
                                                 >
                                                     <div className="relative aspect-video w-full border-b bg-white">
                                                         {color.imageUrl ? (
-                                                            <Image src={color.imageUrl} alt={color.name} fill className="object-contain p-2" unoptimized />
+                                                            <Image src={color.imageUrl} alt={color.name} fill className="object-contain p-3" unoptimized />
                                                         ) : (
-                                                            <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-6 w-6"/></div>
+                                                            <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-8 w-8"/></div>
                                                         )}
                                                     </div>
-                                                    <div className={cn("p-3", selectedColor === color.id ? "bg-primary text-white" : "bg-card")}>
-                                                        <p className="text-[10px] font-black uppercase tracking-tight truncate">{color.name}</p>
-                                                        <p className={cn("text-[8px] font-bold uppercase", selectedColor === color.id ? "text-white/60" : "text-muted-foreground")}>{color.code}</p>
+                                                    <div className={cn("p-4", selectedColor === color.id ? "bg-primary text-white" : "bg-card")}>
+                                                        <p className="text-[11px] font-black uppercase tracking-tight truncate">{color.name}</p>
+                                                        <p className={cn("text-[9px] font-bold uppercase", selectedColor === color.id ? "text-white/60" : "text-muted-foreground")}>{color.code}</p>
                                                     </div>
                                                 </button>
                                             ))}
@@ -542,14 +550,14 @@ export function HighfieldQuoteFlow({
                         {currentStep === 2 && (
                             <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                 <div className="space-y-3">
-                                    <h2 className="text-3xl font-black uppercase tracking-tight leading-none">Factory Options</h2>
-                                    <p className="text-muted-foreground font-medium text-sm leading-relaxed max-w-md">Customize your Highfield with approved consoles, seating, and technical upgrades.</p>
+                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Factory Options</h2>
+                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Customize your Highfield with approved consoles, seating, and technical upgrades.</p>
                                 </div>
 
                                 <div className="space-y-12">
                                     {Object.entries(groupedOptions).map(([category, options]: [string, any]) => (
-                                        <div key={category} className="space-y-5">
-                                            <h3 className="text-xs font-black uppercase tracking-widest text-foreground">{category}</h3>
+                                        <div key={category} className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                            <h3 className="text-[11px] font-black uppercase tracking-widest text-foreground border-l-4 border-primary pl-3">{category}</h3>
                                             <div className="grid gap-3">
                                                 {options.map((opt: any) => {
                                                     const isSelected = selectedOptionIds.includes(opt.id);
@@ -558,20 +566,20 @@ export function HighfieldQuoteFlow({
                                                             key={opt.id}
                                                             onClick={() => toggleOption(opt.id)}
                                                             className={cn(
-                                                                "group flex items-center justify-between p-4 border-2 rounded-2xl transition-all duration-200 text-left",
-                                                                isSelected ? "bg-primary/5 border-primary" : "bg-card border-border hover:border-primary/20"
+                                                                "group flex items-center justify-between p-5 border-2 rounded-3xl transition-all duration-300 text-left",
+                                                                isSelected ? "bg-primary/5 border-primary shadow-lg" : "bg-card border-border/50 hover:border-primary/20"
                                                             )}
                                                         >
-                                                            <div className="flex items-center gap-4 min-w-0">
-                                                                <div className="h-12 w-12 relative rounded-lg bg-muted/30 border overflow-hidden shrink-0">
-                                                                    {opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-cover" unoptimized /> : <Package className="h-5 w-5 m-auto mt-3.5 opacity-10" />}
+                                                            <div className="flex items-center gap-5 min-w-0">
+                                                                <div className="h-14 w-14 relative rounded-2xl bg-muted/30 border overflow-hidden shrink-0 shadow-inner">
+                                                                    {opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-cover" unoptimized /> : <Package className="h-6 w-6 m-auto mt-4 opacity-10" />}
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-sm font-black uppercase tracking-tight truncate">{opt.name}</p>
-                                                                    {opt.code && <p className="text-[9px] font-mono text-muted-foreground uppercase">{opt.code}</p>}
+                                                                    <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{opt.name}</p>
+                                                                    {opt.code && <p className="text-[10px] font-mono text-muted-foreground uppercase mt-1">{opt.code}</p>}
                                                                 </div>
                                                             </div>
-                                                            <p className={cn("text-xs font-black ml-4 shrink-0", isSelected ? "text-primary" : "text-foreground")}>
+                                                            <p className={cn("text-sm font-black ml-4 shrink-0", isSelected ? "text-primary" : "text-foreground")}>
                                                                 +${(opt.sellPriceExclGst || 0).toLocaleString()}
                                                             </p>
                                                         </button>
@@ -587,14 +595,14 @@ export function HighfieldQuoteFlow({
                         {currentStep === 3 && (
                             <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                 <div className="space-y-3">
-                                    <h2 className="text-3xl font-black uppercase tracking-tight leading-none">Engine & Rigging</h2>
-                                    <p className="text-muted-foreground font-medium text-sm leading-relaxed max-w-md">Select a compatible outboard and associated rigging kits.</p>
+                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Engine & Rigging</h2>
+                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select a compatible outboard and associated rigging kits.</p>
                                 </div>
 
                                 {motorsLoading ? (
-                                    <div className="flex flex-col items-center justify-center py-20 gap-4">
-                                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Syncing compatible motors...</p>
+                                    <div className="flex flex-col items-center justify-center py-24 gap-4">
+                                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                                        <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing compatible motors...</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-6">
@@ -614,39 +622,39 @@ export function HighfieldQuoteFlow({
                                                         <button
                                                             onClick={() => setSelectedMotor(isSelected ? null : motor)}
                                                             className={cn(
-                                                                "w-full flex items-center justify-between p-5 border-2 rounded-2xl transition-all duration-300 text-left group",
-                                                                isSelected ? "bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-[1.01]" : "bg-card border-border hover:border-primary/20"
+                                                                "w-full flex items-center justify-between p-6 border-2 rounded-3xl transition-all duration-300 text-left group",
+                                                                isSelected ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-card border-border/50 hover:border-primary/20"
                                                             )}
                                                         >
-                                                            <div className="flex items-center gap-5">
-                                                                <div className="h-16 w-16 relative bg-white rounded-xl border-2 overflow-hidden shrink-0 shadow-inner">
-                                                                    {getImageUrl(imgPath) ? <Image src={getImageUrl(imgPath)!} alt="Motor" fill className="object-contain p-1" unoptimized /> : <Ship className="h-6 w-6 m-auto mt-5 opacity-10" />}
+                                                            <div className="flex items-center gap-6">
+                                                                <div className="h-20 w-20 relative bg-white rounded-2xl border-2 overflow-hidden shrink-0 shadow-inner">
+                                                                    {getImageUrl(imgPath) ? <Image src={getImageUrl(imgPath)!} alt="Motor" fill className="object-contain p-2" unoptimized /> : <Ship className="h-8 w-8 m-auto mt-6 opacity-10" />}
                                                                 </div>
                                                                 <div>
-                                                                    <div className="flex items-center gap-2 mb-1">
-                                                                        <Badge variant="outline" className={cn("font-black text-[9px] px-1.5 py-0", isSelected ? "border-white/20 text-white" : "border-primary/20 text-primary")}>
+                                                                    <div className="flex items-center gap-2 mb-1.5">
+                                                                        <Badge variant="outline" className={cn("font-black text-[10px] px-2 py-0.5", isSelected ? "border-white/20 text-white" : "border-primary/20 text-primary")}>
                                                                             {motor['HP Rating'] || 'ENGINE'} HP
                                                                         </Badge>
                                                                         <span className="text-[10px] font-black uppercase opacity-60 tracking-widest">Outboard</span>
                                                                     </div>
-                                                                    <p className="text-sm font-black uppercase tracking-tight leading-tight">{motor['Model Name']}</p>
-                                                                    <p className={cn("text-[9px] font-mono font-bold mt-1 uppercase", isSelected ? "text-white/60" : "text-muted-foreground/60")}>{motor['Part Number']}</p>
+                                                                    <p className="text-base font-black uppercase tracking-tight leading-tight">{motor['Model Name']}</p>
+                                                                    <p className={cn("text-[10px] font-mono font-bold mt-1.5 uppercase", isSelected ? "text-white/60" : "text-muted-foreground/60")}>{motor['Part Number']}</p>
                                                                 </div>
                                                             </div>
-                                                            <p className="text-sm font-black">${(motor.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            <p className="text-base font-black">${(motor.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </button>
 
                                                         {isSelected && motor.masterAccessories && (
-                                                            <div className="p-5 bg-muted/10 border-2 border-dashed rounded-2xl space-y-4 animate-in slide-in-from-top-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Wrench className="h-3 w-3 text-primary" />
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest">Linked Rigging & Props</span>
+                                                            <div className="p-6 bg-muted/10 border-2 border-dashed rounded-3xl space-y-5 animate-in slide-in-from-top-2 duration-300">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-6 w-6 bg-primary/10 rounded-full flex items-center justify-center"><Wrench className="h-3 w-3 text-primary" /></div>
+                                                                    <span className="text-[11px] font-black uppercase tracking-widest">Linked Rigging & Props</span>
                                                                 </div>
-                                                                <div className="space-y-2">
+                                                                <div className="space-y-2.5">
                                                                     {motor.masterAccessories.map((acc: any, i: number) => (
-                                                                        <div key={i} className="flex items-center justify-between text-[11px] font-medium p-2.5 bg-background/50 rounded-lg border">
-                                                                            <span className="truncate pr-4">{acc.name}</span>
-                                                                            <span className="font-bold text-primary shrink-0">${(acc.items?.[0]?.data?.sellPriceExclGst || 0).toLocaleString()}</span>
+                                                                        <div key={i} className="flex items-center justify-between text-xs font-medium p-3.5 bg-background/50 rounded-xl border border-white/5 shadow-sm">
+                                                                            <span className="truncate pr-4 uppercase tracking-tight">{acc.name}</span>
+                                                                            <span className="font-black text-primary shrink-0">${(acc.items?.[0]?.data?.sellPriceExclGst || 0).toLocaleString()}</span>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -664,12 +672,15 @@ export function HighfieldQuoteFlow({
                         {currentStep === 4 && (
                             <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                 <div className="space-y-3">
-                                    <h2 className="text-3xl font-black uppercase tracking-tight leading-none">Trailer Selection</h2>
-                                    <p className="text-muted-foreground font-medium text-sm leading-relaxed max-w-md">Choose a matching trailer for your Highfield.</p>
+                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Trailer Selection</h2>
+                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Choose a matching trailer for your Highfield build.</p>
                                 </div>
-                                <div className="py-20 text-center border-2 border-dashed rounded-3xl bg-muted/5 flex flex-col items-center gap-4">
-                                    <Ship className="h-12 w-12 opacity-10" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trailer integration coming soon.</p>
+                                <div className="py-24 text-center border-2 border-dashed rounded-[2.5rem] bg-muted/5 flex flex-col items-center gap-6">
+                                    <Ship className="h-16 w-16 opacity-10" />
+                                    <div className="space-y-2">
+                                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Module Integration</p>
+                                        <p className="text-sm font-bold text-muted-foreground">Trailer catalogs will be available shortly.</p>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -677,31 +688,34 @@ export function HighfieldQuoteFlow({
                         {currentStep === 5 && (
                             <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                 <div className="space-y-3">
-                                    <h2 className="text-3xl font-black uppercase tracking-tight leading-none">Dealer Fit Options</h2>
-                                    <p className="text-muted-foreground font-medium text-sm leading-relaxed max-w-md">Local dealership accessories and custom installations.</p>
+                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Dealer Fit Options</h2>
+                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Local dealership accessories and custom technical installations.</p>
                                 </div>
-                                <div className="py-20 text-center border-2 border-dashed rounded-3xl bg-muted/5 flex flex-col items-center gap-4">
-                                    <Layers className="h-12 w-12 opacity-10" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dealer fit workspace loading...</p>
+                                <div className="py-24 text-center border-2 border-dashed rounded-[2.5rem] bg-muted/5 flex flex-col items-center gap-6">
+                                    <Layers className="h-16 w-16 opacity-10" />
+                                    <div className="space-y-2">
+                                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Local Workspace</p>
+                                        <p className="text-sm font-bold text-muted-foreground">Your dealer-fit selections are being initialized...</p>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        <div className="pt-16 sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pb-4 mt-auto">
-                            <div className="flex gap-3">
+                        <div className="pt-20 sticky bottom-0 bg-gradient-to-t from-background via-background/95 to-transparent pb-6 mt-auto">
+                            <div className="flex gap-4">
                                 {currentStep > 1 && (
-                                    <Button variant="outline" size="lg" className="h-14 w-20 rounded-2xl border-2" onClick={prevStep}>
-                                        <ChevronLeft className="h-5 w-5" />
+                                    <Button variant="outline" size="lg" className="h-16 w-24 rounded-2xl border-2 hover:bg-muted/50 transition-all active:scale-95" onClick={prevStep}>
+                                        <ChevronLeft className="h-6 w-6" />
                                     </Button>
                                 )}
                                 <Button 
                                     size="lg" 
-                                    className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 group"
+                                    className="flex-1 h-16 rounded-2xl font-black uppercase tracking-[0.1em] text-sm shadow-2xl shadow-primary/30 group transition-all active:scale-[0.98]"
                                     disabled={currentStep === 1 && !isStep1Complete}
                                     onClick={nextStep}
                                 >
                                     {currentStep === STEPS.length ? 'Finalize Quote' : `Next: ${STEPS[currentStep].label}`}
-                                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                                    <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
                                 </Button>
                             </div>
                         </div>
@@ -710,18 +724,18 @@ export function HighfieldQuoteFlow({
             </div>
 
             {/* Standard Features Dialog */}
-            <Dialog open={showStandardFeatures} onOpenChange={setShowStandardFeatures}>
-                <DialogContent className="sm:max-w-xl">
-                    <DialogHeader>
+            <Dialog open={showStandardFeatures} onOpenChange={showStandardFeatures ? setShowStandardFeatures : undefined}>
+                <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl">
+                    <DialogHeader className="p-4">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight">Standard Features</DialogTitle>
-                        <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary">Everything included in the base {model.name}</DialogDescription>
+                        <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary mt-1">Everything included in the base {model.name}</DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="max-h-[60vh] pr-4">
-                        <div className="grid gap-3 py-4">
+                    <ScrollArea className="max-h-[60vh] pr-4 px-4 pb-6">
+                        <div className="grid gap-3">
                             {model.standardFeatures?.map((feat: string, i: number) => (
-                                <div key={i} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg border border-white/10">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                                    <span className="text-sm font-medium">{feat}</span>
+                                <div key={i} className="flex items-start gap-4 p-4 bg-muted/30 rounded-2xl border border-white/5 transition-colors hover:bg-muted/50">
+                                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                                    <span className="text-sm font-semibold text-foreground/80 leading-relaxed">{feat}</span>
                                 </div>
                             ))}
                         </div>
@@ -730,17 +744,17 @@ export function HighfieldQuoteFlow({
             </Dialog>
 
             {/* General Specs Dialog */}
-            <Dialog open={showGeneralSpecs} onOpenChange={setShowGeneralSpecs}>
-                <DialogContent className="sm:max-w-xl">
-                    <DialogHeader>
+            <Dialog open={showGeneralSpecs} onOpenChange={showGeneralSpecs ? setShowGeneralSpecs : undefined}>
+                <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl">
+                    <DialogHeader className="p-4">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight">Technical Specifications</DialogTitle>
-                        <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary">Master build data for {model.name}</DialogDescription>
+                        <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary mt-1">Master build data for {model.name}</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-2 gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4 p-4 pb-8">
                         {model.specifications?.otherSpecs?.map((spec: any) => (
-                            <div key={spec.id} className="p-4 bg-muted/30 rounded-xl border border-white/10 space-y-1">
+                            <div key={spec.id} className="p-5 bg-muted/30 rounded-[1.5rem] border border-white/5 space-y-1.5 transition-all hover:border-primary/20">
                                 <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">{spec.label}</p>
-                                <p className="text-sm font-bold">{spec.value}</p>
+                                <p className="text-base font-black text-foreground">{spec.value}</p>
                             </div>
                         ))}
                     </div>
