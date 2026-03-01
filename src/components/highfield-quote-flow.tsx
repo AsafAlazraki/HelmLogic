@@ -429,21 +429,16 @@ export function HighfieldQuoteFlow({
                                         {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
                                             <CarouselItem key={`${url}-${idx}`} className="h-full w-full">
                                                 <div 
-                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in group/item"
+                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in group/item transition-transform active:scale-[0.98] duration-500"
                                                     onClick={() => setLightboxImage(url)}
                                                 >
                                                     <Image 
                                                         src={url} 
                                                         alt={`Boat View ${idx}`} 
                                                         fill 
-                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.35)] transition-transform duration-700" 
+                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.35)]" 
                                                         unoptimized
                                                     />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover/item:bg-black/5 transition-colors flex items-center justify-center">
-                                                        <div className="bg-white/20 backdrop-blur-md p-3 rounded-full opacity-0 group-hover/item:opacity-100 transition-opacity border border-white/20">
-                                                            <Maximize2 className="h-6 w-6 text-white" />
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             </CarouselItem>
                                         )) : (
@@ -456,8 +451,8 @@ export function HighfieldQuoteFlow({
                                     </CarouselContent>
                                     {carouselImages.length > 1 && (
                                         <>
-                                            <CarouselPrevious className="left-8 z-40 h-12 w-12 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-background/80 backdrop-blur-md border-none shadow-xl hover:scale-110 active:scale-95" />
-                                            <CarouselNext className="right-8 z-40 h-12 w-12 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-background/80 backdrop-blur-md border-none shadow-xl hover:scale-110 active:scale-95" />
+                                            <CarouselPrevious className="left-8 z-40 h-10 w-10 opacity-0 group-hover:opacity-30 hover:!opacity-80 transition-all bg-background/60 backdrop-blur-md border border-white/10 shadow-lg" />
+                                            <CarouselNext className="right-8 z-40 h-10 w-10 opacity-0 group-hover:opacity-30 hover:!opacity-80 transition-all bg-background/60 backdrop-blur-md border border-white/10 shadow-lg" />
                                         </>
                                     )}
                                 </Carousel>
@@ -781,19 +776,11 @@ export function HighfieldQuoteFlow({
             </Dialog>
 
             <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
-                <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-none bg-transparent shadow-none flex items-center justify-center">
+                <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 border-none bg-black/95 backdrop-blur-3xl shadow-none flex items-center justify-center animate-in fade-in duration-500 [&>button]:h-12 [&>button]:w-12 [&>button]:rounded-full [&>button]:bg-white/10 [&>button]:backdrop-blur-xl [&>button]:text-white [&>button]:hover:bg-white/20 [&>button]:border [&>button]:border-white/10 [&>button]:transition-all">
                     <DialogTitle className="sr-only">Image Preview</DialogTitle>
                     {lightboxImage && (
-                        <div className="relative w-full h-[90vh] animate-in fade-in zoom-in-95 duration-300">
-                            <Image src={lightboxImage} alt="Lightbox View" fill className="object-contain" unoptimized />
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="absolute top-4 right-4 h-12 w-12 rounded-full bg-black/40 backdrop-blur-xl text-white hover:bg-black/60 transition-all border border-white/10"
-                                onClick={() => setLightboxImage(null)}
-                            >
-                                <X className="h-6 w-6" />
-                            </Button>
+                        <div className="relative w-full h-full p-12 flex items-center justify-center animate-in zoom-in-95 duration-500">
+                            <Image src={lightboxImage} alt="Lightbox View" fill className="object-contain drop-shadow-[0_0_100px_rgba(255,255,255,0.1)]" unoptimized />
                         </div>
                     )}
                 </DialogContent>
