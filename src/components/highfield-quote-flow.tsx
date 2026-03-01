@@ -747,18 +747,25 @@ export function HighfieldQuoteFlow({
 
             {/* Immersive Lightbox */}
             <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
-                <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 border-none bg-black/95 backdrop-blur-3xl shadow-none flex items-center justify-center animate-in fade-in duration-500">
+                <DialogContent className="max-w-[95vw] sm:max-w-6xl h-auto max-h-[95vh] p-0 border-none bg-black/90 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
                     <DialogTitle className="sr-only">Image Preview</DialogTitle>
                     {lightboxImage && (
-                        <div className="relative w-full h-full p-12 md:p-24 flex items-center justify-center animate-in zoom-in-95 duration-500">
-                            <Image src={lightboxImage} alt="Lightbox View" fill className="object-contain drop-shadow-[0_0_100px_rgba(255,255,255,0.1)]" unoptimized />
+                        <div className="relative w-full h-full p-4 md:p-12 flex items-center justify-center min-h-[300px]">
+                            <Image 
+                                src={lightboxImage} 
+                                alt="Lightbox View" 
+                                width={1600} 
+                                height={900} 
+                                className="w-full h-auto max-h-[80vh] object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.1)] rounded-2xl" 
+                                unoptimized 
+                            />
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="absolute top-8 right-8 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md"
+                                className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-50"
                                 onClick={() => setLightboxImage(null)}
                             >
-                                <X className="h-6 w-6" />
+                                <X className="h-5 w-5" />
                             </Button>
                         </div>
                     )}
