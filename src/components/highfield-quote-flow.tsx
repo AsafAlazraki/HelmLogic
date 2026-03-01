@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -27,7 +28,9 @@ import {
     ListChecks,
     ClipboardList,
     Lock,
-    Maximize2
+    Maximize2,
+    FileText,
+    ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -246,13 +249,9 @@ export function HighfieldQuoteFlow({
         const options = model.optionalFeatures || [];
         const rules = model.rules || [];
 
-        const selectedConsoleIds = selectedOptionIds.filter(id => {
+        const whitelistedSeatIds = selectedOptionIds.map(id => {
             const opt = options.find((f: any) => f.id === id);
-            return opt?.category === 'Consoles';
-        });
-        const whitelistedSeatIds = selectedConsoleIds.map(id => {
-            const opt = options.find((f: any) => f.id === id);
-            return opt?.associatedSeatId;
+            return opt?.category === 'Consoles' ? opt.associatedSeatId : null;
         }).filter(Boolean);
 
         let filtered = options.filter((opt: any) => {
@@ -331,21 +330,25 @@ export function HighfieldQuoteFlow({
         }
     };
 
+    const isOptionLocked = (id: string) => {
+        const option = model.optionalFeatures?.find((f: any) => f.id === id);
+        if (option?.category === 'Seats') {
+            const parentConsole = model.optionalFeatures?.find((f: any) => f.category === 'Consoles' && f.associatedSeatId === id);
+            return parentConsole && selectedOptionIds.includes(parentConsole.id);
+        }
+        return false;
+    };
+
     const handleMaterialSelect = (mat: string) => {
         setSelectedMaterial(mat as any);
         setSelectedColor(null);
-        setTimeout(() => {
-            const colorsSection = document.getElementById('available-colors-section');
-            if (colorsSection) colorsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
     };
 
-    const rangeName = range?.name || '';
+    const rangePart = range?.name || '';
     const fullModelName = model.name;
-    const modelPart = fullModelName.toLowerCase().startsWith(rangeName.toLowerCase()) 
-        ? fullModelName.substring(rangeName.length).trim()
+    const modelPart = fullModelName.toLowerCase().startsWith(rangePart.toLowerCase()) 
+        ? fullModelName.substring(rangePart.length).trim()
         : fullModelName;
-    const rangePart = rangeName;
 
     return (
         <div className="h-[calc(100vh-64px)] -mt-6 md:-mt-8 -mx-4 md:-mx-6 bg-background flex flex-col relative overflow-hidden">
@@ -436,59 +439,86 @@ export function HighfieldQuoteFlow({
                                         </>
                                     )}
                                 </Carousel>
+
+                                {/* Floating Control Hub (Standard Features, Specs, Docs) */}
+                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 p-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-100 shadow-xl scale-90 md:scale-100 transition-all">
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
+                                                    onClick={() => setShowStandardFeatures(true)}
+                                                >
+                                                    <ListChecks className="h-5 w-5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
+                                                Standard Features
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
+                                                    onClick={() => setShowGeneralSpecs(true)}
+                                                >
+                                                    <ClipboardList className="h-5 w-5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
+                                                Technical Specs
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+
+                                    {model.documents && model.documents.length > 0 && (
+                                        <div className="flex items-center gap-2 border-l pl-2 ml-1">
+                                            {model.documents.map((doc: any, i: number) => (
+                                                <TooltipProvider key={doc.id || i}>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
+                                                                asChild
+                                                            >
+                                                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                                                    <FileText className="h-5 w-5" />
+                                                                </a>
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
+                                                            {doc.name || 'View Document'}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Build Summary Hub */}
-                            <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-8 md:p-10 rounded-[2.5rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shrink-0 transition-all">
-                                <div className="flex flex-col md:flex-row md:items-center gap-8 min-w-0 flex-1">
-                                    {/* 3-Color Inline Build Identity */}
-                                    <div className="flex items-center gap-3 text-3xl font-black uppercase tracking-tight min-w-0">
-                                        <span className="text-slate-400 whitespace-nowrap">Current Build</span>
-                                        {rangePart && <span className="text-primary whitespace-nowrap">{rangePart}</span>}
-                                        <span className="text-slate-950 whitespace-nowrap">{modelPart}</span>
-                                    </div>
-                                    
-                                    {/* Isolated Spec Buttons */}
-                                    <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-full border border-slate-100 shrink-0 shadow-sm">
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
-                                                        onClick={() => setShowStandardFeatures(true)}
-                                                    >
-                                                        <ListChecks className="h-5 w-5" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
-                                                    Standard Features
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                        
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
-                                                        onClick={() => setShowGeneralSpecs(true)}
-                                                    >
-                                                        <ClipboardList className="h-5 w-5" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-slate-900 text-white border-none shadow-xl px-3 py-2">
-                                                    General Specs
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    </div>
+                            {/* Build Summary Hub - Redesigned for Clarity */}
+                            <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-8 md:p-10 rounded-[2.5rem] flex flex-col gap-2 shrink-0 transition-all">
+                                {/* Row 1: Labels */}
+                                <div className="flex items-center justify-between px-1">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Current Build</span>
+                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Total (Excl. Tax)</span>
                                 </div>
-                                <div className="text-right shrink-0">
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Build Total (Excl. Tax)</p>
+                                {/* Row 2: Values */}
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-3 text-4xl tracking-tight min-w-0">
+                                        {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
+                                        <span className="text-slate-950 font-black whitespace-nowrap">{modelPart}</span>
+                                    </div>
                                     <div className="text-5xl font-black flex items-center justify-end gap-1.5 text-slate-950 tracking-tighter">
                                         <span className="text-primary text-2xl">$</span>
                                         {totalPrice.toLocaleString()}
@@ -532,7 +562,7 @@ export function HighfieldQuoteFlow({
                                 </div>
 
                                 {selectedMaterial && (
-                                    <div id="available-colors-section" className="space-y-5 pt-10">
+                                    <div className="space-y-5 pt-10">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">2. Available Colors</span>
                                         <div className="grid grid-cols-2 gap-4">
                                             {availableColors.map((color) => (
@@ -577,13 +607,16 @@ export function HighfieldQuoteFlow({
                                             <div className="grid gap-3">
                                                 {options.map((opt: any) => {
                                                     const isSelected = selectedOptionIds.includes(opt.id);
+                                                    const isLocked = isOptionLocked(opt.id);
                                                     return (
                                                         <button
                                                             key={opt.id}
-                                                            onClick={() => toggleOption(opt.id)}
+                                                            onClick={() => !isLocked && toggleOption(opt.id)}
+                                                            disabled={isLocked}
                                                             className={cn(
-                                                                "group flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all duration-300 text-left",
-                                                                isSelected ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-slate-100 hover:border-primary/20"
+                                                                "group flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all duration-300 text-left relative",
+                                                                isSelected ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-slate-100 hover:border-primary/20",
+                                                                isLocked && "opacity-80 cursor-default"
                                                             )}
                                                         >
                                                             <div className="flex items-center gap-5 min-w-0">
@@ -591,7 +624,10 @@ export function HighfieldQuoteFlow({
                                                                     {opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-cover" unoptimized /> : <Package className="h-6 w-6 m-auto mt-4 opacity-5" />}
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{opt.name}</p>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{opt.name}</p>
+                                                                        {isLocked && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
+                                                                    </div>
                                                                     {opt.code && <p className="text-[10px] font-mono text-muted-foreground uppercase mt-1">{opt.code}</p>}
                                                                 </div>
                                                             </div>
@@ -707,6 +743,33 @@ export function HighfieldQuoteFlow({
                 </ScrollArea>
             </div>
 
+            {/* Lightbox - Gallery Scale */}
+            <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
+                <DialogContent className="max-w-[90vw] sm:max-w-5xl h-auto max-h-[85vh] p-0 border-none bg-black/90 backdrop-blur-2xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
+                    <DialogTitle className="sr-only">Image Preview</DialogTitle>
+                    {lightboxImage && (
+                        <div className="relative w-full h-full p-4 md:p-12 flex items-center justify-center min-h-[300px]">
+                            <Image 
+                                src={lightboxImage} 
+                                alt="Lightbox View" 
+                                width={1600} 
+                                height={900} 
+                                className="w-full h-auto max-h-[75vh] object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.1)] rounded-2xl" 
+                                unoptimized 
+                            />
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-50"
+                                onClick={() => setLightboxImage(null)}
+                            >
+                                <X className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
             {/* Standard Features Overlay */}
             <Dialog open={showStandardFeatures} onOpenChange={setShowStandardFeatures}>
                 <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden">
@@ -742,33 +805,6 @@ export function HighfieldQuoteFlow({
                             </div>
                         ))}
                     </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* Immersive Lightbox */}
-            <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
-                <DialogContent className="max-w-[95vw] sm:max-w-6xl h-auto max-h-[95vh] p-0 border-none bg-black/90 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
-                    <DialogTitle className="sr-only">Image Preview</DialogTitle>
-                    {lightboxImage && (
-                        <div className="relative w-full h-full p-4 md:p-12 flex items-center justify-center min-h-[300px]">
-                            <Image 
-                                src={lightboxImage} 
-                                alt="Lightbox View" 
-                                width={1600} 
-                                height={900} 
-                                className="w-full h-auto max-h-[80vh] object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.1)] rounded-2xl" 
-                                unoptimized 
-                            />
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-50"
-                                onClick={() => setLightboxImage(null)}
-                            >
-                                <X className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    )}
                 </DialogContent>
             </Dialog>
         </div>
