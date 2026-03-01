@@ -350,7 +350,7 @@ export function HighfieldQuoteFlow({
         : fullModelName;
 
     return (
-        <div className="h-[calc(100vh-64px)] -mt-6 md:-mt-8 -mx-4 md:-mx-6 bg-background flex flex-col relative overflow-hidden">
+        <div className="h-full -mt-6 md:-mt-8 -mx-4 md:-mx-6 bg-background flex flex-col relative overflow-hidden">
             {/* Ambient Background */}
             <div className="absolute inset-0 z-0">
                 {model.coverImageUrl && (
@@ -361,21 +361,21 @@ export function HighfieldQuoteFlow({
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
             </div>
 
-            {/* Sticky Step Header */}
-            <div className="sticky top-0 z-30 px-6 md:px-12 py-6 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all">
+            {/* Sticky Step Header - Fixed Height & Vertical Centering */}
+            <div className="sticky top-0 z-30 px-6 md:px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all flex items-center">
                 <div className="w-full flex items-center justify-between">
-                    <div className="flex flex-1 items-center justify-start gap-6 md:gap-12">
+                    <div className="flex flex-1 items-center justify-start gap-8 md:gap-16">
                         {STEPS.map((step) => (
-                            <div key={step.id} className="flex items-center gap-2 md:gap-3">
+                            <div key={step.id} className="flex items-center gap-3">
                                 <div className={cn(
-                                    "h-6 w-6 md:h-7 md:w-7 rounded-full flex items-center justify-center text-[9px] md:text-[10px] font-black transition-all border-2",
+                                    "h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2",
                                     currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-lg" : 
                                     currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground"
                                 )}>
-                                    {currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}
+                                    {currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}
                                 </div>
                                 <span className={cn(
-                                    "text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-colors hidden sm:block",
+                                    "text-[9px] font-black uppercase tracking-widest transition-colors hidden sm:block",
                                     currentStep === step.id ? "text-foreground" : "text-muted-foreground"
                                 )}>
                                     {step.label}
@@ -384,9 +384,13 @@ export function HighfieldQuoteFlow({
                             </div>
                         ))}
                     </div>
-                    <Button variant="ghost" size="sm" className="font-bold text-destructive hover:bg-destructive/10 uppercase tracking-widest text-[10px]" onClick={() => window.history.back()}>
+                    {/* Exit Button leveled with step circles */}
+                    <button 
+                        className="font-black text-destructive hover:text-destructive/80 transition-colors uppercase tracking-[0.15em] text-[10px] h-8 flex items-center px-4" 
+                        onClick={() => window.history.back()}
+                    >
                         Exit
-                    </Button>
+                    </button>
                 </div>
             </div>
 
@@ -432,7 +436,7 @@ export function HighfieldQuoteFlow({
                                     )}
                                 </Carousel>
 
-                                {/* Floating Control Hub (Standard Features, Specs, Docs) */}
+                                {/* Floating Control Hub (Bottom Center of Card) */}
                                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 p-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-100 shadow-xl scale-90 md:scale-100 transition-all">
                                     <TooltipProvider>
                                         <Tooltip>
@@ -498,7 +502,7 @@ export function HighfieldQuoteFlow({
                                 </div>
                             </div>
 
-                            {/* Build Summary Hub */}
+                            {/* Build Summary Hub (2-Row Layout) */}
                             <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-8 md:p-10 rounded-[2.5rem] flex flex-col gap-2 shrink-0 transition-all">
                                 {/* Row 1: Labels */}
                                 <div className="flex items-center justify-between px-1">
@@ -521,7 +525,7 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
-                {/* Configuration Panel (Right) */}
+                {/* Configuration Panel (Right) - Isolated Scrolling */}
                 <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100">
                     <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
                         
