@@ -415,18 +415,18 @@ export function HighfieldQuoteFlow({
                     <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full max-w-6xl flex flex-col gap-6">
                             
-                            {/* Carousel Container - Restored Scaling */}
+                            {/* Carousel Container - Optimized Scaling */}
                             <div className="relative flex-1 w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden group min-h-0">
                                 <Carousel className="w-full h-full" opts={{ loop: true }}>
-                                    <CarouselContent className="h-full items-center">
+                                    <CarouselContent className="h-full">
                                         {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
                                             <CarouselItem key={`${url}-${idx}`} className="h-full w-full">
-                                                <div className="relative h-full w-full flex items-center justify-center p-4">
+                                                <div className="relative h-full w-full flex items-center justify-center">
                                                     <Image 
                                                         src={url} 
                                                         alt={`Boat View ${idx}`} 
                                                         fill 
-                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.35)] transition-transform duration-700" 
+                                                        className="object-contain p-8 drop-shadow-[0_35px_60px_rgba(0,0,0,0.35)] transition-transform duration-700" 
                                                         unoptimized
                                                     />
                                                 </div>
@@ -444,7 +444,7 @@ export function HighfieldQuoteFlow({
                                 </Carousel>
                             </div>
 
-                            {/* Build Summary Hub - Relocated Buttons & Styled Title */}
+                            {/* Build Summary Hub - Refined Typography & Button Location */}
                             <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl shrink-0">
                                 <div className="space-y-4 min-w-0 flex-1">
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-6 min-w-0">
@@ -454,7 +454,6 @@ export function HighfieldQuoteFlow({
                                             <span className="text-foreground whitespace-nowrap">{modelPart}</span>
                                         </div>
                                         
-                                        {/* Strategic Relocation: Spec & Feature Buttons */}
                                         <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1 rounded-full border border-white/20 shadow-sm shrink-0">
                                             <TooltipProvider>
                                                 <Tooltip>
