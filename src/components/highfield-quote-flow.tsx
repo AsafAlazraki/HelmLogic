@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, doc, where, getDocs, type CollectionReference } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -48,7 +48,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface Variant {
     id: string;
@@ -120,11 +120,11 @@ export function HighfieldQuoteFlow({
             try {
                 // Find Motor Vendor
                 const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'))
-                    .catch(e => {
+                    .catch(async (e) => {
                         errorEmitter.emit('permission-error', new FirestorePermissionError({
                             path: 'data-warehouse',
                             operation: 'list'
-                        }));
+                        } satisfies SecurityRuleContext));
                         throw e;
                     });
 
@@ -135,11 +135,11 @@ export function HighfieldQuoteFlow({
                 if (motorVendor) {
                     const dsRef = collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets');
                     const dsSnap = await getDocs(dsRef)
-                        .catch(e => {
+                        .catch(async (e) => {
                             errorEmitter.emit('permission-error', new FirestorePermissionError({
                                 path: dsRef.path,
                                 operation: 'list'
-                            }));
+                            } satisfies SecurityRuleContext));
                             throw e;
                         });
 
@@ -150,11 +150,11 @@ export function HighfieldQuoteFlow({
                         setSelectedMotorDataSetId(targetDS.id);
                         const rowsRef = collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`);
                         const rowsSnap = await getDocs(rowsRef)
-                            .catch(e => {
+                            .catch(async (e) => {
                                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                                     path: rowsRef.path,
                                     operation: 'list'
-                                }));
+                                } satisfies SecurityRuleContext));
                                 throw e;
                             });
 
@@ -180,7 +180,7 @@ export function HighfieldQuoteFlow({
                     }
                 }
             } catch (e) {
-                // Silently handled by emitter logic above if it was a permission error
+                // error handled by emitter
             } finally {
                 setMotorsLoading(false);
             }

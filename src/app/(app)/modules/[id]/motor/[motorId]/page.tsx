@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MotorConfigurationDetails } from '@/components/motor-configuration-details';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export default function MotorConfigurationPage() {
     const params = useParams();
@@ -36,7 +38,13 @@ export default function MotorConfigurationPage() {
             setLoading(true);
             try {
                 const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motorId);
-                const snap = await getDoc(motorRef);
+                const snap = await getDoc(motorRef).catch(async (e) => {
+                    errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: motorRef.path,
+                        operation: 'get'
+                    } satisfies SecurityRuleContext));
+                    throw e;
+                });
                 if (snap.exists()) {
                     setMotor({ id: snap.id, ...snap.data() });
                 }
