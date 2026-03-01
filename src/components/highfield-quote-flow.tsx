@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -365,8 +364,7 @@ export function HighfieldQuoteFlow({
             {/* Sticky Step Header */}
             <div className="sticky top-0 z-30 p-6 flex flex-col items-center gap-6 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all">
                 <div className="w-full max-w-7xl flex items-center justify-between px-4">
-                    <h1 className="text-xl font-black uppercase tracking-tight leading-tight hidden lg:block">Quotation Engine</h1>
-                    <div className="flex flex-1 md:flex-none items-center justify-center gap-4 md:gap-8">
+                    <div className="flex flex-1 items-center justify-center gap-4 md:gap-8">
                         {STEPS.map((step) => (
                             <div key={step.id} className="flex items-center gap-2 md:gap-3">
                                 <div className={cn(
@@ -434,8 +432,8 @@ export function HighfieldQuoteFlow({
                                     </CarouselContent>
                                     {carouselImages.length > 1 && (
                                         <>
-                                            <CarouselPrevious className="left-6 h-10 w-10 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
-                                            <CarouselNext className="right-6 h-10 w-10 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
+                                            <CarouselPrevious className="left-6 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
+                                            <CarouselNext className="right-6 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
                                         </>
                                     )}
                                 </Carousel>
@@ -506,7 +504,7 @@ export function HighfieldQuoteFlow({
                                 </div>
                             </div>
 
-                            {/* Build Summary Hub - Redesigned for Clarity */}
+                            {/* Build Summary Hub */}
                             <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-8 md:p-10 rounded-[2.5rem] flex flex-col gap-2 shrink-0 transition-all">
                                 {/* Row 1: Labels */}
                                 <div className="flex items-center justify-between px-1">
@@ -743,9 +741,9 @@ export function HighfieldQuoteFlow({
                 </ScrollArea>
             </div>
 
-            {/* Lightbox - Gallery Scale */}
+            {/* Lightbox */}
             <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
-                <DialogContent className="max-w-[90vw] sm:max-w-5xl h-auto max-h-[85vh] p-0 border-none bg-black/90 backdrop-blur-2xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
+                <DialogContent className="max-w-4xl h-auto max-h-[85vh] p-0 border-none bg-black/90 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
                     <DialogTitle className="sr-only">Image Preview</DialogTitle>
                     {lightboxImage && (
                         <div className="relative w-full h-full p-4 md:p-12 flex items-center justify-center min-h-[300px]">
@@ -754,7 +752,7 @@ export function HighfieldQuoteFlow({
                                 alt="Lightbox View" 
                                 width={1600} 
                                 height={900} 
-                                className="w-full h-auto max-h-[75vh] object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.1)] rounded-2xl" 
+                                className="w-full h-auto max-h-[75vh] object-contain rounded-2xl" 
                                 unoptimized 
                             />
                             <Button 
