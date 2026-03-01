@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
@@ -49,7 +48,13 @@ export default function QuoteFlowPage() {
     [firestore, vendorId]);
     const { data: vendor, loading: vendorLoading } = useDoc<any>(vendorRef);
 
-    const loading = moduleLoading || modelDetailsLoading || vendorLoading;
+    // 4. Fetch Range Details
+    const rangeRef = useMemoFirebase(() => 
+        vendorId && rangeId ? doc(firestore, `data-warehouse/${vendorId}/ranges`, rangeId) : null,
+    [firestore, vendorId, rangeId]);
+    const { data: range, loading: rangeLoading } = useDoc<any>(rangeRef);
+
+    const loading = moduleLoading || modelDetailsLoading || vendorLoading || rangeLoading;
 
     if (loading) {
         return (
@@ -75,6 +80,7 @@ export default function QuoteFlowPage() {
                 module={moduleData}
                 model={model}
                 vendor={vendor}
+                range={range}
                 rangeId={rangeId!}
             />
         );
