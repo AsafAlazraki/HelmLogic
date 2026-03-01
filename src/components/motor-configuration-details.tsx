@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -11,6 +12,8 @@ import { Ship, Wrench, Package, ShieldCheck, Globe, DollarSign, Save, Loader2, P
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export function MotorConfigurationDetails({ motor, module, vendorId, dataSetId }: { motor: any, module: any, vendorId: string, dataSetId: string }) {
     const { toast } = useToast();
@@ -33,18 +36,22 @@ export function MotorConfigurationDetails({ motor, module, vendorId, dataSetId }
 
     const handleSave = async () => {
         setIsSaving(true);
-        try {
-            const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
-            await updateDoc(motorRef, {
-                lastConfiguredAt: serverTimestamp(),
-                // Accessories are updated in real-time by handleSaveSelection
-            });
-            toast({ title: "Configuration Saved", description: "Master outboard settings have been updated." });
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Save Failed" });
-        } finally {
-            setIsSaving(false);
-        }
+        const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
+        const updateData = { lastConfiguredAt: serverTimestamp() };
+
+        updateDoc(motorRef, updateData)
+            .then(() => {
+                toast({ title: "Configuration Saved", description: "Master outboard settings have been updated." });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: motorRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => setIsSaving(false));
     };
 
     const handleOpenBrowser = (cat: 'Propeller' | 'Rigging' | 'Other') => {
@@ -53,32 +60,45 @@ export function MotorConfigurationDetails({ motor, module, vendorId, dataSetId }
     };
 
     const handleSaveSelection = async (selection: any) => {
-        try {
-            const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
-            const newAccessories = [...accessories, {
-                id: `acc-${Date.now()}`,
-                name: selection.name,
-                category: activeCategory,
-                items: selection.items
-            }];
-            
-            await updateDoc(motorRef, { masterAccessories: newAccessories });
-            toast({ title: "Accessory Added", description: `${selection.name} linked to this motor model.` });
-            setIsBrowserOpen(false);
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Failed to add accessory" });
-        }
+        const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
+        const newAccessories = [...accessories, {
+            id: `acc-${Date.now()}`,
+            name: selection.name,
+            category: activeCategory,
+            items: selection.items
+        }];
+        
+        updateDoc(motorRef, { masterAccessories: newAccessories })
+            .then(() => {
+                toast({ title: "Accessory Added", description: `${selection.name} linked to this motor model.` });
+                setIsBrowserOpen(false);
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: motorRef.path,
+                    operation: 'update',
+                    requestResourceData: { masterAccessories: newAccessories },
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
     const handleRemoveAccessory = async (accId: string) => {
-        try {
-            const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
-            const newAccessories = accessories.filter((a: any) => a.id !== accId);
-            await updateDoc(motorRef, { masterAccessories: newAccessories });
-            toast({ title: "Accessory Removed" });
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Remove Failed" });
-        }
+        const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
+        const newAccessories = accessories.filter((a: any) => a.id !== accId);
+        
+        updateDoc(motorRef, { masterAccessories: newAccessories })
+            .then(() => {
+                toast({ title: "Accessory Removed" });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: motorRef.path,
+                    operation: 'update',
+                    requestResourceData: { masterAccessories: newAccessories },
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
     const dummyOrg = {

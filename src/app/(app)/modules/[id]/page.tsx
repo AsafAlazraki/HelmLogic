@@ -53,7 +53,7 @@ import { Label } from '@/components/ui/label';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { MotorModuleBrowser } from '@/components/motor-module-browser';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { 
     Select, 
     SelectContent, 
@@ -231,28 +231,42 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
             updatedPackages = [...currentPackages, newPackage];
         }
 
-        try {
-            const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${selectedModelForPackage.id}`;
-            await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
-            toast({ title: "Package Updated" });
-        } catch(error) {
-            console.error('Failed to save package:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not save package.' });
-        }
+        const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${selectedModelForPackage.id}`;
+        const docRef = doc(firestore, modelPath);
+        
+        updateDoc(docRef, { packageLevels: updatedPackages })
+            .then(() => {
+                toast({ title: "Package Updated" });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: docRef.path,
+                    operation: 'update',
+                    requestResourceData: { packageLevels: updatedPackages },
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
     const handleDeletePackage = async (model: Model, packageId: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         const updatedPackages = model.packageLevels?.filter(p => p.id !== packageId) || [];
-        try {
-            const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
-            await updateDoc(doc(firestore, modelPath), { packageLevels: updatedPackages });
-            toast({ title: 'Package Deleted' });
-        } catch(error) {
-            console.error('Failed to delete package:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete package.' });
-        }
+        const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
+        const docRef = doc(firestore, modelPath);
+
+        updateDoc(docRef, { packageLevels: updatedPackages })
+            .then(() => {
+                toast({ title: 'Package Deleted' });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: docRef.path,
+                    operation: 'update',
+                    requestResourceData: { packageLevels: updatedPackages },
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
     
     return (
@@ -478,7 +492,6 @@ export default function ModuleDetailsPage() {
         return allOrganisations.filter(o => o.parentOrganisationId === dashboardOrg.id);
     }, [dashboardOrg, allOrganisations]);
 
-    // Permissions logic
     const userPermissions = useMemo(() => {
         if (isAdmin) return {
             can_access_module: true,
@@ -511,7 +524,6 @@ export default function ModuleDetailsPage() {
         return contexts;
     }, [isAdmin, allOrganisations, userProfile, userPermissions]);
 
-    // Tab control state
     const [activeTab, setActiveTab] = useState('dashboard');
 
     useEffect(() => {
@@ -542,27 +554,32 @@ export default function ModuleDetailsPage() {
     async function onSettingsSubmit(values: z.infer<typeof formSchema>) {
         if (!moduleData) return;
         setIsSavingModule(true);
-        try {
-            const moduleRef = doc(firestore, 'modules', moduleData.id);
-            const vendor = allVendors?.find(v => v.id === values.mainVendorId);
-            const dataToUpdate = {
-                name: values.name,
-                slug: createSlug(values.name),
-                mainVendorId: values.mainVendorId,
-                associatedVendorIds: values.associatedVendorIds,
-                logoUrl: vendor?.logoUrl || null,
-            };
+        const moduleRef = doc(firestore, 'modules', moduleData.id);
+        const vendor = allVendors?.find(v => v.id === values.mainVendorId);
+        const dataToUpdate = {
+            name: values.name,
+            slug: createSlug(values.name),
+            mainVendorId: values.mainVendorId,
+            associatedVendorIds: values.associatedVendorIds,
+            logoUrl: vendor?.logoUrl || null,
+        };
 
-            await updateDoc(moduleRef, dataToUpdate);
-            toast({ title: 'Module Updated' });
-            if (dataToUpdate.slug !== slugOrId) {
-                router.replace(`/modules/${dataToUpdate.slug}`);
-            }
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Update Failed' });
-        } finally {
-            setIsSavingModule(false);
-        }
+        updateDoc(moduleRef, dataToUpdate)
+            .then(() => {
+                toast({ title: 'Module Updated' });
+                if (dataToUpdate.slug !== slugOrId) {
+                    router.replace(`/modules/${dataToUpdate.slug}`);
+                }
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: moduleRef.path,
+                    operation: 'update',
+                    requestResourceData: dataToUpdate,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => setIsSavingModule(false));
     }
 
     const handleSaveSubscriptions = async () => {
@@ -582,59 +599,86 @@ export default function ModuleDetailsPage() {
             }
         });
 
-        try {
-            await batch.commit();
-            toast({ title: "Subscriptions updated." });
-        } catch (error) {
-            toast({ variant: "destructive", title: "Failed to save subscriptions." });
-        } finally {
-            setIsSavingSubscriptions(false);
-        }
+        batch.commit()
+            .then(() => {
+                toast({ title: "Subscriptions updated." });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: 'organisations',
+                    operation: 'write',
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => setIsSavingSubscriptions(false));
     };
 
     const handleUpdateOrgVendorAccess = async (targetId: string, vendorIds: string[]) => {
         if (!targetId) return;
-        try {
-            const orgRef = doc(firestore, 'organisations', targetId);
-            await updateDoc(orgRef, {
-                [`moduleAssociatedVendorAccess.${moduleData.id}`]: vendorIds
+        const orgRef = doc(firestore, 'organisations', targetId);
+        const updateData = {
+            [`moduleAssociatedVendorAccess.${moduleData.id}`]: vendorIds
+        };
+
+        updateDoc(orgRef, updateData)
+            .then(() => {
+                toast({ title: "Vendor access updated." });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: orgRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
             });
-            toast({ title: "Vendor access updated." });
-        } catch (error) {
-            toast({ variant: "destructive", title: "Failed to update access." });
-        }
     };
 
     const handleUpdateOrgCategories = async (targetId: string, catIds: string[]) => {
         if (!targetId) return;
-        try {
-            const orgRef = doc(firestore, 'organisations', targetId);
-            await updateDoc(orgRef, {
-                dealerFitCategories: catIds
+        const orgRef = doc(firestore, 'organisations', targetId);
+        const updateData = {
+            dealerFitCategories: catIds
+        };
+
+        updateDoc(orgRef, updateData)
+            .then(() => {
+                toast({ title: "Dealer fit options updated." });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: orgRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
             });
-            toast({ title: "Dealer fit options updated." });
-        } catch (error) {
-            toast({ variant: "destructive", title: "Failed to update categories." });
-        }
     };
 
     const handleToggleModuleAccess = async (orgId: string, hasAccess: boolean) => {
         if (!moduleData) return;
-        try {
-            const org = allOrganisations?.find(o => o.id === orgId);
-            if (!org) return;
-            const currentSubs = org.enabledModuleSubscriptions || [];
-            const newSubs = hasAccess 
-                ? [...new Set([...currentSubs, moduleData.id])]
-                : currentSubs.filter(id => id !== moduleData.id);
-            
-            await updateDoc(doc(firestore, 'organisations', orgId), {
-                enabledModuleSubscriptions: newSubs
+        const org = allOrganisations?.find(o => o.id === orgId);
+        if (!org) return;
+        const currentSubs = org.enabledModuleSubscriptions || [];
+        const newSubs = hasAccess 
+            ? [...new Set([...currentSubs, moduleData.id])]
+            : currentSubs.filter(id => id !== moduleData.id);
+        
+        const orgRef = doc(firestore, 'organisations', orgId);
+        updateDoc(orgRef, {
+            enabledModuleSubscriptions: newSubs
+        })
+            .then(() => {
+                toast({ title: hasAccess ? "Access granted" : "Access revoked" });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: orgRef.path,
+                    operation: 'update',
+                    requestResourceData: { enabledModuleSubscriptions: newSubs },
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
             });
-            toast({ title: hasAccess ? "Access granted" : "Access revoked" });
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Update failed" });
-        }
     };
 
     const handleRangeSelect = (range: Range) => {
@@ -1024,7 +1068,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
@@ -1155,7 +1199,7 @@ export default function ModuleDetailsPage() {
                                 <ClipboardList className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
                                 <p className="font-black uppercase tracking-widest text-xs">Operations</p>
                             </CardContent>
-                        </Card>
+                         </Card>
                     </div>
                 </DialogContent>
             </Dialog>

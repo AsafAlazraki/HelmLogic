@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -23,6 +24,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface Vessel {
     id: string;
@@ -67,7 +70,6 @@ export function VesselOnOrderList({
     const isSubDealer = !!parentOrg;
     const targetOrgId = isSubDealer ? parentOrg?.id : organisation.id;
 
-    // Fetch vessels that are "On Order" from the parent (if sub-dealer) or local (if parent)
     const vesselsQuery = useMemoFirebase(() => {
         if (!targetOrgId) return null;
         return query(
@@ -79,7 +81,6 @@ export function VesselOnOrderList({
 
     const { data: vessels, loading: vesselsLoading } = useCollection<Vessel>(vesselsQuery);
 
-    // Fetch active reservations for these vessels
     const reservationsQuery = useMemoFirebase(() => {
         if (!vessels || vessels.length === 0) return null;
         return query(
@@ -101,103 +102,143 @@ export function VesselOnOrderList({
     const handleRequestReservation = async () => {
         if (!selectedVessel || !customerName.trim() || !user) return;
         setIsReserving(true);
-        try {
-            const reservationData = {
-                vesselId: selectedVessel.id,
-                subDealerOrganisationId: organisation.id,
-                vesselOwnerOrganisationId: targetOrgId!,
-                requestedByUserId: user.uid,
-                customerName,
-                description,
-                status: 'Awaiting Confirmation',
-                requestedAt: new Date().toISOString(),
-            };
+        
+        const colRef = collection(firestore, 'vesselReservations');
+        const reservationData = {
+            vesselId: selectedVessel.id,
+            subDealerOrganisationId: organisation.id,
+            vesselOwnerOrganisationId: targetOrgId!,
+            requestedByUserId: user.uid,
+            customerName,
+            description,
+            status: 'Awaiting Confirmation',
+            requestedAt: new Date().toISOString(),
+        };
 
-            const resRef = await addDoc(collection(firestore, 'vesselReservations'), reservationData);
-            
-            // Notify parent organisation users
-            const parentUsersQuery = query(collection(firestore, 'users'), where('organisationId', '==', targetOrgId));
-            const parentUsers = await getDocs(parentUsersQuery);
-            
-            parentUsers.forEach(uDoc => {
-                addDoc(collection(firestore, `users/${uDoc.id}/notifications`), {
-                    message: `${organisation.name} requested to reserve vessel ${selectedVessel.name} for ${customerName}.`,
-                    type: 'ReservationRequest',
-                    sourceEntityId: resRef.id,
-                    sourceEntityType: 'VesselReservation',
-                    isRead: false,
-                    createdAt: new Date().toISOString()
+        addDoc(colRef, reservationData)
+            .then(async (resRef) => {
+                const parentUsersQuery = query(collection(firestore, 'users'), where('organisationId', '==', targetOrgId));
+                const parentUsers = await getDocs(parentUsersQuery);
+                
+                parentUsers.forEach(uDoc => {
+                    const notifyCol = collection(firestore, `users/${uDoc.id}/notifications`);
+                    const notifyData = {
+                        message: `${organisation.name} requested to reserve vessel ${selectedVessel.name} for ${customerName}.`,
+                        type: 'ReservationRequest',
+                        sourceEntityId: resRef.id,
+                        sourceEntityType: 'VesselReservation',
+                        isRead: false,
+                        createdAt: new Date().toISOString()
+                    };
+                    addDoc(notifyCol, notifyData).catch(async (e) => {
+                        const contextualError = new FirestorePermissionError({
+                            path: notifyCol.path,
+                            operation: 'create',
+                            requestResourceData: notifyData
+                        });
+                        errorEmitter.emit('permission-error', contextualError);
+                    });
                 });
-            });
 
-            toast({ title: "Reservation Requested", description: "Parent organisation has been notified." });
-            setSelectedVessel(null);
-            setCustomerName('');
-            setDescription('');
-        } catch (error) {
-            console.error("Reservation request failed:", error);
-            toast({ variant: 'destructive', title: "Request Failed" });
-        } finally {
-            setIsReserving(false);
-        }
+                toast({ title: "Reservation Requested", description: "Parent organisation has been notified." });
+                setSelectedVessel(null);
+                setCustomerName('');
+                setDescription('');
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: colRef.path,
+                    operation: 'create',
+                    requestResourceData: reservationData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => setIsReserving(false));
     };
 
     const handleProcessReservation = async (res: Reservation, approved: boolean) => {
-        try {
-            const resRef = doc(firestore, 'vesselReservations', res.id);
-            const status = approved ? 'Approved' : 'Declined';
-            
-            const updateData: any = { 
-                status, 
-                processedByUserId: user?.uid,
-                processedAt: new Date().toISOString() 
-            };
-            if (!approved) updateData.declineNote = declineNote;
+        const resRef = doc(firestore, 'vesselReservations', res.id);
+        const status = approved ? 'Approved' : 'Declined';
+        
+        const updateData: any = { 
+            status, 
+            processedByUserId: user?.uid,
+            processedAt: new Date().toISOString() 
+        };
+        if (!approved) updateData.declineNote = declineNote;
 
-            await updateDoc(resRef, updateData);
+        updateDoc(resRef, updateData)
+            .then(async () => {
+                const notifyCol = collection(firestore, `users/${res.requestedByUserId}/notifications`);
+                const notifyData = {
+                    message: `Your reservation for boat ${vessels?.find(v => v.id === res.vesselId)?.name} was ${status.toLowerCase()}${!approved ? `: ${declineNote}` : '.'}`,
+                    type: approved ? 'ReservationApproved' : 'ReservationDeclined',
+                    sourceEntityId: res.id,
+                    sourceEntityType: 'VesselReservation',
+                    isRead: false,
+                    createdAt: new Date().toISOString()
+                };
+                addDoc(notifyCol, notifyData).catch(async (e) => {
+                    const contextualError = new FirestorePermissionError({
+                        path: notifyCol.path,
+                        operation: 'create',
+                        requestResourceData: notifyData
+                    });
+                    errorEmitter.emit('permission-error', contextualError);
+                });
 
-            // Notify sub-dealer requester
-            await addDoc(collection(firestore, `users/${res.requestedByUserId}/notifications`), {
-                message: `Your reservation for boat ${vessels?.find(v => v.id === res.vesselId)?.name} was ${status.toLowerCase()}${!approved ? `: ${declineNote}` : '.'}`,
-                type: approved ? 'ReservationApproved' : 'ReservationDeclined',
-                sourceEntityId: res.id,
-                sourceEntityType: 'VesselReservation',
-                isRead: false,
-                createdAt: new Date().toISOString()
+                toast({ title: `Reservation ${status}` });
+                setResToDecline(null);
+                setDeclineNote('');
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: resRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
             });
-
-            toast({ title: `Reservation ${status}` });
-            setResToDecline(null);
-            setDeclineNote('');
-        } catch (error) {
-            console.error("Action failed:", error);
-            toast({ variant: 'destructive', title: "Action Failed" });
-        }
     };
 
     const handleAddTestOnOrderBoat = async () => {
-        try {
-            await addDoc(collection(firestore, 'vessels'), {
-                name: `Ordered Vessel ${Math.floor(Math.random() * 1000)}`,
-                serialNumber: `ORD-${Math.floor(Math.random() * 10000)}`,
-                status: 'On Order',
-                organisationId: targetOrgId,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+        const colRef = collection(firestore, 'vessels');
+        const dataToAdd = {
+            name: `Ordered Vessel ${Math.floor(Math.random() * 1000)}`,
+            serialNumber: `ORD-${Math.floor(Math.random() * 10000)}`,
+            status: 'On Order',
+            organisationId: targetOrgId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        addDoc(colRef, dataToAdd)
+            .then(() => {
+                toast({ title: "Test Boat Added" });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: colRef.path,
+                    operation: 'create',
+                    requestResourceData: dataToAdd,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
             });
-            toast({ title: "Test Boat Added" });
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Failed to add boat" });
-        }
     };
 
     const handleDeleteVessel = async (vesselId: string) => {
-        try {
-            await deleteDoc(doc(firestore, 'vessels', vesselId));
-            toast({ title: "Vessel deleted." });
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Delete failed." });
-        }
+        const vesselRef = doc(firestore, 'vessels', vesselId);
+        deleteDoc(vesselRef)
+            .then(() => {
+                toast({ title: "Vessel deleted." });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: vesselRef.path,
+                    operation: 'delete',
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
     if (vesselsLoading || resLoading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -284,7 +325,6 @@ export function VesselOnOrderList({
                 </div>
             )}
 
-            {/* Reservation Dialog */}
             <Dialog open={!!selectedVessel} onOpenChange={(open) => !open && setSelectedVessel(null)}>
                 <DialogContent>
                     <DialogHeader>
@@ -314,7 +354,6 @@ export function VesselOnOrderList({
                 </DialogContent>
             </Dialog>
 
-            {/* Decline Dialog */}
             <Dialog open={!!resToDecline} onOpenChange={(open) => !open && setResToDecline(null)}>
                 <DialogContent>
                     <DialogHeader>

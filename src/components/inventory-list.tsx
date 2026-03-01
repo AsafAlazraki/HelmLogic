@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -25,6 +26,8 @@ import {
     DialogClose,
 } from '@/components/ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface InventoryItem {
     id: string;
@@ -58,7 +61,6 @@ export function InventoryList({
 }) {
     const firestore = useFirestore();
     
-    // Determine the set of IDs to query
     const targetOrgIds = useMemo(() => {
         if (filterOrgId === 'local') return [organisation.id];
         if (filterOrgId === 'all') return [organisation.id, ...subDealers.map(sd => sd.id)];
@@ -95,41 +97,63 @@ export function InventoryList({
     const handleAssign = async () => {
         if (!selectedItem || !targetId) return;
         setIsAssigning(true);
-        try {
-            const itemRef = doc(firestore, 'inventory', selectedItem.id);
-            await updateDoc(itemRef, { organisationId: targetId });
-            toast({ title: "Stock Assigned", description: `Successfully moved to ${availableTargets.find(t => t.id === targetId)?.name}` });
-            setSelectedItem(null);
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Transfer Failed" });
-        } finally {
-            setIsAssigning(false);
-        }
+        const itemRef = doc(firestore, 'inventory', selectedItem.id);
+        const updateData = { organisationId: targetId };
+
+        updateDoc(itemRef, updateData)
+            .then(() => {
+                toast({ title: "Stock Assigned", description: `Successfully moved to ${availableTargets.find(t => t.id === targetId)?.name}` });
+                setSelectedItem(null);
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: itemRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            })
+            .finally(() => setIsAssigning(false));
     };
 
     const handleAddTestStock = async () => {
-        try {
-            await addDoc(collection(firestore, 'inventory'), {
-                name: `Test Boat ${Math.floor(Math.random() * 1000)}`,
-                stockNumber: `SN-${Math.floor(Math.random() * 10000)}`,
-                organisationId: organisation.id,
-                moduleId: moduleId,
-                status: 'Available',
-                createdAt: serverTimestamp()
+        const colRef = collection(firestore, 'inventory');
+        const dataToAdd = {
+            name: `Test Boat ${Math.floor(Math.random() * 1000)}`,
+            stockNumber: `SN-${Math.floor(Math.random() * 10000)}`,
+            organisationId: organisation.id,
+            moduleId: moduleId,
+            status: 'Available',
+            createdAt: serverTimestamp()
+        };
+
+        addDoc(colRef, dataToAdd)
+            .then(() => {
+                toast({ title: "Test Stock Added" });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: colRef.path,
+                    operation: 'create',
+                    requestResourceData: dataToAdd,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
             });
-            toast({ title: "Test Stock Added" });
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Failed to add stock" });
-        }
     };
 
     const handleDeleteItem = async (itemId: string) => {
-        try {
-            await deleteDoc(doc(firestore, 'inventory', itemId));
-            toast({ title: "Item deleted." });
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Delete failed." });
-        }
+        const itemRef = doc(firestore, 'inventory', itemId);
+        deleteDoc(itemRef)
+            .then(() => {
+                toast({ title: "Item deleted." });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: itemRef.path,
+                    operation: 'delete',
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;

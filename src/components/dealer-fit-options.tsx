@@ -10,6 +10,8 @@ import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
 import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface DealerFitCategory {
   id: string;
@@ -67,9 +69,7 @@ export function DealerFitOptions({
 
   const assignedCategories = useMemo(() => {
     if (!allCategories) return [];
-    // HelmLogic Admins see all master categories for visual inspection/preview
     if (isAdmin) return allCategories;
-    // Organisation users see only what's assigned to their specific organisation
     if (!organisation?.dealerFitCategories) return [];
     return allCategories.filter(cat => organisation.dealerFitCategories?.includes(cat.id));
   }, [allCategories, organisation, isAdmin]);
@@ -87,18 +87,12 @@ export function DealerFitOptions({
 
   const allowedVendorIds = useMemo(() => {
     if (!module) return [];
-    
-    // For Admins viewing the module in a "Master" context (no orgId), show all vendors tied to the module
     if (isAdmin && !organisationId) {
         return [...new Set([module.mainVendorId, ...(module.associatedVendorIds || [])])].filter(Boolean);
     }
-
     if (!organisation) return [];
-    
     const mainVendor = module.mainVendorId;
     const associatedFromOrg = organisation.moduleAssociatedVendorAccess?.[module.id] || [];
-    
-    // Combine the module's main vendor with any associated vendors the organisation has been granted access to
     return [...new Set([mainVendor, ...associatedFromOrg])].filter(Boolean);
   }, [module, organisation, organisationId, isAdmin]);
 
@@ -112,17 +106,26 @@ export function DealerFitOptions({
         toast({ variant: 'destructive', title: 'Action Prohibited', description: 'Master data categories cannot store organisation-specific selections.' });
         return;
     }
-    try {
-        await addDoc(collection(firestore, `organisations/${organisationId}/dealerFitSelections`), {
-            ...selectionData,
-            createdAt: serverTimestamp(),
+    
+    const colRef = collection(firestore, `organisations/${organisationId}/dealerFitSelections`);
+    const dataToSave = {
+        ...selectionData,
+        createdAt: serverTimestamp(),
+    };
+
+    addDoc(colRef, dataToSave)
+        .then(() => {
+            toast({ title: 'Selection Added', description: `${selectionData.name} has been added to your local workspace.`});
+            setIsBrowserOpen(false);
+        })
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: colRef.path,
+                operation: 'create',
+                requestResourceData: dataToSave,
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
         });
-        toast({ title: 'Selection Added', description: `${selectionData.name} has been added to your local workspace.`});
-        setIsBrowserOpen(false);
-    } catch (error) {
-        console.error("Failed to save selection: ", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save selection.'});
-    }
   };
 
   const loading = userLoading || orgLoading || categoriesLoading || selectionsLoading;
