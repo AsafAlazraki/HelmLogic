@@ -224,13 +224,20 @@ export function HighfieldQuoteFlow({
 
     const carouselImages = useMemo(() => {
         const images = [];
-        if (activeVariant?.imageUrl) images.push(activeVariant.imageUrl);
-        else if (model.coverImageUrl) images.push(model.coverImageUrl);
+        // Active variant or cover image
+        if (activeVariant?.imageUrl) {
+            images.push(activeVariant.imageUrl);
+        } else if (model.coverImageUrl) {
+            images.push(model.coverImageUrl);
+        }
         
+        // Gallery images
         if (model.galleryImageUrls && Array.isArray(model.galleryImageUrls)) {
             images.push(...model.galleryImageUrls);
         }
-        return [...new Set(images)].filter(Boolean); 
+        
+        // Clean unique list
+        return [...new Set(images)].filter(img => typeof img === 'string' && img.trim() !== ''); 
     }, [activeVariant, model]);
 
     const availableMaterials = useMemo(() => {
@@ -356,6 +363,11 @@ export function HighfieldQuoteFlow({
         }, 100);
     };
 
+    // Split name for styled current build text
+    const nameParts = model.name.split(' ');
+    const rangePart = nameParts[0] || '';
+    const modelPart = nameParts.slice(1).join(' ') || '';
+
     return (
         <div className="h-[calc(100vh-64px)] -mt-6 md:-mt-8 -mx-4 md:-mx-6 bg-background flex flex-col relative overflow-hidden">
             <div className="absolute inset-0 z-0">
@@ -398,18 +410,18 @@ export function HighfieldQuoteFlow({
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Left Side: Visualizer (Maximized Render) */}
+                {/* Left Side: Visualizer */}
                 <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden h-full min-h-0">
                     <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full max-w-6xl flex flex-col gap-6">
                             
-                            {/* Carousel Container - Full Scale */}
+                            {/* Carousel Container - Restored Scaling */}
                             <div className="relative flex-1 w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden group min-h-0">
                                 <Carousel className="w-full h-full" opts={{ loop: true }}>
                                     <CarouselContent className="h-full items-center">
                                         {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
-                                            <CarouselItem key={`${url}-${idx}`} className="h-full">
-                                                <div className="relative h-full w-full flex items-center justify-center">
+                                            <CarouselItem key={`${url}-${idx}`} className="h-full w-full">
+                                                <div className="relative h-full w-full flex items-center justify-center p-4">
                                                     <Image 
                                                         src={url} 
                                                         alt={`Boat View ${idx}`} 
@@ -432,13 +444,55 @@ export function HighfieldQuoteFlow({
                                 </Carousel>
                             </div>
 
-                            {/* Build Summary Hub */}
+                            {/* Build Summary Hub - Relocated Buttons & Styled Title */}
                             <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl shrink-0">
                                 <div className="space-y-4 min-w-0 flex-1">
-                                    <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-4">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1 opacity-70">Current Build</p>
-                                            <h3 className="text-3xl font-black uppercase tracking-tight leading-none truncate">{activeVariant?.name || model.name}</h3>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-6 min-w-0">
+                                        <div className="flex items-center gap-2 text-xl font-black uppercase tracking-tight min-w-0 overflow-hidden">
+                                            <span className="text-muted-foreground/40 whitespace-nowrap">Current Build</span>
+                                            <span className="text-primary whitespace-nowrap">{rangePart}</span>
+                                            <span className="text-foreground whitespace-nowrap">{modelPart}</span>
+                                        </div>
+                                        
+                                        {/* Strategic Relocation: Spec & Feature Buttons */}
+                                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1 rounded-full border border-white/20 shadow-sm shrink-0">
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="rounded-full h-8 w-8 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                            onClick={() => setShowStandardFeatures(true)}
+                                                        >
+                                                            <ListChecks className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                        Standard Features
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                            
+                                            <div className="w-[1px] h-3 bg-primary/10" />
+
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="rounded-full h-8 w-8 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                            onClick={() => setShowGeneralSpecs(true)}
+                                                        >
+                                                            <ClipboardList className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                        General Specs
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -462,50 +516,6 @@ export function HighfieldQuoteFlow({
                 <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-background/40 backdrop-blur-md border-l border-white/5">
                     <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
                         
-                        {/* Header with Relocated Spec Buttons */}
-                        <div className="flex items-center justify-between gap-4 mb-10 shrink-0">
-                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-primary/20" />
-                            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-sm shrink-0">
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
-                                                onClick={() => setShowStandardFeatures(true)}
-                                            >
-                                                <ListChecks className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
-                                            Standard Features
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                                
-                                <div className="w-[1px] h-4 bg-primary/10" />
-
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
-                                                onClick={() => setShowGeneralSpecs(true)}
-                                            >
-                                                <ClipboardList className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
-                                            General Specs
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </div>
-                        </div>
-
                         {currentStep === 1 && (
                             <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                 <div className="space-y-3">
