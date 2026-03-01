@@ -405,83 +405,82 @@ export function HighfieldQuoteFlow({
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
                 {/* Left Side: Visualizer Unit (Centered) */}
-                <div className="w-full lg:w-7/12 relative bg-muted/5 border-r border-white/5 flex flex-col items-center justify-center overflow-hidden">
-                    <div className="w-full max-w-5xl flex flex-col p-8 md:p-12 gap-8 animate-in fade-in zoom-in-95 duration-700">
-                        <div className="relative space-y-8">
-                            <div className="relative">
-                                <Badge variant="secondary" className="absolute -top-4 -left-4 z-20 px-4 py-1.5 font-black uppercase tracking-widest text-[10px] shadow-lg bg-background/80 backdrop-blur-sm border-white/20">
-                                    Visualizer
-                                </Badge>
-
-                                {/* Floating Spec Buttons */}
-                                <div className="absolute top-4 right-4 z-40 flex items-center gap-2 bg-white/20 backdrop-blur-md p-2 rounded-full border border-white/20 shadow-xl">
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
-                                                    onClick={() => setShowStandardFeatures(true)}
-                                                >
-                                                    <ListChecks className="h-5 w-5" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="font-bold text-[10px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
-                                                Standard Features
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                    
-                                    <div className="w-[1px] h-5 bg-primary/10" />
-
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
-                                                    onClick={() => setShowGeneralSpecs(true)}
-                                                >
-                                                    <ClipboardList className="h-5 w-5" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="font-bold text-[10px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
-                                                Technical Specifications
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </div>
-                                
-                                <div className="relative aspect-[16/9] w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-3xl border border-white/10 shadow-2xl overflow-hidden group">
-                                    <Carousel className="w-full h-full" opts={{ loop: true }}>
-                                        <CarouselContent className="h-full items-center">
-                                            {carouselImages.map((url, idx) => (
-                                                <CarouselItem key={`${url}-${idx}`} className="h-full">
-                                                    <div className="relative h-full w-full flex items-center justify-center p-4">
-                                                        <Image 
-                                                            src={url} 
-                                                            alt={`Boat View ${idx}`} 
-                                                            fill 
-                                                            className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.3)] transition-transform duration-700" 
-                                                            unoptimized
-                                                        />
-                                                    </div>
-                                                </CarouselItem>
-                                            ))}
-                                        </CarouselContent>
-                                        <CarouselPrevious className="left-6 z-40 h-12 w-12 opacity-0 group-hover:opacity-100 transition-all bg-background/80 backdrop-blur-md border-white/20 shadow-xl hover:scale-110 active:scale-95" />
-                                        <CarouselNext className="right-6 z-40 h-12 w-12 opacity-0 group-hover:opacity-100 transition-all bg-background/80 backdrop-blur-md border-white/20 shadow-xl hover:scale-110 active:scale-95" />
-                                    </Carousel>
-                                </div>
+                <div className="w-full lg:w-7/12 relative flex flex-col items-center justify-center overflow-hidden">
+                    <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in-95 duration-700">
+                        <div className="w-full h-full max-w-6xl flex flex-col gap-6">
+                            
+                            {/* Main Carousel - Maximized */}
+                            <div className="relative flex-1 w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden group">
+                                <Carousel className="w-full h-full" opts={{ loop: true }}>
+                                    <CarouselContent className="h-full items-center">
+                                        {carouselImages.map((url, idx) => (
+                                            <CarouselItem key={`${url}-${idx}`} className="h-full">
+                                                <div className="relative h-full w-full flex items-center justify-center">
+                                                    <Image 
+                                                        src={url} 
+                                                        alt={`Boat View ${idx}`} 
+                                                        fill 
+                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.35)] transition-transform duration-700" 
+                                                        unoptimized
+                                                    />
+                                                </div>
+                                            </CarouselItem>
+                                        ))}
+                                    </CarouselContent>
+                                    <CarouselPrevious className="left-8 z-40 h-14 w-14 opacity-0 group-hover:opacity-100 transition-all bg-background/80 backdrop-blur-md border-white/20 shadow-xl hover:scale-110 active:scale-95" />
+                                    <CarouselNext className="right-8 z-40 h-14 w-14 opacity-0 group-hover:opacity-100 transition-all bg-background/80 backdrop-blur-md border-white/20 shadow-xl hover:scale-110 active:scale-95" />
+                                </Carousel>
                             </div>
 
-                            <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl">
+                            {/* Refined Build Summary Hub */}
+                            <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl">
                                 <div className="space-y-4 min-w-0 flex-1">
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1 opacity-70">Current Build</p>
-                                        <h3 className="text-3xl font-black uppercase tracking-tight leading-none truncate pr-4">{activeVariant?.name || model.name}</h3>
+                                    <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-4">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1 opacity-70">Current Build</p>
+                                            <h3 className="text-3xl font-black uppercase tracking-tight leading-none truncate">{activeVariant?.name || model.name}</h3>
+                                        </div>
+                                        
+                                        {/* Specification Controls */}
+                                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-sm shrink-0">
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95" 
+                                                            onClick={() => setShowStandardFeatures(true)}
+                                                        >
+                                                            <ListChecks className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                        Standard Features
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                            
+                                            <div className="w-[1px] h-4 bg-primary/10" />
+
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="rounded-full h-9 w-9 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95" 
+                                                            onClick={() => setShowGeneralSpecs(true)}
+                                                        >
+                                                            <ClipboardList className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="font-bold text-[9px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                        General Specs
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {selectedOptionIds.length > 0 && <Badge variant="secondary" className="text-[9px] uppercase font-black px-3 py-1 bg-muted/50 border-white/10">{selectedOptionIds.length} Factory Options</Badge>}
@@ -650,7 +649,7 @@ export function HighfieldQuoteFlow({
                                                             onClick={() => setSelectedMotor(isSelected ? null : motor)}
                                                             className={cn(
                                                                 "w-full flex items-center justify-between p-6 border-2 rounded-3xl transition-all duration-300 text-left group",
-                                                                isSelected ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-card border-border/50 hover:border-primary/20"
+                                                                isSelected ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-card border-border/50 hover:border-primary/40"
                                                             )}
                                                         >
                                                             <div className="flex items-center gap-6">
