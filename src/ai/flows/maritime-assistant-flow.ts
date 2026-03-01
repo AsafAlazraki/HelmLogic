@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview HelmLogic Maritime Assistant Genkit Flow.
@@ -173,6 +174,16 @@ const assistantPrompt = ai.definePrompt({
   6. If you cannot find information in the tools, politely state that the data might not be in the warehouse yet.
   
   Always respond with a valid JSON object containing a 'text' field.`,
+  prompt: `
+    {{#if history}}
+    Conversation History:
+    {{#each history}}
+    {{role}}: {{content.[0].text}}
+    {{/each}}
+    {{/if}}
+    
+    User: {{message}}
+  `,
 });
 
 const maritimeAssistantFlow = ai.defineFlow(
@@ -183,6 +194,9 @@ const maritimeAssistantFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await assistantPrompt(input);
-    return output!;
+    if (!output) {
+      return { text: "I'm sorry, I encountered an error processing your request. Please try again." };
+    }
+    return output;
   }
 );
