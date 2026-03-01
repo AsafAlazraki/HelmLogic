@@ -361,7 +361,7 @@ export function HighfieldQuoteFlow({
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
             </div>
 
-            {/* Sticky Step Header - Fixed Height & Vertical Centering */}
+            {/* Sticky Step Header */}
             <div className="sticky top-0 z-30 px-6 md:px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm transition-all flex items-center">
                 <div className="w-full flex items-center justify-between">
                     <div className="flex flex-1 items-center justify-start gap-8 md:gap-16">
@@ -384,7 +384,6 @@ export function HighfieldQuoteFlow({
                             </div>
                         ))}
                     </div>
-                    {/* Exit Button leveled with step circles */}
                     <button 
                         className="font-black text-destructive hover:text-destructive/80 transition-colors uppercase tracking-[0.15em] text-[10px] h-8 flex items-center px-4" 
                         onClick={() => window.history.back()}
@@ -401,50 +400,53 @@ export function HighfieldQuoteFlow({
                     <div className="w-full h-full flex flex-col items-center justify-center p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full flex flex-col gap-8">
                             
-                            {/* The "Soft Cube" Visualizer */}
-                            <div className="relative flex-1 w-full flex items-center justify-center bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0 p-8 md:p-16">
-                                <Carousel className="w-full h-full" opts={{ loop: true }}>
-                                    <CarouselContent className="h-full">
-                                        {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
-                                            <CarouselItem key={`${url}-${idx}`} className="h-full w-full">
-                                                <div 
-                                                    className="relative h-full w-full flex items-center justify-center cursor-zoom-in active:scale-[0.98] transition-transform duration-500 rounded-[2.5rem] overflow-hidden bg-white"
-                                                    onClick={() => setLightboxImage(url)}
-                                                >
-                                                    <Image 
-                                                        src={url} 
-                                                        alt={`Boat View ${idx}`} 
-                                                        fill 
-                                                        className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.12)] rounded-[2rem]" 
-                                                        unoptimized
-                                                    />
-                                                </div>
-                                            </CarouselItem>
-                                        )) : (
-                                            <CarouselItem className="h-full">
-                                                <div className="flex h-full w-full items-center justify-center text-muted-foreground opacity-5">
-                                                    <Ship className="h-24 w-24" />
-                                                </div>
-                                            </CarouselItem>
+                            {/* The "Soft Cube" Visualizer - Redesigned for non-overlapping controls */}
+                            <div className="relative flex-1 w-full flex flex-col bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0 p-4 md:p-6">
+                                {/* Main Image Carousel area */}
+                                <div className="flex-1 w-full min-h-0 relative flex items-center justify-center">
+                                    <Carousel className="w-full h-full" opts={{ loop: true }}>
+                                        <CarouselContent className="h-full">
+                                            {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
+                                                <CarouselItem key={`${url}-${idx}`} className="h-full w-full">
+                                                    <div 
+                                                        className="relative h-full w-full flex items-center justify-center cursor-zoom-in active:scale-[0.98] transition-transform duration-500 rounded-[2.5rem] overflow-hidden bg-white"
+                                                        onClick={() => setLightboxImage(url)}
+                                                    >
+                                                        <Image 
+                                                            src={url} 
+                                                            alt={`Boat View ${idx}`} 
+                                                            fill 
+                                                            className="object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.12)] rounded-[2rem]" 
+                                                            unoptimized
+                                                        />
+                                                    </div>
+                                                </CarouselItem>
+                                            )) : (
+                                                <CarouselItem className="h-full">
+                                                    <div className="flex h-full w-full items-center justify-center text-muted-foreground opacity-5">
+                                                        <Ship className="h-24 w-24" />
+                                                    </div>
+                                                </CarouselItem>
+                                            )}
+                                        </CarouselContent>
+                                        {carouselImages.length > 1 && (
+                                            <>
+                                                <CarouselPrevious className="left-2 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
+                                                <CarouselNext className="right-2 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
+                                            </>
                                         )}
-                                    </CarouselContent>
-                                    {carouselImages.length > 1 && (
-                                        <>
-                                            <CarouselPrevious className="left-6 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
-                                            <CarouselNext className="right-6 h-8 w-8 opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-all bg-white/80 backdrop-blur-md border-none shadow-lg text-slate-400 hover:text-primary z-30" />
-                                        </>
-                                    )}
-                                </Carousel>
+                                    </Carousel>
+                                </div>
 
-                                {/* Floating Control Hub (Bottom Center of Card) */}
-                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 p-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-100 shadow-xl scale-90 md:scale-100 transition-all">
+                                {/* Hub area at the bottom of the card - non-absolute, non-overlapping */}
+                                <div className="flex items-center justify-center gap-2 pt-4 border-t border-slate-50 mt-2 shrink-0">
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
+                                                    className="rounded-full h-10 w-10 bg-slate-50 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
                                                     onClick={() => setShowStandardFeatures(true)}
                                                 >
                                                     <ListChecks className="h-5 w-5" />
@@ -462,7 +464,7 @@ export function HighfieldQuoteFlow({
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
+                                                    className="rounded-full h-10 w-10 bg-slate-50 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
                                                     onClick={() => setShowGeneralSpecs(true)}
                                                 >
                                                     <ClipboardList className="h-5 w-5" />
@@ -483,7 +485,7 @@ export function HighfieldQuoteFlow({
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="icon" 
-                                                                className="rounded-full h-10 w-10 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border border-slate-100" 
+                                                                className="rounded-full h-10 w-10 bg-slate-50 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
                                                                 asChild
                                                             >
                                                                 <a href={doc.url} target="_blank" rel="noopener noreferrer">
@@ -739,7 +741,7 @@ export function HighfieldQuoteFlow({
                 </ScrollArea>
             </div>
 
-            {/* Lightbox */}
+            {/* Lightbox - resized to gallery scale */}
             <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
                 <DialogContent className="max-w-4xl h-auto max-h-[85vh] p-0 border-none bg-black/90 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
                     <DialogTitle className="sr-only">Image Preview</DialogTitle>
