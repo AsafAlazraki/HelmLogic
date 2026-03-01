@@ -25,7 +25,8 @@ import {
     Package,
     Settings2,
     ListChecks,
-    ClipboardList
+    ClipboardList,
+    Lock
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -332,9 +333,24 @@ export function HighfieldQuoteFlow({
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
     const toggleOption = (id: string) => {
-        setSelectedOptionIds(prev => 
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        );
+        const option = model.optionalFeatures?.find((f: any) => f.id === id);
+        const isSelected = selectedOptionIds.includes(id);
+
+        if (isSelected) {
+            // Deselecting
+            let toRemove = [id];
+            if (option?.category === 'Consoles' && option.associatedSeatId) {
+                toRemove.push(option.associatedSeatId);
+            }
+            setSelectedOptionIds(prev => prev.filter(i => !toRemove.includes(i)));
+        } else {
+            // Selecting
+            let toAdd = [id];
+            if (option?.category === 'Consoles' && option.associatedSeatId) {
+                toAdd.push(option.associatedSeatId);
+            }
+            setSelectedOptionIds(prev => [...new Set([...prev, ...toAdd])]);
+        }
     };
 
     const handleMaterialSelect = (mat: string) => {
@@ -396,13 +412,54 @@ export function HighfieldQuoteFlow({
                                 <Badge variant="secondary" className="absolute -top-4 -left-4 z-20 px-4 py-1.5 font-black uppercase tracking-widest text-[10px] shadow-lg bg-background/80 backdrop-blur-sm border-white/20">
                                     Visualizer
                                 </Badge>
+
+                                {/* Floating Spec Buttons */}
+                                <div className="absolute top-4 right-4 z-40 flex items-center gap-2 bg-white/20 backdrop-blur-md p-2 rounded-full border border-white/20 shadow-xl">
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                    onClick={() => setShowStandardFeatures(true)}
+                                                >
+                                                    <ListChecks className="h-5 w-5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="font-bold text-[10px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                Standard Features
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    
+                                    <div className="w-[1px] h-5 bg-primary/10" />
+
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
+                                                    onClick={() => setShowGeneralSpecs(true)}
+                                                >
+                                                    <ClipboardList className="h-5 w-5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="font-bold text-[10px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
+                                                Technical Specifications
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                                 
-                                <div className="relative aspect-[16/10] w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-3xl border border-white/10 shadow-2xl overflow-hidden group">
+                                <div className="relative aspect-[16/9] w-full flex items-center justify-center bg-card/40 backdrop-blur-sm rounded-3xl border border-white/10 shadow-2xl overflow-hidden group">
                                     <Carousel className="w-full h-full" opts={{ loop: true }}>
                                         <CarouselContent className="h-full items-center">
                                             {carouselImages.map((url, idx) => (
                                                 <CarouselItem key={`${url}-${idx}`} className="h-full">
-                                                    <div className="relative h-full w-full flex items-center justify-center p-8">
+                                                    <div className="relative h-full w-full flex items-center justify-center p-4">
                                                         <Image 
                                                             src={url} 
                                                             alt={`Boat View ${idx}`} 
@@ -422,50 +479,9 @@ export function HighfieldQuoteFlow({
 
                             <div className="bg-background/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl">
                                 <div className="space-y-4 min-w-0 flex-1">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1 opacity-70">Current Build</p>
-                                            <h3 className="text-3xl font-black uppercase tracking-tight leading-none truncate pr-4">{activeVariant?.name || model.name}</h3>
-                                        </div>
-                                        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md p-2 rounded-full border border-white/20 shadow-sm shrink-0">
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
-                                                            onClick={() => setShowStandardFeatures(true)}
-                                                        >
-                                                            <ListChecks className="h-5 w-5" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent className="font-bold text-[10px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
-                                                        Standard Features
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                            
-                                            <div className="w-[1px] h-5 bg-primary/10" />
-
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="rounded-full h-10 w-10 bg-white/40 hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm" 
-                                                            onClick={() => setShowGeneralSpecs(true)}
-                                                        >
-                                                            <ClipboardList className="h-5 w-5" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent className="font-bold text-[10px] uppercase tracking-widest bg-primary text-white border-none shadow-xl">
-                                                        Technical Specifications
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1 opacity-70">Current Build</p>
+                                        <h3 className="text-3xl font-black uppercase tracking-tight leading-none truncate pr-4">{activeVariant?.name || model.name}</h3>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {selectedOptionIds.length > 0 && <Badge variant="secondary" className="text-[9px] uppercase font-black px-3 py-1 bg-muted/50 border-white/10">{selectedOptionIds.length} Factory Options</Badge>}
@@ -561,13 +577,20 @@ export function HighfieldQuoteFlow({
                                             <div className="grid gap-3">
                                                 {options.map((opt: any) => {
                                                     const isSelected = selectedOptionIds.includes(opt.id);
+                                                    const isLocked = !!model.optionalFeatures?.find((f: any) => 
+                                                        f.category === 'Consoles' && 
+                                                        f.associatedSeatId === opt.id && 
+                                                        selectedOptionIds.includes(f.id)
+                                                    );
+
                                                     return (
                                                         <button
                                                             key={opt.id}
-                                                            onClick={() => toggleOption(opt.id)}
+                                                            onClick={() => !isLocked && toggleOption(opt.id)}
                                                             className={cn(
                                                                 "group flex items-center justify-between p-5 border-2 rounded-3xl transition-all duration-300 text-left",
-                                                                isSelected ? "bg-primary/5 border-primary shadow-lg" : "bg-card border-border/50 hover:border-primary/20"
+                                                                isSelected ? "bg-primary/5 border-primary shadow-lg" : "bg-card border-border/50 hover:border-primary/20",
+                                                                isLocked && "opacity-80 cursor-default ring-1 ring-primary/20"
                                                             )}
                                                         >
                                                             <div className="flex items-center gap-5 min-w-0">
@@ -575,12 +598,16 @@ export function HighfieldQuoteFlow({
                                                                     {opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-cover" unoptimized /> : <Package className="h-6 w-6 m-auto mt-4 opacity-10" />}
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{opt.name}</p>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{opt.name}</p>
+                                                                        {isLocked && <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                                                    </div>
                                                                     {opt.code && <p className="text-[10px] font-mono text-muted-foreground uppercase mt-1">{opt.code}</p>}
+                                                                    {isLocked && <p className="text-[9px] font-bold text-primary/60 uppercase mt-0.5">Package: Included with Console</p>}
                                                                 </div>
                                                             </div>
                                                             <p className={cn("text-sm font-black ml-4 shrink-0", isSelected ? "text-primary" : "text-foreground")}>
-                                                                +${(opt.sellPriceExclGst || 0).toLocaleString()}
+                                                                {isLocked ? "INCLUDED" : `+${(opt.sellPriceExclGst || 0).toLocaleString()}`}
                                                             </p>
                                                         </button>
                                                     );
