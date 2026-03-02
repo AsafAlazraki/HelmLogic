@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -39,7 +40,7 @@ export function AppSidebar() {
   const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string; organisationRole?: string }>(userProfileRef);
   
   const orgRef = useMemoFirebase(() => userProfile?.organisationId ? doc(firestore, 'organisations', userProfile.organisationId) : null, [firestore, userProfile]);
-  const { data: organisation, loading: orgLoading } = useDoc<{ subDealersEnabled?: boolean; permissions?: Record<string, Record<string, boolean>> }>(orgRef);
+  const { data: organisation, loading: orgLoading } = useDoc<{ parentOrganisationId?: string; enabledModuleSubscriptions?: string[]; permissions?: Record<string, Record<string, boolean>> }>(orgRef);
 
   const isLoading = userLoading || profileLoading || orgLoading;
 
@@ -68,6 +69,20 @@ export function AppSidebar() {
       }
       if (link.label === 'Dashboard' && isAdmin) {
         return false; // Hide Dashboard for admins
+      }
+      if (link.label === 'Pricing Manager') {
+        if (isAdmin) return true;
+        if (!isOrgMember) return false;
+        
+        const hasPermission = !!userPermissions.can_access_pricing_manager;
+        if (!hasPermission) return false;
+
+        // If it's a sub-dealer, check if parent allowed it (system-pricing module ID)
+        if (organisation?.parentOrganisationId) {
+            return organisation.enabledModuleSubscriptions?.includes('system-pricing') ?? false;
+        }
+        
+        return true; // Default available for top-level orgs if permission exists
       }
       if (link.label === 'Settings') {
         if (isAdmin) return false;

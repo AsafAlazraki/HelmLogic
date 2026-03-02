@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -84,6 +85,7 @@ const createSlug = (name: string) =>
 
 const permissionsConfig = [
     { id: 'can_access_module', label: 'Access Modules' },
+    { id: 'can_access_pricing_manager', label: 'Pricing Manager' },
     { id: 'can_create_quotes', label: 'Create Quotes' },
     { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
@@ -722,9 +724,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                         </Tabs>
                     </form>
                 </Form>
-            ) : (
-                <Card><CardHeader><CardTitle>Organisation not found</CardTitle></CardHeader><CardContent><p>The requested organisation could not be found.</p></CardContent></Card>
-            )}
+            ) : null}
         </>
     );
 }

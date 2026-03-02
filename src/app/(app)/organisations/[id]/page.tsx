@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -110,6 +111,7 @@ interface DealerFitCategory {
 
 const permissionsConfig = [
     { id: 'can_access_module', label: 'Access Modules' },
+    { id: 'can_access_pricing_manager', label: 'Pricing Manager' },
     { id: 'can_create_quotes', label: 'Create Quotes' },
     { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
