@@ -230,6 +230,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 <div className="flex items-center justify-between gap-1">
                                     <div className="flex items-center">
                                         <Button 
+                                            type="button"
                                             variant="ghost" 
                                             size="icon" 
                                             className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === 0 && "invisible")} 
@@ -240,10 +241,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </div>
                                     <div className="flex flex-col items-center flex-1 min-w-0">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate w-full text-center">{col.name}</span>
-                                        <Badge variant="ghost" className="h-4 text-[8px] opacity-40 font-black uppercase p-0">{col.type}</Badge>
+                                        <Badge variant="outline" className="h-4 text-[8px] opacity-40 font-black uppercase p-0 border-none">{col.type}</Badge>
                                     </div>
                                     <div className="flex items-center gap-0.5">
                                         <Button 
+                                            type="button"
                                             variant="ghost" 
                                             size="icon" 
                                             className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === columns.length - 1 && "invisible")} 
@@ -252,6 +254,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                             <ChevronRight className="h-3 w-3" />
                                         </Button>
                                         <Button 
+                                            type="button"
                                             variant="ghost" 
                                             size="icon" 
                                             className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
@@ -286,21 +289,18 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     const StrategyControls = () => (
-        <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 whitespace-nowrap">Base Currency</Label>
-                <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
-                    <SelectTrigger className="w-[160px] h-9 font-bold bg-muted/30">
-                        <Coins className="h-3.5 w-3.5 mr-2 text-primary" />
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.label}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            <Button onClick={() => setIsAddColumnOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-md">
-                <Plus className="h-4 w-4 mr-1.5" /> Add Column
+        <div className="flex items-center gap-2">
+            <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
+                <SelectTrigger className="w-[140px] h-9 font-bold bg-muted/30">
+                    <Coins className="h-3.5 w-3.5 mr-2 text-primary" />
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.code}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            <Button onClick={() => setIsAddColumnOpen(true)} variant="outline" className="h-9 font-black uppercase tracking-widest text-[10px] border-2">
+                <Plus className="h-4 w-4 mr-1.5" /> Add Metric
             </Button>
         </div>
     );
@@ -325,6 +325,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </div>
 
                     <Button 
+                        type="button"
                         variant="outline"
                         onClick={() => setIsFullScreen(true)}
                         className="h-9 font-black uppercase tracking-widest text-[10px] shadow-sm flex items-center gap-2 border-2 hover:bg-primary hover:text-primary-foreground transition-all"
@@ -360,20 +361,19 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     <div className="h-10 w-10 relative bg-white rounded-lg border-2 p-1.5 shadow-sm">
                                         {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-5 w-5 m-auto text-muted-foreground" />}
                                     </div>
-                                    <DialogTitle>
-                                        <div>
-                                            <span className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} FOCUS MODE</span>
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-primary mt-1.5">Strategy Workspace</p>
-                                        </div>
+                                    <DialogTitle className="flex flex-col">
+                                        <span className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} FOCUS MODE</span>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-primary mt-1.5">Strategy Workspace</span>
                                     </DialogTitle>
                                 </div>
 
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
                                     <StrategyControls />
-                                    <div className="h-8 w-px bg-border mx-2" />
+                                    <div className="h-6 w-px bg-border mx-1" />
                                     <DialogClose asChild>
-                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-destructive/10 hover:text-destructive border">
-                                            <Minimize2 className="h-5 w-5" />
+                                        <Button variant="ghost" size="sm" className="h-9 gap-2 px-3 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-accent border-2">
+                                            <Minimize2 className="h-4 w-4" />
+                                            Collapse
                                         </Button>
                                     </DialogClose>
                                 </div>
