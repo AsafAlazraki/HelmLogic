@@ -19,7 +19,9 @@ import {
     ListChecks,
     ClipboardList,
     FileText,
-    ArrowRight
+    ArrowRight,
+    Layers,
+    Check
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -181,7 +183,7 @@ export function HighfieldQuoteFlow({
                 // Preserve a 40px visual cushion from the fixed header
                 setTimeout(() => {
                     viewport.scrollTo({ top: targetTop - 40, behavior: 'smooth' });
-                }, 150);
+                }, 300);
             }
         } else if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -332,7 +334,7 @@ export function HighfieldQuoteFlow({
         : fullModelName;
 
     return (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden">
             {/* Ambient Background Blur */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 {model.coverImageUrl && (
@@ -510,7 +512,7 @@ export function HighfieldQuoteFlow({
                 {/* Configuration Panel (Right) */}
                 <div className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100 flex flex-col overflow-hidden relative">
                     {/* Fixed Step Header */}
-                    <div className="p-8 md:p-12 pb-4 shrink-0 bg-slate-50/5 backdrop-blur-md z-20">
+                    <div className="pt-12 px-12 pb-6 shrink-0 bg-slate-50/5 backdrop-blur-md z-20">
                         {currentStep === 1 && (
                             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <h2 className="text-4xl font-black uppercase tracking-tight leading-none">The Foundation</h2>
@@ -538,33 +540,49 @@ export function HighfieldQuoteFlow({
                     </div>
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
-                        <div className="px-8 md:px-12 pb-12 pt-2 flex flex-col">
+                        <div className="px-8 md:px-12 pb-12 pt-0 flex flex-col">
                             
                             {currentStep === 1 && (
-                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                                    <div className="space-y-5">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">1. Tube Material</span>
-                                        <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500 pt-4">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                <Layers className="h-3.5 w-3.5" />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">1. Tube Material</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
                                                 <button
                                                     key={mat}
                                                     onClick={() => handleMaterialSelect(mat)}
                                                     className={cn(
-                                                        "group relative flex flex-col items-start p-6 border-2 rounded-[2rem] transition-all duration-300",
-                                                        selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
+                                                        "group relative flex flex-col items-start p-8 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[200px] text-left",
+                                                        selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40 shadow-sm"
                                                     )}
                                                 >
-                                                    <span className="text-base font-black uppercase tracking-tight">{mat}</span>
-                                                    <p className={cn("text-[9px] font-bold mt-1 uppercase", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>
-                                                        {mat === 'PVC' ? 'Robust Standard' : 'Premium HYP'}
+                                                    <div className={cn("h-12 w-12 rounded-[1rem] flex items-center justify-center mb-6 transition-all", selectedMaterial === mat ? "bg-white/20 rotate-3" : "bg-muted shadow-inner group-hover:bg-primary/5")}>
+                                                        {mat === 'PVC' ? <Ship className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} /> : <ShieldCheck className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} />}
+                                                    </div>
+                                                    
+                                                    <span className="text-xl font-black uppercase tracking-tight">{mat}</span>
+                                                    <p className={cn("text-[10px] font-bold mt-2 uppercase tracking-widest", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>
+                                                        {mat === 'PVC' ? 'Valmax German PVC' : 'ORCA® Hypalon'}
                                                     </p>
+                                                    
+                                                    <div className="mt-auto pt-6 w-full">
+                                                        <div className={cn("flex items-center gap-2 text-[9px] font-black uppercase tracking-tighter transition-colors", selectedMaterial === mat ? "text-white" : "text-muted-foreground")}>
+                                                            <Check className="h-3 w-3" />
+                                                            <span>{mat === 'PVC' ? 'Standard Strength' : 'Commercial Grade'}</span>
+                                                        </div>
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
 
                                     {selectedMaterial && (
-                                        <div ref={colorsSectionRef} className="space-y-5 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <div ref={colorsSectionRef} className="space-y-5 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                             <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">2. Available Colors</span>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {availableColors.map((color) => (

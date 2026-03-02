@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { maritimeAssistantChat } from '@/ai/flows/maritime-assistant-flow';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -26,6 +27,7 @@ interface Message {
 }
 
 export function ChatBot() {
+    const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const [input, setInput] = useState('');
@@ -73,6 +75,9 @@ export function ChatBot() {
             setIsLoading(false);
         }
     };
+
+    // Hide chatbot in quote builder
+    if (pathname?.includes('/quote/')) return null;
 
     return (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
