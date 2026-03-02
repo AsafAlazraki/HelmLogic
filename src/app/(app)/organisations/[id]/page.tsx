@@ -370,7 +370,7 @@ export default function OrganisationDetailsPage() {
                         </div>
 
                         <Tabs defaultValue="details" className="space-y-4">
-                            <TabsList className={`grid w-full ${watchedSubDealersEnabled ? 'grid-cols-5' : 'grid-cols-4'}`}>
+                            <TabsList className={cn("grid w-full", watchedSubDealersEnabled ? 'grid-cols-5' : 'grid-cols-4')}>
                                 <TabsTrigger value="details">Company Details</TabsTrigger>
                                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
                                 <TabsTrigger value="access">Access</TabsTrigger>
@@ -522,25 +522,39 @@ export default function OrganisationDetailsPage() {
                                                 <h3 className="text-lg font-medium">Invite New User</h3>
                                                 <Form {...inviteForm}>
                                                     <div className="mt-4 space-y-4 max-w-lg">
-                                                        <FormField control={inviteForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="name@example.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                        <FormField control={inviteForm.control} name="roleId" render={({ field }) => ( 
-                                                            <FormItem>
-                                                                <FormLabel>Role</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select a role to assign" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {organisation.roles?.map(role => (
-                                                                            <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem> 
-                                                        )} />
+                                                        <FormField 
+                                                            control={inviteForm.control} 
+                                                            name="email" 
+                                                            render={({ field }) => ( 
+                                                                <FormItem>
+                                                                    <FormLabel>Email Address</FormLabel>
+                                                                    <FormControl><Input placeholder="name@example.com" {...field} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem> 
+                                                            )} 
+                                                        />
+                                                        <FormField 
+                                                            control={inviteForm.control} 
+                                                            name="roleId" 
+                                                            render={({ field }) => ( 
+                                                                <FormItem>
+                                                                    <FormLabel>Role</FormLabel>
+                                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                                        <FormControl>
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Select a role to assign" />
+                                                                            </SelectTrigger>
+                                                                        </FormControl>
+                                                                        <SelectContent>
+                                                                            {organisation.roles?.map(role => (
+                                                                                <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                    <FormMessage />
+                                                                </FormItem> 
+                                                            )} 
+                                                        />
                                                         <Button type="button" disabled={isInviting} onClick={inviteForm.handleSubmit(onInviteSubmit)}>
                                                             {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                             <Mail className="mr-2 h-4 w-4" /> Send Invite
@@ -564,7 +578,11 @@ export default function OrganisationDetailsPage() {
                                                                     {permissionsConfig.map(permission => (
                                                                         <TableCell key={permission.id} className="text-center">
                                                                             <FormField control={form.control} name={`permissions.${role.id}.${permission.id}`} render={({ field }) => (
-                                                                                <FormItem className="flex justify-center p-0 m-0"><FormControl><Checkbox checked={field.value || false} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                                                                                <FormItem className="flex justify-center p-0 m-0">
+                                                                                    <FormControl>
+                                                                                        <Checkbox checked={field.value || false} onCheckedChange={field.onChange} />
+                                                                                    </FormControl>
+                                                                                </FormItem>
                                                                             )} />
                                                                         </TableCell>
                                                                     ))}
