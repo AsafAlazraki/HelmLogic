@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -291,18 +290,25 @@ export default function OrganisationDetailsPage() {
             if (values.primaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
                 dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
-            } else if (values.primaryLogoUrl === null) {
-                dataToUpdate.primaryLogoUrl = null;
+            } else if (values.primaryLogoUrl === '' || values.primaryLogoUrl?.startsWith('blob:') || values.primaryLogoUrl?.startsWith('data:')) {
+                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl || null;
             }
             
             if (values.secondaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
                 dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
-            } else if (values.secondaryLogoUrl === null) {
-                dataToUpdate.secondaryLogoUrl = null;
+            } else if (values.secondaryLogoUrl === '' || values.secondaryLogoUrl?.startsWith('blob:') || values.secondaryLogoUrl?.startsWith('data:')) {
+                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl || null;
             }
 
-            await updateDoc(orgDocRef, dataToUpdate);
+            await updateDoc(orgDocRef, dataToUpdate)
+                .catch((serverError) => {
+                    const permissionError = new FirestorePermissionError({
+                        path: orgDocRef.path, operation: 'update', requestResourceData: dataToUpdate,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                    throw serverError;
+                });
             toast({ title: 'Organisation updated' });
             if (dataToUpdate.slug !== slugOrId) {
                 router.replace(`/organisations/${dataToUpdate.slug}`);

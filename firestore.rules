@@ -12,12 +12,33 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isHelmLogicAdmin() {
+      return isSignedIn() && getUserData().appRole == 'HelmLogic Admin';
+    }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
+    // Checks if the current user has a specific permission within an organization
+    function hasOrgPermission(orgId, permission) {
+      let userData = getUserData();
+      let orgData = get(/databases/$(database)/documents/organisations/$(orgId)).data;
+      return isSignedIn() && 
+             userData.organisationId == orgId && 
+             orgData.permissions[userData.organisationRole][permission] == true;
+    }
+
+    // Checks if the current user is a member of the parent organization and has sub-dealer management permission
+    function canManageSubDealer(subId) {
+      let userData = getUserData();
+      let subData = get(/databases/$(database)/documents/organisations/$(subId)).data;
+      let parentId = subData.parentOrganisationId;
+      return parentId != null && hasOrgPermission(parentId, 'can_view_subdealers');
     }
 
     // --- Collection Rules ---
@@ -31,9 +52,10 @@ service cloud.firestore {
     }
 
     match /organisations/{orgId} {
-      // Members can read their org. For MVP, we allow any signed-in user read access.
+      // Members can read their org.
       allow read: if isSignedIn();
-      allow write: if isAdmin(); // System/Admin only
+      // Allow write if HelmLogic Admin, or Org Admin (can_access_settings), or Parent Org Admin (can_view_subdealers)
+      allow write: if isHelmLogicAdmin() || hasOrgPermission(orgId, 'can_access_settings') || canManageSubDealer(orgId);
       
       match /dealerFitSelections/{id} { allow read, write: if isSignedIn(); }
       match /quotes/{id} { allow read, write: if isSignedIn(); }
@@ -45,43 +67,43 @@ service cloud.firestore {
 
     match /modules/{moduleId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isHelmLogicAdmin();
     }
 
     match /data-warehouse/{vendorId} {
       // Data warehouse is a public catalog used by AI tools and configurators.
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isHelmLogicAdmin();
       
       match /dataSets/{setId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if isHelmLogicAdmin();
         match /rows/{rowId} {
           allow read: if true;
-          allow write: if isAdmin();
+          allow write: if isHelmLogicAdmin();
         }
       }
       match /masterDataSet/{rowId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if isHelmLogicAdmin();
       }
       match /masterPriceList/{rowId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if isHelmLogicAdmin();
       }
       match /bulkMasterPriceList/{rowId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if isHelmLogicAdmin();
       }
       match /ranges/{rangeId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if isHelmLogicAdmin();
         match /models/{modelId} {
           allow read: if true;
-          allow write: if isAdmin();
+          allow write: if isHelmLogicAdmin();
           match /{allPaths=**} {
             allow read: if true;
-            allow write: if isAdmin();
+            allow write: if isHelmLogicAdmin();
           }
         }
       }
@@ -89,7 +111,7 @@ service cloud.firestore {
 
     match /dealerFitCategories/{id} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isHelmLogicAdmin();
     }
     
     match /inventory/{id} {

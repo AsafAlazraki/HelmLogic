@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -235,19 +234,17 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             if (values.primaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
                 dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
-            } else if (values.primaryLogoUrl === '') {
-                dataToUpdate.primaryLogoUrl = null;
-            } else if (organisation.primaryLogoUrl) {
-                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl;
+            } else if (values.primaryLogoUrl === '' || values.primaryLogoUrl?.startsWith('blob:') || values.primaryLogoUrl?.startsWith('data:')) {
+                // Safeguard: only keep persistent URLs or null
+                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl || null;
             }
             
             if (values.secondaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
                 dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
-            } else if (values.secondaryLogoUrl === '') {
-                dataToUpdate.secondaryLogoUrl = null;
-            } else if (organisation.secondaryLogoUrl) {
-                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl;
+            } else if (values.secondaryLogoUrl === '' || values.secondaryLogoUrl?.startsWith('blob:') || values.secondaryLogoUrl?.startsWith('data:')) {
+                // Safeguard: only keep persistent URLs or null
+                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl || null;
             }
 
             await updateDoc(orgDocRef, dataToUpdate)
@@ -325,7 +322,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 <div className="grid gap-8 lg:grid-cols-3">
                                     <div className="lg:col-span-2 space-y-8">
                                         <Card>
-                                            <CardHeader><CardTitle>Organisation Details</CardTitle><CardDescription>Primary details for the organisation.</CardDescription></CardHeader>
+                                            <CardHeader><CardTitle>Organisation Details</CardTitle></CardHeader>
                                             <CardContent className="space-y-6">
                                                 <FormField control={form.control} name="name" render={({ field }) => (
                                                     <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
