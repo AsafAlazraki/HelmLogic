@@ -101,7 +101,7 @@ export function HighfieldQuoteFlow({
     // Dialog States
     const [showStandardFeatures, setShowStandardFeatures] = useState(false);
     const [showGeneralSpecs, setShowGeneralSpecs] = useState(false);
-    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
     // 1. Fetch Variants
     const variantsQuery = useMemoFirebase(() => 
@@ -356,7 +356,7 @@ export function HighfieldQuoteFlow({
                         ))}
                     </div>
                     <button 
-                        className="font-black text-destructive hover:text-destructive/80 transition-all uppercase tracking-[0.15em] text-[10px] h-8 flex items-center px-5 shrink-0 border-2 border-destructive/10 rounded-full hover:bg-destructive/5 active:scale-95" 
+                        className="font-black text-destructive hover:text-destructive/80 transition-all uppercase tracking-[0.15em] text-[10px] h-8 flex items-center justify-center px-5 shrink-0 border-2 border-destructive/10 rounded-full hover:bg-destructive/5 active:scale-95" 
                         onClick={() => window.history.back()}
                     >
                         Exit Build
@@ -380,7 +380,7 @@ export function HighfieldQuoteFlow({
                                                 <CarouselItem key={`${url}-${idx}`} className="h-full w-full p-0">
                                                     <div 
                                                         className="relative h-full w-full cursor-zoom-in active:scale-[0.99] transition-all duration-500 flex items-center justify-center overflow-hidden"
-                                                        onClick={() => setLightboxImage(url)}
+                                                        onClick={() => setLightboxIndex(idx)}
                                                     >
                                                         {/* Soft Fade Overlay */}
                                                         <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_80px_rgba(255,255,255,0.8)]" />
@@ -713,24 +713,46 @@ export function HighfieldQuoteFlow({
             </div>
 
             {/* Gallery Lightbox */}
-            <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
-                <DialogContent className="max-w-4xl h-auto max-h-[85vh] p-0 border-none bg-black/95 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[2.5rem] overflow-hidden">
-                    <DialogTitle className="sr-only">Image Preview</DialogTitle>
-                    {lightboxImage && (
-                        <div className="relative w-full h-full p-4 md:p-12 flex items-center justify-center min-h-[300px]">
-                            <Image 
-                                src={lightboxImage} 
-                                alt="Lightbox View" 
-                                width={1600} 
-                                height={900} 
-                                className="w-full h-auto max-h-[75vh] object-contain rounded-2xl" 
-                                unoptimized 
-                            />
+            <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
+                <DialogContent className="max-w-6xl h-auto max-h-[90vh] p-0 border-none bg-slate-900/95 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[3rem] overflow-hidden">
+                    <DialogTitle className="sr-only">Image Gallery</DialogTitle>
+                    {lightboxIndex !== null && (
+                        <div className="relative w-full h-full p-6 md:p-12 flex flex-col items-center justify-center min-h-[400px]">
+                            <Carousel 
+                                className="w-full h-full" 
+                                opts={{ 
+                                    startIndex: lightboxIndex,
+                                    loop: true 
+                                }}
+                            >
+                                <CarouselContent className="h-full">
+                                    {carouselImages.map((url, idx) => (
+                                        <CarouselItem key={`${url}-${idx}`} className="h-full flex items-center justify-center">
+                                            <div className="relative w-full h-[60vh] md:h-[75vh]">
+                                                <Image 
+                                                    src={url} 
+                                                    alt={`Gallery View ${idx}`} 
+                                                    fill 
+                                                    className="object-contain rounded-2xl" 
+                                                    unoptimized 
+                                                />
+                                            </div>
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                {carouselImages.length > 1 && (
+                                    <>
+                                        <CarouselPrevious className="left-4 h-14 w-14 bg-white/10 hover:bg-white/20 border-none text-white transition-all rounded-2xl shadow-xl" />
+                                        <CarouselNext className="right-4 h-14 w-14 bg-white/10 hover:bg-white/20 border-none text-white transition-all rounded-2xl shadow-xl" />
+                                    </>
+                                )}
+                            </Carousel>
+                            
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-50"
-                                onClick={() => setLightboxImage(null)}
+                                className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-50"
+                                onClick={() => setLightboxIndex(null)}
                             >
                                 <X className="h-5 w-5" />
                             </Button>
