@@ -747,7 +747,6 @@ export default function ModuleDetailsPage() {
     
     const breadcrumbParts = [
         isAdmin ? { href: "/admin", label: "Admin" } : { href: "/dashboard", label: "Dashboard"},
-        isAdmin ? { href: "/modules", label: "Modules" } : {href: "/dashboard", label: "Dashboard"},
         { href: `/modules/${slugOrId}`, label: moduleData.name },
     ];
 
@@ -761,8 +760,8 @@ export default function ModuleDetailsPage() {
     const isMotorBrand = mainVendor?.vendorType === 'Motor Brand';
 
     return (
-        <div className="space-y-4">
-             <div className="flex items-start justify-between">
+        <div className="flex flex-col h-[calc(100vh-theme(spacing.24))] space-y-4 overflow-hidden">
+             <div className="flex items-start justify-between shrink-0">
                 <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
                         {moduleData.logoUrl ? (
@@ -803,11 +802,11 @@ export default function ModuleDetailsPage() {
                             )}
                         </div>
                     </div>
-                    <BreadcrumbNav parts={breadcrumbParts.filter(p => isAdmin || p.label !== 'Modules')} />
+                    <BreadcrumbNav parts={breadcrumbParts} />
                 </div>
             </div>
-             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                 <TabsList className={cn("grid w-full", tabGridCols)}>
+             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
+                 <TabsList className={cn("grid w-full shrink-0", tabGridCols)}>
                     {isViewingOrg && <TabsTrigger value="dashboard"><LayoutDashboard className="h-4 w-4 mr-2" /> Dashboard</TabsTrigger>}
                     <TabsTrigger value="bmt">
                         {isMotorBrand ? <Cog className="h-4 w-4 mr-2" /> : <Wrench className="h-4 w-4 mr-2" />}
@@ -821,12 +820,12 @@ export default function ModuleDetailsPage() {
                 </TabsList>
                 
                 {isViewingOrg && (
-                    <TabsContent value="dashboard">
+                    <TabsContent value="dashboard" className="flex-1 min-h-0 mt-4 overflow-hidden">
                         {dashboardOrg ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="lg:col-span-1 flex flex-col gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-hidden">
+                                <div className="lg:col-span-1 flex flex-col gap-6 overflow-hidden">
                                     {userPermissions.can_see_parent_inventory && parentOrg && (
-                                        <>
+                                        <div className="flex flex-col gap-6 shrink-0">
                                             <Card className="border-accent/30 bg-accent/5">
                                                 <CardHeader className="pb-2">
                                                     <div className="flex items-center gap-2 text-accent font-bold text-sm uppercase tracking-wider">
@@ -861,10 +860,10 @@ export default function ModuleDetailsPage() {
                                                     />
                                                 </CardContent>
                                             </Card>
-                                        </>
+                                        </div>
                                     )}
-                                    <Card>
-                                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                                        <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
                                             <CardTitle className="text-lg">Local In Stock</CardTitle>
                                             {dashboardSubDealers.length > 0 && (
                                                 <Select value={inStockFilter} onValueChange={setInStockFilter}>
@@ -881,7 +880,7 @@ export default function ModuleDetailsPage() {
                                                 </Select>
                                             )}
                                         </CardHeader>
-                                        <CardContent>
+                                        <CardContent className="flex-1 min-h-0 overflow-hidden">
                                             <InventoryList 
                                                 organisation={dashboardOrg as any}
                                                 subDealers={dashboardSubDealers as any[]}
@@ -892,11 +891,11 @@ export default function ModuleDetailsPage() {
                                             />
                                         </CardContent>
                                     </Card>
-                                    <Card>
-                                        <CardHeader>
+                                    <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                                        <CardHeader className="shrink-0">
                                             <CardTitle>On Order</CardTitle>
                                         </CardHeader>
-                                        <CardContent>
+                                        <CardContent className="flex-1 min-h-0 overflow-hidden">
                                             <VesselOnOrderList 
                                                 organisation={dashboardOrg as any}
                                                 parentOrg={parentOrg as any}
@@ -906,29 +905,27 @@ export default function ModuleDetailsPage() {
                                         </CardContent>
                                     </Card>
                                 </div>
-                                <div className="lg:col-span-2">
-                                    <Card className="h-full flex flex-col min-h-[600px]">
-                                        <CardHeader><CardTitle>Quotes</CardTitle><CardDescription>Recent quotes for {dashboardOrg.name}</CardDescription></CardHeader>
-                                        <CardContent className="flex-grow">
-                                            <ScrollArea className="h-[500px] w-full rounded-md border p-4 bg-muted/50">
-                                                <div className="flex items-center justify-center h-full text-muted-foreground italic">
-                                                    <p>Quotes list will appear here.</p>
-                                                </div>
-                                            </ScrollArea>
+                                <div className="lg:col-span-2 overflow-hidden">
+                                    <Card className="h-full flex flex-col overflow-hidden">
+                                        <CardHeader className="shrink-0"><CardTitle>Quotes</CardTitle><CardDescription>Recent quotes for {dashboardOrg.name}</CardDescription></CardHeader>
+                                        <CardContent className="flex-1 min-h-0 p-4 pt-0">
+                                            <div className="h-full w-full rounded-md border p-4 bg-muted/50 flex items-center justify-center text-muted-foreground italic">
+                                                <p>Quotes list will appear here.</p>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                            <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                         )}
                     </TabsContent>
                 )}
 
-                <TabsContent value="bmt">
+                <TabsContent value="bmt" className="flex-1 min-h-0 mt-4 overflow-hidden">
                    {(view === 'ranges' || view === 'models' || view === 'motors') ? (
-                        <Card className="rounded-xl border-2 shadow-lg">
-                            <CardHeader className="bg-muted/10 border-b">
+                        <Card className="h-full flex flex-col rounded-xl border-2 shadow-lg overflow-hidden">
+                            <CardHeader className="bg-muted/10 border-b shrink-0">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="font-black uppercase tracking-tight">
                                         {isMotorBrand ? 'Engine Catalog' : view === 'ranges' ? 'Select product range' : view === 'models' ? `Available models in ${selectedRange?.name}` : `Engine Catalog: ${mainVendor?.name}`}
@@ -937,7 +934,7 @@ export default function ModuleDetailsPage() {
                                 </div>
                                 <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} pendingMotor={pendingMotor} view={view} onBreadcrumbClick={handleBreadcrumbClick} />
                             </CardHeader>
-                            <CardContent className="pt-6">
+                            <CardContent className="flex-1 min-h-0 overflow-y-auto pt-6">
                                 {isBoatBrand && mainVendor ? (
                                     <>
                                         {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
@@ -954,7 +951,7 @@ export default function ModuleDetailsPage() {
                             </CardContent>
                         </Card>
                    ) : (
-                        <div className="space-y-4">
+                        <div className="h-full overflow-y-auto space-y-4">
                             {view === 'bmt' && selectedModel && selectedRange && mainVendor && (
                                 <ModelConfigurationEditor 
                                     model={selectedModel} 
@@ -980,12 +977,12 @@ export default function ModuleDetailsPage() {
                    )}
                 </TabsContent>
 
-                <TabsContent value="operations">
+                <TabsContent value="operations" className="flex-1 min-h-0 mt-4 overflow-y-auto">
                     <Card><CardHeader><CardTitle>Operations</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Operations features for {currentContextLabel} coming soon.</p></CardContent></Card>
                 </TabsContent>
 
                 {isViewingOrg && (
-                    <TabsContent value="pricing">
+                    <TabsContent value="pricing" className="flex-1 min-h-0 mt-4 overflow-y-auto">
                         {dashboardOrg && mainVendor ? (
                             <ModulePricingDashboard 
                                 module={moduleData} 
@@ -993,13 +990,13 @@ export default function ModuleDetailsPage() {
                                 vendor={mainVendor} 
                             />
                         ) : (
-                            <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                            <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                         )}
                     </TabsContent>
                 )}
 
                  {isAdmin && !viewContextOrgId && (
-                    <TabsContent value="organisations">
+                    <TabsContent value="organisations" className="flex-1 min-h-0 mt-4 overflow-y-auto">
                        <Card>
                             <CardHeader>
                                 <CardTitle>Subscribed Organisations</CardTitle>
@@ -1047,7 +1044,7 @@ export default function ModuleDetailsPage() {
                 )}
 
                 {showSubDealersTab && (
-                    <TabsContent value="sub-dealers">
+                    <TabsContent value="sub-dealers" className="flex-1 min-h-0 mt-4 overflow-y-auto">
                         <Card>
                             <CardHeader>
                                 <CardTitle>Sub Dealer Management</CardTitle>
@@ -1116,7 +1113,7 @@ export default function ModuleDetailsPage() {
                 )}
 
                 {isAdmin && !viewContextOrgId && (
-                    <TabsContent value="settings" className="space-y-6">
+                    <TabsContent value="settings" className="flex-1 min-h-0 mt-4 overflow-y-auto space-y-6">
                         <Form {...settingsForm}>
                             <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
                                 <Card>
