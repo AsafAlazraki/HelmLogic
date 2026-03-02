@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { 
     Table, 
     TableBody, 
@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from './ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface Range {
@@ -74,24 +74,27 @@ export function ModulePricingDashboard({
     const [allModels, setAllModels] = useState<Model[]>([]);
     const [modelsLoading, setModelsLoading] = useState(true);
 
-    useMemo(async () => {
-        if (!ranges || ranges.length === 0) return;
-        setModelsLoading(true);
-        const models: Model[] = [];
-        try {
-            for (const range of ranges) {
-                const q = query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
-                const snap = await (firestore as any).getDocs(q);
-                snap.forEach((doc: any) => {
-                    models.push({ id: doc.id, ...doc.data() } as Model);
-                });
+    useEffect(() => {
+        const fetchModels = async () => {
+            if (!ranges || ranges.length === 0) return;
+            setModelsLoading(true);
+            const models: Model[] = [];
+            try {
+                for (const range of ranges) {
+                    const q = query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
+                    const snap = await getDocs(q);
+                    snap.forEach((doc: any) => {
+                        models.push({ id: doc.id, ...doc.data() } as Model);
+                    });
+                }
+                setAllModels(models);
+            } catch (e) {
+                console.error("Failed to fetch models for dashboard", e);
+            } finally {
+                setModelsLoading(false);
             }
-            setAllModels(models);
-        } catch (e) {
-            console.error("Failed to fetch models for dashboard", e);
-        } finally {
-            setModelsLoading(false);
-        }
+        };
+        fetchModels();
     }, [ranges, vendor.id, firestore]);
 
     const gstRate = (organisation.gstPercentage ?? 10) / 100;
