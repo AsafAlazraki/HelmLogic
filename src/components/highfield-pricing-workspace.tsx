@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils';
 import { SUPPORTED_CURRENCIES, formatCurrency } from '@/lib/currency-utils';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from './ui/badge';
 import NextImage from "next/image";
 
 interface CustomColumn {
