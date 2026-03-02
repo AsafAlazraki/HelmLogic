@@ -40,7 +40,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-} from "@/components/ui/dialog";
+} from "@/dialog";
 import {
     Tooltip,
     TooltipContent,
@@ -180,9 +180,9 @@ export function HighfieldQuoteFlow({
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) {
                 const targetTop = colorsSectionRef.current.offsetTop;
-                // Preserve a 40px visual cushion from the fixed header
+                // Preserve a 20px visual cushion from the fixed header (reduced from 40px)
                 setTimeout(() => {
-                    viewport.scrollTo({ top: targetTop - 40, behavior: 'smooth' });
+                    viewport.scrollTo({ top: targetTop - 20, behavior: 'smooth' });
                 }, 300);
             }
         } else if (scrollAreaRef.current) {
@@ -582,7 +582,7 @@ export function HighfieldQuoteFlow({
                                     </div>
 
                                     {selectedMaterial && (
-                                        <div ref={colorsSectionRef} className="space-y-5 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                        <div ref={colorsSectionRef} className="space-y-5 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                             <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">2. Available Colors</span>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {availableColors.map((color) => (
