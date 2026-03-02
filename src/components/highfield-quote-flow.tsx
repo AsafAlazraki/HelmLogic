@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, where, getDocs, type CollectionReference } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
     Loader2, 
@@ -12,31 +12,19 @@ import {
     Ship, 
     CheckCircle2, 
     ShieldCheck, 
-    Info,
-    ArrowRight,
-    Tag,
-    DollarSign,
-    Box,
+    PlusCircle, 
+    Package, 
+    X, 
     Wrench,
-    Plus,
-    X,
-    LayoutGrid,
-    Layers,
-    Package,
-    Settings2,
     ListChecks,
     ClipboardList,
-    Lock,
-    Maximize2,
     FileText,
-    ExternalLink
+    ArrowRight
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/currency-utils';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
 import {
     Carousel,
     CarouselContent,
@@ -122,7 +110,7 @@ export function HighfieldQuoteFlow({
     
     const { data: variants, loading: variantsLoading } = useCollection<Variant>(variantsQuery);
 
-    // 2. Fetch Compatible Motors
+    // 2. Fetch Compatible Motors (Step 3)
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
@@ -146,30 +134,14 @@ export function HighfieldQuoteFlow({
 
                 if (motorVendor) {
                     const dsRef = collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets');
-                    const dsSnap = await getDocs(dsRef)
-                        .catch(async (e) => {
-                            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                                path: dsRef.path,
-                                operation: 'list'
-                            } satisfies SecurityRuleContext));
-                            throw e;
-                        });
-
+                    const dsSnap = await getDocs(dsRef);
                     const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                     const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
                     
                     if (targetDS) {
                         setSelectedMotorDataSetId(targetDS.id);
                         const rowsRef = collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`);
-                        const rowsSnap = await getDocs(rowsRef)
-                            .catch(async (e) => {
-                                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                                    path: rowsRef.path,
-                                    operation: 'list'
-                                } satisfies SecurityRuleContext));
-                                throw e;
-                            });
-
+                        const rowsSnap = await getDocs(rowsRef);
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
 
                         const motorOverrides = model.motorOverrides || {};
@@ -191,7 +163,7 @@ export function HighfieldQuoteFlow({
                     }
                 }
             } catch (e) {
-                // error handled
+                console.error(e);
             } finally {
                 setMotorsLoading(false);
             }
@@ -244,6 +216,23 @@ export function HighfieldQuoteFlow({
         }));
     }, [variants, selectedMaterial]);
 
+    const totalPrice = useMemo(() => {
+        let total = activeVariant?.sellPriceExclGst || 0;
+        selectedOptionIds.forEach(id => {
+            const opt = model.optionalFeatures?.find((f: any) => f.id === id);
+            if (opt) total += (opt.sellPriceExclGst || 0);
+        });
+        if (selectedMotor) {
+            total += (selectedMotor.sellPriceExclGst || 0);
+            selectedMotor.masterAccessories?.forEach((acc: any) => {
+                acc.items?.forEach((item: any) => {
+                    total += (item.data?.sellPriceExclGst || 0);
+                });
+            });
+        }
+        return total;
+    }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor]);
+
     const factoryOptions = useMemo(() => {
         const options = model.optionalFeatures || [];
         const rules = model.rules || [];
@@ -289,27 +278,6 @@ export function HighfieldQuoteFlow({
         return sortedGroups;
     }, [factoryOptions]);
 
-    const totalPrice = useMemo(() => {
-        let total = activeVariant?.sellPriceExclGst || 0;
-        selectedOptionIds.forEach(id => {
-            const opt = model.optionalFeatures?.find((f: any) => f.id === id);
-            if (opt) total += (opt.sellPriceExclGst || 0);
-        });
-        if (selectedMotor) {
-            total += (selectedMotor.sellPriceExclGst || 0);
-            selectedMotor.masterAccessories?.forEach((acc: any) => {
-                acc.items?.forEach((item: any) => {
-                    total += (item.data?.sellPriceExclGst || 0);
-                });
-            });
-        }
-        return total;
-    }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor]);
-
-    const isStep1Complete = !!(selectedMaterial && selectedColor);
-    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
-    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
-
     const toggleOption = (id: string) => {
         const option = model.optionalFeatures?.find((f: any) => f.id === id);
         const isSelected = selectedOptionIds.includes(id);
@@ -338,6 +306,10 @@ export function HighfieldQuoteFlow({
         return false;
     };
 
+    const isStep1Complete = !!(selectedMaterial && selectedColor);
+    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
+    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+
     const handleMaterialSelect = (mat: string) => {
         setSelectedMaterial(mat as any);
         setSelectedColor(null);
@@ -351,8 +323,8 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
-            {/* Ambient Background */}
-            <div className="absolute inset-0 z-0">
+            {/* Ambient Background Blur */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
                 {model.coverImageUrl && (
                     <div className="relative h-full w-full opacity-5 blur-3xl scale-110">
                         <Image src={model.coverImageUrl} alt="Bg" fill className="object-cover" unoptimized />
@@ -361,7 +333,7 @@ export function HighfieldQuoteFlow({
                 <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
             </div>
 
-            {/* Step Header - Distributed Spacing */}
+            {/* Precision Step Header */}
             <div className="sticky top-0 z-30 px-6 md:px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 shadow-sm flex items-center">
                 <div className="w-full flex items-center justify-between">
                     <div className="flex-1 flex items-center justify-between mr-12 md:mr-24">
@@ -384,7 +356,7 @@ export function HighfieldQuoteFlow({
                         ))}
                     </div>
                     <button 
-                        className="font-black text-destructive hover:text-destructive/80 transition-colors uppercase tracking-[0.15em] text-[10px] h-8 flex items-center px-5 shrink-0 border-2 border-destructive/10 rounded-full hover:bg-destructive/5" 
+                        className="font-black text-destructive hover:text-destructive/80 transition-all uppercase tracking-[0.15em] text-[10px] h-8 flex items-center px-5 shrink-0 border-2 border-destructive/10 rounded-full hover:bg-destructive/5 active:scale-95" 
                         onClick={() => window.history.back()}
                     >
                         Exit Build
@@ -392,29 +364,32 @@ export function HighfieldQuoteFlow({
                 </div>
             </div>
 
-            {/* Main Build Workspace */}
+            {/* Build Workspace */}
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Visualizer Panel (Left) */}
+                {/* Full-Bleed Visualizer Panel (Left) */}
                 <div className="w-full lg:w-7/12 relative flex flex-col overflow-hidden h-full min-h-0 bg-slate-50/50">
                     <div className="w-full h-full flex flex-col p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full flex flex-col gap-8">
                             
-                            {/* The Seamless Visualizer Card */}
+                            {/* Seamless Visualizer Cube */}
                             <div className="relative flex-1 w-full flex flex-col bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0">
-                                <div className="flex-1 w-full min-h-0 relative">
+                                <div className="flex-1 w-full min-h-0 relative bg-white">
                                     <Carousel className="w-full h-full" opts={{ loop: true }}>
                                         <CarouselContent className="h-full">
                                             {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
                                                 <CarouselItem key={`${url}-${idx}`} className="h-full w-full p-0">
                                                     <div 
-                                                        className="relative h-full w-full cursor-zoom-in active:scale-[0.99] transition-all duration-500 flex items-center justify-center bg-white"
+                                                        className="relative h-full w-full cursor-zoom-in active:scale-[0.99] transition-all duration-500 flex items-center justify-center overflow-hidden"
                                                         onClick={() => setLightboxImage(url)}
                                                     >
+                                                        {/* Soft Fade Overlay */}
+                                                        <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_80px_rgba(255,255,255,0.8)]" />
+                                                        
                                                         <Image 
                                                             src={url} 
                                                             alt={`Boat View ${idx}`} 
                                                             fill 
-                                                            className="object-contain" 
+                                                            className="object-cover" 
                                                             unoptimized
                                                         />
                                                     </div>
@@ -429,14 +404,14 @@ export function HighfieldQuoteFlow({
                                         </CarouselContent>
                                         {carouselImages.length > 1 && (
                                             <>
-                                                <CarouselPrevious className="left-6 h-12 w-12 opacity-100 transition-all bg-white shadow-xl border-none text-primary hover:bg-primary hover:text-white z-30" />
-                                                <CarouselNext className="right-6 h-12 w-12 opacity-100 transition-all bg-white shadow-xl border-none text-primary hover:bg-primary hover:text-white z-30" />
+                                                <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 backdrop-blur-md shadow-xl border-none text-primary hover:bg-primary hover:text-white transition-all z-30" />
+                                                <CarouselNext className="right-6 h-12 w-12 bg-white/90 backdrop-blur-md shadow-xl border-none text-primary hover:bg-primary hover:text-white transition-all z-30" />
                                             </>
                                         )}
                                     </Carousel>
                                 </div>
 
-                                {/* Tech Hub Footer (Seamlessly Integrated) */}
+                                {/* Integrated Technical Footer */}
                                 <div className="flex items-center justify-center gap-3 py-5 border-t border-slate-50 mt-auto shrink-0 bg-slate-50/30">
                                     <TooltipProvider>
                                         <Tooltip>
@@ -504,12 +479,10 @@ export function HighfieldQuoteFlow({
 
                             {/* Refined Build Summary Hub */}
                             <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-10 rounded-[2.5rem] flex flex-col gap-2 shrink-0">
-                                {/* Row 1: Slate Grey Labels */}
                                 <div className="flex items-center justify-between px-1">
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Current Build</span>
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Total (Excl. Tax)</span>
                                 </div>
-                                {/* Row 2: Range (Blue Regular) | Model (Black Bold) | Price (Bold) */}
                                 <div className="flex items-center justify-between px-1">
                                     <div className="flex items-center gap-3 text-4xl tracking-tight min-w-0">
                                         {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
@@ -525,7 +498,7 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
-                {/* Configuration Area (Right) */}
+                {/* Configuration Panel (Right) */}
                 <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100">
                     <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
                         
@@ -766,7 +739,7 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
-            {/* Standard Features Overlay */}
+            {/* Technical Overlays */}
             <Dialog open={showStandardFeatures} onOpenChange={setShowStandardFeatures}>
                 <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 bg-slate-50 border-b">
@@ -786,7 +759,6 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
-            {/* General Specs Overlay */}
             <Dialog open={showGeneralSpecs} onOpenChange={setShowGeneralSpecs}>
                 <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 bg-slate-50 border-b">
