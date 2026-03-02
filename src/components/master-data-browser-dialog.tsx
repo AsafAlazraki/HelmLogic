@@ -53,8 +53,6 @@ interface DealerFitSelection {
   }[];
 }
 
-const MOTOR_ACCESSORY_CATEGORIES = ['Propeller', 'Rigging', 'Other'];
-
 export function MasterDataBrowserDialog({
   isOpen,
   onClose,
@@ -106,7 +104,6 @@ export function MasterDataBrowserDialog({
 
   const subscribedVendors = useMemo(() => {
     if (!allVendors) return [];
-    // Prioritize specifically allowed vendors for the current module context
     const effectiveAllowedIds = allowedVendorIds || organisation?.dataWarehouseSubscriptions || [];
     return allVendors.filter(v => effectiveAllowedIds.includes(v.id));
   }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
@@ -128,13 +125,11 @@ export function MasterDataBrowserDialog({
     if (selectedDataSetId && selectedDataSetId !== 'master') {
         return collection(firestore, 'data-warehouse', selectedVendorId, 'dataSets', selectedDataSetId, 'rows');
     }
-    // Only return master collection if no tables exist, otherwise we aggregate below
     return collection(firestore, 'data-warehouse', selectedVendorId, 'masterDataSet');
   }, [firestore, selectedVendorId, selectedDataSetId]);
   
   const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
 
-  // Intelligent Data Aggregation for "Global Master List"
   useEffect(() => {
     const fetchAggregate = async () => {
       if (selectedDataSetId === 'master' && selectedVendorId && dataSets && dataSets.length > 0) {
@@ -180,17 +175,15 @@ export function MasterDataBrowserDialog({
     
     const allKeys = Object.keys(filteredData[0]).filter(k => !k.startsWith('_') && k !== 'id');
     
-    // Define priority groups for "The Big Things"
     const priorityGroups = [
-        { keys: ['Part_Number', 'SKU', 'PartNo', 'Code', 'PartNumber', 'Part Number', 'PART_NUMBER', 'ITEM_CODE'], label: 'Code' },
-        { keys: ['Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model', 'DESCRIPTION', 'DESC', 'ITEM_NAME', 'Product Name', 'Description 1'], label: 'Description' },
-        { keys: ['RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst', 'PRICE', 'UNIT_PRICE', 'TOTAL_CTD'], label: 'Price' }
+        { keys: ['CODE', 'Code', 'Part_Number', 'SKU', 'PartNo', 'PartNumber', 'Part Number', 'ITEM_CODE'], label: 'Code' },
+        { keys: ['INSTALL TYPE', 'Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model', 'DESCRIPTION', 'DESC', 'ITEM_NAME', 'Product Name', 'Description 1'], label: 'Description' },
+        { keys: ['PARTS', 'RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst', 'PRICE', 'UNIT_PRICE', 'TOTAL_CTD'], label: 'Price' }
     ];
 
     const detectedHeaders: { key: string, label: string }[] = [];
     const matchedKeys = new Set<string>();
 
-    // 1. Find priority columns first
     priorityGroups.forEach(group => {
         const key = group.keys.find(k => allKeys.includes(k));
         if (key) {
@@ -199,12 +192,10 @@ export function MasterDataBrowserDialog({
         }
     });
 
-    // 2. Add Source table badge if in master view
     if (selectedDataSetId === 'master' && dataSets && dataSets.length > 0) {
         detectedHeaders.push({ key: '_sourceTable', label: 'Source' });
     }
 
-    // 3. Fill in other useful columns (up to 5 total)
     allKeys.forEach(k => {
         if (detectedHeaders.length >= 5) return;
         if (matchedKeys.has(k)) return;
@@ -230,7 +221,7 @@ export function MasterDataBrowserDialog({
     const selectedVendor = subscribedVendors.find(v => v.id === vId);
     if (selectedVendor) {
       setStagedItems(prev => [...prev, { vendorId: selectedVendor.id, vendorName: selectedVendor.name, row }]);
-      toast({ title: "Item Staged", description: `${row.Description || row.name || row['Model Name'] || 'Item'} added to selection.` });
+      toast({ title: "Item Staged", description: `${row['INSTALL TYPE'] || row.Description || row.name || 'Item'} added.` });
     }
   };
   
@@ -248,7 +239,7 @@ export function MasterDataBrowserDialog({
     }
 
     const selection = {
-      name: isPackage ? packageName : (stagedItems[0].row.Description || stagedItems[0].row.name || stagedItems[0].row['Model Name'] || 'New Item'),
+      name: isPackage ? packageName : (stagedItems[0].row['INSTALL TYPE'] || stagedItems[0].row.Description || stagedItems[0].row.name || 'New Item'),
       categoryId,
       category: targetCategory,
       type: isPackage ? 'package' as const : 'item' as const,
@@ -361,7 +352,7 @@ export function MasterDataBrowserDialog({
                                     {headers.map(header => (
                                         <TableHead key={header.key} className={cn(
                                             "text-[10px] font-black uppercase tracking-tighter py-3 px-4",
-                                            header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') ? "text-right" : ""
+                                            (header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') || header.key === 'PARTS') ? "text-right" : ""
                                         )}>
                                             {header.label.replace(/_/g, ' ')}
                                         </TableHead>
@@ -379,7 +370,7 @@ export function MasterDataBrowserDialog({
                                         {headers.map(header => (
                                             <TableCell key={header.key} className={cn(
                                                 "text-[11px] font-medium py-3 px-4 truncate",
-                                                header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') ? "text-right font-black" : ""
+                                                (header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') || header.key === 'PARTS') ? "text-right font-black" : ""
                                             )}>
                                                 {header.key === '_sourceTable' ? (
                                                     <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1 border-primary/20 text-primary">{row[header.key]}</Badge>
@@ -432,9 +423,10 @@ export function MasterDataBrowserDialog({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                {MOTOR_ACCESSORY_CATEGORIES.map(cat => (
-                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                ))}
+                                <SelectItem value={initialCategory || 'Other'}>{initialCategory || 'Other'}</SelectItem>
+                                <SelectItem value="Propeller">Propeller</SelectItem>
+                                <SelectItem value="Rigging">Rigging</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -463,7 +455,7 @@ export function MasterDataBrowserDialog({
                         <Card key={`${item.row.id}-${index}`} className="relative border-2 border-transparent hover:border-primary/20 transition-all bg-background shadow-sm overflow-hidden group rounded-lg">
                             <div className="p-3 pr-10">
                                 <p className="text-[11px] font-black uppercase leading-tight truncate">
-                                    {item.row.Description || item.row.name || item.row['Model Name'] || 'Unnamed Item'}
+                                    {item.row['INSTALL TYPE'] || item.row.Description || item.row.name || 'Unnamed Item'}
                                 </p>
                                 <p className="text-[9px] font-bold text-muted-foreground/60 mt-1 uppercase truncate">{item.vendorName}</p>
                             </div>

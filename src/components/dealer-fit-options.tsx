@@ -73,11 +73,14 @@ export function DealerFitOptions({
     return allCategories.filter(cat => organisation.dealerFitCategories?.includes(cat.id));
   }, [allCategories, organisation, isAdmin]);
 
+  const activeCategory = useMemo(() => {
+    return assignedCategories.find(c => c.id === activeCategoryId);
+  }, [assignedCategories, activeCategoryId]);
+
   const allowedVendorIds = useMemo(() => {
     if (!module) return [];
-    
-    // SIMPLIFIED: All vendors associated with the module are available for selection.
-    // We explicitly exclude the main boat brand vendor.
+    // Admins always see all associated vendors for module setup
+    // Org members see either module vendors or restricted access if configured
     return (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
   }, [module]);
 
@@ -183,8 +186,8 @@ export function DealerFitOptions({
                                 <div className="space-y-2 ml-4 border-l pl-4">
                                     {selection.items.map((item, index) => (
                                         <div key={index} className="p-3 border rounded-md bg-background text-xs">
-                                            <p className="font-bold">{item.data.Description || item.data.name || 'Unnamed Item'}</p>
-                                            <p className="text-muted-foreground mt-1">Vendor ID: {item.vendorId}</p>
+                                            <p className="font-bold">{item.data.Description || item.data.name || item.data['Model Name'] || item.data['INSTALL TYPE'] || 'Unnamed Item'}</p>
+                                            <p className="text-muted-foreground mt-1 text-[10px] font-mono">CODE: {item.data.Code || item.data.SKU || item.data.Part_Number || item.data.CODE || 'N/A'}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -196,7 +199,7 @@ export function DealerFitOptions({
                 ) : (
                   <div className="py-10 text-center text-xs text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
                     {allowedVendorIds.length > 0 
-                        ? "Click 'Add Selection' to browse parts from your associated vendors." 
+                        ? `Click 'Add Selection' to browse parts for ${category.name}.` 
                         : "No associated vendors have been assigned to this module configuration."
                     }
                   </div>
@@ -212,6 +215,7 @@ export function DealerFitOptions({
           onClose={() => setIsBrowserOpen(false)}
           organisation={(organisation || { id: organisationId || 'temp' }) as any}
           categoryId={activeCategoryId}
+          initialCategory={activeCategory?.name}
           onSave={handleSaveSelection}
           allowedVendorIds={allowedVendorIds}
         />
