@@ -357,7 +357,7 @@ export function HighfieldQuoteFlow({
         : fullModelName;
 
     return (
-        <div className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden">
             {/* Ambient Background Blur */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 {model.coverImageUrl && (
@@ -413,10 +413,7 @@ export function HighfieldQuoteFlow({
                                         <CarouselContent className="h-full">
                                             {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
                                                 <CarouselItem key={`${url}-${idx}`} className="h-full w-full p-0">
-                                                    <div 
-                                                        className="relative h-full w-full cursor-zoom-in active:scale-[0.99] transition-all duration-500 flex items-center justify-center overflow-hidden"
-                                                        onClickCapture={() => setLightboxIndex(idx)}
-                                                    >
+                                                    <div className="relative h-full w-full flex items-center justify-center overflow-hidden">
                                                         <Image 
                                                             src={url} 
                                                             alt={`Boat View ${idx}`} 
@@ -801,7 +798,7 @@ export function HighfieldQuoteFlow({
 
             {/* Gallery Lightbox */}
             <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
-                <DialogContent className="max-w-6xl h-[85vh] p-0 border-none bg-neutral-950/90 backdrop-blur-xl shadow-2xl flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[3rem]">
+                <DialogContent className="max-w-6xl h-[85vh] p-0 border-none bg-neutral-950/90 backdrop-blur-xl shadow-2xl flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[3rem] z-[100]">
                     <DialogTitle className="sr-only">Image Gallery</DialogTitle>
                     {lightboxIndex !== null && (
                         <div className="relative w-full h-full p-12 md:p-20 flex flex-col items-center justify-center min-h-0">
@@ -830,8 +827,8 @@ export function HighfieldQuoteFlow({
                                 </CarouselContent>
                                 {carouselImages.length > 1 && (
                                     <>
-                                        <CarouselPrevious className="left-4 h-14 w-14 bg-white/20 hover:bg-white/30 border-none text-white transition-all rounded-2xl shadow-xl z-[60]" />
-                                        <CarouselNext className="right-4 h-14 w-14 bg-white/20 hover:bg-white/30 border-none text-white transition-all rounded-2xl shadow-xl z-[60]" />
+                                        <CarouselPrevious className="left-4 h-14 w-14 bg-white/20 hover:bg-white/30 border-none text-white transition-all rounded-2xl shadow-xl z-[110]" />
+                                        <CarouselNext className="right-4 h-14 w-14 bg-white/20 hover:bg-white/30 border-none text-white transition-all rounded-2xl shadow-xl z-[110]" />
                                     </>
                                 )}
                             </Carousel>
@@ -840,7 +837,7 @@ export function HighfieldQuoteFlow({
                                 type="button"
                                 variant="ghost" 
                                 size="icon" 
-                                className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-[70] border border-white/10 shadow-lg"
+                                className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-[120] border border-white/10 shadow-lg"
                                 onClick={() => setLightboxIndex(null)}
                             >
                                 <X className="h-6 w-6" />
@@ -852,7 +849,7 @@ export function HighfieldQuoteFlow({
 
             {/* Technical Overlays */}
             <Dialog open={showStandardFeatures} onOpenChange={setShowStandardFeatures}>
-                <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden z-[100]">
                     <DialogHeader className="p-8 bg-slate-50 border-b">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight">Standard Features</DialogTitle>
                         <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary mt-1">Included in base {model.name}</DialogDescription>
@@ -871,7 +868,7 @@ export function HighfieldQuoteFlow({
             </Dialog>
 
             <Dialog open={showGeneralSpecs} onOpenChange={setShowGeneralSpecs}>
-                <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="sm:max-w-xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden z-[100]">
                     <DialogHeader className="p-8 bg-slate-50 border-b">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight">Technical Specs</DialogTitle>
                         <DialogDescription className="text-xs uppercase font-black tracking-widest text-primary mt-1">Master data for {model.name}</DialogDescription>
