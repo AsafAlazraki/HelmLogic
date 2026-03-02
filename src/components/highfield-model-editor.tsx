@@ -14,11 +14,10 @@ import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-    Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, ChevronDown, 
-    Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, 
+    Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, 
     AlertTriangle, DollarSign, Ship, RefreshCw, 
     PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert, Settings2, 
-    Search, ListChecks 
+    Search, ListChecks, Star, ChevronDown 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -78,6 +77,7 @@ const optionalFeatureSchema = z.object({
     sellPriceExclGst: looseNumber,
     applicableVariantIds: z.array(z.string()).default([]),
     associatedSeatId: z.string().optional().nullable(),
+    isStandard: z.boolean().default(false),
 });
 
 const documentSchema = z.object({
@@ -315,7 +315,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -407,6 +407,7 @@ function OptionalFeatureItem({
     const imageUrl = useWatch({ control, name: `optionalFeatures.${index}.imageUrl` });
     const name = useWatch({ control, name: `optionalFeatures.${index}.name` });
     const category = useWatch({ control, name: `optionalFeatures.${index}.category` });
+    const isStandard = useWatch({ control, name: `optionalFeatures.${index}.isStandard` });
     const storage = useStorage();
     const [isUploading, setIsUploading] = useState(false);
     const [isCompDialogOpen, setIsCompDialogOpen] = useState(false);
@@ -424,7 +425,7 @@ function OptionalFeatureItem({
 
     return (
         <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex items-center justify-between p-3 bg-muted/20 border-b">
+            <div className={cn("flex items-center justify-between p-3 border-b", isStandard ? "bg-primary/5" : "bg-muted/20")}>
                 <div className="flex items-center gap-3 min-w-0 pr-10">
                     <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted shrink-0">
@@ -432,6 +433,7 @@ function OptionalFeatureItem({
                         </Button>
                     </CollapsibleTrigger>
                     <div className="flex items-center gap-2 min-w-0">
+                        {isStandard && <Star className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />}
                         <span className="font-bold text-xs truncate">{name || 'Unnamed Option'}</span>
                         {category && <span className="text-[9px] font-black uppercase text-primary bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 truncate">{category}</span>}
                     </div>
@@ -525,6 +527,25 @@ function OptionalFeatureItem({
                     </div>
 
                     <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 rounded-lg bg-muted/5 border border-dashed">
+                            <FormField
+                                control={control}
+                                name={`optionalFeatures.${index}.isStandard`}
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center space-x-2 space-y-0">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest cursor-pointer text-primary">Standard by Default</FormLabel>
+                                    </FormItem>
+                                )}
+                            />
+                            {isStandard && <Badge className="text-[8px] font-black uppercase bg-primary text-white">Pre-Selected in Quote</Badge>}
+                        </div>
+
                         {isConsoleOrSeat && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -1517,7 +1538,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                         {optionalFeatureFields.length}
                                     </span>
                                 </div>
-                                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '', applicableVariantIds: [], associatedSeatId: null })}>
+                                <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', cost: null, sellPriceExclGst: null, imageUrl: null, code: '', category: null, color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}>
                                     <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Option
                                 </Button>
                             </div>
@@ -1563,7 +1584,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="h-6 w-6 hover:bg-primary/10 text-primary"
-                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null })}
+                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, cost: null, sellPriceExclGst: null, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}
                                                             >
                                                                 <PlusCircle className="h-4 w-4" />
                                                             </Button>

@@ -22,7 +22,8 @@ import {
     ArrowRight,
     Layers,
     Check,
-    Waves
+    Waves,
+    Star
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -175,13 +176,31 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model]);
 
-    // Independent Panel Scrolling - Precision Offset
+    // Initialize standard options and their dependencies
+    useEffect(() => {
+        if (model?.optionalFeatures && selectedOptionIds.length === 0) {
+            const standardIds = model.optionalFeatures
+                .filter((f: any) => f.isStandard)
+                .map((f: any) => f.id);
+            
+            // Also include associated seats for standard consoles
+            const seatIds = model.optionalFeatures
+                .filter((f: any) => f.isStandard && f.category === 'Consoles' && f.associatedSeatId)
+                .map((f: any) => f.associatedSeatId);
+
+            const allStandard = [...new Set([...standardIds, ...seatIds])];
+            if (allStandard.length > 0) {
+                setSelectedOptionIds(allStandard);
+            }
+        }
+    }, [model]);
+
+    // Independent Panel Scrolling
     useEffect(() => {
         if (selectedMaterial && currentStep === 1 && scrollAreaRef.current && colorsSectionRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) {
                 const targetTop = colorsSectionRef.current.offsetTop;
-                // Precision scroll offset: 10px cushion from the header for tighter look
                 setTimeout(() => {
                     viewport.scrollTo({ top: targetTop - 10, behavior: 'smooth' });
                 }, 600);
@@ -257,7 +276,9 @@ export function HighfieldQuoteFlow({
 
         let filtered = options.filter((opt: any) => {
             if (!activeVariant) return false;
+            // If applicableVariantIds is empty, it fits everything
             if (opt.applicableVariantIds?.length > 0 && !opt.applicableVariantIds.includes(activeVariant.id)) return false;
+            
             if (opt.category === 'Seats') return whitelistedSeatIds.includes(opt.id);
             return true;
         });
@@ -540,7 +561,7 @@ export function HighfieldQuoteFlow({
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-8 md:px-12 pb-12 pt-0 flex flex-col">
-                            {/* Spacing alignment cushion - reduced for tighter feel */}
+                            {/* Spacing alignment cushion */}
                             <div className="h-6 shrink-0" />
                             
                             {currentStep === 1 && (
@@ -624,6 +645,8 @@ export function HighfieldQuoteFlow({
                                                 {options.map((opt: any) => {
                                                     const isSelected = selectedOptionIds.includes(opt.id);
                                                     const isLocked = isOptionLocked(opt.id);
+                                                    const isStandard = opt.isStandard;
+                                                    
                                                     return (
                                                         <button
                                                             key={opt.id}
@@ -643,13 +666,17 @@ export function HighfieldQuoteFlow({
                                                                     <div className="flex items-center gap-2">
                                                                         <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{opt.name}</p>
                                                                         {isLocked && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
+                                                                        {isStandard && !isLocked && <Star className="h-3 w-3 text-primary fill-primary" />}
                                                                     </div>
                                                                     {opt.code && <p className="text-[10px] font-mono text-muted-foreground uppercase mt-1">{opt.code}</p>}
                                                                 </div>
                                                             </div>
-                                                            <p className={cn("text-sm font-black ml-4 shrink-0", isSelected ? "text-primary" : "text-foreground")}>
-                                                                +${(opt.sellPriceExclGst || 0).toLocaleString()}
-                                                            </p>
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <p className={cn("text-sm font-black shrink-0", isSelected ? "text-primary" : "text-foreground")}>
+                                                                    +${(opt.sellPriceExclGst || 0).toLocaleString()}
+                                                                </p>
+                                                                {isStandard && <span className="text-[8px] font-black uppercase text-primary tracking-tighter">Standard Component</span>}
+                                                            </div>
                                                         </button>
                                                     );
                                                 })}
