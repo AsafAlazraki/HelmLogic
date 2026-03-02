@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -43,8 +44,8 @@ import {
     Lock,
     FolderPlus,
     LayoutGrid,
-    ArrowUp,
-    ArrowDown
+    ArrowLeft,
+    ArrowRight
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -127,9 +128,6 @@ interface FreightContainer {
     cubicMeters: number;
 }
 
-/**
- * Calculation Logic Helper
- */
 const calculateValue = (
     col: CustomColumn, 
     baseCost: number, 
@@ -144,7 +142,6 @@ const calculateValue = (
         if (id === 'baseCost') return baseCost;
         if (id === 'masterSell') return masterSell;
         
-        // Find the column
         const sourceCol = allCols.find(c => c.id === id);
         if (!sourceCol) return null;
 
@@ -444,10 +441,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isFreightManagerOpen, setIsFreightManagerOpen] = useState(false);
     
-    // New Section State
     const [newSectionName, setNewSectionName] = useState('');
 
-    // New Metric State
     const [newColName, setNewColName] = useState('');
     const [newColType, setNewColType] = useState<CustomColumn['type']>('percent');
     const [isCalculated, setIsCalculated] = useState(false);
@@ -616,10 +611,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         updateDoc(strategyRef, { itemValues: updated });
     };
 
-    const handleCurrencyChange = (val: string) => {
-        updateDoc(strategyRef, { baseCurrency: val });
-    };
-
     const handleVendorCurrencyChange = async (val: string) => {
         try {
             await updateDoc(doc(firestore, 'data-warehouse', vendor.id), { currency: val });
@@ -652,7 +643,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         <div className="min-w-[1600px]">
             <Table>
                 <TableHeader className="bg-muted/50 sticky top-0 z-20">
-                    {/* Section Row */}
                     <TableRow className="hover:bg-transparent border-b">
                         <TableHead className="w-[350px] border-r bg-muted/20" colSpan={1}></TableHead>
                         <TableHead className="w-[80px] border-r" colSpan={1}></TableHead>
@@ -688,7 +678,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             </TableHead>
                         ))}
                     </TableRow>
-                    {/* Columns Row */}
                     <TableRow className="hover:bg-transparent border-b-2">
                         <TableHead className="py-4 px-6 border-r bg-muted/20 font-black uppercase text-[10px]">Description & SKU</TableHead>
                         <TableHead className="text-center border-r font-black uppercase text-[10px]">ISO</TableHead>
@@ -766,28 +755,19 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     const StrategyControls = () => (
-        <div className="flex items-end gap-3">
+        <div className="flex items-center gap-3">
             <Button 
                 onClick={() => setIsFreightManagerOpen(true)} 
                 variant="outline" 
-                className="h-9 font-black uppercase tracking-widest text-[10px] shadow-sm rounded-xl border-2 hover:bg-primary hover:text-primary-foreground transition-all"
+                className="h-10 font-black uppercase tracking-widest text-[10px] shadow-sm rounded-xl border-2 hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-2"
             >
-                <Truck className="h-4 w-4 mr-1.5" /> Freight Management
+                <Truck className="h-4 w-4" /> Freight Management
             </Button>
-            <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Strategy Base</Label>
-                <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
-                    <SelectTrigger className="w-[140px] h-9 font-black uppercase text-xs bg-muted/30">
-                        <Coins className="h-3.5 w-3.5 mr-2 text-primary" />
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.code}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            <Button onClick={() => setIsAddSectionOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl" variant="outline">
-                <FolderPlus className="h-4 w-4 mr-1.5" /> Add Section
+            <Button 
+                onClick={() => setIsAddSectionOpen(true)} 
+                className="h-10 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl flex items-center gap-2"
+            >
+                <FolderPlus className="h-4 w-4" /> Add Section
             </Button>
         </div>
     );
@@ -856,7 +836,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 <PricingTable />
             </ScrollArea>
 
-            {/* Focus Mode Workspace */}
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
                 <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl [&>button]:hidden">
                     <div className="flex flex-col h-full bg-background">
@@ -879,10 +858,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
                                 <div className="flex items-center gap-3">
                                     <StrategyControls />
-                                    <div className="h-8 w-px bg-border mx-2" />
+                                    <div className="h-10 w-px bg-border mx-2" />
                                     <DialogClose asChild>
-                                        <Button variant="ghost" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-accent border-2">
-                                            <Minimize2 className="h-4 w-4 mr-2" /> Collapse
+                                        <Button variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-accent border-2 flex items-center gap-2">
+                                            <Minimize2 className="h-4 w-4" /> Collapse
                                         </Button>
                                     </DialogClose>
                                 </div>
@@ -898,7 +877,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </DialogContent>
             </Dialog>
 
-            {/* Section Creation Dialog */}
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
                 <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl">
                     <DialogHeader>
@@ -921,7 +899,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </DialogContent>
             </Dialog>
 
-            {/* Metric Configuration Dialog */}
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
                 <DialogContent className="sm:max-w-xl rounded-2xl border-4 shadow-2xl overflow-hidden p-0">
                     <DialogHeader className="p-8 border-b bg-muted/5">
@@ -1192,7 +1169,6 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 {formatCurrency(sell, vendor.currency || 'AUD')}
             </TableCell>
             
-            {/* Packed m³ Column */}
             <TableCell className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
                 {isBoatVariant ? (
                     <div className="relative h-full w-full flex items-center">
