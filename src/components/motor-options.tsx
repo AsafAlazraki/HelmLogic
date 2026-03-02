@@ -110,7 +110,7 @@ function AccessoryCategory({
                         <Package className="h-3 w-3 text-primary/40 shrink-0" />
                         <span className="text-[10px] font-bold truncate flex-1 leading-tight">{opt.name}</span>
                         <Button 
-                            type="button"
+                            type="button" 
                             variant="ghost" 
                             size="icon" 
                             className="h-5 w-5 text-destructive hover:bg-destructive/10 opacity-0 group-hover/opt:opacity-100 transition-opacity"
@@ -210,11 +210,11 @@ function MotorCard({
                     )}
                 </div>
                 
-                <div className="p-3 bg-background flex items-center justify-between gap-2 border-b">
-                    <p className="text-[10px] font-black uppercase leading-tight text-foreground tracking-tight truncate flex-1">
+                <div className="p-4 bg-background flex items-center justify-between gap-3 border-b min-h-[56px]">
+                    <p className="text-xs font-black uppercase leading-tight text-foreground tracking-tight truncate flex-1">
                         {String(modelName)}
                     </p>
-                    <ChevronDown className={cn("h-3 w-3 text-muted-foreground transition-transform shrink-0", isExpanded && "rotate-180")} />
+                    <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", isExpanded && "rotate-180")} />
                 </div>
             </div>
             
@@ -534,7 +534,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                             type="button"
                                             variant="outline" 
                                             size="sm" 
-                                            className="h-8 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover/trigger:opacity-100 transition-opacity"
+                                            className="h-8 text-[10px] font-black uppercase tracking-widest transition-opacity"
                                             onClick={(e) => { 
                                                 e.preventDefault(); 
                                                 e.stopPropagation(); 
