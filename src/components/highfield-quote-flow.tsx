@@ -448,6 +448,7 @@ export function HighfieldQuoteFlow({
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button 
+                                                    type="button"
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="rounded-full h-11 w-11 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
@@ -466,6 +467,7 @@ export function HighfieldQuoteFlow({
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button 
+                                                    type="button"
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="rounded-full h-11 w-11 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
@@ -487,6 +489,7 @@ export function HighfieldQuoteFlow({
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <Button 
+                                                                type="button"
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="rounded-full h-11 w-11 bg-white hover:bg-primary hover:text-white text-primary transition-all active:scale-95 shadow-sm border" 
@@ -650,6 +653,7 @@ export function HighfieldQuoteFlow({
                                                     return (
                                                         <button
                                                             key={opt.id}
+                                                            type="button"
                                                             onClick={() => !isLocked && toggleOption(opt.id)}
                                                             disabled={isLocked}
                                                             className={cn(
@@ -709,6 +713,7 @@ export function HighfieldQuoteFlow({
                                                     return (
                                                         <div key={motor.id} className="space-y-3">
                                                             <button
+                                                                type="button"
                                                                 onClick={() => setSelectedMotor(isSelected ? null : motor)}
                                                                 className={cn(
                                                                     "w-full flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all duration-300 text-left group",
@@ -784,21 +789,22 @@ export function HighfieldQuoteFlow({
 
             {/* Gallery Lightbox */}
             <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
-                <DialogContent className="max-w-6xl h-auto max-h-[90vh] p-0 border-none bg-neutral-950/90 backdrop-blur-xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[3rem] overflow-hidden">
+                <DialogContent className="max-w-6xl h-[85vh] p-0 border-none bg-neutral-950/90 backdrop-blur-xl shadow-2xl flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[3rem]">
                     <DialogTitle className="sr-only">Image Gallery</DialogTitle>
                     {lightboxIndex !== null && (
-                        <div className="relative w-full h-full p-16 md:p-24 flex flex-col items-center justify-center min-h-[400px]">
+                        <div className="relative w-full h-full p-12 md:p-20 flex flex-col items-center justify-center min-h-0">
                             <Carousel 
-                                className="w-full h-full" 
+                                key={`lightbox-${lightboxIndex}`}
+                                className="w-full h-full flex flex-col items-center justify-center" 
                                 opts={{ 
                                     startIndex: lightboxIndex,
                                     loop: true 
                                 }}
                             >
-                                <CarouselContent className="h-full">
+                                <CarouselContent className="h-full items-center">
                                     {carouselImages.map((url, idx) => (
-                                        <CarouselItem key={`${url}-${idx}`} className="h-full flex items-center justify-center">
-                                            <div className="relative w-full h-[60vh] md:h-[70vh]">
+                                        <CarouselItem key={`lightbox-img-${idx}`} className="h-full flex items-center justify-center p-0">
+                                            <div className="relative w-full h-full max-h-full">
                                                 <Image 
                                                     src={url} 
                                                     alt={`Gallery View ${idx}`} 
@@ -812,16 +818,17 @@ export function HighfieldQuoteFlow({
                                 </CarouselContent>
                                 {carouselImages.length > 1 && (
                                     <>
-                                        <CarouselPrevious className="left-4 h-14 w-14 bg-white/10 hover:bg-white/20 border-none text-white transition-all rounded-2xl shadow-xl" />
-                                        <CarouselNext className="right-4 h-14 w-14 bg-white/10 hover:bg-white/20 border-none text-white transition-all rounded-2xl shadow-xl" />
+                                        <CarouselPrevious className="left-4 h-14 w-14 bg-white/10 hover:bg-white/20 border-none text-white transition-all rounded-2xl shadow-xl z-50" />
+                                        <CarouselNext className="right-4 h-14 w-14 bg-white/10 hover:bg-white/20 border-none text-white transition-all rounded-2xl shadow-xl z-50" />
                                     </>
                                 )}
                             </Carousel>
                             
                             <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="icon" 
-                                className="absolute top-10 right-10 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-50 border border-white/10 shadow-lg"
+                                className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-[60] border border-white/10 shadow-lg"
                                 onClick={() => setLightboxIndex(null)}
                             >
                                 <X className="h-6 w-6" />
