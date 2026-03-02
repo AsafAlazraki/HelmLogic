@@ -32,7 +32,9 @@ import {
     X,
     Maximize2,
     Minimize2,
-    ChevronLeft
+    ChevronLeft,
+    ArrowRightLeft,
+    ShieldCheck
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -51,7 +53,7 @@ import { cn } from '@/lib/utils';
 import { SUPPORTED_CURRENCIES, formatCurrency } from '@/lib/currency-utils';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from './ui/badge';
+import { Badge } from '@/components/ui/badge';
 import NextImage from "next/image";
 import { Separator } from './ui/separator';
 
@@ -93,9 +95,16 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    // 1. Data Fetching
+    // 1. Core Data Fetching
     const rangesQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')), [firestore, vendor.id]);
     const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
+
+    // Organisation & Exchange Rates for visual reference
+    const orgRef = useMemoFirebase(() => doc(firestore, 'organisations', organisationId), [firestore, organisationId]);
+    const { data: organisation } = useDoc<any>(orgRef);
+
+    const ratesQuery = useMemoFirebase(() => collection(firestore, `organisations/${organisationId}/exchangeRates`), [firestore, organisationId]);
+    const { data: exchangeRates } = useCollection<any>(ratesQuery);
 
     const [allModels, setAllModels] = useState<Model[]>([]);
     const [allVariants, setAllVariants] = useState<Record<string, Variant[]>>({});
@@ -140,6 +149,13 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         };
         fetchDeepData();
     }, [ranges, vendor.id, firestore]);
+
+    // Financial calculations
+    const activeExchangeRate = useMemo(() => {
+        if (!exchangeRates || !vendor.currency) return 1;
+        const rate = exchangeRates.find((r: any) => r.code === vendor.currency);
+        return rate?.rate || 1;
+    }, [exchangeRates, vendor.currency]);
 
     const handleAddColumn = async () => {
         if (!newColName.trim()) return;
@@ -193,6 +209,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         updateDoc(strategyRef, { baseCurrency: val });
     };
 
+    const handleVendorCurrencyChange = async (val: string) => {
+        try {
+            await updateDoc(doc(firestore, 'data-warehouse', vendor.id), { currency: val });
+            toast({ title: "Vendor Currency Updated", description: `${vendor.name} cost basis is now ${val}.` });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Update Failed" });
+        }
+    };
+
     const toggleRange = (id: string) => {
         setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
@@ -217,12 +242,13 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const columns = strategy?.columns || [];
 
     const PricingTable = () => (
-        <div className="min-w-[1200px]">
+        <div className="min-w-[1400px]">
             <Table>
                 <TableHeader className="bg-muted/50 sticky top-0 z-20">
                     <TableRow className="hover:bg-transparent border-b-2">
                         <TableHead className="w-[350px] py-4 px-6 border-r bg-muted/20">Item Description & SKU</TableHead>
-                        <TableHead className="w-[120px] text-center border-r">Vendor ID</TableHead>
+                        <TableHead className="w-[80px] text-center border-r">ISO</TableHead>
+                        <TableHead className="w-[120px] text-center border-r bg-primary/5">Exchange Rate</TableHead>
                         <TableHead className="w-[120px] text-right border-r">Base Cost</TableHead>
                         <TableHead className="w-[120px] text-right border-r">Master Sell</TableHead>
                         {columns.map((col, idx) => (
@@ -254,7 +280,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                             <ChevronRight className="h-3 w-3" />
                                         </Button>
                                         <Button 
-                                            type="button"
+                                            type="button" 
                                             variant="ghost" 
                                             size="icon" 
                                             className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
@@ -280,7 +306,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             columns={columns}
                             strategy={strategy}
                             onUpdateValue={handleUpdateValue}
-                            vendorId={vendor.id}
+                            vendor={vendor}
+                            exchangeRate={activeExchangeRate}
                         />
                     ))}
                 </TableBody>
@@ -289,17 +316,20 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     const StrategyControls = () => (
-        <div className="flex items-center gap-2">
-            <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
-                <SelectTrigger className="w-[140px] h-9 font-bold bg-muted/30">
-                    <Coins className="h-3.5 w-3.5 mr-2 text-primary" />
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.code}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Button onClick={() => setIsAddColumnOpen(true)} variant="outline" className="h-9 font-black uppercase tracking-widest text-[10px] border-2">
+        <div className="flex items-end gap-3">
+            <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Strategy Base</Label>
+                <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
+                    <SelectTrigger className="w-[140px] h-9 font-black uppercase text-xs bg-muted/30">
+                        <Coins className="h-3.5 w-3.5 mr-2 text-primary" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.code}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <Button onClick={() => setIsAddColumnOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl">
                 <Plus className="h-4 w-4 mr-1.5" /> Add Metric
             </Button>
         </div>
@@ -318,21 +348,41 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 <Building className="h-6 w-6 m-auto mt-1 text-muted-foreground" />
                             )}
                         </div>
-                        <div>
-                            <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-3">
+                                <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/10">
+                                    <span className="text-[9px] font-black text-primary uppercase tracking-widest">{vendor.currency || 'AUD'}</span>
+                                    <ArrowRightLeft className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{organisation?.tradingCurrency || 'AUD'}</span>
+                                </div>
+                            </div>
                             <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Advanced Multi-Tier Pricing Manager</CardDescription>
                         </div>
                     </div>
 
-                    <Button 
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsFullScreen(true)}
-                        className="h-9 font-black uppercase tracking-widest text-[10px] shadow-sm flex items-center gap-2 border-2 hover:bg-primary hover:text-primary-foreground transition-all"
-                    >
-                        <Maximize2 className="h-4 w-4" />
-                        Expand Focus Mode
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end gap-1 px-4 border-r pr-6">
+                            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Vendor Master Currency</Label>
+                            <Select value={vendor.currency || 'AUD'} onValueChange={handleVendorCurrencyChange}>
+                                <SelectTrigger className="h-8 w-32 font-black uppercase text-[10px] bg-muted/20 border-dashed">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold text-xs">{c.code} - {c.label.split('(')[0]}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button 
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsFullScreen(true)}
+                            className="h-9 font-black uppercase tracking-widest text-[10px] shadow-sm flex items-center gap-2 border-2 hover:bg-primary hover:text-primary-foreground transition-all"
+                        >
+                            <Maximize2 className="h-4 w-4" />
+                            Expand Focus Mode
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="relative mt-6">
@@ -363,17 +413,21 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </div>
                                     <DialogTitle className="flex flex-col">
                                         <span className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} FOCUS MODE</span>
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-primary mt-1.5">Strategy Workspace</span>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-primary">Strategy Workspace</span>
+                                            <Badge variant="outline" className="h-4 text-[8px] font-black border-primary/20 text-primary uppercase">
+                                                Rate: {activeExchangeRate.toFixed(4)} ({vendor.currency || 'AUD'} → {organisation?.tradingCurrency || 'AUD'})
+                                            </Badge>
+                                        </div>
                                     </DialogTitle>
                                 </div>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                     <StrategyControls />
-                                    <div className="h-6 w-px bg-border mx-1" />
+                                    <div className="h-8 w-px bg-border mx-2" />
                                     <DialogClose asChild>
-                                        <Button variant="ghost" size="sm" className="h-9 gap-2 px-3 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-accent border-2">
-                                            <Minimize2 className="h-4 w-4" />
-                                            Collapse
+                                        <Button variant="ghost" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-accent border-2">
+                                            <Minimize2 className="h-4 w-4 mr-2" /> Collapse
                                         </Button>
                                     </DialogClose>
                                 </div>
@@ -401,25 +455,25 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
             {/* Global Dialogs */}
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
-                <DialogContent className="sm:max-w-md rounded-2xl">
+                <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-black uppercase tracking-tight">New Custom Metric</DialogTitle>
-                        <DialogDescription>Define a new column to calculate or store organisation-specific values.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold uppercase text-muted-foreground/60 tracking-widest">Define a new column to calculate or store organisation-specific values.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4">
+                    <div className="space-y-6 py-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Column Name</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">1. Column Display Name</Label>
                             <Input 
                                 placeholder="e.g. Local Freight %" 
-                                className="font-bold h-10"
+                                className="font-bold h-12 border-2 bg-muted/5"
                                 value={newColName}
                                 onChange={(e) => setNewColName(e.target.value)}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Value Type</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Value Schema</Label>
                             <Select value={newColType} onValueChange={(v: any) => setNewColType(v)}>
-                                <SelectTrigger className="h-10 font-bold">
+                                <SelectTrigger className="h-12 font-bold border-2 bg-muted/5">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -431,9 +485,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             </Select>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddColumnOpen(false)} className="font-bold">Cancel</Button>
-                        <Button onClick={handleAddColumn} disabled={!newColName.trim()} className="font-black uppercase tracking-widest">
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setIsAddColumnOpen(false)} className="h-11 px-6 font-bold rounded-xl border-2">Cancel</Button>
+                        <Button onClick={handleAddColumn} disabled={!newColName.trim()} className="h-11 px-8 font-black uppercase tracking-widest rounded-xl shadow-lg">
                             Initialize Column
                         </Button>
                     </DialogFooter>
@@ -443,16 +497,16 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 }
 
-function RangeSection({ range, models, variants, isExpanded, onToggle, columns, strategy, onUpdateValue, vendorId }: any) {
+function RangeSection({ range, models, variants, isExpanded, onToggle, columns, strategy, onUpdateValue, vendor, exchangeRate }: any) {
     return (
         <>
             <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
                 <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs flex items-center gap-3">
                     {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     <span>{range.name} Range</span>
-                    <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary">{models.length} Series</Badge>
+                    <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                 </TableCell>
-                <TableCell colSpan={3 + columns.length} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100">Click to expand model series and variants</TableCell>
+                <TableCell colSpan={4 + columns.length} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">Click to expand model series and variants</TableCell>
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -462,14 +516,15 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, columns, 
                     columns={columns}
                     strategy={strategy}
                     onUpdateValue={onUpdateValue}
-                    vendorId={vendorId}
+                    vendor={vendor}
+                    exchangeRate={exchangeRate}
                 />
             ))}
         </>
     );
 }
 
-function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendorId }: any) {
+function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendor, exchangeRate }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
 
     return (
@@ -486,14 +541,14 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendorI
                         </div>
                     </div>
                 </TableCell>
-                <TableCell colSpan={3 + columns.length} className="bg-muted/5" />
+                <TableCell colSpan={4 + columns.length} className="bg-muted/5" />
             </TableRow>
 
             {isLocalExpanded && (
                 <>
                     {/* SKUs Header */}
                     <TableRow className="bg-white/50 border-l-4 border-l-primary/40">
-                        <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60" colSpan={4 + columns.length}>
+                        <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60" colSpan={5 + columns.length}>
                             <div className="flex items-center gap-2">
                                 <Ship className="h-3.5 w-3.5" />
                                 <span>Boat Variant SKUs</span>
@@ -510,7 +565,8 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendorI
                             sku={v.sku} 
                             cost={v.cost} 
                             sell={v.sellPriceExclGst} 
-                            vendorId={vendorId}
+                            vendor={vendor}
+                            exchangeRate={exchangeRate}
                             columns={columns}
                             strategy={strategy}
                             onUpdateValue={onUpdateValue}
@@ -522,7 +578,7 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendorI
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="bg-white/50 border-l-4 border-l-primary/40">
-                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60" colSpan={4 + columns.length}>
+                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60" colSpan={5 + columns.length}>
                                     <div className="flex items-center gap-2">
                                         <Wrench className="h-3.5 w-3.5" />
                                         <span>Factory Options</span>
@@ -537,7 +593,8 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendorI
                                     sku={f.code} 
                                     cost={f.cost} 
                                     sell={f.sellPriceExclGst} 
-                                    vendorId={vendorId}
+                                    vendor={vendor}
+                                    exchangeRate={exchangeRate}
                                     columns={columns}
                                     strategy={strategy}
                                     onUpdateValue={onUpdateValue}
@@ -553,7 +610,7 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendorI
     );
 }
 
-function PricingRow({ id, name, sku, cost, sell, columns, strategy, onUpdateValue, indent, isOption, vendorId }: any) {
+function PricingRow({ id, name, sku, cost, sell, columns, strategy, onUpdateValue, indent, isOption, vendor, exchangeRate }: any) {
     const itemStrategyValues = strategy?.itemValues?.[id] || {};
 
     return (
@@ -564,9 +621,18 @@ function PricingRow({ id, name, sku, cost, sell, columns, strategy, onUpdateValu
                     <span className="text-[9px] font-mono text-muted-foreground uppercase">{sku || 'NO SKU'}</span>
                 </div>
             </TableCell>
-            <TableCell className="text-center text-[10px] font-mono text-muted-foreground border-r">{vendorId.slice(0, 8)}</TableCell>
-            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4">{formatCurrency(cost)}</TableCell>
-            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4">{formatCurrency(sell)}</TableCell>
+            <TableCell className="text-center border-r">
+                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
+            </TableCell>
+            <TableCell className="text-center border-r bg-primary/5">
+                <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate.toFixed(4)}</span>
+            </TableCell>
+            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4">
+                {formatCurrency(cost, vendor.currency || 'AUD')}
+            </TableCell>
+            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4">
+                {formatCurrency(sell, vendor.currency || 'AUD')}
+            </TableCell>
             {columns.map((col: any) => (
                 <TableCell key={col.id} className="p-0 border-r last:border-r-0 bg-primary/5 group-hover:bg-primary/10 transition-colors">
                     <EditableCell 
