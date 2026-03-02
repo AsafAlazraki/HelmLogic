@@ -40,12 +40,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn, createSlug } from '@/lib/utils';
 import { ModuleVendorAccessDialog } from '@/components/module-vendor-access-dialog';
-
+import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
 }).optional().or(z.literal(''));
-
 
 const roleSchema = z.object({
   id: z.string(),
@@ -290,11 +289,15 @@ export default function OrganisationDetailsPage() {
             if (values.primaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
                 dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
+            } else if (values.primaryLogoUrl === null) {
+                dataToUpdate.primaryLogoUrl = null;
             }
             
             if (values.secondaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
                 dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
+            } else if (values.secondaryLogoUrl === null) {
+                dataToUpdate.secondaryLogoUrl = null;
             }
 
             await updateDoc(orgDocRef, dataToUpdate);
@@ -606,17 +609,36 @@ export default function OrganisationDetailsPage() {
                                                 <Loader2 className="h-6 w-6 animate-spin" />
                                             ) : (
                                                 <FormField control={form.control} name="dealerFitCategories" render={({ field }) => (
-                                                    <FormItem className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                                         {allDealerFitCategories?.map(cat => (
-                                                            <div key={cat.id} className="flex items-center space-x-3 p-3 border rounded-md">
-                                                                <Checkbox 
-                                                                    checked={field.value?.includes(cat.id)}
-                                                                    onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), cat.id]) : field.onChange(field.value?.filter(id => id !== cat.id))}
-                                                                />
-                                                                <label className="text-sm font-medium">{cat.name}</label>
+                                                            <div 
+                                                                key={cat.id} 
+                                                                onClick={() => {
+                                                                    const current = field.value || [];
+                                                                    const newValue = current.includes(cat.id) 
+                                                                        ? current.filter(id => id !== cat.id) 
+                                                                        : [...current, cat.id];
+                                                                    field.onChange(newValue);
+                                                                }}
+                                                                className={cn(
+                                                                    "cursor-pointer transition-all border-2 flex flex-col h-full relative group overflow-hidden rounded-xl",
+                                                                    field.value?.includes(cat.id) ? "border-primary bg-primary/5 shadow-md" : "hover:border-primary/30"
+                                                                )}
+                                                            >
+                                                                {field.value?.includes(cat.id) && (
+                                                                    <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-0.5 z-10 shadow-sm animate-in zoom-in duration-200">
+                                                                        <Check className="h-3 w-3" />
+                                                                    </div>
+                                                                )}
+                                                                <div className="h-28 bg-muted/20 flex items-center justify-center p-4">
+                                                                    <Building className="h-8 w-8 text-muted-foreground/30"/>
+                                                                </div>
+                                                                <div className="p-3 text-center border-t bg-background mt-auto">
+                                                                    <p className="text-[11px] font-black uppercase tracking-tight truncate">{cat.name}</p>
+                                                                </div>
                                                             </div>
                                                         ))}
-                                                    </FormItem>
+                                                    </div>
                                                 )} />
                                             )}
                                         </CardContent>
@@ -639,20 +661,39 @@ export default function OrganisationDetailsPage() {
                                                 <Loader2 className="h-6 w-6 animate-spin" />
                                             ) : (
                                                 <FormField control={form.control} name="dataWarehouseSubscriptions" render={({ field }) => (
-                                                    <FormItem className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                                         {allVendors?.map((vendor) => {
                                                             const isSubscribed = field.value?.includes(vendor.id);
                                                             return (
-                                                                <Card key={vendor.id} onClick={() => isSubscribed ? setVendorToUnsubscribe(vendor) : field.onChange([...(field.value || []), vendor.id])} className={cn("cursor-pointer transition-all border-border relative", isSubscribed && "border-primary ring-2 ring-primary")}>
-                                                                    {isSubscribed && <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5 z-10"><Check className="h-3 w-3" /></div>}
-                                                                    <div className="h-20 bg-muted/50 flex items-center justify-center p-2">
-                                                                        {vendor.logoUrl ? <div className="relative h-full w-full"><Image src={vendor.logoUrl} alt={vendor.name} fill className="object-contain" sizes="100px" /></div> : <Building className="h-8 w-8 text-muted-foreground"/>}
+                                                                <Card 
+                                                                    key={vendor.id} 
+                                                                    onClick={() => isSubscribed ? setVendorToUnsubscribe(vendor) : field.onChange([...(field.value || []), vendor.id])} 
+                                                                    className={cn(
+                                                                        "cursor-pointer transition-all border-2 flex flex-col h-full relative group overflow-hidden rounded-xl",
+                                                                        isSubscribed ? "border-primary bg-primary/5 shadow-md" : "hover:border-primary/30"
+                                                                    )}
+                                                                >
+                                                                    {isSubscribed && (
+                                                                        <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-0.5 z-10 shadow-sm animate-in zoom-in duration-200">
+                                                                            <Check className="h-3 w-3" />
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="h-28 bg-muted/20 flex items-center justify-center p-4">
+                                                                        {vendor.logoUrl ? (
+                                                                            <div className="relative h-full w-full">
+                                                                                <Image src={vendor.logoUrl} alt={vendor.name} fill className="object-contain" sizes="150px" />
+                                                                            </div>
+                                                                        ) : (
+                                                                            <Building className="h-8 w-8 text-muted-foreground/30"/>
+                                                                        )}
                                                                     </div>
-                                                                    <div className="p-3 text-center"><p className="text-sm font-medium truncate">{vendor.name}</p></div>
+                                                                    <div className="p-3 text-center border-t bg-background mt-auto">
+                                                                        <p className="text-[11px] font-black uppercase tracking-tight truncate">{vendor.name}</p>
+                                                                    </div>
                                                                 </Card>
                                                             );
                                                         })}
-                                                    </FormItem>
+                                                    </div>
                                                 )} />
                                             )}
                                         </CardContent>
@@ -664,20 +705,55 @@ export default function OrganisationDetailsPage() {
                                                 <Loader2 className="h-6 w-6 animate-spin" />
                                             ) : (
                                                 <FormField control={form.control} name="enabledModuleSubscriptions" render={({ field }) => (
-                                                    <FormItem className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                                         {allModules?.map((module) => {
                                                             const isSubscribed = field.value?.includes(module.id);
                                                             return (
-                                                                <Card key={module.id} className={cn("transition-all relative overflow-hidden flex flex-col", isSubscribed && "border-primary ring-1 ring-primary")}>
-                                                                    <div className="flex items-start justify-between p-4 bg-muted/30">
-                                                                        <div className="flex items-center gap-3"><Checkbox checked={isSubscribed} onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), module.id]) : field.onChange(field.value?.filter(id => id !== module.id))} /><span className="font-medium text-sm">{module.name}</span></div>
-                                                                        {isSubscribed && <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setActiveVendorConfigModule(module)}><Settings2 className="h-4 w-4" /></Button>}
+                                                                <Card 
+                                                                    key={module.id} 
+                                                                    onClick={() => {
+                                                                        const newSubs = isSubscribed 
+                                                                            ? field.value.filter((id: string) => id !== module.id)
+                                                                            : [...(field.value || []), module.id];
+                                                                        field.onChange(newSubs);
+                                                                    }}
+                                                                    className={cn(
+                                                                        "cursor-pointer transition-all border-2 flex flex-col h-full relative group overflow-hidden rounded-xl",
+                                                                        isSubscribed ? "border-primary bg-primary/5 shadow-md" : "hover:border-primary/30"
+                                                                    )}
+                                                                >
+                                                                    {isSubscribed && (
+                                                                        <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-0.5 z-10 shadow-sm animate-in zoom-in duration-200">
+                                                                            <Check className="h-3 w-3" />
+                                                                        </div>
+                                                                    )}
+                                                                    {isSubscribed && (
+                                                                        <Button 
+                                                                            type="button" 
+                                                                            variant="ghost" 
+                                                                            size="icon" 
+                                                                            className="absolute top-1 left-1 h-7 w-7 text-muted-foreground hover:text-primary z-20 hover:bg-primary/10 rounded-full"
+                                                                            onClick={(e) => { e.stopPropagation(); setActiveVendorConfigModule(module); }}
+                                                                        >
+                                                                            <Settings2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                    <div className="h-28 bg-muted/20 flex items-center justify-center p-4">
+                                                                        {module.logoUrl ? (
+                                                                            <div className="relative h-full w-full">
+                                                                                <Image src={module.logoUrl} alt={module.name} fill className="object-contain" sizes="150px" />
+                                                                            </div>
+                                                                        ) : (
+                                                                            <Building className="h-8 w-8 text-muted-foreground/30"/>
+                                                                        )}
                                                                     </div>
-                                                                    <div className="h-20 bg-muted/10 flex items-center justify-center p-2">{module.logoUrl ? <div className="relative h-full w-full"><Image src={module.logoUrl} alt={module.name} fill className="object-contain" sizes="100px" /></div> : <Building className="h-8 w-8 text-muted-foreground/30"/>}</div>
+                                                                    <div className="p-3 text-center border-t bg-background mt-auto">
+                                                                        <p className="text-[11px] font-black uppercase tracking-tight truncate">{module.name}</p>
+                                                                    </div>
                                                                 </Card>
                                                             );
                                                         })}
-                                                    </FormItem>
+                                                    </div>
                                                 )} />
                                             )}
                                         </CardContent>
