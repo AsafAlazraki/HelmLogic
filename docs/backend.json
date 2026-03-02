@@ -1,365 +1,788 @@
 {
   "entities": {
-    "MotorBrand": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "MotorBrand",
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile information.",
       "type": "object",
-      "description": "Represents a manufacturer or brand of marine motors, such as Yamaha, which is the main vendor for a motor brand module.",
       "properties": {
-        "id": {
+        "displayName": {
           "type": "string",
-          "description": "Unique identifier for the MotorBrand entity."
+          "description": "The user's display name."
         },
-        "name": {
+        "email": {
           "type": "string",
-          "description": "The official name of the motor brand, e.g., 'Yamaha'."
+          "format": "email",
+          "description": "The user's email address."
         },
-        "description": {
+        "appRole": {
           "type": "string",
-          "description": "A brief description of the motor brand, including its history or specialization."
+          "description": "The user's role within the application."
         },
-        "websiteUrl": {
+        "organisationId": {
           "type": "string",
-          "description": "The official website URL for the motor brand.",
-          "format": "uri"
+          "description": "The ID of the organisation the user belongs to."
+        },
+        "organisationRole": {
+          "type": "string",
+          "description": "The ID of the user's role within their organisation."
         }
       },
       "required": [
-        "id",
-        "name",
-        "description"
+        "email"
       ]
     },
-    "MotorProduct": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "MotorProduct",
+    "Organisation": {
+      "title": "Organisation",
+      "description": "Represents an organisation within the application.",
       "type": "object",
-      "description": "Represents a specific motor product model (e.g., 'Yamaha Outboards F200') available for configuration and display.",
       "properties": {
-        "id": {
+        "name": {
           "type": "string",
-          "description": "Unique identifier for the MotorProduct entity."
+          "description": "The name of the organisation."
         },
-        "motorBrandId": {
+        "slug": {
           "type": "string",
-          "description": "Reference to the MotorBrand this product belongs to. (Relationship: MotorBrand 1:N MotorProduct)"
+          "description": "A URL-friendly version of the organisation name."
         },
-        "modelName": {
+        "address": {
           "type": "string",
-          "description": "The specific model name of the motor, e.g., 'F200XSA2'."
+          "description": "The physical address of the organisation."
         },
-        "series": {
+        "phoneNumber": {
           "type": "string",
-          "description": "The product series or category, e.g., 'Outboards', 'Sterndrives'."
+          "description": "The contact phone number for the organisation."
         },
-        "horsepower": {
-          "type": "number",
-          "description": "The horsepower rating of the motor."
-        },
-        "weightLbs": {
-          "type": "number",
-          "description": "The dry weight of the motor in pounds."
-        },
-        "description": {
+        "abn": {
           "type": "string",
-          "description": "A detailed description of the motor product, highlighting its features and specifications."
+          "description": "The Australian Business Number for the organisation."
         },
-        "basePriceUsd": {
-          "type": "number",
-          "description": "The base price of the motor product in US Dollars, before any configurable options are applied."
+        "primaryColor": {
+          "type": "string",
+          "description": "The primary branding color in hex format."
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "The accent branding color in hex format."
+        },
+        "secondaryColor": {
+          "type": "string",
+          "description": "The secondary branding color in hex format."
+        },
+        "primaryLogoUrl": {
+          "type": "string",
+          "description": "URL for the primary company logo."
+        },
+        "secondaryLogoUrl": {
+          "type": "string",
+          "description": "URL for the secondary company logo or icon."
+        },
+        "subDealersEnabled": {
+          "type": "boolean",
+          "description": "Indicates if the Sub Dealers module is enabled for the organisation."
+        },
+        "parentOrganisationId": {
+          "type": "string",
+          "description": "The ID of the parent organisation, if this is a sub-dealer."
+        },
+        "roles": {
+          "type": "array",
+          "description": "A list of roles within the organisation, forming a hierarchy.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A unique identifier for the role."
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the role."
+              },
+              "parent": {
+                "type": "string",
+                "description": "The ID of the parent role. Empty for top-level roles."
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "description": "Defines permissions for each role ID.",
+          "additionalProperties": {
+            "type": "object",
+            "description": "A map of permission keys to boolean values.",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "dataWarehouseSubscriptions": {
+          "type": "array",
+          "description": "A list of vendor IDs from the data warehouse that this organisation is subscribed to.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabledModuleSubscriptions": {
+          "type": "array",
+          "description": "A list of module IDs that this organisation has access to.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ]
+    },
+    "Vendor": {
+      "title": "Vendor",
+      "description": "Represents a vendor for data connection.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the vendor."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the vendor name."
+        },
+        "vendorType": {
+          "type": "string",
+          "description": "The type of the vendor.",
+          "enum": [
+            "Boat Brand",
+            "Motor Brand",
+            "Trailer Brand",
+            "Electronics Brand",
+            "Electronics Supplier",
+            "Parts Wholesaler",
+            "Other"
+          ]
+        },
+        "dataSource": {
+          "type": "string",
+          "description": "The source of the data connection.",
+          "enum": [
+            "Business Central",
+            "Direct API",
+            "Document Upload",
+            "Other"
+          ]
+        },
+        "primaryContact": {
+          "type": "string",
+          "description": "Primary contact for the vendor (e.g., name, email, phone)."
+        },
+        "website": {
+          "type": "string",
+          "description": "The vendor's website URL."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the vendor."
+        },
+        "abn": {
+          "type": "string",
+          "description": "The Australian Business Number for the vendor."
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL for the vendor logo."
+        },
+        "notes": {
+          "type": "string",
+          "description": "General notes about the vendor."
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ]
+    },
+    "MasterDataRow": {
+      "title": "Master Data Row",
+      "description": "Represents a single row of data from a vendor's master data set.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "Range": {
+      "title": "Range",
+      "description": "Represents a product range for a vendor.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the range."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the range name."
+        },
+        "vendorId": {
+          "type": "string",
+          "description": "The ID of the vendor this range belongs to."
         },
         "imageUrl": {
           "type": "string",
-          "description": "URL to an image of the motor product.",
-          "format": "uri"
+          "description": "URL for the range's image."
+        },
+        "order": {
+          "type": "number",
+          "description": "The display order of the range."
         }
       },
       "required": [
-        "id",
-        "motorBrandId",
-        "modelName",
-        "series",
-        "horsepower",
-        "description",
-        "basePriceUsd"
+        "name",
+        "slug",
+        "vendorId"
       ]
     },
-    "ConfigurationOptionType": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ConfigurationOptionType",
+    "Model": {
+      "title": "Model",
+      "description": "Represents a specific model within a product range.",
       "type": "object",
-      "description": "Defines a generic category for a configurable option, such as 'Shaft Length' or 'Propeller Type'.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ConfigurationOptionType entity."
-        },
         "name": {
           "type": "string",
-          "description": "The name of the configurable option type, e.g., 'Shaft Length', 'Propeller Type', 'Control System'."
+          "description": "The name of the model."
         },
-        "description": {
+        "slug": {
           "type": "string",
-          "description": "A description explaining what this configuration option type represents and its purpose."
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "description"
-      ]
-    },
-    "ConfigurationOptionValue": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ConfigurationOptionValue",
-      "type": "object",
-      "description": "Represents a specific value or choice within a ConfigurationOptionType, along with its price impact.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ConfigurationOptionValue entity."
+          "description": "A URL-friendly version of the model name."
         },
-        "optionTypeId": {
+        "rangeId": {
           "type": "string",
-          "description": "Reference to the ConfigurationOptionType this value belongs to. (Relationship: ConfigurationOptionType 1:N ConfigurationOptionValue)"
+          "description": "The ID of the range this model belongs to."
         },
-        "value": {
+        "vendorId": {
           "type": "string",
-          "description": "The actual display value for the option, e.g., '20 inches', 'Stainless Steel (3-blade)', 'Mechanical'."
+          "description": "The ID of the vendor this model belongs to."
         },
-        "description": {
-          "type": "string",
-          "description": "A detailed description of this specific option value, including any relevant specifications or benefits."
-        },
-        "priceImpactUsd": {
+        "order": {
           "type": "number",
-          "description": "The monetary impact (positive or negative) this option value has on the motor's base price in US Dollars."
-        }
-      },
-      "required": [
-        "id",
-        "optionTypeId",
-        "value",
-        "priceImpactUsd"
-      ]
-    },
-    "MotorProductConfigurableOption": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "MotorProductConfigurableOption",
-      "type": "object",
-      "description": "Links a MotorProduct to specific ConfigurationOptionTypes and specifies which ConfigurationOptionValues are available and default for that product.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the MotorProductConfigurableOption entity."
+          "description": "The display order of the model."
         },
-        "motorProductId": {
+        "coverImageUrl": {
           "type": "string",
-          "description": "Reference to the MotorProduct this configurable option applies to. (Relationship: MotorProduct 1:N MotorProductConfigurableOption)"
+          "description": "URL for the boat's main cover image."
         },
-        "optionTypeId": {
-          "type": "string",
-          "description": "Reference to the ConfigurationOptionType being configured for this product. (Relationship: ConfigurationOptionType 1:N MotorProductConfigurableOption)"
-        },
-        "availableOptionValueIds": {
+        "galleryImageUrls": {
           "type": "array",
-          "description": "An array of IDs referencing ConfigurationOptionValue entities that are available choices for this specific MotorProduct under this ConfigurationOptionType. (Relationship: ConfigurationOptionValue N:N MotorProductConfigurableOption)",
+          "description": "A list of URLs for the model's image gallery.",
           "items": {
             "type": "string"
           }
         },
-        "defaultOptionValueId": {
-          "type": "string",
-          "description": "Reference to the default ConfigurationOptionValue ID for this specific MotorProduct and ConfigurationOptionType. This ID must be one of the 'availableOptionValueIds'."
-        }
-      },
-      "required": [
-        "id",
-        "motorProductId",
-        "optionTypeId",
-        "availableOptionValueIds",
-        "defaultOptionValueId"
-      ]
-    },
-    "ConfiguredMotorInstance": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ConfiguredMotorInstance",
-      "type": "object",
-      "description": "Represents a specific motor configuration saved by a user, including the chosen options and total price, which can be used for quotes or operations.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ConfiguredMotorInstance entity."
+        "cost": {
+          "type": "number",
+          "description": "Base cost of the model."
         },
-        "motorProductId": {
-          "type": "string",
-          "description": "Reference to the base MotorProduct that was configured. (Relationship: MotorProduct 1:N ConfiguredMotorInstance)"
+        "sellPriceExclGst": {
+          "type": "number",
+          "description": "Base selling price, excluding GST."
         },
-        "name": {
-          "type": "string",
-          "description": "A user-defined name or label for this specific configured motor instance, e.g., 'My Fishing Boat's Main Engine'."
+        "freightCostExclGst": {
+          "type": "number",
+          "description": "Freight cost, excluding GST."
         },
-        "description": {
-          "type": "string",
-          "description": "An optional detailed description or notes about this specific motor configuration, provided by the user."
-        },
-        "configurationDate": {
-          "type": "string",
-          "description": "The date and time when this motor configuration was created or last updated.",
-          "format": "date-time"
-        },
-        "configuredOptionValueIds": {
+        "colors": {
           "type": "array",
-          "description": "An array of IDs referencing the ConfigurationOptionValue entities that were chosen for this specific motor configuration instance. (Relationship: ConfigurationOptionValue N:N ConfiguredMotorInstance)",
+          "description": "Available color variants for the model, each with associated images.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "imageUrls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "standardFeatures": {
+          "type": "array",
+          "description": "A list of standard features for the model.",
           "items": {
             "type": "string"
           }
         },
-        "totalPriceUsd": {
-          "type": "number",
-          "description": "The calculated total price in US Dollars for this specific configured motor, including the base price and all chosen option impacts."
+        "optionalFeatures": {
+          "type": "array",
+          "description": "A list of optional add-ons for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional feature."
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "packageStatus": {
+                "type": "object",
+                "description": "A map of package IDs to their status ('standard' or 'optional') for this feature.",
+                "additionalProperties": {
+                  "type": "string",
+                  "enum": [
+                    "standard",
+                    "optional"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
         },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the user who created or last updated this configured motor instance. (Relationship: User 1:N ConfiguredMotorInstance)"
+        "packages": {
+          "type": "array",
+          "description": "A list of optional packages for the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "description": "The category for the optional package."
+              },
+              "imageUrl": {
+                "type": "string"
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "packageLevels": {
+          "type": "array",
+          "description": "A list of tiered packages for a Stabicraft model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "A description for the package level."
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "includedFeatures": {
+                "type": "array",
+                "description": "A list of features included in this package level.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "colorStages": {
+          "type": "object",
+          "description": "Available color stages for a Stabicraft model.",
+          "properties": {
+            "stage0": {
+              "type": "boolean"
+            },
+            "stage1": {
+              "type": "boolean"
+            },
+            "stage2": {
+              "type": "boolean"
+            },
+            "stage3": {
+              "type": "boolean"
+            }
+          }
+        },
+        "uDekOptions": {
+          "type": "object",
+          "description": "U-Dek flooring image URLs.",
+          "properties": {
+            "blackOnWinterGrey": {
+              "type": "string"
+            },
+            "teakOnBlack": {
+              "type": "string"
+            },
+            "steelGreyOnWinterGrey": {
+              "type": "string"
+            },
+            "winterGreyOnSteelGrey": {
+              "type": "string"
+            }
+          }
+        },
+        "paintAndGraphicOptions": {
+          "type": "object",
+          "description": "Paint and graphic options for a Stabicraft model.",
+          "properties": {
+            "standardGloss": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "standardMetallic": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "paint": {
+                    "type": "string"
+                  },
+                  "graphics": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            },
+            "powderCoating": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "specifications": {
+          "type": "object",
+          "properties": {
+            "motorConfigurations": {
+              "type": "array",
+              "description": "Defines the supported engine configurations and their respective horsepower ratings.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Single",
+                      "Twin",
+                      "Triple",
+                      "Quad",
+                      "SingleWithAux"
+                    ]
+                  },
+                  "engines": {
+                    "type": "array",
+                    "description": "An array of engine specifications for this configuration.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "description": "A label for the engine (e.g., 'Main Engine', 'Engine 1')."
+                        },
+                        "minHp": {
+                          "type": "number"
+                        },
+                        "maxHp": {
+                          "type": "number"
+                        },
+                        "recommendedHp": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "label"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "type",
+                  "engines"
+                ]
+              }
+            },
+            "otherSpecs": {
+              "type": "array",
+              "description": "A list of other key-value specifications.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "variantPricing": {
+          "type": "array",
+          "description": "Pricing for specific model variants (e.g., by color and material). Highfield specific.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "colorId": {
+                "type": "string"
+              },
+              "colorName": {
+                "type": "string"
+              },
+              "material": {
+                "type": "string",
+                "enum": [
+                  "HYP",
+                  "PVC"
+                ]
+              },
+              "cost": {
+                "type": "number"
+              },
+              "sellPriceExclGst": {
+                "type": "number"
+              },
+              "freightCostExclGst": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "colorId",
+              "material"
+            ]
+          }
+        },
+        "documents": {
+          "type": "array",
+          "description": "A list of documents associated with the model.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "url"
+            ]
+          }
         }
       },
       "required": [
-        "id",
-        "motorProductId",
         "name",
-        "configurationDate",
-        "configuredOptionValueIds",
-        "totalPriceUsd",
-        "userId"
+        "slug",
+        "rangeId",
+        "vendorId"
+      ]
+    },
+    "Module": {
+      "title": "Module",
+      "description": "Represents an application module that connects various vendors and data for an organisation.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the module."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the module name."
+        },
+        "mainVendorId": {
+          "type": "string",
+          "description": "The ID of the main vendor for this module."
+        },
+        "associatedVendorIds": {
+          "type": "array",
+          "description": "A list of IDs for associated vendors.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL for the module's logo, typically inherited from the main vendor."
+        }
+      },
+      "required": [
+        "name",
+        "slug",
+        "mainVendorId"
       ]
     }
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "email"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/motorBrands/{motorBrandId}",
-        "definition": {
-          "entityName": "MotorBrand",
-          "schema": {
-            "$ref": "#/backend/entities/MotorBrand"
-          },
-          "description": "Represents a distinct motor brand, accessible globally. Designed for public read access.",
-          "params": [
-            {
-              "name": "motorBrandId",
-              "description": "The unique identifier for the motor brand."
-            }
-          ]
-        }
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UserProfile"
       },
-      {
-        "path": "/motorBrands/{motorBrandId}/motorProducts/{motorProductId}",
-        "definition": {
-          "entityName": "MotorProduct",
-          "schema": {
-            "$ref": "#/backend/entities/MotorProduct"
-          },
-          "description": "Represents specific motor product models belonging to a motor brand. Accessible globally for browsing and configuration. Includes 'motorBrandId' for direct linking and authorization independence for read operations.",
-          "params": [
-            {
-              "name": "motorBrandId",
-              "description": "The unique identifier of the parent motor brand."
-            },
-            {
-              "name": "motorProductId",
-              "description": "The unique identifier for the motor product."
-            }
-          ]
-        }
+      "description": "User profile documents, keyed by user ID."
+    },
+    "/organisations/{organisationId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Organisation"
       },
-      {
-        "path": "/configurationOptionTypes/{optionTypeId}",
-        "definition": {
-          "entityName": "ConfigurationOptionType",
-          "schema": {
-            "$ref": "#/backend/entities/ConfigurationOptionType"
-          },
-          "description": "Defines generic categories for configuration options, globally accessible for public read.",
-          "params": [
-            {
-              "name": "optionTypeId",
-              "description": "The unique identifier for the configuration option type."
-            }
-          ]
-        }
+      "description": "Organisation documents, keyed by a unique ID."
+    },
+    "/organisations/{organisationId}/modelOverrides/{modelId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Model"
       },
-      {
-        "path": "/configurationOptionTypes/{optionTypeId}/optionValues/{optionValueId}",
-        "definition": {
-          "entityName": "ConfigurationOptionValue",
-          "schema": {
-            "$ref": "#/backend/entities/ConfigurationOptionValue"
-          },
-          "description": "Represents specific values for a configuration option type, globally accessible for public read. Includes 'optionTypeId' for direct linking and authorization independence.",
-          "params": [
-            {
-              "name": "optionTypeId",
-              "description": "The unique identifier of the parent configuration option type."
-            },
-            {
-              "name": "optionValueId",
-              "description": "The unique identifier for the configuration option value."
-            }
-          ]
-        }
+      "description": "Organisation-specific overrides for boat models."
+    },
+    "/data-warehouse/{vendorId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Vendor"
       },
-      {
-        "path": "/motorBrands/{motorBrandId}/motorProducts/{motorProductId}/configurableOptions/{configOptionId}",
-        "definition": {
-          "entityName": "MotorProductConfigurableOption",
-          "schema": {
-            "$ref": "#/backend/entities/MotorProductConfigurableOption"
-          },
-          "description": "Links a specific motor product to its available configuration options. This data is publicly readable to enable client-side configuration logic. Includes 'motorProductId' and 'optionTypeId' in the document for direct linking and authorization independence.",
-          "params": [
-            {
-              "name": "motorBrandId",
-              "description": "The unique identifier of the associated motor brand."
-            },
-            {
-              "name": "motorProductId",
-              "description": "The unique identifier of the parent motor product."
-            },
-            {
-              "name": "configOptionId",
-              "description": "The unique identifier for this product-specific configurable option."
-            }
-          ]
-        }
+      "description": "Vendor documents for the data warehouse, keyed by a unique ID."
+    },
+    "/data-warehouse/{vendorId}/masterDataSet/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
       },
-      {
-        "path": "/users/{userId}/configuredMotorInstances/{configuredMotorInstanceId}",
-        "definition": {
-          "entityName": "ConfiguredMotorInstance",
-          "schema": {
-            "$ref": "#/backend/entities/ConfiguredMotorInstance"
-          },
-          "description": "Represents a motor configuration saved by a specific user. This collection is user-owned, meaning only the authenticated user ('request.auth.uid') can read or write their own configurations. Includes 'userId' in the path for explicit ownership and in the document for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns this configured motor instance."
-            },
-            {
-              "name": "configuredMotorInstanceId",
-              "description": "The unique identifier for the configured motor instance."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to cleanly separate public product catalog data from user-specific, private configuration data, ensuring robust security and simplified rule management. All product-related entities (MotorBrand, MotorProduct, ConfigurationOptionType, ConfigurationOptionValue, MotorProductConfigurableOption) are placed in top-level collections or subcollections that are globally readable. This allows any user, authenticated or not, to browse available motors and their configuration options without requiring complex authorization checks. Authorization Independence is achieved for these entities by ensuring that relevant parent IDs (e.g., 'motorBrandId' in MotorProduct, 'optionTypeId' in ConfigurationOptionValue) are either part of the document's path or denormalized into the document itself. This eliminates the need for expensive and rule-breaking `get()` operations in security rules, as all authorization context for a document is available via `request.resource.data` or `request.path`.\n\nFor user-specific data, such as a `ConfiguredMotorInstance`, a path-based ownership model is strictly enforced using `/users/{userId}/configuredMotorInstances/{configuredMotorInstanceId}`. This pattern makes authorization explicit and highly debuggable: a user (`request.auth.uid`) can only read or write to documents where the `{userId}` wildcard matches their authenticated UID. The `userId` is also denormalized within the `ConfiguredMotorInstance` document, further reinforcing ownership and enabling direct data querying based on `userId`. This directly supports QAPs (Queries as Permissions) by allowing users to securely list their own configurations via a simple query on `/users/{request.auth.uid}/configuredMotorInstances` without requiring server-side filtering.\n\nStructural Segregation is applied by keeping the public catalog separate from private user data. This ensures that the security posture for each collection is homogeneous (e.g., all `MotorProduct` documents are publicly readable, all `ConfiguredMotorInstance` documents are user-private). This approach significantly simplifies Firestore Security Rules, making them easier to write, understand, and debug."
+      "description": "A collection of individual data rows that make up the vendor's master data set."
+    },
+    "/data-warehouse/{vendorId}/ranges/{rangeId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Range"
+      },
+      "description": "Product ranges for a specific vendor."
+    },
+    "/data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Model"
+      },
+      "description": "Specific models within a product range."
+    },
+    "/data-warehouse/{vendorId}/masterPriceList/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's master price list."
+    },
+    "/data-warehouse/{vendorId}/bulkMasterPriceList/{rowId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MasterDataRow"
+      },
+      "description": "A collection of individual data rows that make up the vendor's bulk master price list."
+    },
+    "/modules/{moduleId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Module"
+      },
+      "description": "Application modules."
+    }
   }
 }
