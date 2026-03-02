@@ -184,20 +184,50 @@ export function MasterDataBrowserDialog({
     );
   }, [displayData, searchTerm]);
 
+  /**
+   * REFINED: Column Prioritization & Labeling
+   * Instead of showing all technical fields, we promote the "big things" 
+   * and limit visible columns to maintain a clean workspace.
+   */
   const headers = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return [];
-    const commonKeys = ['Part_Number', 'Description', 'RRP', 'name', 'model', 'price', 'cost', 'Model Name', 'ModelName', 'SKU'];
+    
     const allKeys = Object.keys(filteredData[0]);
-    // Always prioritize images/previews if found
-    const imageKey = allKeys.find(k => k.toLowerCase().includes('image') || k.toLowerCase().includes('logo') || k === 'SummaryImage');
-    const sorted = commonKeys.filter(k => allKeys.includes(k));
-    if (imageKey && !sorted.includes(imageKey)) sorted.unshift(imageKey);
-    // Add source table indicator if we're in aggregate view
-    const resultHeaders = sorted.concat(allKeys.filter(k => !sorted.includes(k) && k !== 'id' && k !== '_ref' && k !== 'imageUrl' && k !== 'SummaryImage' && k !== '_sourceTable')).slice(0, 5);
-    if (selectedDataSetId === 'master' && dataSets && dataSets.length > 0) {
-        resultHeaders.push('_sourceTable');
+    
+    // Priority lists for column matching
+    const codeKeys = ['Part_Number', 'SKU', 'PartNo', 'Code', 'PartNumber', 'id', 'Part Number'];
+    const nameKeys = ['Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model'];
+    const priceKeys = ['RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst'];
+    
+    const findBestKey = (priorityList: string[]) => 
+        priorityList.find(k => allKeys.includes(k));
+
+    const bestCode = findBestKey(codeKeys);
+    const bestName = findBestKey(nameKeys);
+    const bestPrice = findBestKey(priceKeys);
+
+    const result: string[] = [];
+    if (bestCode) result.push(bestCode);
+    if (bestName) result.push(bestName);
+    if (bestPrice) result.push(bestPrice);
+
+    // Limit visible columns to 4 + source + action to keep it tidy
+    if (result.length < 4) {
+        const extraKey = allKeys.find(k => 
+            !result.includes(k) && 
+            !['id', '_ref', '_sourceTable', 'imageUrl', 'SummaryImage', 'lastUpdated', 'createdAt'].includes(k) &&
+            !k.toLowerCase().includes('cost') &&
+            !k.match(/^[A-Z0-9]+$/) // Avoid purely technical short codes like "GP4" if possible
+        );
+        if (extraKey) result.push(extraKey);
     }
-    return resultHeaders;
+
+    // Always append Source Table indicator if in master view
+    if (selectedDataSetId === 'master' && dataSets && dataSets.length > 0) {
+        result.push('_sourceTable');
+    }
+
+    return result;
   }, [filteredData, selectedDataSetId, dataSets]);
 
   const handleAddItem = (row: any) => {
@@ -247,6 +277,22 @@ export function MasterDataBrowserDialog({
         setSearchTerm('');
         setAggregateData(null);
     }, 300);
+  };
+
+  /**
+   * Helper to format values for the preview table
+   * Rounds long decimals and formats common technical keys
+   */
+  const formatTableCell = (value: any, key: string) => {
+    if (value === null || value === undefined) return '';
+    
+    // Round long technical numbers (like MU3, GP4 in the screenshot)
+    if (typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)) && value.includes('.'))) {
+        const num = parseFloat(value);
+        return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    return String(value);
   };
 
   return (
@@ -302,7 +348,7 @@ export function MasterDataBrowserDialog({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Search items by name, code or SKU..." 
-                        className="pl-9 h-10 font-bold bg-background"
+                        className="pl-9 h-10 font-bold bg-background transition-all focus-visible:ring-primary/20"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         disabled={!selectedVendorId}
@@ -333,11 +379,11 @@ export function MasterDataBrowserDialog({
                                 {filteredData.map((row, idx) => (
                                     <TableRow key={row.id || idx} className="hover:bg-primary/5 transition-colors group">
                                         {headers.map(header => (
-                                            <TableCell key={header} className="text-[11px] font-medium py-3 px-4 truncate max-w-[200px]">
+                                            <TableCell key={header} className="text-[11px] font-medium py-3 px-4 truncate max-w-[250px]">
                                                 {header === '_sourceTable' ? (
-                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1">{row[header]}</Badge>
+                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1 border-primary/20 text-primary">{row[header]}</Badge>
                                                 ) : (
-                                                    String(row[header] ?? '')
+                                                    formatTableCell(row[header], header)
                                                 )}
                                             </TableCell>
                                         ))}
@@ -345,7 +391,7 @@ export function MasterDataBrowserDialog({
                                             <Button 
                                                 variant="outline" 
                                                 size="sm" 
-                                                className="h-7 text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground"
+                                                className="h-7 text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all"
                                                 onClick={() => handleAddItem(row)}
                                             >
                                                 <Plus className="h-3 w-3 mr-1" /> Add
