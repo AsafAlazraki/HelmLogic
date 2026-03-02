@@ -175,16 +175,16 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model]);
 
-    // Independent Panel Scrolling - Optimized Refocus
+    // Independent Panel Scrolling - Precision Offset
     useEffect(() => {
         if (selectedMaterial && currentStep === 1 && scrollAreaRef.current && colorsSectionRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) {
                 const targetTop = colorsSectionRef.current.offsetTop;
-                // Preserve a 20px visual cushion from the fixed header
+                // Precision scroll offset: 20px cushion from the header
                 setTimeout(() => {
                     viewport.scrollTo({ top: targetTop - 20, behavior: 'smooth' });
-                }, 500);
+                }, 600);
             }
         } else if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -379,7 +379,7 @@ export function HighfieldQuoteFlow({
 
             {/* Build Workspace */}
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Full-Bleed Visualizer Panel (Left) */}
+                {/* Visualizer Panel (Left) */}
                 <div className="w-full lg:w-7/12 relative flex flex-col overflow-hidden h-full min-h-0 bg-slate-50/50">
                     <div className="w-full h-full flex flex-col p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full flex flex-col gap-8">
@@ -487,14 +487,12 @@ export function HighfieldQuoteFlow({
                                 </div>
                             </div>
 
-                            {/* Refined Build Summary Hub (2-Row Layout) */}
+                            {/* Build Summary Hub */}
                             <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-8 md:p-10 rounded-[2.5rem] flex flex-col gap-3 shrink-0">
-                                {/* Row 1: Labels */}
                                 <div className="flex items-center justify-between px-1">
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Current Build</span>
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Total (Excl. Tax)</span>
                                 </div>
-                                {/* Row 2: Values */}
                                 <div className="flex items-center justify-between px-1">
                                     <div className="flex items-center gap-3 text-4xl tracking-tight min-0 truncate">
                                         {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
@@ -542,7 +540,7 @@ export function HighfieldQuoteFlow({
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-8 md:px-12 pb-12 pt-0 flex flex-col">
-                            {/* Persistent Top Spacer to maintain consistent visual cushion from fixed header */}
+                            {/* Spacing alignment cushion */}
                             <div className="h-10 shrink-0" />
                             
                             {currentStep === 1 && (
@@ -572,6 +570,14 @@ export function HighfieldQuoteFlow({
                                                     <p className={cn("text-[10px] font-bold mt-2 uppercase tracking-widest", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>
                                                         {mat === 'PVC' ? 'Valmax German PVC' : 'ORCA® Hypalon'}
                                                     </p>
+
+                                                    <div className={cn(
+                                                        "flex items-center gap-2 mt-auto pt-4 text-[9px] font-black uppercase tracking-tighter transition-colors",
+                                                        selectedMaterial === mat ? "text-white/80" : "text-muted-foreground"
+                                                    )}>
+                                                        <CheckCircle2 className="h-3 w-3" />
+                                                        <span>{mat === 'PVC' ? '5 Yrs Warranty Included' : '10 Yrs Warranty Included'}</span>
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
@@ -727,7 +733,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </ScrollArea>
 
-                    {/* Anchored Action Button */}
+                    {/* Aligned Action Button */}
                     <div className="px-8 md:px-12 pb-12 pt-4 shrink-0 z-20">
                         <div className="flex gap-4">
                             {currentStep > 1 && (
