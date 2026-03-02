@@ -455,7 +455,7 @@ export function ExchangeRateManager({
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </DialogContent>
         </Dialog>
     );
 }
