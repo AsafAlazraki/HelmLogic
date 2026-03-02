@@ -106,6 +106,7 @@ export function MasterDataBrowserDialog({
 
   const subscribedVendors = useMemo(() => {
     if (!allVendors) return [];
+    // Prioritize specifically allowed vendors for the current module context
     const effectiveAllowedIds = allowedVendorIds || organisation?.dataWarehouseSubscriptions || [];
     return allVendors.filter(v => effectiveAllowedIds.includes(v.id));
   }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
@@ -127,11 +128,13 @@ export function MasterDataBrowserDialog({
     if (selectedDataSetId && selectedDataSetId !== 'master') {
         return collection(firestore, 'data-warehouse', selectedVendorId, 'dataSets', selectedDataSetId, 'rows');
     }
+    // Only return master collection if no tables exist, otherwise we aggregate below
     return collection(firestore, 'data-warehouse', selectedVendorId, 'masterDataSet');
   }, [firestore, selectedVendorId, selectedDataSetId]);
   
   const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
 
+  // Intelligent Data Aggregation for "Global Master List"
   useEffect(() => {
     const fetchAggregate = async () => {
       if (selectedDataSetId === 'master' && selectedVendorId && dataSets && dataSets.length > 0) {
@@ -177,7 +180,7 @@ export function MasterDataBrowserDialog({
     
     const allKeys = Object.keys(filteredData[0]).filter(k => !k.startsWith('_') && k !== 'id');
     
-    // Define priority groups for column promotion
+    // Define priority groups for "The Big Things"
     const priorityGroups = [
         { keys: ['Part_Number', 'SKU', 'PartNo', 'Code', 'PartNumber', 'Part Number', 'PART_NUMBER', 'ITEM_CODE'], label: 'Code' },
         { keys: ['Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model', 'DESCRIPTION', 'DESC', 'ITEM_NAME', 'Product Name', 'Description 1'], label: 'Description' },
@@ -201,7 +204,7 @@ export function MasterDataBrowserDialog({
         detectedHeaders.push({ key: '_sourceTable', label: 'Source' });
     }
 
-    // 3. Fill in other useful columns (up to 5 total to maintain tidy layout)
+    // 3. Fill in other useful columns (up to 5 total)
     allKeys.forEach(k => {
         if (detectedHeaders.length >= 5) return;
         if (matchedKeys.has(k)) return;
@@ -274,11 +277,9 @@ export function MasterDataBrowserDialog({
   const formatTableCell = (value: any) => {
     if (value === null || value === undefined) return '';
     if (typeof value === 'number') {
-        // Round to 2 decimal places for technical data lists
         return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     const strVal = String(value);
-    // Detect long technical decimal strings and clean them
     if (/^\d*\.?\d+$/.test(strVal) && strVal.includes('.')) {
         const num = parseFloat(strVal);
         return isNaN(num) ? strVal : num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -405,22 +406,12 @@ export function MasterDataBrowserDialog({
                     </ScrollArea>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-12 text-center">
-                        {selectedVendorId && (selectedDataSetId === 'master' || !selectedDataSetId) && dataSets && dataSets.length > 0 && !isAggregating ? (
-                            <div className="flex flex-col items-center gap-4 bg-muted/10 p-8 rounded-xl border-2 border-dashed border-primary/20 animate-in zoom-in duration-300">
-                                <AlertCircle className="h-12 w-12 text-primary/40" />
-                                <div className="max-w-xs">
-                                    <p className="text-sm font-bold uppercase tracking-widest text-foreground">Dataset Configuration</p>
-                                    <p className="text-[10px] font-medium text-muted-foreground mt-2 uppercase">The Global Master List is currently compiling. If this takes too long, please select a specific data table from the dropdown above.</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="opacity-40">
-                                <TableIcon className="h-12 w-12 mb-4 mx-auto" />
-                                <p className="text-sm font-bold uppercase tracking-widest">
-                                    {selectedVendorId ? 'No items found matching search.' : (subscribedVendors.length === 0 ? 'No associated vendors granted.' : 'Choose a vendor to browse products.')}
-                                </p>
-                            </div>
-                        )}
+                        <div className="opacity-40">
+                            <TableIcon className="h-12 w-12 mb-4 mx-auto" />
+                            <p className="text-sm font-bold uppercase tracking-widest">
+                                {selectedVendorId ? 'No items found matching search.' : (subscribedVendors.length === 0 ? 'No associated vendors granted.' : 'Choose a vendor to browse products.')}
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>

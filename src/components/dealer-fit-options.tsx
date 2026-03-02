@@ -76,17 +76,10 @@ export function DealerFitOptions({
   const allowedVendorIds = useMemo(() => {
     if (!module) return [];
     
-    // Admins always see all associated vendors defined in the module
-    if (isAdmin) {
-        return (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
-    }
-
-    // For regular users, we filter by what the organisation has access to
-    const orgModuleAccess = organisation?.moduleAssociatedVendorAccess?.[module.id] || [];
-    return (module.associatedVendorIds || []).filter((id: string) => 
-        id !== module.mainVendorId && orgModuleAccess.includes(id)
-    );
-  }, [module, organisation, isAdmin]);
+    // SIMPLIFIED: All vendors associated with the module are available for selection.
+    // We explicitly exclude the main boat brand vendor.
+    return (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
+  }, [module]);
 
   const selectionsByCategory = useMemo(() => {
     if (!selections) return new Map();
