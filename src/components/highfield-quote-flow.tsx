@@ -798,27 +798,27 @@ export function HighfieldQuoteFlow({
 
             {/* Gallery Lightbox */}
             <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
-                <DialogContent className="max-w-6xl h-[85vh] p-0 border-none bg-neutral-950/90 backdrop-blur-xl shadow-2xl flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[3rem] z-[100]">
+                <DialogContent className="max-w-6xl h-[90vh] p-0 border-none bg-black/95 backdrop-blur-2xl shadow-2xl overflow-hidden rounded-[2.5rem] z-[100] flex flex-col">
                     <DialogTitle className="sr-only">Image Gallery</DialogTitle>
                     {lightboxIndex !== null && (
-                        <div className="relative w-full h-full p-12 md:p-20 flex flex-col items-center justify-center min-h-0">
+                        <div className="relative flex-1 w-full min-h-0">
                             <Carousel 
-                                key={`lightbox-${lightboxIndex}`}
-                                className="w-full h-full flex flex-col items-center justify-center" 
+                                key={`lightbox-carousel-${lightboxIndex}`}
+                                className="w-full h-full" 
                                 opts={{ 
                                     startIndex: lightboxIndex || 0,
                                     loop: true 
                                 }}
                             >
-                                <CarouselContent className="h-full items-center">
+                                <CarouselContent className="h-full">
                                     {carouselImages.map((url, idx) => (
                                         <CarouselItem key={`lightbox-img-${idx}`} className="h-full flex items-center justify-center p-0">
-                                            <div className="relative w-full h-full max-h-full">
+                                            <div className="relative w-full h-full">
                                                 <Image 
                                                     src={url} 
                                                     alt={`Gallery View ${idx}`} 
                                                     fill 
-                                                    className="object-contain rounded-2xl" 
+                                                    className="object-contain" 
                                                     unoptimized 
                                                 />
                                             </div>
@@ -827,8 +827,8 @@ export function HighfieldQuoteFlow({
                                 </CarouselContent>
                                 {carouselImages.length > 1 && (
                                     <>
-                                        <CarouselPrevious className="left-4 h-14 w-14 bg-white/20 hover:bg-white/30 border-none text-white transition-all rounded-2xl shadow-xl z-[110]" />
-                                        <CarouselNext className="right-4 h-14 w-14 bg-white/20 hover:bg-white/30 border-none text-white transition-all rounded-2xl shadow-xl z-[110]" />
+                                        <CarouselPrevious className="left-8 h-12 w-12 bg-white/10 hover:bg-white/20 border-white/10 text-white z-50 transition-all rounded-xl" />
+                                        <CarouselNext className="right-8 h-12 w-12 bg-white/10 hover:bg-white/20 border-white/10 text-white z-50 transition-all rounded-xl" />
                                     </>
                                 )}
                             </Carousel>
@@ -837,10 +837,10 @@ export function HighfieldQuoteFlow({
                                 type="button"
                                 variant="ghost" 
                                 size="icon" 
-                                className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-[120] border border-white/10 shadow-lg"
+                                className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white z-[100] border border-white/10 shadow-lg"
                                 onClick={() => setLightboxIndex(null)}
                             >
-                                <X className="h-6 w-6" />
+                                <X className="h-5 w-5" />
                             </Button>
                         </div>
                     )}
