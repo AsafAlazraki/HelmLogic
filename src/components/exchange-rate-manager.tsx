@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, setDoc, deleteDoc, serverTimestamp, where, updateDoc } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, orderBy, doc, setDoc, deleteDoc, serverTimestamp, where, updateDoc, addDoc } from 'firebase/firestore';
 import { 
     Dialog, 
     DialogContent, 
@@ -46,7 +47,10 @@ import {
     ChevronDown,
     ChevronRight,
     Link2,
-    ShieldCheck
+    ShieldCheck,
+    MessageSquare,
+    ClipboardList,
+    Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
@@ -54,12 +58,22 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ExchangeRate {
     id: string;
     code: string;
     rate: number;
     updatedAt: any;
+}
+
+interface ChangeLogEntry {
+    id: string;
+    rate: number;
+    note: string;
+    timestamp: any;
+    userId?: string;
 }
 
 interface Vendor {
@@ -85,6 +99,7 @@ export function ExchangeRateManager({
     onClose: () => void;
 }) {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
     
     // 1. Fetch Rates
@@ -110,6 +125,12 @@ export function ExchangeRateManager({
     const [newRate, setNewRate] = useState('1.0');
     const [expandedCurrency, setExpandedCurrency] = useState<string | null>(null);
 
+    // Update Dialog State
+    const [isUpdating, setIsUpdating] = useState<ExchangeRate | null>(null);
+    const [updateRateVal, setUpdateRateVal] = useState('');
+    const [updateNote, setUpdateNote] = useState('');
+    const [isProcessingUpdate, setIsProcessingUpdate] = useState(false);
+
     const handleAddRate = async () => {
         if (!newCode || !newRate) return;
         try {
@@ -119,6 +140,15 @@ export function ExchangeRateManager({
                 rate: parseFloat(newRate),
                 updatedAt: serverTimestamp()
             });
+            
+            // Initial Log
+            await addDoc(collection(rateRef, 'changeLog'), {
+                rate: parseFloat(newRate),
+                note: "Currency initialized.",
+                timestamp: serverTimestamp(),
+                userId: user?.uid
+            });
+
             toast({ title: "Exchange Rate Added", description: `1 ${newCode} initialized.` });
             setIsAdding(false);
             setNewCode('');
@@ -128,17 +158,33 @@ export function ExchangeRateManager({
         }
     };
 
-    const handleUpdateRate = async (code: string, rate: string) => {
-        const val = parseFloat(rate);
-        if (isNaN(val)) return;
+    const handlePerformUpdate = async () => {
+        if (!isUpdating || !updateRateVal || !updateNote.trim()) return;
+        setIsProcessingUpdate(true);
         try {
-            const rateRef = doc(firestore, `organisations/${organisationId}/exchangeRates`, code);
-            await setDoc(rateRef, {
+            const rateRef = doc(firestore, `organisations/${organisationId}/exchangeRates`, isUpdating.code);
+            const val = parseFloat(updateRateVal);
+            
+            await updateDoc(rateRef, {
                 rate: val,
                 updatedAt: serverTimestamp()
-            }, { merge: true });
+            });
+
+            await addDoc(collection(rateRef, 'changeLog'), {
+                rate: val,
+                note: updateNote,
+                timestamp: serverTimestamp(),
+                userId: user?.uid
+            });
+
+            toast({ title: "Strategic Rate Updated", description: `New rate for ${isUpdating.code} persisted with audit note.` });
+            setIsUpdating(null);
+            setUpdateRateVal('');
+            setUpdateNote('');
         } catch (e) {
             toast({ variant: 'destructive', title: "Update Failed" });
+        } finally {
+            setIsProcessingUpdate(false);
         }
     };
 
@@ -185,7 +231,7 @@ export function ExchangeRateManager({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-[95vw] w-[1100px] h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl [&>button]:hidden">
+            <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-4 shadow-2xl [&>button]:hidden">
                 <div className="flex flex-col h-full bg-background">
                     {/* Header */}
                     <div className="p-8 border-b bg-muted/5 shrink-0">
@@ -280,15 +326,17 @@ export function ExchangeRateManager({
                                                                     </Button>
                                                                 </TableCell>
                                                                 <TableCell className="py-4 px-4 align-middle">
-                                                                    <div className="relative max-w-[140px]">
+                                                                    <div 
+                                                                        className="relative max-w-[140px] cursor-pointer group/input"
+                                                                        onClick={() => {
+                                                                            setIsUpdating(rate);
+                                                                            setUpdateRateVal(rate.rate.toString());
+                                                                        }}
+                                                                    >
                                                                         <ArrowRightLeft className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary opacity-40" />
-                                                                        <Input 
-                                                                            type="number" 
-                                                                            step="0.0001"
-                                                                            defaultValue={rate.rate}
-                                                                            onBlur={(e) => handleUpdateRate(rate.code, e.target.value)}
-                                                                            className="pl-8 h-9 font-black text-xs border-2 focus-visible:ring-primary/20 bg-background shadow-inner"
-                                                                        />
+                                                                        <div className="pl-8 pr-3 h-9 flex items-center font-black text-xs border-2 rounded-md bg-background group-hover/input:border-primary/40 transition-all shadow-inner">
+                                                                            {rate.rate.toFixed(4)}
+                                                                        </div>
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell className="text-center align-middle">
@@ -321,58 +369,80 @@ export function ExchangeRateManager({
                                                                 <TableRow className="bg-primary/5 hover:bg-primary/5 border-none">
                                                                     <TableCell colSpan={7} className="p-0">
                                                                         <div className="p-6 pt-0 ml-[60px] animate-in slide-in-from-top-2 duration-300">
-                                                                            <div className="bg-background rounded-3xl border-2 shadow-2xl overflow-hidden border-primary/10">
-                                                                                <div className="p-5 border-b bg-muted/10 flex items-center justify-between">
-                                                                                    <div className="flex items-center gap-2.5">
-                                                                                        <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                                                                                            <Building className="h-4 w-4 text-primary" />
-                                                                                        </div>
-                                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">Associated Brands ({rate.code})</span>
-                                                                                    </div>
-                                                                                    <Select onValueChange={(vId) => handleAssignVendor(vId, rate.code)}>
-                                                                                        <SelectTrigger className="h-9 w-[220px] text-[10px] font-black uppercase tracking-widest border-dashed border-2 hover:bg-primary/5 hover:border-primary/30 transition-all">
-                                                                                            <Plus className="h-3 w-3 mr-2" />
-                                                                                            <SelectValue placeholder="Map Brand to Currency" />
-                                                                                        </SelectTrigger>
-                                                                                        <SelectContent>
-                                                                                            {vendors?.filter(v => v.currency !== rate.code).map(v => (
-                                                                                                <SelectItem key={v.id} value={v.id} className="text-[10px] font-black uppercase tracking-widest">{v.name}</SelectItem>
-                                                                                            ))}
-                                                                                        </SelectContent>
-                                                                                    </Select>
-                                                                                </div>
-                                                                                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                                                    {mappedVendors.length > 0 ? mappedVendors.map(vendor => (
-                                                                                        <div key={vendor.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-muted/5 group/vendor hover:border-primary/20 hover:bg-white transition-all">
-                                                                                            <div className="flex items-center gap-4">
-                                                                                                <div className="h-10 w-10 bg-white rounded-xl border p-1.5 shadow-sm">
-                                                                                                    {vendor.logoUrl ? (
-                                                                                                        <img src={vendor.logoUrl} alt={vendor.name} className="h-full w-full object-contain" />
-                                                                                                    ) : (
-                                                                                                        <Building className="h-5 w-5 m-auto mt-1 text-muted-foreground/30" />
-                                                                                                    )}
+                                                                            <Tabs defaultValue="brands" className="w-full">
+                                                                                <TabsList className="bg-muted/20 h-10 p-1 rounded-2xl border mb-4">
+                                                                                    <TabsTrigger value="brands" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 h-full data-[state=active]:bg-background data-[state=active]:shadow-md">
+                                                                                        <Link2 className="h-3 w-3 mr-2" />
+                                                                                        Linked Brands
+                                                                                    </TabsTrigger>
+                                                                                    <TabsTrigger value="log" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 h-full data-[state=active]:bg-background data-[state=active]:shadow-md">
+                                                                                        <ClipboardList className="h-3 w-3 mr-2" />
+                                                                                        Strategic Audit Log
+                                                                                    </TabsTrigger>
+                                                                                </TabsList>
+
+                                                                                <TabsContent value="brands">
+                                                                                    <div className="bg-background rounded-3xl border-2 shadow-2xl overflow-hidden border-primary/10">
+                                                                                        <div className="p-5 border-b bg-muted/10 flex items-center justify-between">
+                                                                                            <div className="flex items-center gap-2.5">
+                                                                                                <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                                                                    <Building className="h-4 w-4 text-primary" />
                                                                                                 </div>
-                                                                                                <span className="text-[11px] font-black uppercase tracking-tight">{vendor.name}</span>
+                                                                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Associated Brands ({rate.code})</span>
                                                                                             </div>
-                                                                                            <Button 
-                                                                                                variant="ghost" 
-                                                                                                size="icon" 
-                                                                                                className="h-8 w-8 text-muted-foreground opacity-0 group-hover/vendor:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
-                                                                                                onClick={() => handleAssignVendor(vendor.id, 'AUD')}
-                                                                                            >
-                                                                                                <Link2 className="h-4 w-4" />
-                                                                                            </Button>
+                                                                                            <Select onValueChange={(vId) => handleAssignVendor(vId, rate.code)}>
+                                                                                                <SelectTrigger className="h-9 w-[220px] text-[10px] font-black uppercase tracking-widest border-dashed border-2 hover:bg-primary/5 hover:border-primary/30 transition-all">
+                                                                                                    <Plus className="h-3 w-3 mr-2" />
+                                                                                                    <SelectValue placeholder="Map Brand to Currency" />
+                                                                                                </SelectTrigger>
+                                                                                                <SelectContent>
+                                                                                                    {vendors?.filter(v => v.currency !== rate.code).map(v => (
+                                                                                                        <SelectItem key={v.id} value={v.id} className="text-[10px] font-black uppercase tracking-widest">{v.name}</SelectItem>
+                                                                                                    ))}
+                                                                                                </SelectContent>
+                                                                                            </Select>
                                                                                         </div>
-                                                                                    )) : (
-                                                                                        <div className="col-span-full py-12 text-center">
-                                                                                            <div className="opacity-20 flex flex-col items-center gap-3">
-                                                                                                <Link2 className="h-8 w-8" />
-                                                                                                <p className="text-[10px] font-black uppercase tracking-widest">No brands currently associated with {rate.code}</p>
-                                                                                            </div>
+                                                                                        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                                                            {mappedVendors.length > 0 ? mappedVendors.map(vendor => (
+                                                                                                <div key={vendor.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-muted/5 group/vendor hover:border-primary/20 hover:bg-white transition-all">
+                                                                                                    <div className="flex items-center gap-4">
+                                                                                                        <div className="h-10 w-10 bg-white rounded-xl border p-1.5 shadow-sm">
+                                                                                                            {vendor.logoUrl ? (
+                                                                                                                <img src={vendor.logoUrl} alt={vendor.name} className="h-full w-full object-contain" />
+                                                                                                            ) : (
+                                                                                                                <Building className="h-5 w-5 m-auto mt-1 text-muted-foreground/30" />
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                        <span className="text-[11px] font-black uppercase tracking-tight">{vendor.name}</span>
+                                                                                                    </div>
+                                                                                                    <Button 
+                                                                                                        variant="ghost" 
+                                                                                                        size="icon" 
+                                                                                                        className="h-8 w-8 text-muted-foreground opacity-0 group-hover/vendor:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                                                                                                        onClick={() => handleAssignVendor(vendor.id, 'AUD')}
+                                                                                                    >
+                                                                                                        <Link2 className="h-4 w-4" />
+                                                                                                    </Button>
+                                                                                                </div>
+                                                                                            )) : (
+                                                                                                <div className="col-span-full py-12 text-center">
+                                                                                                    <div className="opacity-20 flex flex-col items-center gap-3">
+                                                                                                        <Link2 className="h-8 w-8" />
+                                                                                                        <p className="text-[10px] font-black uppercase tracking-widest">No brands currently associated with {rate.code}</p>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            )}
                                                                                         </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
+                                                                                    </div>
+                                                                                </TabsContent>
+
+                                                                                <TabsContent value="log">
+                                                                                    <AuditLogView 
+                                                                                        organisationId={organisationId} 
+                                                                                        currencyCode={rate.code} 
+                                                                                    />
+                                                                                </TabsContent>
+                                                                            </Tabs>
                                                                         </div>
                                                                     </TableCell>
                                                                 </TableRow>
@@ -391,7 +461,7 @@ export function ExchangeRateManager({
                                         <div className="space-y-1">
                                             <h4 className="text-sm font-black uppercase tracking-tight text-primary">Strategic Configuration Note</h4>
                                             <p className="text-xs text-muted-foreground font-medium leading-relaxed max-w-3xl">
-                                                The designated default currency represents your organization's local trading base. All master vendor pricing is automatically converted into this base for live building and quotation workflows. Manual rates should be reviewed periodically against market volatility to maintain profitability.
+                                                The designated default currency represents your organization's local trading base. All master vendor pricing is automatically converted into this base for live building and quotation workflows. Every manual rate adjustment is logged with its associated strategic note for long-term financial auditing.
                                             </p>
                                         </div>
                                     </div>
@@ -455,7 +525,119 @@ export function ExchangeRateManager({
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </DialogContent>
+
+                {/* Update Rate & Note Dialog */}
+                <Dialog open={!!isUpdating} onOpenChange={(open) => !open && setIsUpdating(null)}>
+                    <DialogContent className="sm:max-w-lg rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
+                        <DialogHeader className="p-8 border-b bg-muted/5">
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Update Strategic Rate: {isUpdating?.code}</DialogTitle>
+                            <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Manual Audit Point Creation</DialogDescription>
+                        </DialogHeader>
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">Precision Exchange Rate</Label>
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 bg-primary/10 rounded-lg flex items-center justify-center">
+                                        <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
+                                    </div>
+                                    <Input 
+                                        type="number" 
+                                        step="0.0001" 
+                                        value={updateRateVal} 
+                                        onChange={e => setUpdateRateVal(e.target.value)}
+                                        className="pl-14 h-12 font-black text-lg border-2 rounded-xl bg-muted/5 shadow-inner"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">Strategic Audit Note (Mandatory)</Label>
+                                <div className="relative">
+                                    <MessageSquare className="absolute left-4 top-4 h-4 w-4 text-primary opacity-40" />
+                                    <Textarea 
+                                        placeholder="Explain the reasoning for this rate adjustment..." 
+                                        value={updateNote}
+                                        onChange={e => setUpdateNote(e.target.value)}
+                                        className="pl-12 min-h-[120px] font-bold text-sm border-2 rounded-xl bg-background shadow-sm"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                            <Button variant="outline" onClick={() => setIsUpdating(null)} className="h-12 px-8 font-black uppercase tracking-widest text-[10px] rounded-2xl border-2 transition-all">Cancel</Button>
+                            <Button onClick={handlePerformUpdate} disabled={isProcessingUpdate || !updateRateVal || !updateNote.trim()} className="h-12 px-10 font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl transition-all hover:scale-105">
+                                {isProcessingUpdate ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                Persist Strategic Change
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </Dialog>
+    );
+}
+
+function AuditLogView({ organisationId, currencyCode }: { organisationId: string, currencyCode: string }) {
+    const firestore = useFirestore();
+    const logQuery = useMemoFirebase(() => 
+        query(collection(firestore, `organisations/${organisationId}/exchangeRates/${currencyCode}/changeLog`), orderBy('timestamp', 'desc')),
+    [firestore, organisationId, currencyCode]);
+    
+    const { data: logs, loading } = useCollection<ChangeLogEntry>(logQuery);
+
+    if (loading) return <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+    return (
+        <div className="bg-background rounded-3xl border-2 shadow-2xl overflow-hidden border-primary/10">
+            <div className="p-5 border-b bg-muted/10 flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Strategic Change Log: {currencyCode}</span>
+            </div>
+            <ScrollArea className="h-[300px]">
+                <div className="p-0">
+                    {logs && logs.length > 0 ? (
+                        <Table>
+                            <TableHeader className="bg-muted/5">
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="py-3 px-6 font-black uppercase text-[9px] tracking-widest w-[180px]">Timestamp</TableHead>
+                                    <TableHead className="py-3 px-6 font-black uppercase text-[9px] tracking-widest w-[120px]">Precision Rate</TableHead>
+                                    <TableHead className="py-3 px-6 font-black uppercase text-[9px] tracking-widest">Audit Note</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {logs.map((log) => (
+                                    <TableRow key={log.id} className="hover:bg-muted/10 border-b">
+                                        <TableCell className="py-4 px-6 align-top">
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                <Clock className="h-3 w-3 opacity-40" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                                    {log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6 align-top">
+                                            <Badge variant="secondary" className="font-mono font-black text-xs h-7 px-3 bg-primary/5 border-primary/10 text-primary">
+                                                {log.rate.toFixed(4)}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="py-4 px-6 align-top">
+                                            <p className="text-[11px] font-bold text-foreground leading-relaxed">
+                                                {log.note}
+                                            </p>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <div className="py-20 text-center flex flex-col items-center gap-3 opacity-20">
+                            <History className="h-8 w-8" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">No strategic changes logged for this currency.</p>
+                        </div>
+                    )}
+                </div>
+            </ScrollArea>
+        </div>
     );
 }

@@ -54,6 +54,10 @@ service cloud.firestore {
 
       match /exchangeRates/{currencyCode} {
         allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
+        
+        match /changeLog/{logId} {
+          allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
+        }
       }
       
       match /pricingStrategies/{vendorId} {
