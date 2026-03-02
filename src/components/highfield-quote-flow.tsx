@@ -25,8 +25,8 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { Badge } from './ui/badge';
-import { ScrollArea } from './ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     Carousel,
     CarouselContent,
@@ -40,7 +40,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-} from "@/dialog";
+} from "@/components/ui/dialog";
 import {
     Tooltip,
     TooltipContent,
@@ -180,7 +180,7 @@ export function HighfieldQuoteFlow({
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) {
                 const targetTop = colorsSectionRef.current.offsetTop;
-                // Preserve a 20px visual cushion from the fixed header (reduced from 40px)
+                // Preserve a 20px visual cushion from the fixed header
                 setTimeout(() => {
                     viewport.scrollTo({ top: targetTop - 20, behavior: 'smooth' });
                 }, 300);
@@ -731,7 +731,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </ScrollArea>
 
-                    {/* Anchored Action Button - Aligned with Summary Card */}
+                    {/* Anchored Action Button */}
                     <div className="px-8 md:px-12 pb-12 pt-4 shrink-0 z-20">
                         <div className="flex gap-4">
                             {currentStep > 1 && (
