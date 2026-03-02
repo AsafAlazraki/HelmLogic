@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -74,6 +73,14 @@ export function DealerFitOptions({
     return allCategories.filter(cat => organisation.dealerFitCategories?.includes(cat.id));
   }, [allCategories, organisation, isAdmin]);
 
+  const allowedVendorIds = useMemo(() => {
+    if (!module) return [];
+    
+    // For Dealer Fit (accessories), we show all associated vendors for this module.
+    // We explicitly EXCLUDE the main boat brand (Highfield, etc.) as these should be sourced from suppliers.
+    return (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
+  }, [module]);
+
   const selectionsByCategory = useMemo(() => {
     if (!selections) return new Map();
     return selections.reduce((acc, selection) => {
@@ -84,27 +91,6 @@ export function DealerFitOptions({
       return acc;
     }, new Map<string, DealerFitSelection[]>());
   }, [selections]);
-
-  const allowedVendorIds = useMemo(() => {
-    if (!module) return [];
-    
-    // IMPORTANT: For Dealer Fit (accessories), we explicitly EXCLUDE the main boat brand (Highfield, etc.)
-    // These options should be sourced from associated suppliers.
-    const moduleAssociatedIds = (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
-    
-    // IF ADMIN: Always show all associated vendors defined for the module, bypass org restrictions
-    if (isAdmin) {
-        return moduleAssociatedIds;
-    }
-    
-    if (!organisation) return [];
-    
-    // Non-admin context: only show associated vendors that this specific organisation has been granted access to
-    const associatedFromOrg = organisation.moduleAssociatedVendorAccess?.[module.id] || [];
-    
-    // Ensure we only show vendors that are BOTH granted to the org AND associated with this module
-    return associatedFromOrg.filter(id => moduleAssociatedIds.includes(id));
-  }, [module, organisation, organisationId, isAdmin]);
 
   const handleOpenBrowser = (categoryId: string) => {
     setActiveCategoryId(categoryId);
@@ -176,12 +162,10 @@ export function DealerFitOptions({
             <Card key={category.id}>
               <CardHeader className="flex flex-row items-center justify-between py-4">
                 <CardTitle className="text-lg">{category.name}</CardTitle>
-                {(organisationId || isAdmin) && (
-                    <Button variant="outline" size="sm" onClick={() => handleOpenBrowser(category.id)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Selection
-                    </Button>
-                )}
+                <Button variant="outline" size="sm" onClick={() => handleOpenBrowser(category.id)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Selection
+                </Button>
               </CardHeader>
               <CardContent>
                 {categorySelections.length > 0 ? (
@@ -211,22 +195,10 @@ export function DealerFitOptions({
                   </Accordion>
                 ) : (
                   <div className="py-10 text-center text-xs text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
-                    {organisationId 
-                        ? (allowedVendorIds.length > 0 
-                            ? "Click the button above to add fitted items or packages." 
-                            : "No associated vendors have been granted to this organisation for dealer fit selection.")
-                        : "Master Categories View: Available for assignment to organisations."
+                    {allowedVendorIds.length > 0 
+                        ? "Click 'Add Selection' to browse parts from your associated vendors." 
+                        : "No associated vendors have been assigned to this module configuration."
                     }
-                    {organisationId && !isAdmin && allowedVendorIds.length === 0 && (
-                        <div className="mt-4 flex justify-center">
-                            <Button variant="ghost" size="sm" className="text-primary font-bold" asChild>
-                                <a href={`/modules/${module.slug || module.id}`}>
-                                    <Settings2 className="mr-2 h-4 w-4" />
-                                    Review Vendor Access
-                                </a>
-                            </Button>
-                        </div>
-                    )}
                   </div>
                 )}
               </CardContent>
@@ -234,11 +206,11 @@ export function DealerFitOptions({
           )
         })}
       </div>
-       {activeCategoryId && (organisation || isAdmin) && (
+       {activeCategoryId && (
         <MasterDataBrowserDialog
           isOpen={isBrowserOpen}
           onClose={() => setIsBrowserOpen(false)}
-          organisation={(organisation || { id: 'admin-preview' }) as any}
+          organisation={(organisation || { id: organisationId || 'temp' }) as any}
           categoryId={activeCategoryId}
           onSave={handleSaveSelection}
           allowedVendorIds={allowedVendorIds}

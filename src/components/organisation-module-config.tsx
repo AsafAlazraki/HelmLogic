@@ -120,7 +120,8 @@ export function OrganisationModuleConfig({
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-2">
-                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Always Available</h4>
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Default Module Access</h4>
+                            <p className="text-xs text-muted-foreground mb-2">These vendors are automatically available to all users of this module.</p>
                             <div className="space-y-2">
                                 {allVendors?.find(v => v.id === module.mainVendorId) && (
                                     <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 border text-sm opacity-70">
@@ -128,47 +129,12 @@ export function OrganisationModuleConfig({
                                         <span>Main Vendor: {allVendors.find(v => v.id === module.mainVendorId)?.name}</span>
                                     </div>
                                 )}
-                                {associatedVendors.filter(v => v.vendorType === 'Motor Brand').map(v => (
+                                {associatedVendors.map(v => (
                                     <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 border text-sm opacity-70">
                                         <Check className="h-4 w-4 text-green-600" />
-                                        <span>Motor Brand: {v.name}</span>
+                                        <span>{v.vendorType || 'Associated'}: {v.name}</span>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
-                        
-                        <Separator />
-
-                        <div className="space-y-2">
-                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Optional Vendors</h4>
-                            <div className="grid gap-2">
-                                {associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').length > 0 ? (
-                                    associatedVendors.filter(v => v.id !== module.mainVendorId && v.vendorType !== 'Motor Brand').map(vendor => {
-                                        const isChecked = currentAllowedVendorIds.includes(vendor.id);
-                                        return (
-                                            <div 
-                                                key={vendor.id} 
-                                                className={cn(
-                                                    "flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-all cursor-pointer",
-                                                    isChecked ? "bg-secondary/50 border-primary/20" : "hover:bg-muted/50 opacity-60"
-                                                )}
-                                                onClick={() => handleVendorToggle(vendor.id, !isChecked)}
-                                            >
-                                                <div className="flex-1 flex items-center gap-2">
-                                                    {isChecked ? <Check className="h-4 w-4 text-green-600" /> : <div className="w-4 h-4" />}
-                                                    <span className={cn(isChecked ? "font-medium text-foreground" : "")}>{vendor.name}</span>
-                                                </div>
-                                                <Checkbox 
-                                                    checked={isChecked}
-                                                    onCheckedChange={(checked) => handleVendorToggle(vendor.id, !!checked)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <p className="text-xs text-muted-foreground py-4 text-center border border-dashed rounded-md italic">No optional vendors configured for this module.</p>
-                                )}
                             </div>
                         </div>
                     </CardContent>
@@ -231,7 +197,7 @@ export function OrganisationModuleConfig({
                                 <Users className="h-5 w-5 text-primary" />
                                 <CardTitle>Sub Dealers</CardTitle>
                             </div>
-                            <CardDescription>Manage module access and vendor visibility for associated sub-dealers.</CardDescription>
+                            <CardDescription>Manage module access and view configurations for associated sub-dealers.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {subDealers.length > 0 ? (
@@ -239,7 +205,7 @@ export function OrganisationModuleConfig({
                                     {subDealers.map(sd => {
                                         const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                         return (
-                                            <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50" : "opacity-70 grayscale")}>
+                                            <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                 <div className="p-4 flex flex-col gap-4">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -257,11 +223,6 @@ export function OrganisationModuleConfig({
                                                             <label htmlFor={`sd-${sd.id}`} className="text-xs text-muted-foreground cursor-pointer">Access</label>
                                                         </div>
                                                     </div>
-                                                    {hasAccess && (
-                                                        <Button variant="outline" size="sm" className="w-full" onClick={() => setConfigSdId(sd.id)}>
-                                                            <Settings2 className="mr-2 h-4 w-4" /> Config Vendors
-                                                        </Button>
-                                                    )}
                                                 </div>
                                             </Card>
                                         );
@@ -277,17 +238,6 @@ export function OrganisationModuleConfig({
                     </Card>
                 )}
             </div>
-
-            {activeConfigSd && (
-                <ModuleVendorAccessDialog 
-                    isOpen={!!activeConfigSd}
-                    setIsOpen={(open) => !open && setConfigSdId(null)}
-                    module={module}
-                    organisation={activeConfigSd as any}
-                    allVendors={allVendors}
-                    onUpdate={onUpdateSubDealerVendors || (() => {})}
-                />
-            )}
         </div>
     );
 }
