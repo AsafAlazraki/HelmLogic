@@ -171,7 +171,7 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model]);
 
-    // Independent Panel Scrolling
+    // Independent Panel Scrolling - Isolated to Step changes
     useEffect(() => {
         if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -371,7 +371,7 @@ export function HighfieldQuoteFlow({
                     <div className="w-full h-full flex flex-col p-6 md:p-12 animate-in fade-in zoom-in-95 duration-700">
                         <div className="w-full h-full flex flex-col gap-8">
                             
-                            {/* Seamless Visualizer Cube */}
+                            {/* Seamless Visualizer Workspace */}
                             <div className="relative flex-1 w-full flex flex-col bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0">
                                 <div className="flex-1 w-full min-h-0 relative bg-white">
                                     <Carousel className="w-full h-full" opts={{ loop: true }}>
@@ -383,7 +383,7 @@ export function HighfieldQuoteFlow({
                                                         onClick={() => setLightboxIndex(idx)}
                                                     >
                                                         {/* Soft Fade Overlay */}
-                                                        <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_80px_rgba(255,255,255,0.8)]" />
+                                                        <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_100px_rgba(255,255,255,0.9)]" />
                                                         
                                                         <Image 
                                                             src={url} 
@@ -714,10 +714,10 @@ export function HighfieldQuoteFlow({
 
             {/* Gallery Lightbox */}
             <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
-                <DialogContent className="max-w-6xl h-auto max-h-[90vh] p-0 border-none bg-slate-900/95 backdrop-blur-2xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[3rem] overflow-hidden">
+                <DialogContent className="max-w-6xl h-auto max-h-[90vh] p-0 border-none bg-neutral-950/90 backdrop-blur-xl shadow-2xl flex items-center justify-center animate-in fade-in zoom-in-95 duration-500 rounded-[3rem] overflow-hidden">
                     <DialogTitle className="sr-only">Image Gallery</DialogTitle>
                     {lightboxIndex !== null && (
-                        <div className="relative w-full h-full p-6 md:p-12 flex flex-col items-center justify-center min-h-[400px]">
+                        <div className="relative w-full h-full p-16 md:p-24 flex flex-col items-center justify-center min-h-[400px]">
                             <Carousel 
                                 className="w-full h-full" 
                                 opts={{ 
@@ -728,7 +728,7 @@ export function HighfieldQuoteFlow({
                                 <CarouselContent className="h-full">
                                     {carouselImages.map((url, idx) => (
                                         <CarouselItem key={`${url}-${idx}`} className="h-full flex items-center justify-center">
-                                            <div className="relative w-full h-[60vh] md:h-[75vh]">
+                                            <div className="relative w-full h-[60vh] md:h-[70vh]">
                                                 <Image 
                                                     src={url} 
                                                     alt={`Gallery View ${idx}`} 
@@ -751,10 +751,10 @@ export function HighfieldQuoteFlow({
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-50"
+                                className="absolute top-10 right-10 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-50 border border-white/10 shadow-lg"
                                 onClick={() => setLightboxIndex(null)}
                             >
-                                <X className="h-5 w-5" />
+                                <X className="h-6 w-6" />
                             </Button>
                         </div>
                     )}
