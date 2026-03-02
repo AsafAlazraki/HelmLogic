@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, FormProvider, useController } from 'react-hook-form';
@@ -63,6 +64,10 @@ const getVendorSchema = (slug?: string) => {
         name: z.string().min(1, 'Model Name is required'),
         modelCode: z.string().min(1, 'Model Code is required'),
         motorFactoryOptions: z.record(z.string(), z.array(z.any())).optional().default({}),
+        motorOverrides: z.record(z.string(), z.object({
+            hiddenIds: z.array(z.string()).default([]),
+            manualIds: z.array(z.string()).default([]),
+        })).optional().default({}),
     });
 
     switch (slug) {
@@ -88,6 +93,7 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
         sellPriceExclGst: data.sellPriceExclGst ?? null,
         freightCostExclGst: data.freightCostExclGst ?? null,
         motorFactoryOptions: data.motorFactoryOptions ?? {},
+        motorOverrides: data.motorOverrides ?? {},
         specifications: {
             motorConfigurations: (specs.motorConfigurations ?? []).map((config: any) => {
                 if (config.engines && Array.isArray(config.engines) && config.engines.length > 0) return config;
@@ -252,7 +258,6 @@ export function ModelConfigurationEditor({
                 toast({ title: "Master Configuration Updated", description: "Changes persisted to global catalog." });
             } else if (organisationId) {
                 // Case 2: Updating Organisation Overrides
-                // This is the "Catalog Version" for this specific dealer or sub-dealer
                 const overrideRef = doc(firestore, `organisations/${organisationId}/modelOverrides/${model.id}`);
                 await setDoc(overrideRef, {
                     ...sanitizedValues,

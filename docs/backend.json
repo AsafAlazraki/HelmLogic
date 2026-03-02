@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -434,6 +435,23 @@
               "id",
               "name"
             ]
+          }
+        },
+        "motorOverrides": {
+          "type": "object",
+          "description": "User-defined motor visibility and inclusion overrides per configuration type.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "hiddenIds": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "manualIds": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
           }
         },
         "colorStages": {
