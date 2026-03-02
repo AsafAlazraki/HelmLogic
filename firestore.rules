@@ -63,6 +63,7 @@ service cloud.firestore {
       match /priceLevelDefinitions/{id} { allow read, write: if isSignedIn(); }
       match /inventory/{id} { allow read, write: if isSignedIn(); }
       match /modelOverrides/{id} { allow read, write: if isSignedIn(); }
+      match /pricingStrategies/{id} { allow read, write: if isSignedIn(); }
     }
 
     match /modules/{moduleId} {
