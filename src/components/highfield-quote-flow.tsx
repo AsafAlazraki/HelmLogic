@@ -172,25 +172,22 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model]);
 
-    // Independent Panel Scrolling - Isolated to Step changes
+    // Independent Panel Scrolling - Optimized Refocus
     useEffect(() => {
-        if (scrollAreaRef.current) {
+        if (selectedMaterial && currentStep === 1 && scrollAreaRef.current && colorsSectionRef.current) {
+            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) {
+                const targetTop = colorsSectionRef.current.offsetTop;
+                // Add a small buffer to ensure the label isn't tight against the fixed header
+                viewport.scrollTo({ top: targetTop - 20, behavior: 'smooth' });
+            }
+        } else if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) {
                 viewport.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
-    }, [currentStep]);
-
-    // Refocus on colors when material is selected
-    useEffect(() => {
-        if (selectedMaterial && currentStep === 1) {
-            const timer = setTimeout(() => {
-                colorsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [selectedMaterial, currentStep]);
+    }, [currentStep, selectedMaterial]);
 
     // Data Derivations
     const activeVariant = useMemo(() => {
@@ -511,7 +508,7 @@ export function HighfieldQuoteFlow({
                 {/* Configuration Panel (Right) */}
                 <div className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100 flex flex-col overflow-hidden relative">
                     {/* Fixed Step Header (Fixed Text Container) */}
-                    <div className="p-8 md:p-12 pb-2 shrink-0 bg-slate-50/5 backdrop-blur-md z-20">
+                    <div className="p-8 md:p-12 pb-4 shrink-0 bg-slate-50/5 backdrop-blur-md z-20">
                         {currentStep === 1 && (
                             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <h2 className="text-4xl font-black uppercase tracking-tight leading-none">The Foundation</h2>
@@ -540,7 +537,7 @@ export function HighfieldQuoteFlow({
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         {/* Persistent spacer to ensure title gap doesn't disappear when scrolling */}
-                        <div className="px-8 md:px-12 pb-12 pt-6 flex flex-col">
+                        <div className="px-8 md:px-12 pb-12 pt-2 flex flex-col">
                             
                             {currentStep === 1 && (
                                 <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
