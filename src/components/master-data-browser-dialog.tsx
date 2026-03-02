@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 interface Vendor {
@@ -90,6 +90,10 @@ export function MasterDataBrowserDialog({
   const [stagedItems, setStagedItems] = useState<{ vendorId: string; vendorName: string; row: any }[]>([]);
   const [packageName, setPackageName] = useState('');
 
+  // Aggregation state for "Global Master List"
+  const [aggregateData, setAggregateData] = useState<any[] | null>(null);
+  const [isAggregating, setIsAggregating] = useState(false);
+
   // Sync initial state when dialog opens
   useEffect(() => {
     if (isOpen) {
@@ -119,34 +123,65 @@ export function MasterDataBrowserDialog({
   }, [firestore, selectedVendorId]);
   const { data: dataSets, isLoading: setsLoading } = useCollection<DataSet>(dataSetsQuery);
 
-  // Auto-select dataset for multi-table vendors
+  // Auto-select first dataset for multi-table vendors only if none selected
   useEffect(() => {
-    if (dataSets && dataSets.length > 0 && !selectedDataSetId) {
-        // Automatically pick the first table for multi-table vendors to avoid an empty start
+    if (dataSets && dataSets.length > 0 && selectedDataSetId === null) {
         setSelectedDataSetId(dataSets[0].id);
     }
   }, [dataSets, selectedDataSetId]);
 
-  // Fetch rows for either the specific dataset or the global master set
+  // Fetch rows for either the specific dataset or the global master set (Yamaha etc)
   const masterDataQuery = useMemoFirebase(() => {
     if (!selectedVendorId) return null;
     if (selectedDataSetId && selectedDataSetId !== 'master') {
         return collection(firestore, 'data-warehouse', selectedVendorId, 'dataSets', selectedDataSetId, 'rows');
     }
-    // Global Master List fallback
     return collection(firestore, 'data-warehouse', selectedVendorId, 'masterDataSet');
   }, [firestore, selectedVendorId, selectedDataSetId]);
   
   const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
 
+  // Client-side Aggregation logic for "Global Master List" when selected for multi-table vendors
+  useEffect(() => {
+    const fetchAggregate = async () => {
+      if (selectedDataSetId === 'master' && selectedVendorId && dataSets && dataSets.length > 0) {
+        setIsAggregating(true);
+        try {
+          const promises = dataSets.map(async (ds) => {
+            const snap = await getDocs(collection(firestore, `data-warehouse/${selectedVendorId}/dataSets/${ds.id}/rows`));
+            return snap.docs.map(d => ({ id: d.id, ...d.data(), _sourceTable: ds.name }));
+          });
+          const results = await Promise.all(promises);
+          setAggregateData(results.flat());
+        } catch (e) {
+          console.error("Aggregation failed", e);
+        } finally {
+          setIsAggregating(false);
+        }
+      } else {
+        setAggregateData(null);
+      }
+    };
+    fetchAggregate();
+  }, [selectedDataSetId, selectedVendorId, dataSets, firestore]);
+
+  const displayData = useMemo(() => {
+    if (selectedDataSetId === 'master') {
+        // Return aggregated data if we've successfully combined tables, otherwise the (likely empty) top-level set
+        if (aggregateData && aggregateData.length > 0) return aggregateData;
+        return masterData || [];
+    }
+    return masterData || [];
+  }, [selectedDataSetId, aggregateData, masterData]);
+
   const filteredData = useMemo(() => {
-    if (!masterData) return [];
-    if (!searchTerm) return masterData;
+    if (!displayData) return [];
+    if (!searchTerm) return displayData;
     const lower = searchTerm.toLowerCase();
-    return masterData.filter(row => 
+    return displayData.filter(row => 
         Object.values(row).some(val => String(val ?? '').toLowerCase().includes(lower))
     );
-  }, [masterData, searchTerm]);
+  }, [displayData, searchTerm]);
 
   const headers = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return [];
@@ -156,8 +191,13 @@ export function MasterDataBrowserDialog({
     const imageKey = allKeys.find(k => k.toLowerCase().includes('image') || k.toLowerCase().includes('logo') || k === 'SummaryImage');
     const sorted = commonKeys.filter(k => allKeys.includes(k));
     if (imageKey && !sorted.includes(imageKey)) sorted.unshift(imageKey);
-    return sorted.concat(allKeys.filter(k => !sorted.includes(k) && k !== 'id' && k !== '_ref' && k !== 'imageUrl' && k !== 'SummaryImage')).slice(0, 5);
-  }, [filteredData]);
+    // Add source table indicator if we're in aggregate view
+    const resultHeaders = sorted.concat(allKeys.filter(k => !sorted.includes(k) && k !== 'id' && k !== '_ref' && k !== 'imageUrl' && k !== 'SummaryImage' && k !== '_sourceTable')).slice(0, 5);
+    if (selectedDataSetId === 'master' && dataSets && dataSets.length > 0) {
+        resultHeaders.push('_sourceTable');
+    }
+    return resultHeaders;
+  }, [filteredData, selectedDataSetId, dataSets]);
 
   const handleAddItem = (row: any) => {
     const selectedVendor = subscribedVendors.find(v => v.id === selectedVendorId);
@@ -204,6 +244,7 @@ export function MasterDataBrowserDialog({
         setStagedItems([]);
         setPackageName('');
         setSearchTerm('');
+        setAggregateData(null);
     }, 300);
   };
 
@@ -224,7 +265,7 @@ export function MasterDataBrowserDialog({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">1. Select Vendor</Label>
-                        <Select onValueChange={(val) => { setSelectedVendorId(val); setSelectedDataSetId(null); }} value={selectedVendorId || ''}>
+                        <Select onValueChange={(val) => { setSelectedVendorId(val); setSelectedDataSetId(null); setAggregateData(null); }} value={selectedVendorId || ''}>
                             <SelectTrigger className="h-10 font-bold bg-background">
                                 <SelectValue placeholder={vendorsLoading ? 'Loading...' : 'Choose a vendor'} />
                             </SelectTrigger>
@@ -269,9 +310,10 @@ export function MasterDataBrowserDialog({
             </div>
 
             <div className="flex-1 overflow-hidden relative">
-                {dataLoading || setsLoading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-20">
+                {dataLoading || setsLoading || isAggregating ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 z-20 gap-3">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        {isAggregating && <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Aggregating global data...</p>}
                     </div>
                 ) : filteredData && filteredData.length > 0 ? (
                     <ScrollArea className="h-full">
@@ -280,7 +322,7 @@ export function MasterDataBrowserDialog({
                                 <TableRow className="hover:bg-transparent">
                                     {headers.map(header => (
                                         <TableHead key={header} className="text-[10px] font-black uppercase tracking-tighter py-3 px-4">
-                                            {header.replace(/_/g, ' ')}
+                                            {header === '_sourceTable' ? 'Source' : header.replace(/_/g, ' ')}
                                         </TableHead>
                                     ))}
                                     <TableHead className="text-right w-24 pr-6">Action</TableHead>
@@ -291,7 +333,11 @@ export function MasterDataBrowserDialog({
                                     <TableRow key={row.id || idx} className="hover:bg-primary/5 transition-colors group">
                                         {headers.map(header => (
                                             <TableCell key={header} className="text-[11px] font-medium py-3 px-4 truncate max-w-[200px]">
-                                                {String(row[header] ?? '')}
+                                                {header === '_sourceTable' ? (
+                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1">{row[header]}</Badge>
+                                                ) : (
+                                                    String(row[header] ?? '')
+                                                )}
                                             </TableCell>
                                         ))}
                                         <TableCell className="text-right py-3 pr-6">
@@ -311,12 +357,12 @@ export function MasterDataBrowserDialog({
                     </ScrollArea>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-12 text-center">
-                        {selectedVendorId && !selectedDataSetId && dataSets && dataSets.length > 0 ? (
+                        {selectedVendorId && (selectedDataSetId === 'master' || !selectedDataSetId) && dataSets && dataSets.length > 0 && !isAggregating ? (
                             <div className="flex flex-col items-center gap-4 bg-muted/10 p-8 rounded-xl border-2 border-dashed border-primary/20 animate-in zoom-in duration-300">
                                 <AlertCircle className="h-12 w-12 text-primary/40" />
                                 <div className="max-w-xs">
-                                    <p className="text-sm font-bold uppercase tracking-widest text-foreground">Select a Data Table</p>
-                                    <p className="text-[10px] font-medium text-muted-foreground mt-2 uppercase">This vendor organizes data into multiple tables. Please select one from the dropdown above to browse items.</p>
+                                    <p className="text-sm font-bold uppercase tracking-widest text-foreground">Dataset Configuration</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground mt-2 uppercase">The Global Master List is currently compiling. If this takes too long, please select a specific data table from the dropdown above.</p>
                                 </div>
                             </div>
                         ) : (
