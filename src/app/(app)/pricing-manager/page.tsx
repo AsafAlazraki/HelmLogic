@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -30,6 +31,7 @@ interface Organisation {
     id: string;
     name: string;
     roles?: any[];
+    tradingCurrency?: string;
     dataWarehouseSubscriptions?: string[];
     permissions?: Record<string, Record<string, boolean>>;
 }
@@ -130,7 +132,7 @@ export default function PricingManagerPage() {
                 {/* Exchange Rates Strategic Card */}
                 {organisationId && (
                     <Card 
-                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer hover:scale-[1.02] transition-all group overflow-hidden"
+                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer hover:scale-[1.02] transition-all group overflow-hidden h-24"
                         onClick={() => setIsExchangeRateManagerOpen(true)}
                     >
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -141,14 +143,18 @@ export default function PricingManagerPage() {
                                 <Badge variant="secondary" className="bg-white/20 text-white border-none font-black text-[8px] uppercase tracking-[0.1em] h-4">Strategy Panel</Badge>
                                 <Maximize2 className="h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity" />
                             </div>
-                            <CardTitle className="text-xs font-black uppercase tracking-widest mt-1.5">Exchange Rates</CardTitle>
+                            <CardTitle className="text-xs font-black uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                                Exchange Rates
+                                {organisation?.tradingCurrency && (
+                                    <Badge className="h-4 bg-white/20 text-white border-none text-[8px] font-black">{organisation.tradingCurrency}</Badge>
+                                )}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="p-3 pt-0 relative z-10">
                             <div className="flex items-baseline gap-1.5">
                                 <span className="text-xl font-black">{activeRates?.length || 0}</span>
                                 <span className="text-[9px] font-bold uppercase opacity-70 tracking-tighter">Active Conversions</span>
                             </div>
-                            <p className="text-[8px] font-black uppercase tracking-widest opacity-50 mt-0.5">Configure Strategic Matrix</p>
                         </CardContent>
                     </Card>
                 )}
@@ -194,12 +200,19 @@ export default function PricingManagerPage() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="text-[11px] font-black uppercase tracking-tight truncate">{vendor.name}</p>
-                                        <p className={cn(
-                                            "text-[9px] font-bold uppercase tracking-tighter opacity-60",
-                                            selectedVendorId === vendor.id ? "text-primary-foreground" : "text-muted-foreground"
-                                        )}>
-                                            {vendor.vendorType}
-                                        </p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <p className={cn(
+                                                "text-[9px] font-bold uppercase tracking-tighter opacity-60",
+                                                selectedVendorId === vendor.id ? "text-primary-foreground" : "text-muted-foreground"
+                                            )}>
+                                                {vendor.vendorType}
+                                            </p>
+                                            {vendor.currency && (
+                                                <Badge variant="outline" className={cn("h-3.5 text-[7px] font-black px-1.5", selectedVendorId === vendor.id ? "border-white/20 text-white" : "border-primary/20 text-primary")}>
+                                                    {vendor.currency}
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
                                     <ChevronRight className={cn(
                                         "h-4 w-4 shrink-0 transition-transform",
@@ -235,7 +248,10 @@ export default function PricingManagerPage() {
                                             )}
                                         </div>
                                         <div>
-                                            <CardTitle className="text-xl font-black uppercase tracking-tight">{activeVendor.name}</CardTitle>
+                                            <div className="flex items-center gap-2">
+                                                <CardTitle className="text-xl font-black uppercase tracking-tight">{activeVendor.name}</CardTitle>
+                                                {activeVendor.currency && <Badge variant="outline" className="font-black text-[10px] uppercase">{activeVendor.currency}</Badge>}
+                                            </div>
                                             <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Pricing & Profitability Strategy</CardDescription>
                                         </div>
                                     </div>
