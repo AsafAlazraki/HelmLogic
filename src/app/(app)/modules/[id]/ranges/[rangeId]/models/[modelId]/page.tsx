@@ -81,7 +81,10 @@ export default function DirectModelDetailsPage() {
   const { data: modelsBySlug, loading: modelSlugLoading } = useCollection<Model>(modelQuery);
   const modelByIdRef = useMemoFirebase(() => vendor?.id && range?.id && modelSlugOrId ? doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, modelSlugOrId) : null, [firestore, vendor, range, modelSlugOrId]);
   const { data: modelById, loading: modelIdLoading } = useDoc<Model>(modelByIdRef);
-  const model = useMemo(() => modelsBySlug?.[0] || modelById, [modelsBySlug, modelById]);
+  
+  // CRITICAL FIX: Favor direct document reference (ID) over slug query to ensure 
+  // we are getting the absolute latest data from the listener without query lag.
+  const model = useMemo(() => modelById || modelsBySlug?.[0], [modelsBySlug, modelById]);
   const modelLoading = modelSlugLoading || modelIdLoading;
 
   const loading = vendorLoading || rangeLoading || modelLoading;

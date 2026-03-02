@@ -8,7 +8,7 @@ import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -206,13 +206,16 @@ export function ModelConfigurationEditor({
         defaultValues: getSafeDefaultValues(model, vendor?.slug),
     });
     
-    const { reset, control } = form;
+    const { reset, control, formState: { isDirty } } = form;
 
+    // CRITICAL FIX: Only reset the form if we are NOT currently submitting and NOT currently dirty.
+    // This prevents the real-time listener from overriding user input while they type or while 
+    // the server is processing their request.
     useEffect(() => {
-        if (model) {
+        if (model && !isSubmitting && !isDirty) {
             reset(getSafeDefaultValues(model, vendor?.slug));
         }
-    }, [model, vendor?.slug, reset]);
+    }, [model, vendor?.slug, reset, isSubmitting, isDirty]);
 
     const onSubmit = async (values: any) => {
         const canEdit = isAdmin || permissions.can_edit_boat_data;
@@ -229,8 +232,11 @@ export function ModelConfigurationEditor({
 
             if (isAdmin) {
                 const modelDocRef = doc(firestore, docPath);
+                // Use await here to ensure the submission state is held until server confirms
                 await setDoc(modelDocRef, sanitizedValues, { merge: true });
                 toast({ title: "Master Configuration Updated" });
+                // Manually reset dirty state to allow the next real-time sync
+                reset(values);
             } else {
                 if (!organisationId || !user) throw new Error("Missing context for organization save");
                 const quotesColRef = collection(firestore, `organisations/${organisationId}/quotes`);
