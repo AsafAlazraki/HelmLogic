@@ -801,13 +801,14 @@ export function HighfieldQuoteFlow({
                 <DialogContent className="max-w-6xl h-[90vh] p-0 border-none bg-black/95 backdrop-blur-2xl shadow-2xl overflow-hidden rounded-[2.5rem] z-[100] flex flex-col">
                     <DialogTitle className="sr-only">Image Gallery</DialogTitle>
                     {lightboxIndex !== null && (
-                        <div className="relative flex-1 w-full min-h-0">
+                        <div className="relative flex-1 w-full h-full min-h-0">
                             <Carousel 
                                 key={`lightbox-carousel-${lightboxIndex}`}
                                 className="w-full h-full" 
                                 opts={{ 
                                     startIndex: lightboxIndex || 0,
-                                    loop: true 
+                                    loop: true,
+                                    dragFree: true
                                 }}
                             >
                                 <CarouselContent className="h-full">
@@ -827,20 +828,21 @@ export function HighfieldQuoteFlow({
                                 </CarouselContent>
                                 {carouselImages.length > 1 && (
                                     <>
-                                        <CarouselPrevious className="left-8 h-12 w-12 bg-white/10 hover:bg-white/20 border-white/10 text-white z-50 transition-all rounded-xl" />
-                                        <CarouselNext className="right-8 h-12 w-12 bg-white/10 hover:bg-white/20 border-white/10 text-white z-50 transition-all rounded-xl" />
+                                        <CarouselPrevious className="left-8 h-14 w-14 bg-white/10 hover:bg-white/30 border-none text-white z-50 transition-all rounded-2xl backdrop-blur-md" />
+                                        <CarouselNext className="right-8 h-14 w-14 bg-white/10 hover:bg-white/30 border-none text-white z-50 transition-all rounded-2xl backdrop-blur-md" />
                                     </>
                                 )}
                             </Carousel>
                             
+                            {/* High-Visibility Close Button */}
                             <Button 
                                 type="button"
-                                variant="ghost" 
+                                variant="default" 
                                 size="icon" 
-                                className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white z-[100] border border-white/10 shadow-lg"
+                                className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white text-black hover:bg-slate-200 z-[110] shadow-2xl transition-transform active:scale-95 border-none"
                                 onClick={() => setLightboxIndex(null)}
                             >
-                                <X className="h-5 w-5" />
+                                <X className="h-6 w-6" />
                             </Button>
                         </div>
                     )}
