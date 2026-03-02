@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -17,6 +16,7 @@ import NextImage from "next/image";
 import { HighfieldPricingWorkspace } from "@/components/highfield-pricing-workspace";
 import { ExchangeRateManager } from "@/components/exchange-rate-manager";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface Vendor {
     id: string;
