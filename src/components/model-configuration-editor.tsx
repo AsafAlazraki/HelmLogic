@@ -332,14 +332,6 @@ export function ModelConfigurationEditor({
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <h2 className="text-xl font-bold">{model.name}</h2>
-                                            {shouldSaveToMaster ? (
-                                                <Badge className="bg-primary/10 text-primary border-primary/20 uppercase text-[9px] font-black tracking-widest h-5">Master Editor</Badge>
-                                            ) : organisationId && (
-                                                <Badge className="bg-accent/10 text-accent border-accent/20 uppercase text-[9px] font-black tracking-widest h-5 flex items-center gap-1">
-                                                    <Building className="h-2 w-2" />
-                                                    Organisation Version
-                                                </Badge>
-                                            )}
                                         </div>
                                         {breadcrumbs}
                                     </div>
