@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, setDoc, deleteDoc, serverTimestamp, where, updateDoc } from 'firebase/firestore';
 import { 
@@ -51,8 +50,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
-import { ScrollArea } from './ui/scroll-area';
-import { Badge } from './badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
