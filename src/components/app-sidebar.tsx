@@ -40,7 +40,7 @@ export function AppSidebar() {
   const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string; organisationRole?: string }>(userProfileRef);
   
   const orgRef = useMemoFirebase(() => userProfile?.organisationId ? doc(firestore, 'organisations', userProfile.organisationId) : null, [firestore, userProfile]);
-  const { data: organisation, loading: orgLoading } = useDoc<{ parentOrganisationId?: string; enabledModuleSubscriptions?: string[]; permissions?: Record<string, Record<string, boolean>> }>(orgRef);
+  const { data: organisation, loading: orgLoading } = useDoc<{ roles?: any[]; parentOrganisationId?: string; enabledModuleSubscriptions?: string[]; permissions?: Record<string, Record<string, boolean>> }>(orgRef);
 
   const isLoading = userLoading || profileLoading || orgLoading;
 
@@ -62,6 +62,8 @@ export function AppSidebar() {
     const isOrgMember = !!userProfile?.organisationId;
     const roleId = userProfile?.organisationRole;
     const userPermissions = roleId && organisation?.permissions?.[roleId] ? organisation.permissions[roleId] : {};
+    
+    const isManagingDirector = organisation?.roles?.find(r => r.id === roleId)?.name === 'Managing Director';
 
     return navLinks.filter(link => {
       if (link.label === 'Admin') {
@@ -75,7 +77,8 @@ export function AppSidebar() {
         if (isAdmin) return false;
         if (!isOrgMember) return false;
         
-        const hasPermission = !!userPermissions.can_access_pricing_manager;
+        // Demo Bypass: MD role always sees pricing for testing
+        const hasPermission = !!userPermissions.can_access_pricing_manager || isManagingDirector;
         if (!hasPermission) return false;
 
         // If it's a sub-dealer, check if parent allowed it (system-pricing module ID)

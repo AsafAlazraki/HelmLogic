@@ -1,23 +1,44 @@
+
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { doc, collection } from "firebase/firestore";
+import { doc, collection, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
-import { Loader2, Blocks, LayoutGrid, Ship, ArrowRight, ShieldCheck, User } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, Blocks, LayoutGrid, Ship, ArrowRight, ShieldCheck, User, GripVertical } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface UserProfile {
     displayName?: string;
     appRole?: string;
     organisationId?: string;
     organisationRole?: string;
+    moduleOrder?: string[];
 }
 
 interface Organisation {
@@ -35,8 +56,69 @@ interface Module {
     logoUrl?: string;
 }
 
+function SortableModuleCard({ module, userPermissions }: { module: Module, userPermissions: any }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: module.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="group relative">
+            <Link href={`/modules/${module.slug || module.id}`} className="block h-full">
+                <Card className="h-full transition-all duration-300 ease-in-out hover:border-primary hover:-translate-y-2 hover:shadow-2xl overflow-hidden flex flex-col rounded-2xl border-2">
+                    <CardHeader className="h-32 bg-muted/30 flex items-center justify-center p-6 border-b relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {module.logoUrl ? (
+                            <div className="relative h-full w-full">
+                                <Image src={module.logoUrl} alt={`${module.name} logo`} fill className="object-contain p-2" unoptimized />
+                            </div>
+                        ) : (
+                            <Blocks className="h-12 w-12 text-muted-foreground opacity-20"/>
+                        )}
+                    </CardHeader>
+                    <CardContent className="p-5 flex-grow flex flex-col justify-between gap-4">
+                        <div className="space-y-2">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight leading-tight">{module.name}</CardTitle>
+                            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
+                                {module.name.toLowerCase().includes('outboard') || module.name.toLowerCase().includes('motor') 
+                                    ? "Manage engine technical specs, factory rigging, and propellers." 
+                                    : "Configure boat packages, BMT options, and generate sales quotes."}
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-between pt-4 border-t border-dashed">
+                            <span className="text-[10px] font-black uppercase tracking-tighter text-primary">Enter Module</span>
+                            <ArrowRight className="h-4 w-4 text-primary transform -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </Link>
+            
+            {/* Drag Handle */}
+            <div 
+                {...attributes} 
+                {...listeners} 
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 border opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-20 hover:bg-white shadow-sm"
+            >
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+        </div>
+    );
+}
+
 function EmployeeDashboard({ organisationId, userProfile }: { organisationId: string, userProfile: UserProfile }) {
     const firestore = useFirestore();
+    const { user } = useUser();
     
     const orgRef = useMemoFirebase(() => organisationId ? doc(firestore, 'organisations', organisationId) : null, [firestore, organisationId]);
     const { data: organisation, loading: orgLoading } = useDoc<Organisation>(orgRef);
@@ -52,10 +134,53 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
 
     const subscribedModuleIds = useMemo(() => organisation?.enabledModuleSubscriptions || [], [organisation]);
 
-    const subscribedModules = useMemo(() => {
-        if (!allModules || subscribedModuleIds.length === 0 || !userPermissions.can_access_module) return [];
-        return allModules.filter(module => subscribedModuleIds.includes(module.id));
-    }, [allModules, subscribedModuleIds, userPermissions]);
+    const [orderedModules, setOrderedModules] = useState<Module[]>([]);
+
+    useEffect(() => {
+        if (allModules && subscribedModuleIds.length > 0) {
+            const subscribed = allModules.filter(module => subscribedModuleIds.includes(module.id));
+            const savedOrder = userProfile.moduleOrder || [];
+            
+            // Sort modules based on savedOrder, then push any new ones to the end
+            const sorted = [...subscribed].sort((a, b) => {
+                const indexA = savedOrder.indexOf(a.id);
+                const indexB = savedOrder.indexOf(b.id);
+                if (indexA === -1 && indexB === -1) return 0;
+                if (indexA === -1) return 1;
+                if (indexB === -1) return -1;
+                return indexA - indexB;
+            });
+            
+            setOrderedModules(sorted);
+        }
+    }, [allModules, subscribedModuleIds, userProfile.moduleOrder]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setOrderedModules((items) => {
+                const oldIndex = items.findIndex(i => i.id === active.id);
+                const newIndex = items.findIndex(i => i.id === over.id);
+                const newItems = arrayMove(items, oldIndex, newIndex);
+                
+                // Save new order to User Profile
+                if (user) {
+                    const userRef = doc(firestore, 'users', user.uid);
+                    updateDoc(userRef, { moduleOrder: newItems.map(m => m.id) });
+                }
+                
+                return newItems;
+            });
+        }
+    };
 
     const loading = orgLoading || modulesLoading;
 
@@ -92,13 +217,15 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
                         {/* Soft Brand Plate for Logos */}
                         <div className="h-20 w-20 relative bg-white/90 backdrop-blur-sm rounded-3xl p-3 border border-white/40 shadow-2xl group hover:scale-105 transition-all">
                             {organisation?.primaryLogoUrl ? (
-                                <Image 
-                                    src={organisation.primaryLogoUrl} 
-                                    alt={`${organisation.name} logo`} 
-                                    fill 
-                                    className="object-contain p-2" 
-                                    unoptimized
-                                />
+                                <div className="relative h-full w-full">
+                                    <Image 
+                                        src={organisation.primaryLogoUrl} 
+                                        alt={`${organisation.name} logo`} 
+                                        fill 
+                                        className="object-contain p-2" 
+                                        unoptimized
+                                    />
+                                </div>
                             ) : (
                                 <div className="h-full w-full flex items-center justify-center">
                                     <Blocks className="h-8 w-8 text-primary/40"/>
@@ -134,53 +261,37 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
                     )}
                 </div>
 
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {subscribedModules.length > 0 ? (
-                        subscribedModules.map((module) => (
-                            <Link href={`/modules/${module.slug || module.id}`} key={module.id} className="group">
-                                <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:-translate-y-2 group-hover:shadow-2xl overflow-hidden flex flex-col rounded-2xl border-2">
-                                    <CardHeader className="h-32 bg-muted/30 flex items-center justify-center p-6 border-b relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        {module.logoUrl ? (
-                                            <div className="relative h-full w-full">
-                                                <Image src={module.logoUrl} alt={`${module.name} logo`} fill className="object-contain p-2" />
-                                            </div>
-                                        ) : (
-                                            <Blocks className="h-12 w-12 text-muted-foreground opacity-20"/>
-                                        )}
-                                    </CardHeader>
-                                    <CardContent className="p-5 flex-grow flex flex-col justify-between gap-4">
-                                        <div className="space-y-2">
-                                            <CardTitle className="text-lg font-black uppercase tracking-tight leading-tight">{module.name}</CardTitle>
-                                            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-                                                {module.name.toLowerCase().includes('outboard') || module.name.toLowerCase().includes('motor') 
-                                                    ? "Manage engine technical specs, factory rigging, and propellers." 
-                                                    : "Configure boat packages, BMT options, and generate sales quotes."}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center justify-between pt-4 border-t border-dashed">
-                                            <span className="text-[10px] font-black uppercase tracking-tighter text-primary">Enter Module</span>
-                                            <ArrowRight className="h-4 w-4 text-primary transform -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        ))
-                    ) : (
-                        <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4">
-                            <Card className="flex flex-col items-center justify-center h-80 border-2 border-dashed rounded-3xl bg-muted/5">
-                                <Blocks className="h-16 w-16 text-muted-foreground/20" />
-                                <h3 className="mt-4 text-lg font-black uppercase tracking-widest text-muted-foreground">No Active Modules</h3>
-                                <p className="mt-2 text-sm text-muted-foreground text-center max-w-xs">
-                                    {userPermissions.can_access_module 
-                                        ? "Your organisation hasn't subscribed to any modules yet. Contact support to get started."
-                                        : "Your role does not have permission to access organisation modules."
-                                    }
-                                </p>
-                            </Card>
-                        </div>
-                    )}
-                </div>
+                {orderedModules.length > 0 ? (
+                    <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext 
+                            items={orderedModules.map(m => m.id)}
+                            strategy={rectSortingStrategy}
+                        >
+                            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {orderedModules.map((module) => (
+                                    <SortableModuleCard key={module.id} module={module} userPermissions={userPermissions} />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+                ) : (
+                    <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                        <Card className="flex flex-col items-center justify-center h-80 border-2 border-dashed rounded-3xl bg-muted/5">
+                            <Blocks className="h-16 w-16 text-muted-foreground/20" />
+                            <h3 className="mt-4 text-lg font-black uppercase tracking-widest text-muted-foreground">No Active Modules</h3>
+                            <p className="mt-2 text-sm text-muted-foreground text-center max-w-xs">
+                                {userPermissions.can_access_module 
+                                    ? "Your organisation hasn't subscribed to any modules yet. Contact support to get started."
+                                    : "Your role does not have permission to access organisation modules."
+                                }
+                            </p>
+                        </Card>
+                    </div>
+                )}
             </div>
         </div>
     );

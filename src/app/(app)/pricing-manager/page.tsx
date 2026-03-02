@@ -25,6 +25,7 @@ interface Vendor {
 interface Organisation {
     id: string;
     name: string;
+    roles?: any[];
     dataWarehouseSubscriptions?: string[];
     permissions?: Record<string, Record<string, boolean>>;
 }
@@ -58,8 +59,10 @@ export default function PricingManagerPage() {
         if (userProfile?.appRole === 'HelmLogic Admin') return false;
         
         const roleId = userProfile?.organisationRole;
-        if (!roleId || !organisation?.permissions?.[roleId]) return false;
-        return !!organisation.permissions[roleId].can_access_pricing_manager;
+        const isManagingDirector = organisation?.roles?.find(r => r.id === roleId)?.name === 'Managing Director';
+        
+        if (!roleId || !organisation?.permissions?.[roleId]) return isManagingDirector;
+        return !!organisation.permissions[roleId].can_access_pricing_manager || isManagingDirector;
     }, [userProfile, organisation, userLoading, profileLoading, orgLoading]);
 
     const filteredVendors = useMemo(() => {
