@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, PackagePlus, X, Plus, Table as TableIcon, Search, PlusCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, PackagePlus, X, Plus, Table as TableIcon, Search, PlusCircle, CheckCircle2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,13 @@ interface DataSet {
     rowCount: number;
 }
 
+interface StagedItem {
+    vendorId: string;
+    vendorName: string;
+    row: any;
+    label: string;
+}
+
 interface DealerFitSelection {
   id: string;
   name: string;
@@ -53,6 +60,31 @@ interface DealerFitSelection {
   }[];
 }
 
+/**
+ * Utility to find the best display name for a data row based on common spreadsheet keys.
+ */
+const getItemLabel = (row: any): string => {
+    if (!row) return 'Unnamed Item';
+    const priorities = [
+        'OPERATION DESCRIPTION',
+        'ITEM_NAME',
+        'Product Name',
+        'Model Name',
+        'Description',
+        'name',
+        'DESC',
+        'INSTALL TYPE', // Lowest priority as it's often generic like "Supply Only"
+    ];
+    
+    for (const key of priorities) {
+        if (row[key] && String(row[key]).trim() !== '') {
+            return String(row[key]).trim();
+        }
+    }
+    
+    return row.id || 'Unnamed Item';
+};
+
 export function MasterDataBrowserDialog({
   isOpen,
   onClose,
@@ -61,7 +93,7 @@ export function MasterDataBrowserDialog({
   initialCategory,
   onSave,
   title = "Master Data Browser",
-  description = "Select items from your subscribed vendors to build a new selection.",
+  description = "Select items from your data warehouse to build a new selection.",
   initialVendorId,
   initialStagedItems = [],
   allowedVendorIds
@@ -75,7 +107,7 @@ export function MasterDataBrowserDialog({
   title?: string;
   description?: string;
   initialVendorId?: string;
-  initialStagedItems?: { vendorId: string; vendorName: string; row: any }[];
+  initialStagedItems?: StagedItem[];
   allowedVendorIds?: string[];
 }) {
   const firestore = useFirestore();
@@ -88,7 +120,7 @@ export function MasterDataBrowserDialog({
   const [selectedDataSetId, setSelectedDataSetId] = useState<string | null>('master'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [targetCategory, setTargetCategory] = useState(initialCategory || 'Other');
-  const [stagedItems, setStagedItems] = useState<{ vendorId: string; vendorName: string; row: any }[]>([]);
+  const [stagedItems, setStagedItems] = useState<StagedItem[]>([]);
   const [packageName, setPackageName] = useState('');
 
   const [aggregateData, setAggregateData] = useState<any[] | null>(null);
@@ -99,6 +131,7 @@ export function MasterDataBrowserDialog({
       if (initialVendorId) setSelectedVendorId(initialVendorId);
       if (initialStagedItems.length > 0) setStagedItems(initialStagedItems);
       if (initialCategory) setTargetCategory(initialCategory);
+      setSelectedDataSetId('master'); // Default to Global Master List
     }
   }, [isOpen, initialVendorId, initialStagedItems, initialCategory]);
 
@@ -177,7 +210,7 @@ export function MasterDataBrowserDialog({
     
     const priorityGroups = [
         { keys: ['CODE', 'Code', 'Part_Number', 'SKU', 'PartNo', 'PartNumber', 'Part Number', 'ITEM_CODE'], label: 'Code' },
-        { keys: ['INSTALL TYPE', 'Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model', 'DESCRIPTION', 'DESC', 'ITEM_NAME', 'Product Name', 'Description 1'], label: 'Description' },
+        { keys: ['OPERATION DESCRIPTION', 'ITEM_NAME', 'Product Name', 'Description', 'name', 'INSTALL TYPE', 'DESCRIPTION', 'DESC'], label: 'Description' },
         { keys: ['PARTS', 'RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst', 'PRICE', 'UNIT_PRICE', 'TOTAL_CTD'], label: 'Price' }
     ];
 
@@ -203,9 +236,8 @@ export function MasterDataBrowserDialog({
         const val = filteredData[0][k];
         const isUsefulString = typeof val === 'string' && val.length > 0 && val.length < 50;
         const isNumeric = typeof val === 'number';
-        const isId = k.toLowerCase().includes('id') || k.toLowerCase() === 'uid';
         
-        if ((isUsefulString || isNumeric) && !isId) {
+        if ((isUsefulString || isNumeric)) {
             detectedHeaders.push({ key: k, label: k });
             matchedKeys.add(k);
         }
@@ -220,8 +252,9 @@ export function MasterDataBrowserDialog({
     
     const selectedVendor = subscribedVendors.find(v => v.id === vId);
     if (selectedVendor) {
-      setStagedItems(prev => [...prev, { vendorId: selectedVendor.id, vendorName: selectedVendor.name, row }]);
-      toast({ title: "Item Staged", description: `${row['INSTALL TYPE'] || row.Description || row.name || 'Item'} added.` });
+      const label = getItemLabel(row);
+      setStagedItems(prev => [...prev, { vendorId: selectedVendor.id, vendorName: selectedVendor.name, row, label }]);
+      toast({ title: "Item Staged", description: `${label} added.` });
     }
   };
   
@@ -239,7 +272,7 @@ export function MasterDataBrowserDialog({
     }
 
     const selection = {
-      name: isPackage ? packageName : (stagedItems[0].row['INSTALL TYPE'] || stagedItems[0].row.Description || stagedItems[0].row.name || 'New Item'),
+      name: isPackage ? packageName : stagedItems[0].label,
       categoryId,
       category: targetCategory,
       type: isPackage ? 'package' as const : 'item' as const,
@@ -316,7 +349,7 @@ export function MasterDataBrowserDialog({
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="master">Global Master List (Merged)</SelectItem>
+                                    <SelectItem value="master">Global Master List (Aggregated)</SelectItem>
                                     {dataSets?.map(set => (
                                         <SelectItem key={set.id} value={set.id}>{set.name} ({set.rowCount} rows)</SelectItem>
                                     ))}
@@ -329,7 +362,7 @@ export function MasterDataBrowserDialog({
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Search items by name, code or SKU..." 
+                        placeholder="Search items by name, code or description..." 
                         className="pl-9 h-10 font-bold bg-background transition-all focus-visible:ring-primary/20"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -342,7 +375,7 @@ export function MasterDataBrowserDialog({
                 {dataLoading || setsLoading || isAggregating ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 z-20 gap-3">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        {isAggregating && <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Aggregating global data...</p>}
+                        {isAggregating && <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Building aggregated catalog...</p>}
                     </div>
                 ) : filteredData && filteredData.length > 0 ? (
                     <ScrollArea className="h-full">
@@ -400,7 +433,7 @@ export function MasterDataBrowserDialog({
                         <div className="opacity-40">
                             <TableIcon className="h-12 w-12 mb-4 mx-auto" />
                             <p className="text-sm font-bold uppercase tracking-widest">
-                                {selectedVendorId ? 'No items found matching search.' : (subscribedVendors.length === 0 ? 'No associated vendors granted.' : 'Choose a vendor to browse products.')}
+                                {selectedVendorId ? 'No matching items.' : (subscribedVendors.length === 0 ? 'No associated vendors.' : 'Select a vendor to start.')}
                             </p>
                         </div>
                     </div>
@@ -455,7 +488,7 @@ export function MasterDataBrowserDialog({
                         <Card key={`${item.row.id}-${index}`} className="relative border-2 border-transparent hover:border-primary/20 transition-all bg-background shadow-sm overflow-hidden group rounded-lg">
                             <div className="p-3 pr-10">
                                 <p className="text-[11px] font-black uppercase leading-tight truncate">
-                                    {item.row['INSTALL TYPE'] || item.row.Description || item.row.name || 'Unnamed Item'}
+                                    {item.label}
                                 </p>
                                 <p className="text-[9px] font-bold text-muted-foreground/60 mt-1 uppercase truncate">{item.vendorName}</p>
                             </div>
