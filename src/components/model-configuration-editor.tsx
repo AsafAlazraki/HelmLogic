@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
@@ -208,12 +208,11 @@ export function ModelConfigurationEditor({
     
     const { reset, control, formState: { isDirty } } = form;
 
-    // CRITICAL FIX: Only reset the form if we are NOT currently submitting and NOT currently dirty.
-    // This prevents the real-time listener from overriding user input while they type or while 
-    // the server is processing their request.
+    // Synchronize form with server data while respecting local unsaved changes
     useEffect(() => {
         if (model && !isSubmitting && !isDirty) {
-            reset(getSafeDefaultValues(model, vendor?.slug));
+            const currentDefaults = getSafeDefaultValues(model, vendor?.slug);
+            reset(currentDefaults);
         }
     }, [model, vendor?.slug, reset, isSubmitting, isDirty]);
 
@@ -232,10 +231,10 @@ export function ModelConfigurationEditor({
 
             if (isAdmin) {
                 const modelDocRef = doc(firestore, docPath);
-                // Use await here to ensure the submission state is held until server confirms
+                // Perform direct write and wait for confirmation
                 await setDoc(modelDocRef, sanitizedValues, { merge: true });
                 toast({ title: "Master Configuration Updated" });
-                // Manually reset dirty state to allow the next real-time sync
+                // Reset form state to current values to clear isDirty immediately
                 reset(values);
             } else {
                 if (!organisationId || !user) throw new Error("Missing context for organization save");
