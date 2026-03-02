@@ -575,8 +575,8 @@ export function HighfieldQuoteFlow({
                                                         "flex items-center gap-2 mt-auto pt-4 text-[9px] font-black uppercase tracking-tighter transition-colors",
                                                         selectedMaterial === mat ? "text-white/80" : "text-muted-foreground"
                                                     )}>
-                                                        <CheckCircle2 className="h-3 w-3" />
-                                                        <span>{mat === 'PVC' ? '5 Yrs Warranty Included' : '10 Yrs Warranty Included'}</span>
+                                                        <CheckCircle2 className={cn("h-3 w-3", selectedMaterial === mat ? "text-white" : "text-primary")} />
+                                                        <span>{mat === 'PVC' ? '5 Yrs Warranty' : '10 Yrs Warranty'}</span>
                                                     </div>
                                                 </button>
                                             ))}
