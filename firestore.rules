@@ -71,6 +71,9 @@ service cloud.firestore {
       allow update: if isHelmLogicAdmin() || (isOrgMember(organisationId) && get(/databases/$(database)/documents/organisations/$(organisationId)).data.permissions[request.auth.uid].can_access_settings == true);
       allow delete: if isHelmLogicAdmin();
 
+      match /exchangeRates/{currencyCode} {
+        allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
+      }
       match /dealerFitSelections/{selectionId} {
         allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
       }
