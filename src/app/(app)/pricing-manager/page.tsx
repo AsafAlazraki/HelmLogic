@@ -133,22 +133,22 @@ export default function PricingManagerPage() {
                         className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer hover:scale-[1.02] transition-all group overflow-hidden"
                         onClick={() => setIsExchangeRateManagerOpen(true)}
                     >
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <ArrowRightLeft className="h-16 w-16 rotate-12" />
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <ArrowRightLeft className="h-12 w-12 rotate-12" />
                         </div>
-                        <CardHeader className="p-4 pb-2 relative z-10">
+                        <CardHeader className="p-3 pb-1 relative z-10">
                             <div className="flex items-center justify-between">
-                                <Badge variant="secondary" className="bg-white/20 text-white border-none font-black text-[9px] uppercase tracking-[0.1em]">Strategy Panel</Badge>
+                                <Badge variant="secondary" className="bg-white/20 text-white border-none font-black text-[8px] uppercase tracking-[0.1em] h-4">Strategy Panel</Badge>
                                 <Maximize2 className="h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity" />
                             </div>
-                            <CardTitle className="text-sm font-black uppercase tracking-widest mt-3">Exchange Rates</CardTitle>
+                            <CardTitle className="text-xs font-black uppercase tracking-widest mt-1.5">Exchange Rates</CardTitle>
                         </CardHeader>
-                        <CardContent className="p-4 pt-0 relative z-10">
+                        <CardContent className="p-3 pt-0 relative z-10">
                             <div className="flex items-baseline gap-1.5">
-                                <span className="text-2xl font-black">{activeRates?.length || 0}</span>
-                                <span className="text-[10px] font-bold uppercase opacity-70 tracking-tighter">Active Conversions</span>
+                                <span className="text-xl font-black">{activeRates?.length || 0}</span>
+                                <span className="text-[9px] font-bold uppercase opacity-70 tracking-tighter">Active Conversions</span>
                             </div>
-                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50 mt-1">Configure Strategic Matrix</p>
+                            <p className="text-[8px] font-black uppercase tracking-widest opacity-50 mt-0.5">Configure Strategic Matrix</p>
                         </CardContent>
                     </Card>
                 )}
