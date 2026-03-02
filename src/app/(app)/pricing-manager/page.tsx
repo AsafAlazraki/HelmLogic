@@ -14,12 +14,14 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { HighfieldPricingWorkspace } from "@/components/highfield-pricing-workspace";
 
 interface Vendor {
     id: string;
     name: string;
     logoUrl?: string;
     vendorType: string;
+    slug?: string;
 }
 
 interface Organisation {
@@ -55,7 +57,6 @@ export default function PricingManagerPage() {
 
     const hasPermission = useMemo(() => {
         if (userLoading || profileLoading || orgLoading) return true;
-        // HelmLogic Admin should NOT access pricing manager - they deal in Master Data
         if (userProfile?.appRole === 'HelmLogic Admin') return false;
         
         const roleId = userProfile?.organisationRole;
@@ -180,32 +181,37 @@ export default function PricingManagerPage() {
                 {/* Workspace Area */}
                 <Card className="flex-1 min-w-0 shadow-lg border-2 overflow-hidden flex flex-col bg-muted/5">
                     {activeVendor ? (
-                        <div className="flex flex-col h-full overflow-hidden">
-                            <CardHeader className="p-6 border-b bg-background shrink-0">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm shrink-0">
-                                        {activeVendor.logoUrl ? (
-                                            <Image src={activeVendor.logoUrl} alt={activeVendor.name} fill className="object-contain p-1" unoptimized />
-                                        ) : (
-                                            <Building className="h-6 w-6 m-auto mt-1 text-muted-foreground" />
-                                        )}
+                        activeVendor.slug === 'highfield' ? (
+                            <HighfieldPricingWorkspace 
+                                vendor={activeVendor} 
+                                organisationId={organisationId} 
+                            />
+                        ) : (
+                            <div className="flex flex-col h-full overflow-hidden">
+                                <CardHeader className="p-6 border-b bg-background shrink-0">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm shrink-0">
+                                            {activeVendor.logoUrl ? (
+                                                <Image src={activeVendor.logoUrl} alt={activeVendor.name} fill className="object-contain p-1" unoptimized />
+                                            ) : (
+                                                <Building className="h-6 w-6 m-auto mt-1 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-xl font-black uppercase tracking-tight">{activeVendor.name}</CardTitle>
+                                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Pricing & Profitability Strategy</CardDescription>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <CardTitle className="text-xl font-black uppercase tracking-tight">{activeVendor.name}</CardTitle>
-                                        <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Pricing & Profitability Strategy</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 min-h-0 overflow-y-auto p-6">
-                                <div className="flex flex-col items-center justify-center h-full text-center py-20">
-                                    <Coins className="h-16 w-16 text-primary/20 mb-4 animate-pulse" />
+                                </CardHeader>
+                                <CardContent className="flex-1 min-h-0 overflow-y-auto p-6 text-center py-20">
+                                    <Coins className="h-16 w-16 text-primary/20 mb-4 animate-pulse mx-auto" />
                                     <h3 className="text-lg font-black uppercase tracking-tight">Strategy Workspace Ready</h3>
-                                    <p className="text-sm text-muted-foreground max-w-sm mt-2">
-                                        Select a brand from the sidebar to begin configuring your local pricing levels, margins, and bulk update rules for {organisation?.name}.
+                                    <p className="text-sm text-muted-foreground max-w-sm mt-2 mx-auto">
+                                        The specialized pricing workspace for {activeVendor.name} is currently being enabled. Contact support for early access.
                                     </p>
-                                </div>
-                            </CardContent>
-                        </div>
+                                </CardContent>
+                            </div>
+                        )
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center p-12 text-muted-foreground">
                             <Building className="h-16 w-16 mb-4 opacity-10" />

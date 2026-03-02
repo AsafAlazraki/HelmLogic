@@ -724,6 +724,29 @@
         "slug",
         "mainVendorId"
       ]
+    },
+    "PricingStrategy": {
+      "title": "Pricing Strategy",
+      "description": "Organisation-specific pricing adjustments and custom columns for a vendor brand.",
+      "type": "object",
+      "properties": {
+        "baseCurrency": { "type": "string" },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "type": { "type": "string", "enum": ["percent", "text", "currency", "cost"] }
+            }
+          }
+        },
+        "itemValues": {
+          "type": "object",
+          "description": "A map of itemId to custom column values."
+        }
+      }
     }
   },
   "auth": {
@@ -743,6 +766,12 @@
         "$ref": "#/backend/entities/Organisation"
       },
       "description": "Organisation documents, keyed by a unique ID."
+    },
+    "/organisations/{organisationId}/pricingStrategies/{vendorId}": {
+      "schema": {
+        "$ref": "#/backend/entities/PricingStrategy"
+      },
+      "description": "Strategy workspace data for a specific brand within an organisation."
     },
     "/organisations/{organisationId}/modelOverrides/{modelId}": {
       "schema": {
