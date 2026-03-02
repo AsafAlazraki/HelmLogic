@@ -99,6 +99,19 @@ export function MasterDataBrowserDialog({
     }
   }, [isOpen, initialVendorId, initialStagedItems, initialCategory]);
 
+  const subscribedVendors = useMemo(() => {
+    if (!allVendors) return [];
+    const effectiveAllowedIds = allowedVendorIds || organisation?.dataWarehouseSubscriptions || [];
+    return allVendors.filter(v => effectiveAllowedIds.includes(v.id));
+  }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
+
+  // Auto-select vendor if only one is available
+  useEffect(() => {
+    if (isOpen && subscribedVendors.length === 1 && !selectedVendorId) {
+        setSelectedVendorId(subscribedVendors[0].id);
+    }
+  }, [isOpen, subscribedVendors, selectedVendorId]);
+
   // Fetch datasets for the selected vendor
   const dataSetsQuery = useMemoFirebase(() => {
     if (!selectedVendorId) return null;
@@ -106,23 +119,25 @@ export function MasterDataBrowserDialog({
   }, [firestore, selectedVendorId]);
   const { data: dataSets, isLoading: setsLoading } = useCollection<DataSet>(dataSetsQuery);
 
+  // Auto-select dataset for multi-table vendors (like Document Upload vendors)
+  useEffect(() => {
+    if (dataSets && dataSets.length > 0 && !selectedDataSetId) {
+        // Automatically pick the first table for multi-table vendors to avoid an empty start
+        setSelectedDataSetId(dataSets[0].id);
+    }
+  }, [dataSets, selectedDataSetId]);
+
   // Fetch rows for either the specific dataset or the global master set
   const masterDataQuery = useMemoFirebase(() => {
     if (!selectedVendorId) return null;
     if (selectedDataSetId && selectedDataSetId !== 'master') {
         return collection(firestore, 'data-warehouse', selectedVendorId, 'dataSets', selectedDataSetId, 'rows');
     }
-    // Global Master List
+    // Global Master List fallback
     return collection(firestore, 'data-warehouse', selectedVendorId, 'masterDataSet');
   }, [firestore, selectedVendorId, selectedDataSetId]);
   
   const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
-
-  const subscribedVendors = useMemo(() => {
-    if (!allVendors) return [];
-    const effectiveAllowedIds = allowedVendorIds || organisation?.dataWarehouseSubscriptions || [];
-    return allVendors.filter(v => effectiveAllowedIds.includes(v.id));
-  }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
 
   const filteredData = useMemo(() => {
     if (!masterData) return [];
@@ -137,7 +152,11 @@ export function MasterDataBrowserDialog({
     if (!filteredData || filteredData.length === 0) return [];
     const commonKeys = ['Part_Number', 'Description', 'RRP', 'name', 'model', 'price', 'cost', 'Model Name', 'ModelName', 'SKU'];
     const allKeys = Object.keys(filteredData[0]);
-    return commonKeys.filter(k => allKeys.includes(k)).concat(allKeys.filter(k => !commonKeys.includes(k) && k !== 'id' && k !== '_ref')).slice(0, 5);
+    // Always prioritize images/previews if found
+    const imageKey = allKeys.find(k => k.toLowerCase().includes('image') || k.toLowerCase().includes('logo') || k === 'SummaryImage');
+    const sorted = commonKeys.filter(k => allKeys.includes(k));
+    if (imageKey && !sorted.includes(imageKey)) sorted.unshift(imageKey);
+    return sorted.concat(allKeys.filter(k => !sorted.includes(k) && k !== 'id' && k !== '_ref' && k !== 'imageUrl' && k !== 'SummaryImage')).slice(0, 5);
   }, [filteredData]);
 
   const handleAddItem = (row: any) => {
@@ -218,7 +237,7 @@ export function MasterDataBrowserDialog({
                     </div>
                     {selectedVendorId && (
                         <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Select Data Table (Optional)</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Select Data Table</Label>
                             <Select onValueChange={setSelectedDataSetId} value={selectedDataSetId || 'master'}>
                                 <SelectTrigger className="h-10 font-bold bg-background">
                                     <div className="flex items-center gap-2">
@@ -227,7 +246,7 @@ export function MasterDataBrowserDialog({
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="master">Global Master List (All Items)</SelectItem>
+                                    <SelectItem value="master">Global Master List</SelectItem>
                                     {dataSets?.map(set => (
                                         <SelectItem key={set.id} value={set.id}>{set.name} ({set.rowCount} rows)</SelectItem>
                                     ))}
@@ -304,7 +323,7 @@ export function MasterDataBrowserDialog({
                             <div className="opacity-40">
                                 <TableIcon className="h-12 w-12 mb-4 mx-auto" />
                                 <p className="text-sm font-bold uppercase tracking-widest">
-                                    {selectedVendorId ? 'No items found in this list.' : 'Choose a vendor to browse products.'}
+                                    {selectedVendorId ? 'No items found in this list.' : (subscribedVendors.length === 0 ? 'No associated vendors granted.' : 'Choose a vendor to browse products.')}
                                 </p>
                             </div>
                         )}

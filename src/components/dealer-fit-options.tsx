@@ -3,8 +3,8 @@
 
 import { useMemo, useState } from 'react';
 import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, AlertCircle, PlusCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, AlertCircle, PlusCircle, Settings2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
@@ -87,13 +87,23 @@ export function DealerFitOptions({
 
   const allowedVendorIds = useMemo(() => {
     if (!module) return [];
+    
+    // IMPORTANT: For Dealer Fit (accessories), we EXCLUDE the main boat brand (Highfield, etc.)
+    // These options are sourced from associated accessory suppliers like Sam Allen, Garmin, etc.
+    const moduleAssociatedIds = module.associatedVendorIds || [];
+    
     if (isAdmin && !organisationId) {
-        return [...new Set([module.mainVendorId, ...(module.associatedVendorIds || [])])].filter(Boolean);
+        // Master view: show all associated vendors for this module
+        return moduleAssociatedIds;
     }
+    
     if (!organisation) return [];
-    const mainVendor = module.mainVendorId;
+    
+    // Organisation context: only show associated vendors that this specific organisation has been granted access to
     const associatedFromOrg = organisation.moduleAssociatedVendorAccess?.[module.id] || [];
-    return [...new Set([mainVendor, ...associatedFromOrg])].filter(Boolean);
+    
+    // Ensure we only show vendors that are BOTH granted to the org AND associated with this module
+    return associatedFromOrg.filter(id => moduleAssociatedIds.includes(id));
   }, [module, organisation, organisationId, isAdmin]);
 
   const handleOpenBrowser = (categoryId: string) => {
@@ -202,9 +212,21 @@ export function DealerFitOptions({
                 ) : (
                   <div className="py-10 text-center text-xs text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
                     {organisationId 
-                        ? "Click the button above to add fitted items or packages."
+                        ? (allowedVendorIds.length > 0 
+                            ? "Click the button above to add fitted items or packages." 
+                            : "No associated vendors have been granted to this organisation for dealer fit selection.")
                         : "Master Categories View: Available for assignment to organisations."
                     }
+                    {organisationId && allowedVendorIds.length === 0 && (
+                        <div className="mt-4 flex justify-center">
+                            <Button variant="ghost" size="sm" className="text-primary font-bold" asChild>
+                                <a href={`/modules/${module.slug || module.id}`}>
+                                    <Settings2 className="mr-2 h-4 w-4" />
+                                    Review Vendor Access
+                                </a>
+                            </Button>
+                        </div>
+                    )}
                   </div>
                 )}
               </CardContent>
