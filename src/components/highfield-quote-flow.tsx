@@ -22,7 +22,7 @@ import {
     ArrowRight,
     Layers,
     Check,
-    Zap
+    Waves
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -184,7 +184,7 @@ export function HighfieldQuoteFlow({
                 // Preserve a 20px visual cushion from the fixed header
                 setTimeout(() => {
                     viewport.scrollTo({ top: targetTop - 20, behavior: 'smooth' });
-                }, 300);
+                }, 500);
             }
         } else if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -542,9 +542,11 @@ export function HighfieldQuoteFlow({
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-8 md:px-12 pb-12 pt-0 flex flex-col">
+                            {/* Persistent Top Spacer to maintain consistent visual cushion from fixed header */}
+                            <div className="h-10 shrink-0" />
                             
                             {currentStep === 1 && (
-                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500 pt-4">
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                     <div className="space-y-6">
                                         <div className="flex items-center gap-3">
                                             <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -563,22 +565,13 @@ export function HighfieldQuoteFlow({
                                                     )}
                                                 >
                                                     <div className={cn("h-12 w-12 rounded-[1rem] flex items-center justify-center mb-6 transition-all", selectedMaterial === mat ? "bg-white/20 rotate-3" : "bg-muted shadow-inner group-hover:bg-primary/5")}>
-                                                        {mat === 'PVC' ? <Zap className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} /> : <ShieldCheck className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} />}
+                                                        {mat === 'PVC' ? <Waves className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} /> : <ShieldCheck className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} />}
                                                     </div>
                                                     
                                                     <span className="text-xl font-black uppercase tracking-tight">{mat}</span>
                                                     <p className={cn("text-[10px] font-bold mt-2 uppercase tracking-widest", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>
                                                         {mat === 'PVC' ? 'Valmax German PVC' : 'ORCA® Hypalon'}
                                                     </p>
-                                                    
-                                                    <div className="mt-auto pt-6 w-full">
-                                                        {mat === 'HYP' && (
-                                                            <div className={cn("flex items-center gap-2 text-[9px] font-black uppercase tracking-tighter transition-colors", selectedMaterial === mat ? "text-white" : "text-muted-foreground")}>
-                                                                <Check className="h-3 w-3" />
-                                                                <span>Commercial Grade</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
@@ -617,7 +610,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-12 animate-in slide-in-from-right-4 duration-500 pt-4">
+                                <div className="space-y-12 animate-in slide-in-from-right-4 duration-500">
                                     {Object.entries(groupedOptions).map(([category, options]: [string, any]) => (
                                         <div key={category} className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest text-foreground border-l-4 border-primary pl-3">{category}</h3>
@@ -661,7 +654,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500 pt-4">
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                                     {motorsLoading ? (
                                         <div className="flex flex-col items-center justify-center py-24 gap-4">
                                             <Loader2 className="h-12 w-12 animate-spin text-primary" />
