@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -25,6 +26,13 @@
         "organisationRole": {
           "type": "string",
           "description": "The ID of the user's role within their organisation."
+        },
+        "moduleOrder": {
+          "type": "array",
+          "description": "User-specific order of dashboard modules.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -84,6 +92,14 @@
           "type": "string",
           "description": "The ID of the parent organisation, if this is a sub-dealer."
         },
+        "tradingCurrency": {
+          "type": "string",
+          "description": "The primary currency used for local pricing."
+        },
+        "gstPercentage": {
+          "type": "number",
+          "description": "Applicable tax percentage."
+        },
         "roles": {
           "type": "array",
           "description": "A list of roles within the organisation, forming a hierarchy.",
@@ -139,6 +155,17 @@
         "name",
         "slug"
       ]
+    },
+    "ExchangeRate": {
+      "title": "Exchange Rate",
+      "description": "Organisation-specific manual exchange rate settings.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Currency code (e.g. USD)" },
+        "rate": { "type": "number", "description": "Exchange rate relative to base currency." },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "rate"]
     },
     "Vendor": {
       "title": "Vendor",
@@ -735,6 +762,12 @@
         "$ref": "#/backend/entities/Organisation"
       },
       "description": "Organisation documents, keyed by a unique ID."
+    },
+    "/organisations/{organisationId}/exchangeRates/{currencyCode}": {
+      "schema": {
+        "$ref": "#/backend/entities/ExchangeRate"
+      },
+      "description": "Organisation-specific manual exchange rate settings."
     },
     "/data-warehouse/{vendorId}": {
       "schema": {

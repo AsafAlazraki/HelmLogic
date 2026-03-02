@@ -9,12 +9,14 @@ import { doc, collection, query, where } from "firebase/firestore";
 import { useState, useMemo } from "react";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert } from "lucide-react";
+import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, TrendingUp, ArrowRightLeft, Maximize2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import NextImage from "next/image";
 import { HighfieldPricingWorkspace } from "@/components/highfield-pricing-workspace";
+import { ExchangeRateManager } from "@/components/exchange-rate-manager";
+import { Button } from "@/components/ui/button";
 
 interface Vendor {
     id: string;
@@ -54,6 +56,13 @@ export default function PricingManagerPage() {
 
     const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isExchangeRateManagerOpen, setIsExchangeRateManagerOpen] = useState(false);
+
+    // Fetch active rates for summary card
+    const ratesQuery = useMemoFirebase(() => 
+        organisationId ? collection(firestore, `organisations/${organisationId}/exchangeRates`) : null,
+    [firestore, organisationId]);
+    const { data: activeRates } = useCollection(ratesQuery);
 
     const hasPermission = useMemo(() => {
         if (userLoading || profileLoading || orgLoading) return true;
@@ -112,9 +121,37 @@ export default function PricingManagerPage() {
 
     return (
         <div className="flex flex-col h-[calc(100vh-theme(spacing.24))] space-y-4 overflow-hidden">
-            <div className="shrink-0">
-                <h1 className="text-2xl font-black uppercase tracking-tight">Pricing Manager</h1>
-                <BreadcrumbNav />
+            <div className="shrink-0 flex items-start justify-between">
+                <div>
+                    <h1 className="text-2xl font-black uppercase tracking-tight">Pricing Manager</h1>
+                    <BreadcrumbNav />
+                </div>
+
+                {/* Exchange Rates Strategic Card */}
+                {organisationId && (
+                    <Card 
+                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer hover:scale-[1.02] transition-all group overflow-hidden"
+                        onClick={() => setIsExchangeRateManagerOpen(true)}
+                    >
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <ArrowRightLeft className="h-16 w-16 rotate-12" />
+                        </div>
+                        <CardHeader className="p-4 pb-2 relative z-10">
+                            <div className="flex items-center justify-between">
+                                <Badge variant="secondary" className="bg-white/20 text-white border-none font-black text-[9px] uppercase tracking-[0.1em]">Strategy Panel</Badge>
+                                <Maximize2 className="h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest mt-3">Exchange Rates</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0 relative z-10">
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-black">{activeRates?.length || 0}</span>
+                                <span className="text-[10px] font-bold uppercase opacity-70 tracking-tighter">Active Conversions</span>
+                            </div>
+                            <p className="text-[9px] font-black uppercase tracking-widest opacity-50 mt-1">Configure Strategic Matrix</p>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
             <div className="flex-1 min-h-0 flex gap-6 overflow-hidden">
@@ -220,6 +257,15 @@ export default function PricingManagerPage() {
                     )}
                 </Card>
             </div>
+
+            {/* Global Strategy Overlays */}
+            {organisationId && (
+                <ExchangeRateManager 
+                    organisationId={organisationId} 
+                    isOpen={isExchangeRateManagerOpen} 
+                    onClose={() => setIsExchangeRateManagerOpen(false)} 
+                />
+            )}
         </div>
     );
 }
