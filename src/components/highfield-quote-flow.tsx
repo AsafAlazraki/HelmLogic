@@ -21,7 +21,8 @@ import {
     FileText,
     ArrowRight,
     Layers,
-    Check
+    Check,
+    Zap
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -495,11 +496,11 @@ export function HighfieldQuoteFlow({
                                 </div>
                                 {/* Row 2: Values */}
                                 <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-3 text-4xl tracking-tight min-w-0">
+                                    <div className="flex items-center gap-3 text-4xl tracking-tight min-0 truncate">
                                         {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
                                         <span className="text-slate-950 font-black whitespace-nowrap">{modelPart}</span>
                                     </div>
-                                    <div className="text-5xl font-black flex items-center justify-end gap-1.5 text-slate-950 tracking-tighter">
+                                    <div className="text-5xl font-black flex items-center justify-end gap-1.5 text-slate-950 tracking-tighter shrink-0">
                                         <span className="text-primary text-2xl">$</span>
                                         {totalPrice.toLocaleString()}
                                     </div>
@@ -562,7 +563,7 @@ export function HighfieldQuoteFlow({
                                                     )}
                                                 >
                                                     <div className={cn("h-12 w-12 rounded-[1rem] flex items-center justify-center mb-6 transition-all", selectedMaterial === mat ? "bg-white/20 rotate-3" : "bg-muted shadow-inner group-hover:bg-primary/5")}>
-                                                        {mat === 'PVC' ? <Ship className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} /> : <ShieldCheck className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} />}
+                                                        {mat === 'PVC' ? <Zap className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} /> : <ShieldCheck className={cn("h-6 w-6", selectedMaterial === mat ? "text-white" : "text-primary")} />}
                                                     </div>
                                                     
                                                     <span className="text-xl font-black uppercase tracking-tight">{mat}</span>
@@ -571,10 +572,12 @@ export function HighfieldQuoteFlow({
                                                     </p>
                                                     
                                                     <div className="mt-auto pt-6 w-full">
-                                                        <div className={cn("flex items-center gap-2 text-[9px] font-black uppercase tracking-tighter transition-colors", selectedMaterial === mat ? "text-white" : "text-muted-foreground")}>
-                                                            <Check className="h-3 w-3" />
-                                                            <span>{mat === 'PVC' ? 'Standard Strength' : 'Commercial Grade'}</span>
-                                                        </div>
+                                                        {mat === 'HYP' && (
+                                                            <div className={cn("flex items-center gap-2 text-[9px] font-black uppercase tracking-tighter transition-colors", selectedMaterial === mat ? "text-white" : "text-muted-foreground")}>
+                                                                <Check className="h-3 w-3" />
+                                                                <span>Commercial Grade</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </button>
                                             ))}
