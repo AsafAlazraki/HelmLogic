@@ -1,825 +1,543 @@
-
 {
   "entities": {
     "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's profile information.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
       "type": "object",
+      "description": "Stores profile information for users of the HelmLogic application, excluding sensitive authentication details.",
       "properties": {
-        "displayName": {
+        "id": {
           "type": "string",
-          "description": "The user's display name."
+          "description": "Unique identifier for the UserProfile entity."
         },
         "email": {
           "type": "string",
-          "format": "email",
-          "description": "The user's email address."
+          "description": "The user's email address.",
+          "format": "email"
         },
-        "appRole": {
+        "firstName": {
           "type": "string",
-          "description": "The user's role within the application."
+          "description": "The first name of the user."
         },
-        "organisationId": {
+        "lastName": {
           "type": "string",
-          "description": "The ID of the organisation the user belongs to."
+          "description": "The last name of the user."
         },
-        "organisationRole": {
+        "organization": {
           "type": "string",
-          "description": "The ID of the user's role within their organisation."
+          "description": "The organization or company the user belongs to."
         },
-        "moduleOrder": {
-          "type": "array",
-          "description": "A user-specific list of module IDs in their preferred dashboard order.",
-          "items": {
-            "type": "string"
-          }
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
-        "email"
+        "id",
+        "email",
+        "firstName",
+        "lastName",
+        "createdAt",
+        "updatedAt"
       ]
     },
-    "Organisation": {
-      "title": "Organisation",
-      "description": "Represents an organisation within the application.",
+    "Vessel": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Vessel",
       "type": "object",
+      "description": "Represents a maritime vessel managed within the HelmLogic system, including its specifications and identifying information.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Vessel entity."
+        },
         "name": {
           "type": "string",
-          "description": "The name of the organisation."
+          "description": "The common name of the vessel."
         },
-        "slug": {
+        "mmsi": {
           "type": "string",
-          "description": "A URL-friendly version of the organisation name."
+          "description": "Maritime Mobile Service Identity (MMSI) number, a unique nine-digit code for vessels."
         },
-        "address": {
+        "imo": {
           "type": "string",
-          "description": "The physical address of the organisation."
+          "description": "International Maritime Organization (IMO) number, a unique seven-digit identification number for ships."
         },
-        "phoneNumber": {
+        "vesselType": {
           "type": "string",
-          "description": "The contact phone number for the organisation."
+          "description": "The type of vessel (e.g., 'Cargo Ship', 'Tanker', 'Passenger Ship')."
         },
-        "abn": {
+        "lengthMeters": {
+          "type": "number",
+          "description": "The overall length of the vessel in meters."
+        },
+        "widthMeters": {
+          "type": "number",
+          "description": "The overall width (beam) of the vessel in meters."
+        },
+        "draughtMeters": {
+          "type": "number",
+          "description": "The draught of the vessel in meters (vertical distance between the waterline and the bottom of the hull)."
+        },
+        "maxSpeedKnots": {
+          "type": "number",
+          "description": "The maximum service speed of the vessel in knots."
+        },
+        "ownerId": {
           "type": "string",
-          "description": "The Australian Business Number for the organisation."
+          "description": "Reference to the UserProfile who owns or manages this vessel. (Relationship: UserProfile 1:N Vessel)"
         },
-        "primaryColor": {
+        "createdAt": {
           "type": "string",
-          "description": "The primary branding color in hex format."
+          "description": "Timestamp when the vessel record was created.",
+          "format": "date-time"
         },
-        "accentColor": {
+        "updatedAt": {
           "type": "string",
-          "description": "The accent branding color in hex format."
-        },
-        "secondaryColor": {
-          "type": "string",
-          "description": "The secondary branding color in hex format."
-        },
-        "primaryLogoUrl": {
-          "type": "string",
-          "description": "URL for the primary company logo."
-        },
-        "secondaryLogoUrl": {
-          "type": "string",
-          "description": "URL for the secondary company logo or icon."
-        },
-        "subDealersEnabled": {
-          "type": "boolean",
-          "description": "Indicates if the Sub Dealers module is enabled for the organisation."
-        },
-        "parentOrganisationId": {
-          "type": "string",
-          "description": "The ID of the parent organisation, if this is a sub-dealer."
-        },
-        "roles": {
-          "type": "array",
-          "description": "A list of roles within the organisation, forming a hierarchy.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "A unique identifier for the role."
-              },
-              "name": {
-                "type": "string",
-                "description": "The name of the role."
-              },
-              "parent": {
-                "type": "string",
-                "description": "The ID of the parent role. Empty for top-level roles."
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "permissions": {
-          "type": "object",
-          "description": "Defines permissions for each role ID.",
-          "additionalProperties": {
-            "type": "object",
-            "description": "A map of permission keys to boolean values.",
-            "additionalProperties": {
-              "type": "boolean"
-            }
-          }
-        },
-        "dataWarehouseSubscriptions": {
-          "type": "array",
-          "description": "A list of vendor IDs from the data warehouse that this organisation is subscribed to.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "enabledModuleSubscriptions": {
-          "type": "array",
-          "description": "A list of module IDs that this organisation has access to.",
-          "items": {
-            "type": "string"
-          }
+          "description": "Timestamp when the vessel record was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
+        "id",
         "name",
-        "slug"
+        "mmsi",
+        "imo",
+        "vesselType",
+        "lengthMeters",
+        "widthMeters",
+        "draughtMeters",
+        "maxSpeedKnots",
+        "ownerId",
+        "createdAt",
+        "updatedAt"
       ]
     },
-    "Vendor": {
-      "title": "Vendor",
-      "description": "Represents a vendor for data connection.",
+    "Route": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Route",
       "type": "object",
+      "description": "Defines a planned or optimized maritime route for a specific vessel, including its start, end, and overall characteristics.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Route entity."
+        },
         "name": {
           "type": "string",
-          "description": "The name of the vendor."
+          "description": "A descriptive name for the route (e.g., 'Rotterdam to New York')."
         },
-        "slug": {
+        "vesselId": {
           "type": "string",
-          "description": "A URL-friendly version of the vendor name."
+          "description": "Reference to the Vessel this route is planned for. (Relationship: Vessel 1:N Route)"
         },
-        "vendorType": {
+        "originPort": {
           "type": "string",
-          "description": "The type of the vendor.",
-          "enum": [
-            "Boat Brand",
-            "Motor Brand",
-            "Trailer Brand",
-            "Electronics Brand",
-            "Electronics Supplier",
-            "Parts Wholesaler",
-            "Other"
-          ]
+          "description": "The starting port or location of the route."
         },
-        "dataSource": {
+        "destinationPort": {
           "type": "string",
-          "description": "The source of the data connection.",
-          "enum": [
-            "Business Central",
-            "Direct API",
-            "Document Upload",
-            "Other"
-          ]
+          "description": "The destination port or location of the route."
         },
-        "primaryContact": {
+        "estimatedStartTime": {
           "type": "string",
-          "description": "Primary contact for the vendor (e.g., name, email, phone)."
+          "description": "The estimated departure time for the route.",
+          "format": "date-time"
         },
-        "website": {
+        "estimatedArrivalTime": {
           "type": "string",
-          "description": "The vendor's website URL."
+          "description": "The estimated arrival time at the destination for the route.",
+          "format": "date-time"
         },
-        "address": {
-          "type": "string",
-          "description": "The physical address of the vendor."
+        "distanceNauticalMiles": {
+          "type": "number",
+          "description": "The total estimated distance of the route in nautical miles."
         },
-        "abn": {
-          "type": "string",
-          "description": "The Australian Business Number for the vendor."
+        "estimatedDurationHours": {
+          "type": "number",
+          "description": "The total estimated duration of the route in hours."
         },
-        "logoUrl": {
+        "status": {
           "type": "string",
-          "description": "URL for the vendor logo."
+          "description": "The current status of the route (e.g., 'Planned', 'InProgress', 'Completed', 'Optimized', 'Cancelled')."
         },
-        "notes": {
+        "optimizedByAiRecordId": {
           "type": "string",
-          "description": "General notes about the vendor."
+          "description": "Optional reference to the RouteOptimizationRecord that generated or last optimized this route. (Relationship: RouteOptimizationRecord 1:1 Route)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the route record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the route record was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
+        "id",
         "name",
-        "slug"
+        "vesselId",
+        "originPort",
+        "destinationPort",
+        "estimatedStartTime",
+        "estimatedArrivalTime",
+        "distanceNauticalMiles",
+        "estimatedDurationHours",
+        "status",
+        "createdAt",
+        "updatedAt"
       ]
     },
-    "MasterDataRow": {
-      "title": "Master Data Row",
-      "description": "Represents a single row of data from a vendor's master data set.",
+    "Waypoint": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Waypoint",
       "type": "object",
-      "additionalProperties": true
-    },
-    "Range": {
-      "title": "Range",
-      "description": "Represents a product range for a vendor.",
-      "type": "object",
+      "description": "Represents a specific geographical point along a maritime route, used for navigation and tracking.",
       "properties": {
-        "name": {
+        "id": {
           "type": "string",
-          "description": "The name of the range."
+          "description": "Unique identifier for the Waypoint entity."
         },
-        "slug": {
+        "routeId": {
           "type": "string",
-          "description": "A URL-friendly version of the range name."
+          "description": "Reference to the Route this waypoint belongs to. (Relationship: Route 1:N Waypoint)"
         },
-        "vendorId": {
-          "type": "string",
-          "description": "The ID of the vendor this range belongs to."
-        },
-        "imageUrl": {
-          "type": "string",
-          "description": "URL for the range's image."
-        },
-        "order": {
+        "latitude": {
           "type": "number",
-          "description": "The display order of the range."
+          "description": "The latitude of the waypoint in decimal degrees."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "The longitude of the waypoint in decimal degrees."
+        },
+        "sequenceOrder": {
+          "type": "number",
+          "description": "The sequential order of this waypoint within its route, starting from 1."
+        },
+        "eta": {
+          "type": "string",
+          "description": "Estimated Time of Arrival at this specific waypoint.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description or note for the waypoint (e.g., 'Pass through Strait of Gibraltar')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the waypoint record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the waypoint record was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
-        "name",
-        "slug",
-        "vendorId"
+        "id",
+        "routeId",
+        "latitude",
+        "longitude",
+        "sequenceOrder",
+        "eta",
+        "createdAt",
+        "updatedAt"
       ]
     },
-    "Model": {
-      "title": "Model",
-      "description": "Represents a specific model within a product range.",
+    "VesselLocationUpdate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "VesselLocationUpdate",
       "type": "object",
+      "description": "Records a real-time or historical location and status update for a specific vessel.",
       "properties": {
-        "name": {
+        "id": {
           "type": "string",
-          "description": "The name of the model."
+          "description": "Unique identifier for the VesselLocationUpdate entity."
         },
-        "slug": {
+        "vesselId": {
           "type": "string",
-          "description": "A URL-friendly version of the model name."
+          "description": "Reference to the Vessel for which this location update is recorded. (Relationship: Vessel 1:N VesselLocationUpdate)"
         },
-        "rangeId": {
+        "timestamp": {
           "type": "string",
-          "description": "The ID of the range this model belongs to."
+          "description": "The precise date and time of the location update.",
+          "format": "date-time"
         },
-        "vendorId": {
-          "type": "string",
-          "description": "The ID of the vendor this model belongs to."
-        },
-        "order": {
+        "latitude": {
           "type": "number",
-          "description": "The display order of the model."
+          "description": "The latitude of the vessel's position in decimal degrees at the time of the update."
         },
-        "coverImageUrl": {
+        "longitude": {
+          "type": "number",
+          "description": "The longitude of the vessel's position in decimal degrees at the time of the update."
+        },
+        "speedKnots": {
+          "type": "number",
+          "description": "The speed of the vessel in knots at the time of the update."
+        },
+        "headingDegrees": {
+          "type": "number",
+          "description": "The true heading of the vessel in degrees (0-359) at the time of the update."
+        },
+        "status": {
           "type": "string",
-          "description": "URL for the boat's main cover image."
+          "description": "The operational status of the vessel at the time of the update (e.g., 'Underway', 'Moored', 'AtAnchor', 'Stopped')."
         },
-        "galleryImageUrls": {
+        "currentRouteId": {
+          "type": "string",
+          "description": "Optional reference to the Route the vessel is currently following. (Relationship: Route 1:N VesselLocationUpdate)"
+        }
+      },
+      "required": [
+        "id",
+        "vesselId",
+        "timestamp",
+        "latitude",
+        "longitude",
+        "speedKnots",
+        "headingDegrees",
+        "status"
+      ]
+    },
+    "RouteOptimizationRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RouteOptimizationRecord",
+      "type": "object",
+      "description": "Stores the details, parameters, and results of a generative AI-powered route optimization request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RouteOptimizationRecord entity."
+        },
+        "requesterId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who initiated the route optimization request. (Relationship: UserProfile 1:N RouteOptimizationRecord)"
+        },
+        "vesselId": {
+          "type": "string",
+          "description": "Reference to the Vessel for which the route was optimized. (Relationship: Vessel 1:N RouteOptimizationRecord)"
+        },
+        "requestTimestamp": {
+          "type": "string",
+          "description": "The date and time when the optimization request was made.",
+          "format": "date-time"
+        },
+        "originPort": {
+          "type": "string",
+          "description": "The specified origin port for the optimization."
+        },
+        "destinationPort": {
+          "type": "string",
+          "description": "The specified destination port for the optimization."
+        },
+        "requestedDepartureTime": {
+          "type": "string",
+          "description": "The user-requested departure time used as a parameter for optimization.",
+          "format": "date-time"
+        },
+        "factorsConsidered": {
           "type": "array",
-          "description": "A list of URLs for the model's image gallery.",
+          "description": "A list of factors the AI considered during optimization (e.g., 'weather', 'traffic', 'regulations', 'vessel_specs').",
           "items": {
             "type": "string"
           }
         },
-        "cost": {
-          "type": "number",
-          "description": "Base cost of the model."
+        "aiOutputSummary": {
+          "type": "string",
+          "description": "A summary of the AI's findings, recommendations, or key considerations for the optimized route."
         },
-        "sellPriceExclGst": {
-          "type": "number",
-          "description": "Base selling price, excluding GST."
+        "recommendedRouteId": {
+          "type": "string",
+          "description": "Reference to the Route entity that was generated or recommended by this optimization process. (Relationship: RouteOptimizationRecord 1:1 Route)"
         },
-        "freightCostExclGst": {
-          "type": "number",
-          "description": "Freight cost, excluding GST."
+        "status": {
+          "type": "string",
+          "description": "The status of the optimization request (e.g., 'Pending', 'Completed', 'Failed')."
         },
-        "colors": {
-          "type": "array",
-          "description": "Available color variants for the model, each with associated images.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "imageUrls": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
+        "completionTimestamp": {
+          "type": "string",
+          "description": "The date and time when the optimization process was completed.",
+          "format": "date-time"
         },
-        "standardFeatures": {
-          "type": "array",
-          "description": "A list of standard features for the model.",
-          "items": {
-            "type": "string"
-          }
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the optimization record was created.",
+          "format": "date-time"
         },
-        "optionalFeatures": {
-          "type": "array",
-          "description": "A list of optional add-ons for the model.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "category": {
-                "type": "string",
-                "description": "The category for the optional feature."
-              },
-              "imageUrl": {
-                "type": "string"
-              },
-              "packageStatus": {
-                "type": "object",
-                "description": "A map of package IDs to their status ('standard' or 'optional') for this feature.",
-                "additionalProperties": {
-                  "type": "string",
-                  "enum": [
-                    "standard",
-                    "optional"
-                  ]
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "packages": {
-          "type": "array",
-          "description": "A list of optional packages for the model.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "category": {
-                "type": "string",
-                "description": "The category for the optional package."
-              },
-              "imageUrl": {
-                "type": "string"
-              },
-              "cost": {
-                "type": "number"
-              },
-              "sellPriceExclGst": {
-                "type": "number"
-              },
-              "includedFeatures": {
-                "type": "array",
-                "description": "A list of features included in this package.",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "packageLevels": {
-          "type": "array",
-          "description": "A list of tiered packages for a Stabicraft model.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string",
-                "description": "A description for the package level."
-              },
-              "cost": {
-                "type": "number"
-              },
-              "sellPriceExclGst": {
-                "type": "number"
-              },
-              "includedFeatures": {
-                "type": "array",
-                "description": "A list of features included in this package level.",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ]
-          }
-        },
-        "colorStages": {
-          "type": "object",
-          "description": "Available color stages for a Stabicraft model.",
-          "properties": {
-            "stage0": {
-              "type": "boolean"
-            },
-            "stage1": {
-              "type": "boolean"
-            },
-            "stage2": {
-              "type": "boolean"
-            },
-            "stage3": {
-              "type": "boolean"
-            }
-          }
-        },
-        "uDekOptions": {
-          "type": "object",
-          "description": "U-Dek flooring image URLs.",
-          "properties": {
-            "blackOnWinterGrey": {
-              "type": "string"
-            },
-            "teakOnBlack": {
-              "type": "string"
-            },
-            "steelGreyOnWinterGrey": {
-              "type": "string"
-            },
-            "winterGreyOnSteelGrey": {
-              "type": "string"
-            }
-          }
-        },
-        "paintAndGraphicOptions": {
-          "type": "object",
-          "description": "Paint and graphic options for a Stabicraft model.",
-          "properties": {
-            "standardGloss": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "imageUrl": {
-                    "type": "string"
-                  },
-                  "paint": {
-                    "type": "string"
-                  },
-                  "graphics": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "standardMetallic": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "imageUrl": {
-                    "type": "string"
-                  },
-                  "paint": {
-                    "type": "string"
-                  },
-                  "graphics": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id"
-                ]
-              }
-            },
-            "powderCoating": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "imageUrl": {
-                    "type": "string"
-                  },
-                  "color": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id"
-                ]
-              }
-            }
-          }
-        },
-        "specifications": {
-          "type": "object",
-          "properties": {
-            "motorConfigurations": {
-              "type": "array",
-              "description": "Defines the supported engine configurations and their respective horsepower ratings.",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "Single",
-                      "Twin",
-                      "Triple",
-                      "Quad",
-                      "SingleWithAux"
-                    ]
-                  },
-                  "engines": {
-                    "type": "array",
-                    "description": "An array of engine specifications for this configuration.",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "label": {
-                          "type": "string",
-                          "description": "A label for the engine (e.g., 'Main Engine', 'Engine 1')."
-                        },
-                        "minHp": {
-                          "type": "number"
-                        },
-                        "maxHp": {
-                          "type": "number"
-                        },
-                        "recommendedHp": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "label"
-                      ]
-                    }
-                  }
-                },
-                "required": [
-                  "type",
-                  "engines"
-                ]
-              }
-            },
-            "otherSpecs": {
-              "type": "array",
-              "description": "A list of other key-value specifications.",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "label",
-                  "value"
-                ]
-              }
-            }
-          }
-        },
-        "variantPricing": {
-          "type": "array",
-          "description": "Pricing for specific model variants (e.g., by color and material). Highfield specific.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "colorId": {
-                "type": "string"
-              },
-              "colorName": {
-                "type": "string"
-              },
-              "material": {
-                "type": "string",
-                "enum": [
-                  "HYP",
-                  "PVC"
-                ]
-              },
-              "cost": {
-                "type": "number"
-              },
-              "sellPriceExclGst": {
-                "type": "number"
-              },
-              "freightCostExclGst": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "colorId",
-              "material"
-            ]
-          }
-        },
-        "documents": {
-          "type": "array",
-          "description": "A list of documents associated with the model.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "url": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "url"
-            ]
-          }
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the optimization record was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
-        "name",
-        "slug",
-        "rangeId",
-        "vendorId"
+        "id",
+        "requesterId",
+        "vesselId",
+        "requestTimestamp",
+        "originPort",
+        "destinationPort",
+        "requestedDepartureTime",
+        "factorsConsidered",
+        "aiOutputSummary",
+        "recommendedRouteId",
+        "status",
+        "createdAt",
+        "updatedAt"
       ]
-    },
-    "Module": {
-      "title": "Module",
-      "description": "Represents an application module that connects various vendors and data for an organisation.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the module."
-        },
-        "slug": {
-          "type": "string",
-          "description": "A URL-friendly version of the module name."
-        },
-        "mainVendorId": {
-          "type": "string",
-          "description": "The ID of the main vendor for this module."
-        },
-        "associatedVendorIds": {
-          "type": "array",
-          "description": "A list of IDs for associated vendors.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "logoUrl": {
-          "type": "string",
-          "description": "URL for the module's logo, typically inherited from the main vendor."
-        }
-      },
-      "required": [
-        "name",
-        "slug",
-        "mainVendorId"
-      ]
-    },
-    "PricingStrategy": {
-      "title": "Pricing Strategy",
-      "description": "Organisation-specific pricing adjustments and custom columns for a vendor brand.",
-      "type": "object",
-      "properties": {
-        "baseCurrency": { "type": "string" },
-        "columns": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "name": { "type": "string" },
-              "type": { "type": "string", "enum": ["percent", "text", "currency", "cost"] }
-            }
-          }
-        },
-        "itemValues": {
-          "type": "object",
-          "description": "A map of itemId to custom column values."
-        }
-      }
     }
   },
   "auth": {
     "providers": [
-      "email"
+      "password",
+      "anonymous"
     ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/UserProfile"
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile data. Each document's ID (`userId`) corresponds to the Firebase Authentication UID, which serves as the explicit owner. This collection adheres to path-based ownership for private user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user."
+            }
+          ]
+        }
       },
-      "description": "User profile documents, keyed by user ID."
-    },
-    "/organisations/{organisationId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Organisation"
+      {
+        "path": "/users/{userId}/vessels/{vesselId}",
+        "definition": {
+          "entityName": "Vessel",
+          "schema": {
+            "$ref": "#/backend/entities/Vessel"
+          },
+          "description": "Collection of vessels owned by a specific user. Each document includes a denormalized 'ownerId' field that must match the parent 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user who owns this vessel."
+            },
+            {
+              "name": "vesselId",
+              "description": "The unique identifier for the vessel."
+            }
+          ]
+        }
       },
-      "description": "Organisation documents, keyed by a unique ID."
-    },
-    "/organisations/{organisationId}/pricingStrategies/{vendorId}": {
-      "schema": {
-        "$ref": "#/backend/entities/PricingStrategy"
+      {
+        "path": "/users/{userId}/vessels/{vesselId}/routes/{routeId}",
+        "definition": {
+          "entityName": "Route",
+          "schema": {
+            "$ref": "#/backend/entities/Route"
+          },
+          "description": "Subcollection of routes planned for a specific vessel. Each document includes a denormalized 'ownerId' field, copied from the parent vessel's owner, to ensure authorization independence without requiring 'get()' calls.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user who owns the parent vessel and thus this route."
+            },
+            {
+              "name": "vesselId",
+              "description": "The unique identifier for the parent vessel."
+            },
+            {
+              "name": "routeId",
+              "description": "The unique identifier for the route."
+            }
+          ]
+        }
       },
-      "description": "Strategy workspace data for a specific brand within an organisation."
-    },
-    "/organisations/{organisationId}/modelOverrides/{modelId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Model"
+      {
+        "path": "/users/{userId}/vessels/{vesselId}/routes/{routeId}/waypoints/{waypointId}",
+        "definition": {
+          "entityName": "Waypoint",
+          "schema": {
+            "$ref": "#/backend/entities/Waypoint"
+          },
+          "description": "Subcollection of waypoints for a specific route. Each document includes a denormalized 'ownerId' field, copied from the grandparent vessel's owner, for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user who owns the associated vessel and route, and thus this waypoint."
+            },
+            {
+              "name": "vesselId",
+              "description": "The unique identifier for the parent vessel."
+            },
+            {
+              "name": "routeId",
+              "description": "The unique identifier for the parent route."
+            },
+            {
+              "name": "waypointId",
+              "description": "The unique identifier for the waypoint."
+            }
+          ]
+        }
       },
-      "description": "Organisation-specific overrides for boat models."
-    },
-    "/data-warehouse/{vendorId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Vendor"
+      {
+        "path": "/users/{userId}/vessels/{vesselId}/location_updates/{updateId}",
+        "definition": {
+          "entityName": "VesselLocationUpdate",
+          "schema": {
+            "$ref": "#/backend/entities/VesselLocationUpdate"
+          },
+          "description": "Subcollection of real-time or historical location updates for a specific vessel. Each document includes a denormalized 'ownerId' field, copied from the parent vessel's owner, for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user who owns the parent vessel and thus this location update."
+            },
+            {
+              "name": "vesselId",
+              "description": "The unique identifier for the parent vessel."
+            },
+            {
+              "name": "updateId",
+              "description": "The unique identifier for the vessel location update."
+            }
+          ]
+        }
       },
-      "description": "Vendor documents for the data warehouse, keyed by a unique ID."
-    },
-    "/data-warehouse/{vendorId}/masterDataSet/{rowId}": {
-      "schema": {
-        "$ref": "#/backend/entities/MasterDataRow"
-      },
-      "description": "A collection of individual data rows that make up the vendor's master data set."
-    },
-    "/data-warehouse/{vendorId}/ranges/{rangeId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Range"
-      },
-      "description": "Product ranges for a specific vendor."
-    },
-    "/data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Model"
-      },
-      "description": "Specific models within a product range."
-    },
-    "/data-warehouse/{vendorId}/masterPriceList/{rowId}": {
-      "schema": {
-        "$ref": "#/backend/entities/MasterDataRow"
-      },
-      "description": "A collection of individual data rows that make up the vendor's master price list."
-    },
-    "/data-warehouse/{vendorId}/bulkMasterPriceList/{rowId}": {
-      "schema": {
-        "$ref": "#/backend/entities/MasterDataRow"
-      },
-      "description": "A collection of individual data rows that make up the vendor's bulk master price list."
-    },
-    "/modules/{moduleId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Module"
-      },
-      "description": "Application modules."
-    }
+      {
+        "path": "/users/{userId}/route_optimization_records/{recordId}",
+        "definition": {
+          "entityName": "RouteOptimizationRecord",
+          "schema": {
+            "$ref": "#/backend/entities/RouteOptimizationRecord"
+          },
+          "description": "Collection of generative AI-powered route optimization records initiated by a user. Each document's 'requesterId' field must match the parent 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user who initiated this optimization request."
+            },
+            {
+              "name": "recordId",
+              "description": "The unique identifier for the route optimization record."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to follow a strict hierarchical ownership model, rooted in the user profile. This approach ensures maximal security, clear authorization logic, and efficient data retrieval, adhering to all core design principles.\n\n**Authorization Independence:** This is achieved by systematically denormalizing the `ownerId` (or `requesterId` for `RouteOptimizationRecord`) into every document that is part of a user's owned hierarchy. For example, a `Route` document, residing under `/users/{userId}/vessels/{vesselId}/routes/{routeId}`, will explicitly contain an `ownerId` field. This `ownerId` will be the same `userId` as found in the path itself. This eliminates the need for `get()` calls in security rules to check parent documents (e.g., to find the owner of a `Vessel` when accessing a `Route`), thus preventing issues with atomic operations and simplifying rule debugging. All authorization checks can then be performed directly on `request.auth.uid` against the `ownerId` field within the `resource.data` and the `{userId}` wildcard in the path.\n\n**QAPs (Queries as Authorization Postulates):** The structural segregation mandate ensures QAPs are supported. Each collection path represents a homogeneous security posture: all documents within `/users/{userId}/vessels/{vesselId}/routes` are owned by the `{userId}` in the path. This allows for efficient `list` operations, as a user can query their own vessels, routes, waypoints, and optimization records directly. For instance, `db.collection('users').doc(userId).collection('vessels').doc(vesselId).collection('routes').get()` will only return routes owned by that specific user for that specific vessel, and the security rules can enforce this automatically without needing complex filtering logic within the rules themselves. Any query performed within a user's sub-hierarchy is implicitly pre-filtered by ownership. For global read operations, if any were needed, separate top-level collections with appropriate `ownerId` or `members` fields would be used, but are not present here as all data is private and user-owned."
   }
 }

@@ -3,128 +3,132 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FIRESTORE SECURITY RULES
-     * Core Philosophy: Standardized access for MVP development.
+     * HelmLogic Security Rules
+     *
+     * CORE PHILOSOPHY:
+     * This ruleset implements a strict hierarchical ownership model. All data is scoped 
+     * under a user's unique identifier (UID). Authorization is determined primarily 
+     * by the document's location in the path and verified against denormalized 
+     * ownership fields within the documents.
+     *
+     * DATA STRUCTURE:
+     * The database is organized under /users/{userId}. All vessels, routes, waypoints, 
+     * and optimization records are subcollections of a specific user or a child 
+     * of a user-owned vessel.
+     *
+     * KEY SECURITY DECISIONS:
+     * 1. Path-Based Authorization: Access is granted if the authenticated user's UID 
+     *    matches the {userId} wildcard in the document path.
+     * 2. Denormalized Ownership: To ensure performant rules and avoid costly get() 
+     *    calls, ownership fields (ownerId or requesterId) are denormalized onto every 
+     *    record and validated against the path and auth context.
+     * 3. Prototyping Flexibility: These rules enforce strict authorization (who can 
+     *    access) but remain flexible regarding data types and optional fields to 
+     *    allow for rapid front-end iteration.
+     * 4. Relational Integrity: On creation and update, rules enforce that ownership 
+     *    links remain consistent with the authenticated user and are immutable.
      */
 
     // --- Helper Functions ---
+
+    /** @description Checks if the user is authenticated with a valid UID. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isHelmLogicAdmin() {
-      return isSignedIn() && getUserData().appRole == 'HelmLogic Admin';
-    }
-
+    /** @description Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Checks if the current user has a specific permission within an organization
-    function hasOrgPermission(orgId, permission) {
-      let userData = getUserData();
-      let orgData = get(/databases/$(database)/documents/organisations/$(orgId)).data;
-      return isSignedIn() && 
-             userData.organisationId == orgId && 
-             orgData.permissions[userData.organisationRole][permission] == true;
-    }
-
-    // Checks if the current user is a member of the parent organization and has sub-dealer management permission
-    function canManageSubDealer(subId) {
-      let userData = getUserData();
-      let subData = get(/databases/$(database)/documents/organisations/$(subId)).data;
-      let parentId = subData.parentOrganisationId;
-      return parentId != null && hasOrgPermission(parentId, 'can_view_subdealers');
+    /** @description Combines ownership check with a check for the document's existence. Useful for updates/deletes. */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
 
     // --- Collection Rules ---
 
+    /**
+     * @description Rules for the top-level user profile. Corresponds to the UserProfile entity.
+     * @path /users/{userId}
+     * @allow (get) If auth.uid == 'user_123' and path is /users/user_123
+     * @deny (list) If auth.uid == 'user_123' and trying to list /users
+     * @principle Path-based ownership for root user data.
+     */
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-      
-      match /notifications/{id} {
-        allow read, write: if isOwner(userId);
-      }
-    }
+      allow get: if isOwner(userId);
+      allow list: if false; // Users cannot be listed for privacy.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
 
-    match /organisations/{orgId} {
-      // Members can read their org.
-      allow read: if isSignedIn();
-      // Allow write if HelmLogic Admin, or Org Admin (can_access_settings), or Parent Org Admin (can_view_subdealers)
-      allow write: if isHelmLogicAdmin() || hasOrgPermission(orgId, 'can_access_settings') || canManageSubDealer(orgId);
-      
-      match /dealerFitSelections/{id} { allow read, write: if isSignedIn(); }
-      match /quotes/{id} { allow read, write: if isSignedIn(); }
-      match /productPrices/{id} { allow read, write: if isSignedIn(); }
-      match /priceLevelDefinitions/{id} { allow read, write: if isSignedIn(); }
-      match /inventory/{id} { allow read, write: if isSignedIn(); }
-      match /modelOverrides/{id} { allow read, write: if isSignedIn(); }
-      match /pricingStrategies/{id} { allow read, write: if isSignedIn(); }
-    }
+      /**
+       * @description Collection of vessels owned by the user. Corresponds to the Vessel entity.
+       * @path /users/{userId}/vessels/{vesselId}
+       * @allow (create) If auth.uid == 'user_123' and request.data.ownerId == 'user_123'
+       * @deny (update) If attempt is made to change the ownerId field.
+       * @principle Enforces path-based ownership and validates denormalized ownerId.
+       */
+      match /vessels/{vesselId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
+        allow delete: if isExistingOwner(userId);
 
-    match /modules/{moduleId} {
-      allow read: if isSignedIn();
-      allow write: if isHelmLogicAdmin();
-    }
+        /**
+         * @description Subcollection of routes for a vessel. Corresponds to the Route entity.
+         * @path /users/{userId}/vessels/{vesselId}/routes/{routeId}
+         * @allow (list) If auth.uid == 'user_123' and path matches.
+         * @deny (create) If the internal ownerId doesn't match the parent userId.
+         * @principle Authorization independence via denormalized ownerId.
+         */
+        match /routes/{routeId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
+          allow update: if isExistingOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
+          allow delete: if isExistingOwner(userId);
 
-    match /data-warehouse/{vendorId} {
-      // Data warehouse is a public catalog used by AI tools and configurators.
-      allow read: if true;
-      allow write: if isHelmLogicAdmin();
-      
-      match /dataSets/{setId} {
-        allow read: if true;
-        allow write: if isHelmLogicAdmin();
-        match /rows/{rowId} {
-          allow read: if true;
-          allow write: if isHelmLogicAdmin();
-        }
-      }
-      match /masterDataSet/{rowId} {
-        allow read: if true;
-        allow write: if isHelmLogicAdmin();
-      }
-      match /masterPriceList/{rowId} {
-        allow read: if true;
-        allow write: if isHelmLogicAdmin();
-      }
-      match /bulkMasterPriceList/{rowId} {
-        allow read: if true;
-        allow write: if isHelmLogicAdmin();
-      }
-      match /ranges/{rangeId} {
-        allow read: if true;
-        allow write: if isHelmLogicAdmin();
-        match /models/{modelId} {
-          allow read: if true;
-          allow write: if isHelmLogicAdmin();
-          match /{allPaths=**} {
-            allow read: if true;
-            allow write: if isHelmLogicAdmin();
+          /**
+           * @description Subcollection of waypoints for a route. Corresponds to the Waypoint entity.
+           * @path /users/{userId}/vessels/{vesselId}/routes/{routeId}/waypoints/{waypointId}
+           * @allow (create) auth.uid matches path and data.ownerId.
+           * @principle Nested ownership verification.
+           */
+          match /waypoints/{waypointId} {
+            allow get, list: if isOwner(userId);
+            allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
+            allow update: if isExistingOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
+            allow delete: if isExistingOwner(userId);
           }
         }
-      }
-    }
 
-    match /dealerFitCategories/{id} {
-      allow read: if isSignedIn();
-      allow write: if isHelmLogicAdmin();
-    }
-    
-    match /inventory/{id} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /vessels/{id} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /vesselReservations/{id} {
-      allow read, write: if isSignedIn();
+        /**
+         * @description Historical/Real-time location updates. Corresponds to VesselLocationUpdate.
+         * @path /users/{userId}/vessels/{vesselId}/location_updates/{updateId}
+         * @allow (create) When ownerId in document matches the path's userId.
+         * @principle Verification of denormalized ownership link on telemetry data.
+         */
+        match /location_updates/{updateId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
+          allow update: if isExistingOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+
+      /**
+       * @description Records of AI-powered route optimizations. Corresponds to RouteOptimizationRecord.
+       * @path /users/{userId}/route_optimization_records/{recordId}
+       * @allow (get) If requesterId matches auth.uid.
+       * @deny (create) If requesterId in the body is not the authenticated user.
+       * @principle Ensures private access to AI history.
+       */
+      match /route_optimization_records/{recordId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.requesterId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.requesterId == resource.data.requesterId;
+        allow delete: if isExistingOwner(userId);
+      }
     }
   }
 }
