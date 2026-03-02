@@ -53,6 +53,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from './ui/badge';
 import NextImage from "next/image";
+import { Separator } from './ui/separator';
 
 interface CustomColumn {
     id: string;
@@ -324,7 +325,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                         {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-5 w-5 m-auto text-muted-foreground" />}
                                     </div>
                                     <div>
-                                        <h2 className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} FOCUS MODE</h2>
+                                        <DialogTitle className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} FOCUS MODE</DialogTitle>
                                         <p className="text-[9px] font-black uppercase tracking-widest text-primary mt-1.5">Strategy Workspace</p>
                                     </div>
                                 </div>
@@ -569,7 +570,3 @@ function EditableCell({ value, type, onChange }: { value: any, type: string, onC
         </div>
     );
 }
-
-const Separator = ({ orientation = "horizontal", className }: { orientation?: "horizontal" | "vertical", className?: string }) => (
-    <div className={cn("bg-border shrink-0", orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]", className)} />
-);
