@@ -87,7 +87,7 @@ export function MasterDataBrowserDialog({
   const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
   
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-  const [selectedDataSetId, setSelectedDataSetId] = useState<string | null>('master'); // Default to Global Master List
+  const [selectedDataSetId, setSelectedDataSetId] = useState<string | null>('master'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [targetCategory, setTargetCategory] = useState(initialCategory || 'Other');
   const [stagedItems, setStagedItems] = useState<{ vendorId: string; vendorName: string; row: any }[]>([]);
@@ -175,24 +175,49 @@ export function MasterDataBrowserDialog({
   const headers = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return [];
     
-    const allKeys = Object.keys(filteredData[0]);
-    const priorityColumns = [
-        { keys: ['Part_Number', 'SKU', 'PartNo', 'Code', 'PartNumber', 'Part Number'], label: 'Code' },
-        { keys: ['Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model'], label: 'Description' },
-        { keys: ['RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst'], label: 'Price' }
-    ];
+    const allKeys = Object.keys(filteredData[0]).filter(k => !k.startsWith('_') && k !== 'id');
     
-    const result: string[] = [];
-    priorityColumns.forEach(group => {
-        const matchingKey = group.keys.find(k => allKeys.includes(k));
-        if (matchingKey) result.push(matchingKey);
+    // Define priority groups for column promotion
+    const priorityGroups = [
+        { keys: ['Part_Number', 'SKU', 'PartNo', 'Code', 'PartNumber', 'Part Number', 'PART_NUMBER', 'ITEM_CODE'], label: 'Code' },
+        { keys: ['Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model', 'DESCRIPTION', 'DESC', 'ITEM_NAME', 'Product Name', 'Description 1'], label: 'Description' },
+        { keys: ['RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst', 'PRICE', 'UNIT_PRICE', 'TOTAL_CTD'], label: 'Price' }
+    ];
+
+    const detectedHeaders: { key: string, label: string }[] = [];
+    const matchedKeys = new Set<string>();
+
+    // 1. Find priority columns first
+    priorityGroups.forEach(group => {
+        const key = group.keys.find(k => allKeys.includes(k));
+        if (key) {
+            detectedHeaders.push({ key, label: group.label });
+            matchedKeys.add(key);
+        }
     });
 
+    // 2. Add Source table badge if in master view
     if (selectedDataSetId === 'master' && dataSets && dataSets.length > 0) {
-        result.push('_sourceTable');
+        detectedHeaders.push({ key: '_sourceTable', label: 'Source' });
     }
 
-    return result;
+    // 3. Fill in other useful columns (up to 5 total to maintain tidy layout)
+    allKeys.forEach(k => {
+        if (detectedHeaders.length >= 5) return;
+        if (matchedKeys.has(k)) return;
+        
+        const val = filteredData[0][k];
+        const isUsefulString = typeof val === 'string' && val.length > 0 && val.length < 50;
+        const isNumeric = typeof val === 'number';
+        const isId = k.toLowerCase().includes('id') || k.toLowerCase() === 'uid';
+        
+        if ((isUsefulString || isNumeric) && !isId) {
+            detectedHeaders.push({ key: k, label: k });
+            matchedKeys.add(k);
+        }
+    });
+
+    return detectedHeaders;
   }, [filteredData, selectedDataSetId, dataSets]);
 
   const handleAddItem = (row: any) => {
@@ -202,7 +227,7 @@ export function MasterDataBrowserDialog({
     const selectedVendor = subscribedVendors.find(v => v.id === vId);
     if (selectedVendor) {
       setStagedItems(prev => [...prev, { vendorId: selectedVendor.id, vendorName: selectedVendor.name, row }]);
-      toast({ title: "Item Added", description: `${row.Description || row.name || row['Model Name'] || 'Item'} staged.` });
+      toast({ title: "Item Staged", description: `${row.Description || row.name || row['Model Name'] || 'Item'} added to selection.` });
     }
   };
   
@@ -215,7 +240,7 @@ export function MasterDataBrowserDialog({
     
     const isPackage = stagedItems.length > 1;
     if (isPackage && !packageName.trim()) {
-        toast({ variant: 'destructive', title: 'Package name required' });
+        toast({ variant: 'destructive', title: 'Package name required', description: 'Please provide a name for this bundled selection.' });
         return;
     }
 
@@ -248,12 +273,17 @@ export function MasterDataBrowserDialog({
 
   const formatTableCell = (value: any) => {
     if (value === null || value === undefined) return '';
-    if (typeof value === 'number') return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (typeof value === 'string' && /^\d*\.?\d+$/.test(value) && value.includes('.')) {
-        const num = parseFloat(value);
-        return isNaN(num) ? value : num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (typeof value === 'number') {
+        // Round to 2 decimal places for technical data lists
+        return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-    return String(value);
+    const strVal = String(value);
+    // Detect long technical decimal strings and clean them
+    if (/^\d*\.?\d+$/.test(strVal) && strVal.includes('.')) {
+        const num = parseFloat(strVal);
+        return isNaN(num) ? strVal : num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    return strVal;
   };
 
   return (
@@ -285,7 +315,7 @@ export function MasterDataBrowserDialog({
                     </div>
                     {selectedVendorId && (
                         <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Select Data Table</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Data Table</Label>
                             <Select onValueChange={setSelectedDataSetId} value={selectedDataSetId || 'master'}>
                                 <SelectTrigger className="h-10 font-bold bg-background">
                                     <div className="flex items-center gap-2">
@@ -294,7 +324,7 @@ export function MasterDataBrowserDialog({
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="master">Global Master List</SelectItem>
+                                    <SelectItem value="master">Global Master List (Merged)</SelectItem>
                                     {dataSets?.map(set => (
                                         <SelectItem key={set.id} value={set.id}>{set.name} ({set.rowCount} rows)</SelectItem>
                                     ))}
@@ -324,12 +354,15 @@ export function MasterDataBrowserDialog({
                     </div>
                 ) : filteredData && filteredData.length > 0 ? (
                     <ScrollArea className="h-full">
-                        <Table>
+                        <Table className="border-collapse table-fixed w-full">
                             <TableHeader className="sticky top-0 bg-secondary z-10 shadow-sm">
                                 <TableRow className="hover:bg-transparent">
                                     {headers.map(header => (
-                                        <TableHead key={header} className="text-[10px] font-black uppercase tracking-tighter py-3 px-4">
-                                            {header === '_sourceTable' ? 'Source' : header.replace(/_/g, ' ')}
+                                        <TableHead key={header.key} className={cn(
+                                            "text-[10px] font-black uppercase tracking-tighter py-3 px-4",
+                                            header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') ? "text-right" : ""
+                                        )}>
+                                            {header.label.replace(/_/g, ' ')}
                                         </TableHead>
                                     ))}
                                     <TableHead className="text-right w-24 pr-6">Action</TableHead>
@@ -343,11 +376,14 @@ export function MasterDataBrowserDialog({
                                         onClick={() => handleAddItem(row)}
                                     >
                                         {headers.map(header => (
-                                            <TableCell key={header} className="text-[11px] font-medium py-3 px-4 truncate max-w-[250px]">
-                                                {header === '_sourceTable' ? (
-                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1 border-primary/20 text-primary">{row[header]}</Badge>
+                                            <TableCell key={header.key} className={cn(
+                                                "text-[11px] font-medium py-3 px-4 truncate",
+                                                header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') ? "text-right font-black" : ""
+                                            )}>
+                                                {header.key === '_sourceTable' ? (
+                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1 border-primary/20 text-primary">{row[header.key]}</Badge>
                                                 ) : (
-                                                    formatTableCell(row[header])
+                                                    formatTableCell(row[header.key])
                                                 )}
                                             </TableCell>
                                         ))}
@@ -381,7 +417,7 @@ export function MasterDataBrowserDialog({
                             <div className="opacity-40">
                                 <TableIcon className="h-12 w-12 mb-4 mx-auto" />
                                 <p className="text-sm font-bold uppercase tracking-widest">
-                                    {selectedVendorId ? 'No items found in this list.' : (subscribedVendors.length === 0 ? 'No associated vendors granted.' : 'Choose a vendor to browse products.')}
+                                    {selectedVendorId ? 'No items found matching search.' : (subscribedVendors.length === 0 ? 'No associated vendors granted.' : 'Choose a vendor to browse products.')}
                                 </p>
                             </div>
                         )}
@@ -445,7 +481,7 @@ export function MasterDataBrowserDialog({
                                 variant="ghost" 
                                 size="icon" 
                                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
-                                onClick={() => handleRemoveItem(index)}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRemoveItem(index); }}
                             >
                                 <X className="h-4 w-4" />
                             </Button>
