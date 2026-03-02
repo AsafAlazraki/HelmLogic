@@ -261,7 +261,7 @@ export function ExchangeRateManager({
                         </div>
                     </div>
 
-                    {/* Content */}
+                    {/* Content Area */}
                     <div className="flex-1 min-h-0">
                         {loading ? (
                             <div className="flex h-full w-full items-center justify-center">
@@ -571,7 +571,7 @@ export function ExchangeRateManager({
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </DialogContent>
         </Dialog>
     );
 }
