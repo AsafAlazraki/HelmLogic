@@ -71,7 +71,8 @@ export function AppSidebar() {
         return false; // Hide Dashboard for admins
       }
       if (link.label === 'Pricing Manager') {
-        if (isAdmin) return true;
+        // HelmLogic Admin should NOT have pricing module - they deal in Master Data
+        if (isAdmin) return false;
         if (!isOrgMember) return false;
         
         const hasPermission = !!userPermissions.can_access_pricing_manager;
@@ -82,7 +83,7 @@ export function AppSidebar() {
             return organisation.enabledModuleSubscriptions?.includes('system-pricing') ?? false;
         }
         
-        return true; // Default available for top-level orgs if permission exists
+        return true; // Available for top-level orgs if permission exists
       }
       if (link.label === 'Settings') {
         if (isAdmin) return false;

@@ -54,7 +54,9 @@ export default function PricingManagerPage() {
 
     const hasPermission = useMemo(() => {
         if (userLoading || profileLoading || orgLoading) return true;
-        if (userProfile?.appRole === 'HelmLogic Admin') return true;
+        // HelmLogic Admin should NOT access pricing manager - they deal in Master Data
+        if (userProfile?.appRole === 'HelmLogic Admin') return false;
+        
         const roleId = userProfile?.organisationRole;
         if (!roleId || !organisation?.permissions?.[roleId]) return false;
         return !!organisation.permissions[roleId].can_access_pricing_manager;
@@ -85,7 +87,7 @@ export default function PricingManagerPage() {
         return (
             <div className="space-y-4">
                 <div>
-                    <h1 className="text-2xl font-semibold">Pricing Manager</h1>
+                    <h1 className="text-2xl font-black uppercase tracking-tight">Pricing Manager</h1>
                     <BreadcrumbNav />
                 </div>
                 <Card className="border-destructive/50">
@@ -97,7 +99,7 @@ export default function PricingManagerPage() {
                         <CardDescription>You do not have permission to access the Pricing Manager.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-sm text-muted-foreground">Please contact your administrator if you believe this is an error.</p>
+                        <p className="text-sm text-muted-foreground">This module is reserved for organization-level pricing strategies. HelmLogic Administrators manage global master data via the Data Warehouse.</p>
                     </CardContent>
                 </Card>
             </div>
