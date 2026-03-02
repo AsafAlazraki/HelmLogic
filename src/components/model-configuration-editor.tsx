@@ -1,21 +1,22 @@
 'use client';
 
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Building } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
 import { JeanneauModelEditor, jeanneauModelSchema } from '@/components/jeanneau-model-editor';
@@ -200,8 +201,8 @@ export function ModelConfigurationEditor({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Ant-revert guard: Prevents the form from resetting to stale data from 
-    // the stream immediately after a successful save.
+    // Stability guard to prevent Firestore listeners from resetting the form
+    // immediately after a save (prevents reverting while indexing).
     const isRecentlySaved = useRef(false);
     const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -215,7 +216,6 @@ export function ModelConfigurationEditor({
     
     const { reset, control, formState: { isDirty } } = form;
 
-    // Synchronize form with server data while respecting local unsaved changes and recent saves
     useEffect(() => {
         if (model && !isSubmitting && !isDirty && !isRecentlySaved.current) {
             const currentDefaults = getSafeDefaultValues(model, vendor?.slug);
@@ -227,7 +227,7 @@ export function ModelConfigurationEditor({
         const canEdit = isAdmin || permissions.can_edit_boat_data;
 
         if (!canEdit) {
-            toast({ variant: "destructive", title: "Access Denied", description: "You do not have permission to edit boat data." });
+            toast({ variant: "destructive", title: "Access Denied", description: "You do not have permission to edit configuration." });
             return;
         }
 
@@ -235,48 +235,53 @@ export function ModelConfigurationEditor({
 
         try {
             const sanitizedValues = sanitizeDataForFirestore(values);
-            
-            // Should we save to master data warehouse or build a local quote?
-            // Admins save to master if in Warehouse OR if in a Module but in "Master Data" context.
             const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
-            if (shouldSaveToMaster) {
-                const modelDocRef = doc(firestore, docPath);
-                
-                // Flag that we are saving to block resets from old stream data
-                isRecentlySaved.current = true;
-                if (saveTimer.current) clearTimeout(saveTimer.current);
+            // Stability Flag: Block resets for 2 seconds
+            isRecentlySaved.current = true;
+            if (saveTimer.current) clearTimeout(saveTimer.current);
 
+            if (shouldSaveToMaster) {
+                // Case 1: Updating Global Data Warehouse
+                const modelDocRef = doc(firestore, docPath);
                 await setDoc(modelDocRef, { 
                     ...sanitizedValues, 
                     lastMasterUpdate: serverTimestamp() 
                 }, { merge: true });
                 
-                toast({ title: "Master Configuration Updated", description: "Changes persisted to Data Warehouse." });
-                
-                // Reset form to clear dirty state
-                reset(values);
+                toast({ title: "Master Configuration Updated", description: "Changes persisted to global catalog." });
+            } else if (organisationId) {
+                // Case 2: Updating Organisation Overrides
+                // This is the "Catalog Version" for this specific dealer or sub-dealer
+                const overrideRef = doc(firestore, `organisations/${organisationId}/modelOverrides/${model.id}`);
+                await setDoc(overrideRef, {
+                    ...sanitizedValues,
+                    overrideAt: serverTimestamp(),
+                    overriddenBy: user?.uid
+                }, { merge: true });
 
-                // Allow stream updates again after a 2 second stability window
-                saveTimer.current = setTimeout(() => {
-                    isRecentlySaved.current = false;
-                }, 2000);
-
+                toast({ title: "Organisation Catalog Updated", description: "Changes saved to your organisation version." });
             } else {
-                if (!organisationId || !user) throw new Error("Missing context for organization save");
-                const quotesColRef = collection(firestore, `organisations/${organisationId}/quotes`);
+                // Fallback: Create Quote
+                if (!user) throw new Error("Missing auth context");
+                const quotesColRef = collection(firestore, `users/${user.uid}/quotes`);
                 await addDoc(quotesColRef, {
-                    quoteNumber: `CONFIG-${Date.now()}`,
-                    status: 'Draft',
-                    createdById: user.uid,
-                    createdAt: new Date().toISOString(),
-                    organisationId: organisationId,
-                    modelConfiguration: sanitizedValues,
-                    customerName: 'Local Configuration',
-                    pricingSummary: {},
+                    modelId: model.id,
+                    configuration: sanitizedValues,
+                    createdAt: serverTimestamp(),
+                    status: 'Draft'
                 });
-                toast({ title: "Local Configuration Saved", description: "This setup is now available in your Quotes tab." });
+                toast({ title: "Local Build Saved", description: "Quote draft created successfully." });
             }
+            
+            // Sync local form state
+            reset(values);
+
+            // Stability Window
+            saveTimer.current = setTimeout(() => {
+                isRecentlySaved.current = false;
+            }, 2000);
+
         } catch (e: any) {
             console.error("Save failed:", e);
             toast({ variant: "destructive", title: "Error", description: e.message || "Could not save changes." });
@@ -317,32 +322,34 @@ export function ModelConfigurationEditor({
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
                 <div className="space-y-6">
-                    <Card className="border-primary/20 bg-primary/5 rounded-xl">
+                    <Card className="border-primary/20 bg-primary/5 rounded-xl shadow-inner">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 bg-primary text-primary-foreground rounded-md flex items-center justify-center shadow-sm">
+                                    <div className="h-10 w-10 bg-primary text-primary-foreground rounded-md flex items-center justify-center shadow-md">
                                         <Wrench className="h-6 w-6" />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <h2 className="text-xl font-bold">{model.name}</h2>
-                                            {shouldSaveToMaster && <Badge className="bg-primary/10 text-primary border-primary/20 uppercase text-[9px] font-black tracking-widest h-5">Master Editor</Badge>}
+                                            {shouldSaveToMaster ? (
+                                                <Badge className="bg-primary/10 text-primary border-primary/20 uppercase text-[9px] font-black tracking-widest h-5">Master Editor</Badge>
+                                            ) : organisationId && (
+                                                <Badge className="bg-accent/10 text-accent border-accent/20 uppercase text-[9px] font-black tracking-widest h-5 flex items-center gap-1">
+                                                    <Building className="h-2 w-2" />
+                                                    Organisation Version
+                                                </Badge>
+                                            )}
                                         </div>
                                         {breadcrumbs}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    {isModuleView && (permissions.can_create_quotes || isAdmin) && (
-                                        <Button type="button" variant="outline" className="font-bold border-2">
-                                            Create Quote
-                                        </Button>
-                                    )}
                                     {canEdit && (
-                                        <Button type="submit" disabled={isSubmitting} className="font-black uppercase tracking-widest shadow-lg">
+                                        <Button type="submit" disabled={isSubmitting} className="font-black uppercase tracking-widest shadow-lg min-w-[160px]">
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             <Save className="mr-2 h-4 w-4" />
-                                            {shouldSaveToMaster ? 'Update Master' : 'Save Config'}
+                                            {shouldSaveToMaster ? 'Update Master' : 'Update Catalog'}
                                         </Button>
                                     )}
                                 </div>
@@ -394,7 +401,6 @@ export function ModelConfigurationEditor({
                                                                 {...field} 
                                                                 placeholder="Enter model name..." 
                                                                 className="h-10 font-bold border-2 focus-visible:ring-primary/20 bg-muted/10" 
-                                                                disabled={!shouldSaveToMaster}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />

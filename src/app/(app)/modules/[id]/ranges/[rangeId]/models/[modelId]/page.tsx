@@ -42,7 +42,12 @@ export default function DirectModelDetailsPage() {
   const rangeSlugOrId = params?.rangeId as string | undefined;
   const modelSlugOrId = params?.modelId as string | undefined;
 
-  // 1. Fetch Vendor
+  // 1. Resolve User Context
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, loading: profileLoading } = useDoc<any>(userProfileRef);
+  const organisationId = userProfile?.organisationId;
+
+  // 2. Fetch Vendor
   const vendorQuery = useMemoFirebase(() => {
     if (!vendorSlugOrId) return null;
     return query(collection(firestore, 'data-warehouse'), where('slug', '==', vendorSlugOrId));
@@ -52,7 +57,7 @@ export default function DirectModelDetailsPage() {
   const { data: vendorById } = useDoc<Vendor>(vendorByIdRef);
   const vendor = useMemo(() => vendorsBySlug?.[0] || vendorById, [vendorsBySlug, vendorById]);
   
-  // 2. Fetch Range
+  // 3. Fetch Range
   const rangeQuery = useMemoFirebase(() => {
     if (!vendor?.id || !rangeSlugOrId) return null;
     return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), where('slug', '==', rangeSlugOrId));
@@ -62,7 +67,7 @@ export default function DirectModelDetailsPage() {
   const { data: rangeById } = useDoc<Range>(rangeByIdRef);
   const range = useMemo(() => rangesBySlug?.[0] || rangeById, [rangesBySlug, rangeById]);
 
-  // 3. Robust Model Resolver
+  // 4. Resolve Model ID
   const modelByIdRef = useMemoFirebase(() => 
     vendor?.id && range?.id && modelSlugOrId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', range.id, 'models', modelSlugOrId) : null,
   [firestore, vendor, range, modelSlugOrId]);
@@ -75,12 +80,28 @@ export default function DirectModelDetailsPage() {
   const { data: modelsBySlug } = useCollection<Model>(modelQueryBySlug);
 
   const resolvedModelId = useMemo(() => modelById?.id || modelsBySlug?.[0]?.id, [modelById, modelsBySlug]);
-  const finalModelRef = useMemoFirebase(() => 
-    vendor?.id && range?.id && resolvedModelId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', range.id, 'models', resolvedModelId) : null,
-  [firestore, vendor?.id, range?.id, resolvedModelId]);
-  const { data: model, isLoading: modelLoading } = useDoc<Model>(finalModelRef);
 
-  const loading = !vendor || !range || modelLoading;
+  // 5. Real-time Master Data Listener
+  const masterModelRef = useMemoFirebase(() => 
+    vendor?.id && range?.id && resolvedModelId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', range.id, 'models', resolvedModelId) : null,
+  [firestore, vendor, range, resolvedModelId]);
+  const { data: masterModel, isLoading: masterLoading } = useDoc<Model>(masterModelRef);
+
+  // 6. Real-time Organisation Override Listener
+  const overrideRef = useMemoFirebase(() => 
+    organisationId && resolvedModelId ? doc(firestore, 'organisations', organisationId, 'modelOverrides', resolvedModelId) : null,
+  [firestore, organisationId, resolvedModelId]);
+  const { data: overrideData, isLoading: overrideLoading } = useDoc<any>(overrideRef);
+
+  // 7. Effective Data Merge
+  const effectiveModel = useMemo(() => {
+    if (!masterModel) return null;
+    if (!overrideData) return masterModel;
+    // Merge Master + Override (Organisation changes take precedence)
+    return { ...masterModel, ...overrideData };
+  }, [masterModel, overrideData]);
+
+  const loading = !vendor || !range || masterLoading || overrideLoading || profileLoading;
 
   if (loading) {
       return (
@@ -90,7 +111,7 @@ export default function DirectModelDetailsPage() {
       );
   }
 
-  if (!vendor || !range || !model) {
+  if (!vendor || !range || !effectiveModel) {
       return (
           <Card className="max-w-2xl mx-auto mt-12">
               <CardHeader><CardTitle>Model Not Found</CardTitle></CardHeader>
@@ -102,17 +123,15 @@ export default function DirectModelDetailsPage() {
   return (
     <div className="space-y-4">
         <ModelConfigurationEditor 
-            model={model} 
-            docPath={`data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`} 
+            model={effectiveModel} 
+            docPath={`data-warehouse/${vendor.id}/ranges/${range.id}/models/${effectiveModel.id}`} 
             vendor={vendor} 
-            module={{ id: 'master', name: 'Data Warehouse' }}
+            module={{ id: 'direct-access', name: 'Product Catalog' }}
             user={user}
-            isAdmin={true}
-            isMasterContext={true}
+            isAdmin={userProfile?.appRole === 'HelmLogic Admin'}
+            organisationId={organisationId}
             breadcrumbs={
                 <div className="flex items-center text-sm text-muted-foreground">
-                    <span>Data Warehouse</span>
-                    <ChevronRight className="h-4 w-4 mx-1" />
                     <span>{vendor.name}</span>
                     <ChevronRight className="h-4 w-4 mx-1" />
                     <span className="font-medium text-foreground">{range.name}</span>

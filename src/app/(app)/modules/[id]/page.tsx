@@ -482,6 +482,20 @@ export default function ModuleDetailsPage() {
 
     const isViewingOrg = !!dashboardOrg;
 
+    // Fetch Overrides for the currently selected model in this organization context
+    const overrideRef = useMemoFirebase(() => 
+        dashboardOrg?.id && selectedModel?.id 
+            ? doc(firestore, 'organisations', dashboardOrg.id, 'modelOverrides', selectedModel.id) 
+            : null,
+    [firestore, dashboardOrg?.id, selectedModel?.id]);
+    const { data: modelOverride } = useDoc<any>(overrideRef);
+
+    const mergedModel = useMemo(() => {
+        if (!selectedModel) return null;
+        if (!modelOverride) return selectedModel;
+        return { ...selectedModel, ...modelOverride };
+    }, [selectedModel, modelOverride]);
+
     const parentOrg = useMemo(() => 
         dashboardOrg?.parentOrganisationId ? allOrganisations?.find(o => o.id === dashboardOrg.parentOrganisationId) : null,
     [dashboardOrg, allOrganisations]);
@@ -746,7 +760,6 @@ export default function ModuleDetailsPage() {
     
     const breadcrumbParts = [
         isAdmin ? { href: "/admin", label: "Admin" } : { href: "/dashboard", label: "Dashboard" },
-        ...(isAdmin ? [{ href: "/modules", label: "Modules" }] : []),
         { href: `/modules/${slugOrId}`, label: moduleData.name },
     ];
 
@@ -933,7 +946,7 @@ export default function ModuleDetailsPage() {
                                     </CardTitle>
                                     {isImpersonating && <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20"><Eye className="h-4 w-4 mr-2" /> PREVIEWING AS {currentContextLabel.toUpperCase()}</div>}
                                 </div>
-                                <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} pendingMotor={pendingMotor} view={view} onBreadcrumbClick={handleBreadcrumbClick} />
+                                <ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={mergedModel} pendingMotor={pendingMotor} view={view} onBreadcrumbClick={handleBreadcrumbClick} />
                             </CardHeader>
                             <CardContent className="flex-1 min-h-0 overflow-y-auto pt-6">
                                 {isBoatBrand && mainVendor ? (
@@ -953,13 +966,13 @@ export default function ModuleDetailsPage() {
                         </Card>
                    ) : (
                         <div className="h-full overflow-y-auto space-y-4">
-                            {view === 'bmt' && selectedModel && selectedRange && mainVendor && (
+                            {view === 'bmt' && mergedModel && selectedRange && mainVendor && (
                                 <ModelConfigurationEditor 
-                                    model={selectedModel} 
-                                    docPath={`data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`} 
+                                    model={mergedModel} 
+                                    docPath={`data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${mergedModel.id}`} 
                                     vendor={mainVendor} 
                                     module={moduleData} 
-                                    breadcrumbs={<ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} pendingMotor={pendingMotor} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
+                                    breadcrumbs={<ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={mergedModel} pendingMotor={pendingMotor} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
                                     user={user}
                                     isAdmin={isAdmin}
                                     isMasterContext={isMasterContext}
@@ -1067,7 +1080,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all", hasAccess ? "border-primary/50 shadow-sm" : "opacity-70 grayscale")}>
                                                         <div className="p-4 flex flex-col gap-4">
@@ -1168,11 +1181,11 @@ export default function ModuleDetailsPage() {
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-1">
                                 <DialogTitle className="text-3xl font-black uppercase tracking-tight">
-                                    {selectedModel?.name || pendingMotor?.['Model Name'] || pendingMotor?.name}
+                                    {mergedModel?.name || pendingMotor?.['Model Name'] || pendingMotor?.name}
                                 </DialogTitle>
-                                {(selectedModel?.modelCode || pendingMotor?.['Part Number']) && (
+                                {(mergedModel?.modelCode || pendingMotor?.['Part Number']) && (
                                     <span className="font-mono text-xs text-primary font-bold uppercase bg-primary/10 px-2 py-1 rounded w-fit">
-                                        {selectedModel?.modelCode || pendingMotor?.['Part Number']}
+                                        {mergedModel?.modelCode || pendingMotor?.['Part Number']}
                                     </span>
                                 )}
                             </div>
