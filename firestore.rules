@@ -65,6 +65,14 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isAdmin();
       }
+      match /masterPriceList/{rowId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+      match /bulkMasterPriceList/{rowId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
       match /ranges/{rangeId} {
         allow read: if true;
         allow write: if isAdmin();
