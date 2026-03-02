@@ -24,7 +24,8 @@ import {
     Check,
     Waves,
     Star,
-    Maximize2
+    Maximize2,
+    Info
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -253,7 +254,10 @@ export function HighfieldQuoteFlow({
         let total = activeVariant?.sellPriceExclGst || 0;
         selectedOptionIds.forEach(id => {
             const opt = model.optionalFeatures?.find((f: any) => f.id === id);
-            if (opt) total += (opt.sellPriceExclGst || 0);
+            // Standard components are included in base price
+            if (opt && !opt.isStandard) {
+                total += (opt.sellPriceExclGst || 0);
+            }
         });
         if (selectedMotor) {
             total += (selectedMotor.sellPriceExclGst || 0);
@@ -391,6 +395,7 @@ export function HighfieldQuoteFlow({
                         ))}
                     </div>
                     <button 
+                        type="button"
                         className="font-black text-destructive hover:text-destructive/80 transition-all uppercase tracking-[0.15em] text-[10px] h-8 flex items-center justify-center px-5 shrink-0 border-2 border-destructive/10 rounded-full hover:bg-destructive/5 active:scale-95" 
                         onClick={() => window.history.back()}
                     >
@@ -434,6 +439,7 @@ export function HighfieldQuoteFlow({
                                         
                                         {/* Standard Enlarge Trigger */}
                                         <Button 
+                                            type="button"
                                             variant="secondary" 
                                             size="icon" 
                                             className="absolute top-6 right-6 h-12 w-12 rounded-full shadow-xl bg-white/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all z-40 hover:bg-primary hover:text-white"
@@ -589,6 +595,7 @@ export function HighfieldQuoteFlow({
                                             {availableMaterials.map((mat) => (
                                                 <button
                                                     key={mat}
+                                                    type="button"
                                                     onClick={() => handleMaterialSelect(mat)}
                                                     className={cn(
                                                         "group relative flex flex-col items-start p-8 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[200px] text-left",
@@ -617,32 +624,53 @@ export function HighfieldQuoteFlow({
                                     </div>
 
                                     {selectedMaterial && (
-                                        <div ref={colorsSectionRef} className="space-y-5 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">2. Available Colors</span>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {availableColors.map((color) => (
-                                                    <button
-                                                        key={color.id}
-                                                        onClick={() => setSelectedColor(color.id)}
-                                                        className={cn(
-                                                            "group flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all duration-300 text-left bg-white",
-                                                            selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-slate-100 hover:border-primary/20"
-                                                        )}
-                                                    >
-                                                        <div className="relative aspect-video w-full border-b bg-white">
-                                                            {color.imageUrl ? (
-                                                                <Image src={color.imageUrl} alt={color.name} fill className="object-contain p-3" unoptimized />
-                                                            ) : (
-                                                                <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-8 w-8"/></div>
+                                        <div ref={colorsSectionRef} className="space-y-10 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                                            <div className="space-y-5">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">2. Available Colors</span>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {availableColors.map((color) => (
+                                                        <button
+                                                            key={color.id}
+                                                            type="button"
+                                                            onClick={() => setSelectedColor(color.id)}
+                                                            className={cn(
+                                                                "group flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all duration-300 text-left bg-white",
+                                                                selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-slate-100 hover:border-primary/20"
                                                             )}
-                                                        </div>
-                                                        <div className={cn("p-4", selectedColor === color.id ? "bg-primary text-white" : "bg-white")}>
-                                                            <p className="text-[11px] font-black uppercase tracking-tight truncate">{color.name}</p>
-                                                            <p className={cn("text-[9px] font-bold uppercase", selectedColor === color.id ? "text-white/60" : "text-muted-foreground")}>{color.code}</p>
-                                                        </div>
-                                                    </button>
-                                                ))}
+                                                        >
+                                                            <div className="relative aspect-video w-full border-b bg-white">
+                                                                {color.imageUrl ? (
+                                                                    <Image src={color.imageUrl} alt={color.name} fill className="object-contain p-3" unoptimized />
+                                                                ) : (
+                                                                    <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-8 w-8"/></div>
+                                                                )}
+                                                            </div>
+                                                            <div className={cn("p-4", selectedColor === color.id ? "bg-primary text-white" : "bg-white")}>
+                                                                <p className="text-[11px] font-black uppercase tracking-tight truncate">{color.name}</p>
+                                                                <p className={cn("text-[9px] font-bold uppercase", selectedColor === color.id ? "text-white/60" : "text-muted-foreground")}>{color.code}</p>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
+
+                                            {/* Standard Inclusions Panel */}
+                                            {model.standardFeatures && model.standardFeatures.length > 0 && (
+                                                <div className="space-y-5 pt-6 border-t border-slate-200">
+                                                    <div className="flex items-center gap-2">
+                                                        <Info className="h-3.5 w-3.5 text-primary" />
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Standard Inclusions</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-2">
+                                                        {model.standardFeatures.map((feat: string, i: number) => (
+                                                            <div key={i} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-primary/20 shrink-0" />
+                                                                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">{feat}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -686,9 +714,13 @@ export function HighfieldQuoteFlow({
                                                             </div>
                                                             <div className="flex flex-col items-end gap-1">
                                                                 <p className={cn("text-sm font-black shrink-0", isSelected ? "text-primary" : "text-foreground")}>
-                                                                    +${(opt.sellPriceExclGst || 0).toLocaleString()}
+                                                                    {isStandard ? (
+                                                                        <span className="text-primary tracking-widest text-[10px] font-black uppercase">INCLUDED</span>
+                                                                    ) : (
+                                                                        `+${(opt.sellPriceExclGst || 0).toLocaleString()}`
+                                                                    )}
                                                                 </p>
-                                                                {isStandard && <span className="text-[8px] font-black uppercase text-primary tracking-tighter">Standard Component</span>}
+                                                                {isStandard && <span className="text-[8px] font-black uppercase text-primary/60 tracking-tighter">Standard Inclusion</span>}
                                                             </div>
                                                         </button>
                                                     );
@@ -778,11 +810,12 @@ export function HighfieldQuoteFlow({
                     <div className="px-8 md:px-12 pb-12 pt-4 shrink-0 z-20">
                         <div className="flex gap-4">
                             {currentStep > 1 && (
-                                <Button variant="outline" size="lg" className="h-16 w-24 rounded-2xl border-2 hover:bg-white transition-all active:scale-[0.98]" onClick={prevStep}>
+                                <button type="button" className="h-16 w-24 rounded-2xl border-2 flex items-center justify-center bg-white hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm" onClick={prevStep}>
                                     <ChevronLeft className="h-6 w-6" />
-                                </Button>
+                                </button>
                             )}
                             <Button 
+                                type="button"
                                 size="lg" 
                                 className="flex-1 h-16 rounded-2xl font-black uppercase tracking-[0.1em] text-sm shadow-2xl shadow-primary/30 group transition-all active:scale-[0.98]"
                                 disabled={currentStep === 1 && !isStep1Complete}
@@ -861,7 +894,7 @@ export function HighfieldQuoteFlow({
                             {model.standardFeatures?.map((feat: string, i: number) => (
                                 <div key={i} className="flex items-start gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                     <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                                    <span className="text-sm font-semibold text-slate-700 leading-relaxed">{feat}</span>
+                                    <span className="text-sm font-semibold text-slate-700 leading-relaxed uppercase tracking-tight">{feat}</span>
                                 </div>
                             ))}
                         </div>
