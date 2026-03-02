@@ -30,7 +30,9 @@ import {
     Search,
     Filter,
     Settings2,
-    X
+    X,
+    Maximize2,
+    Minimize2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -103,6 +105,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const { data: strategy, loading: strategyLoading } = useDoc<PricingStrategy>(strategyRef);
 
     const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
+    const [isFullScreen, setIsFullScreen] = useState(false);
     const [newColName, setNewColName] = useState('');
     const [newColType, setNewColType] = useState<CustomColumn['type']>('text');
     const [searchTerm, setSearchTerm] = useState('');
@@ -196,6 +199,75 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const columns = strategy?.columns || [];
 
+    const PricingTable = () => (
+        <div className="min-w-[1200px]">
+            <Table>
+                <TableHeader className="bg-muted/50 sticky top-0 z-20">
+                    <TableRow className="hover:bg-transparent border-b-2">
+                        <TableHead className="w-[350px] py-4 px-6 border-r bg-muted/20">Item Description & SKU</TableHead>
+                        <TableHead className="w-[120px] text-center border-r">Vendor ID</TableHead>
+                        <TableHead className="w-[120px] text-right border-r">Base Cost</TableHead>
+                        <TableHead className="w-[120px] text-right border-r">Master Sell</TableHead>
+                        {columns.map(col => (
+                            <TableHead key={col.id} className="min-w-[160px] bg-primary/5 text-center px-4 group/header border-r last:border-r-0">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex flex-col items-center flex-1">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">{col.name}</span>
+                                        <Badge variant="ghost" className="h-4 text-[8px] opacity-40 font-black uppercase p-0">{col.type}</Badge>
+                                    </div>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
+                                        onClick={() => handleDeleteColumn(col.id)}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredRanges.map(range => (
+                        <RangeSection 
+                            key={range.id} 
+                            range={range} 
+                            models={allModels.filter(m => m.rangeId === range.id)} 
+                            variants={allVariants} 
+                            isExpanded={expandedRanges.includes(range.id)}
+                            onToggle={() => toggleRange(range.id)}
+                            columns={columns}
+                            strategy={strategy}
+                            onUpdateValue={handleUpdateValue}
+                            vendorId={vendor.id}
+                        />
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    );
+
+    const StrategyControls = () => (
+        <div className="flex items-center gap-4">
+            <div className="space-y-1">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 px-1">Base Currency</Label>
+                <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
+                    <SelectTrigger className="w-[180px] h-9 font-bold bg-muted/30">
+                        <Coins className="h-3.5 w-3.5 mr-2 text-primary" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.label}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <Button onClick={() => setIsAddColumnOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-md mt-4">
+                <Plus className="h-4 w-4 mr-1.5" /> Add Column
+            </Button>
+        </div>
+    );
+
     return (
         <div className="flex flex-col h-full overflow-hidden">
             {/* Header Toolbar */}
@@ -215,23 +287,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="space-y-1">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 px-1">Base Currency</Label>
-                            <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
-                                <SelectTrigger className="w-[180px] h-9 font-bold bg-muted/30">
-                                    <Coins className="h-3.5 w-3.5 mr-2 text-primary" />
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.label}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <Button onClick={() => setIsAddColumnOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-md mt-4">
-                            <Plus className="h-4 w-4 mr-1.5" /> Add Column
-                        </Button>
-                    </div>
+                    <Button 
+                        variant="outline"
+                        onClick={() => setIsFullScreen(true)}
+                        className="h-9 font-black uppercase tracking-widest text-[10px] shadow-sm flex items-center gap-2 border-2 hover:bg-primary hover:text-primary-foreground transition-all"
+                    >
+                        <Maximize2 className="h-4 w-4" />
+                        Expand Focus Mode
+                    </Button>
                 </div>
 
                 <div className="relative mt-6">
@@ -245,56 +308,59 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </div>
             </CardHeader>
 
-            {/* Pricing Matrix */}
+            {/* Main Pricing Matrix (Standard View) */}
             <ScrollArea className="flex-1">
-                <div className="min-w-[1200px]">
-                    <Table>
-                        <TableHeader className="bg-muted/50 sticky top-0 z-20">
-                            <TableRow className="hover:bg-transparent border-b-2">
-                                <TableHead className="w-[350px] py-4 px-6 border-r bg-muted/20">Item Description & SKU</TableHead>
-                                <TableHead className="w-[120px] text-center border-r">Vendor ID</TableHead>
-                                <TableHead className="w-[120px] text-right border-r">Base Cost</TableHead>
-                                <TableHead className="w-[120px] text-right border-r">Master Sell</TableHead>
-                                {columns.map(col => (
-                                    <TableHead key={col.id} className="min-w-[160px] bg-primary/5 text-center px-4 group/header border-r last:border-r-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <div className="flex flex-col items-center flex-1">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">{col.name}</span>
-                                                <Badge variant="ghost" className="h-4 text-[8px] opacity-40 font-black uppercase p-0">{col.type}</Badge>
-                                            </div>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
-                                                onClick={() => handleDeleteColumn(col.id)}
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredRanges.map(range => (
-                                <RangeSection 
-                                    key={range.id} 
-                                    range={range} 
-                                    models={allModels.filter(m => m.rangeId === range.id)} 
-                                    variants={allVariants} 
-                                    isExpanded={expandedRanges.includes(range.id)}
-                                    onToggle={() => toggleRange(range.id)}
-                                    columns={columns}
-                                    strategy={strategy}
-                                    onUpdateValue={handleUpdateValue}
-                                    vendorId={vendor.id}
-                                />
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                <PricingTable />
             </ScrollArea>
 
+            {/* Focus Mode Dialog */}
+            <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
+                <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+                    <div className="flex flex-col h-full bg-background">
+                        <div className="p-6 border-b bg-muted/5 shrink-0">
+                            <div className="flex items-center justify-between gap-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-10 w-10 relative bg-white rounded-lg border-2 p-1.5 shadow-sm">
+                                        {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-5 w-5 m-auto text-muted-foreground" />}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} FOCUS MODE</h2>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-primary mt-1.5">Strategy Workspace</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-6">
+                                    <StrategyControls />
+                                    <Separator orientation="vertical" className="h-10" />
+                                    <DialogClose asChild>
+                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                                            <Minimize2 className="h-6 w-6" />
+                                        </Button>
+                                    </DialogClose>
+                                </div>
+                            </div>
+
+                            <div className="relative mt-6">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Filter in focus mode..." 
+                                    className="pl-10 h-10 font-bold border-2 bg-background"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-hidden">
+                            <ScrollArea className="h-full">
+                                <PricingTable />
+                            </ScrollArea>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Global Dialogs */}
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                     <DialogHeader>
@@ -503,3 +569,7 @@ function EditableCell({ value, type, onChange }: { value: any, type: string, onC
         </div>
     );
 }
+
+const Separator = ({ orientation = "horizontal", className }: { orientation?: "horizontal" | "vertical", className?: string }) => (
+    <div className={cn("bg-border shrink-0", orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]", className)} />
+);
