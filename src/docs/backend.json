@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -167,6 +166,20 @@
       },
       "required": ["code", "rate"]
     },
+    "FreightContainer": {
+      "title": "Freight Container",
+      "description": "Strategic freight container configuration for a specific vendor.",
+      "type": "object",
+      "properties": {
+        "size": { "type": "string", "description": "Size of the container (e.g., 40ft High Cube)" },
+        "description": { "type": "string", "description": "Optional description (e.g., Ship from China)" },
+        "cost": { "type": "number", "description": "Shipping cost for this container" },
+        "currency": { "type": "string", "description": "Currency of the shipping cost" },
+        "cubicMeters": { "type": "number", "description": "Cubic capacity of the container" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["size", "cost", "currency", "cubicMeters"]
+    },
     "Vendor": {
       "title": "Vendor",
       "description": "Represents a vendor for data connection.",
@@ -218,6 +231,7 @@
         "abn": {
           "type": "string",
           "description": "The Australian Business Number for the vendor."
+"
         },
         "logoUrl": {
           "type": "string",
@@ -768,6 +782,12 @@
         "$ref": "#/backend/entities/ExchangeRate"
       },
       "description": "Organisation-specific manual exchange rate settings."
+    },
+    "/organisations/{organisationId}/pricingStrategies/{vendorId}/freightContainers/{containerId}": {
+      "schema": {
+        "$ref": "#/backend/entities/FreightContainer"
+      },
+      "description": "Strategic freight container settings for a specific vendor."
     },
     "/data-warehouse/{vendorId}": {
       "schema": {

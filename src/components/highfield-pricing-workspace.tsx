@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDocs, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     Table, 
@@ -34,7 +34,10 @@ import {
     Minimize2,
     ChevronLeft,
     ArrowRightLeft,
-    ShieldCheck
+    ShieldCheck,
+    Truck,
+    CheckCircle2,
+    Box
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -91,6 +94,254 @@ interface Variant {
     material?: string;
 }
 
+interface FreightContainer {
+    id: string;
+    size: string;
+    description: string;
+    cost: number;
+    currency: string;
+    cubicMeters: number;
+}
+
+function FreightManager({ 
+    organisationId, 
+    vendorId, 
+    isOpen, 
+    onClose 
+}: { 
+    organisationId: string; 
+    vendorId: string; 
+    isOpen: boolean; 
+    onClose: () => void;
+}) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    
+    const freightQuery = useMemoFirebase(() => 
+        query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`), orderBy('size')),
+    [firestore, organisationId, vendorId]);
+    const { data: containers, loading } = useCollection<FreightContainer>(freightQuery);
+
+    const [isAdding, setIsAdding] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // New container form state
+    const [size, setSize] = useState('');
+    const [description, setDescription] = useState('');
+    const [cost, setCost] = useState('');
+    const [currency, setCurrency] = useState('USD');
+    const [cbm, setCbm] = useState('');
+
+    const handleAdd = async () => {
+        if (!size || !cost || !cbm) return;
+        setIsSaving(true);
+        try {
+            const colRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`);
+            await addDoc(colRef, {
+                size,
+                description,
+                cost: parseFloat(cost),
+                currency,
+                cubicMeters: parseFloat(cbm),
+                updatedAt: serverTimestamp()
+            });
+            toast({ title: "Container Added" });
+            setIsAdding(false);
+            setSize('');
+            setDescription('');
+            setCost('');
+            setCbm('');
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Save Failed" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id));
+            toast({ title: "Container Removed" });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Delete Failed" });
+        }
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+                <DialogHeader className="p-8 border-b bg-muted/5">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
+                                <Truck className="h-6 w-6" />
+                            </div>
+                            <div className="space-y-1">
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle>
+                                <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Shipping Containers & Logistics Cost Matrix</DialogDescription>
+                            </div>
+                        </div>
+                        <Button 
+                            onClick={() => setIsAdding(true)} 
+                            className="font-black uppercase tracking-widest text-[10px] h-9 px-6 rounded-xl shadow-lg transition-transform hover:scale-105"
+                        >
+                            <Plus className="h-4 w-4 mr-1.5" /> Add Container
+                        </Button>
+                    </div>
+                </DialogHeader>
+
+                <div className="flex-1 min-h-0 overflow-hidden">
+                    {loading ? (
+                        <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                    ) : (
+                        <ScrollArea className="h-full">
+                            <div className="p-8">
+                                {isAdding && (
+                                    <Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden animate-in slide-in-from-top-4 duration-300">
+                                        <CardHeader className="p-6 border-b bg-background">
+                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label>
+                                                    <Select value={size} onValueChange={setSize}>
+                                                        <SelectTrigger className="h-10 font-bold bg-background">
+                                                            <SelectValue placeholder="Select Size..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem>
+                                                            <SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem>
+                                                            <SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem>
+                                                            <SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Optional Description</Label>
+                                                    <Input 
+                                                        placeholder="e.g. Ship from China" 
+                                                        className="h-10 font-bold bg-background"
+                                                        value={description}
+                                                        onChange={e => setDescription(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label>
+                                                    <div className="relative">
+                                                        <Box className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                                        <Input 
+                                                            type="number" 
+                                                            placeholder="0.00" 
+                                                            className="pl-10 h-10 font-bold bg-background"
+                                                            value={cbm}
+                                                            onChange={e => setCbm(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
+                                                    <div className="relative">
+                                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                                        <Input 
+                                                            type="number" 
+                                                            placeholder="0.00" 
+                                                            className="pl-10 h-10 font-bold bg-background"
+                                                            value={cost}
+                                                            onChange={e => setCost(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cost Currency</Label>
+                                                    <Select value={currency} onValueChange={setCurrency}>
+                                                        <SelectTrigger className="h-10 font-bold bg-background">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.code}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3">
+                                            <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold">Cancel</Button>
+                                            <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm} className="font-black uppercase tracking-widest text-[10px] h-9 px-8 rounded-xl shadow-lg">
+                                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                                                Initialize Container
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                )}
+
+                                <div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm">
+                                    <Table>
+                                        <TableHeader className="bg-muted/50 border-b-2">
+                                            <TableRow className="hover:bg-transparent">
+                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead>
+                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Description</TableHead>
+                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead>
+                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead>
+                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead>
+                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right w-[100px]">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {containers && containers.length > 0 ? containers.map((c) => (
+                                                <TableRow key={c.id} className="hover:bg-primary/5 transition-colors group">
+                                                    <TableCell className="py-4 px-6 font-black text-sm uppercase tracking-tight">{c.size}</TableCell>
+                                                    <TableCell className="py-4 px-6 text-[11px] font-bold text-muted-foreground uppercase">{c.description || '-'}</TableCell>
+                                                    <TableCell className="py-4 px-6 text-right">
+                                                        <Badge variant="outline" className="h-6 font-mono font-black text-[10px] px-2.5 bg-muted/20 border-primary/10 text-primary">
+                                                            {c.cubicMeters} m³
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6 text-right font-black text-sm">
+                                                        {formatCurrency(c.cost, c.currency)}
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6 text-center">
+                                                        <Badge className="font-black text-[10px] h-6 px-2 uppercase">{c.currency}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="py-4 px-6 text-right">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10 rounded-lg"
+                                                            onClick={() => handleDelete(c.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={6} className="h-40 text-center text-muted-foreground italic">
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <Truck className="h-8 w-8 opacity-10" />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">No containers configured.</span>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    )}
+                </div>
+
+                <DialogFooter className="p-6 border-t bg-muted/5 shrink-0">
+                    <DialogClose asChild>
+                        <Button variant="outline" className="font-bold border-2 rounded-xl">Close Workspace</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -116,6 +367,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
+    const [isFreightManagerOpen, setIsFreightManagerOpen] = useState(false);
     const [newColName, setNewColName] = useState('');
     const [newColType, setNewColType] = useState<CustomColumn['type']>('text');
     const [searchTerm, setSearchTerm] = useState('');
@@ -317,6 +569,13 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const StrategyControls = () => (
         <div className="flex items-end gap-3">
+            <Button 
+                onClick={() => setIsFreightManagerOpen(true)} 
+                variant="outline" 
+                className="h-9 font-black uppercase tracking-widest text-[10px] shadow-sm rounded-xl border-2 hover:bg-primary hover:text-primary-foreground transition-all"
+            >
+                <Truck className="h-4 w-4 mr-1.5" /> Freight Management
+            </Button>
             <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Strategy Base</Label>
                 <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
@@ -493,6 +752,16 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Freight Manager Focus Section */}
+            {organisationId && (
+                <FreightManager 
+                    organisationId={organisationId} 
+                    vendorId={vendor.id} 
+                    isOpen={isFreightManagerOpen} 
+                    onClose={() => setIsFreightManagerOpen(false)} 
+                />
+            )}
         </div>
     );
 }
