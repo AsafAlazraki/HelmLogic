@@ -178,8 +178,10 @@ export function HighfieldQuoteFlow({
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) {
                 const targetTop = colorsSectionRef.current.offsetTop;
-                // Add a small buffer to ensure the label isn't tight against the fixed header
-                viewport.scrollTo({ top: targetTop - 20, behavior: 'smooth' });
+                // Preserve a 40px visual cushion from the fixed header
+                setTimeout(() => {
+                    viewport.scrollTo({ top: targetTop - 40, behavior: 'smooth' });
+                }, 150);
             }
         } else if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -507,7 +509,7 @@ export function HighfieldQuoteFlow({
 
                 {/* Configuration Panel (Right) */}
                 <div className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100 flex flex-col overflow-hidden relative">
-                    {/* Fixed Step Header (Fixed Text Container) */}
+                    {/* Fixed Step Header */}
                     <div className="p-8 md:p-12 pb-4 shrink-0 bg-slate-50/5 backdrop-blur-md z-20">
                         {currentStep === 1 && (
                             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
@@ -536,7 +538,6 @@ export function HighfieldQuoteFlow({
                     </div>
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
-                        {/* Persistent spacer to ensure title gap doesn't disappear when scrolling */}
                         <div className="px-8 md:px-12 pb-12 pt-2 flex flex-col">
                             
                             {currentStep === 1 && (
@@ -712,8 +713,8 @@ export function HighfieldQuoteFlow({
                         </div>
                     </ScrollArea>
 
-                    {/* Fixed Footer Buttons */}
-                    <div className="px-8 md:px-12 py-8 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent shrink-0 z-20 border-t border-slate-100/50">
+                    {/* Anchored Action Button - Aligned with Summary Card */}
+                    <div className="px-8 md:px-12 pb-12 pt-4 shrink-0 z-20">
                         <div className="flex gap-4">
                             {currentStep > 1 && (
                                 <Button variant="outline" size="lg" className="h-16 w-24 rounded-2xl border-2 hover:bg-white transition-all active:scale-[0.98]" onClick={prevStep}>
