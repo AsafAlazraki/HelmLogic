@@ -1,6 +1,7 @@
 'use client';
 
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
@@ -42,7 +43,13 @@ function JsonDataViewer({ data }: { data: any[] | null }) {
 }
 
 function DataSetViewer({ vendorId, collectionName }: { vendorId: string, collectionName: string }) {
-    const { data, loading } = useCollection(`data-warehouse/${vendorId}/${collectionName}`);
+    const firestore = useFirestore();
+    
+    const collectionRef = useMemoFirebase(() => {
+        return collection(firestore, 'data-warehouse', vendorId, collectionName);
+    }, [firestore, vendorId, collectionName]);
+
+    const { data, loading } = useCollection(collectionRef);
     
     if (loading) {
         return (
