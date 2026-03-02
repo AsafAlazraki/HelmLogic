@@ -40,7 +40,11 @@ import {
     Calculator,
     AlertCircle,
     Info,
-    Lock
+    Lock,
+    FolderPlus,
+    LayoutGrid,
+    ArrowUp,
+    ArrowDown
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -78,9 +82,17 @@ interface CustomColumn {
     };
 }
 
+interface PricingSection {
+    id: string;
+    name: string;
+    order: number;
+    isCollapsed?: boolean;
+    columns: CustomColumn[];
+}
+
 interface PricingStrategy {
     baseCurrency?: string;
-    columns?: CustomColumn[];
+    sections?: PricingSection[];
     itemValues?: Record<string, Record<string, any>>;
 }
 
@@ -426,10 +438,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const strategyRef = useMemoFirebase(() => doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}`), [firestore, organisationId, vendor.id]);
     const { data: strategy, loading: strategyLoading } = useDoc<PricingStrategy>(strategyRef);
 
+    const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
     const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
+    const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isFreightManagerOpen, setIsFreightManagerOpen] = useState(false);
     
+    // New Section State
+    const [newSectionName, setNewSectionName] = useState('');
+
     // New Metric State
     const [newColName, setNewColName] = useState('');
     const [newColType, setNewColType] = useState<CustomColumn['type']>('percent');
@@ -477,8 +494,28 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return rate?.rate || 1;
     }, [exchangeRates, vendor.currency]);
 
+    const allColumns = useMemo(() => {
+        if (!strategy?.sections) return [];
+        return strategy.sections.flatMap(s => s.columns);
+    }, [strategy?.sections]);
+
+    const handleAddSection = async () => {
+        if (!newSectionName.trim()) return;
+        const newSection: PricingSection = {
+            id: `sec-${Date.now()}`,
+            name: newSectionName,
+            order: (strategy?.sections?.length || 0),
+            columns: []
+        };
+        const currentSections = strategy?.sections || [];
+        await setDoc(strategyRef, { sections: [...currentSections, newSection] }, { merge: true });
+        setIsAddSectionOpen(false);
+        setNewSectionName('');
+        toast({ title: "Section Created" });
+    };
+
     const handleAddColumn = async () => {
-        if (!newColName.trim()) return;
+        if (!newColName.trim() || !targetSectionId) return;
         
         const newCol: CustomColumn = {
             id: `col-${Date.now()}`,
@@ -493,36 +530,78 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             } : undefined
         };
 
-        const currentCols = strategy?.columns || [];
-        await setDoc(strategyRef, { columns: [...currentCols, newCol] }, { merge: true });
+        const currentSections = [...(strategy?.sections || [])];
+        const sectionIdx = currentSections.findIndex(s => s.id === targetSectionId);
+        if (sectionIdx !== -1) {
+            currentSections[sectionIdx].columns.push(newCol);
+            await setDoc(strategyRef, { sections: currentSections }, { merge: true });
+        }
         
-        // Reset states
         setIsAddColumnOpen(false);
         setNewColName('');
         setIsCalculated(false);
         setIsMandatory(false);
-        toast({ title: "Metric Initialized", description: `"${newCol.name}" has been added to your strategy sheet.` });
+        toast({ title: "Metric Initialized" });
     };
 
-    const handleDeleteColumn = async (colId: string) => {
-        const currentCols = strategy?.columns || [];
-        await setDoc(strategyRef, { columns: currentCols.filter(c => c.id !== colId) }, { merge: true });
-        toast({ title: "Metric Removed" });
+    const handleMoveSection = async (secId: string, direction: 'up' | 'down') => {
+        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
+        const idx = sections.findIndex(s => s.id === secId);
+        if (idx === -1) return;
+
+        const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (newIdx < 0 || newIdx >= sections.length) return;
+
+        const temp = sections[idx].order;
+        sections[idx].order = sections[newIdx].order;
+        sections[newIdx].order = temp;
+
+        await setDoc(strategyRef, { sections }, { merge: true });
     };
 
-    const handleMoveColumn = async (colId: string, direction: 'left' | 'right') => {
-        const currentCols = [...(strategy?.columns || [])];
-        const index = currentCols.findIndex(c => c.id === colId);
-        if (index === -1) return;
+    const handleToggleSectionCollapse = async (secId: string) => {
+        const sections = [...(strategy?.sections || [])];
+        const idx = sections.findIndex(s => s.id === secId);
+        if (idx !== -1) {
+            sections[idx].isCollapsed = !sections[idx].isCollapsed;
+            await setDoc(strategyRef, { sections }, { merge: true });
+        }
+    };
 
-        const newIndex = direction === 'left' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= currentCols.length) return;
+    const handleDeleteSection = async (secId: string) => {
+        const sections = strategy?.sections?.filter(s => s.id !== secId) || [];
+        await setDoc(strategyRef, { sections }, { merge: true });
+        toast({ title: "Section Removed" });
+    };
 
-        const temp = currentCols[index];
-        currentCols[index] = currentCols[newIndex];
-        currentCols[newIndex] = temp;
+    const handleDeleteColumn = async (secId: string, colId: string) => {
+        const sections = [...(strategy?.sections || [])];
+        const idx = sections.findIndex(s => s.id === secId);
+        if (idx !== -1) {
+            sections[idx].columns = sections[idx].columns.filter(c => c.id !== colId);
+            await setDoc(strategyRef, { sections }, { merge: true });
+            toast({ title: "Metric Removed" });
+        }
+    };
 
-        await setDoc(strategyRef, { columns: currentCols }, { merge: true });
+    const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
+        const sections = [...(strategy?.sections || [])];
+        const secIdx = sections.findIndex(s => s.id === secId);
+        if (secIdx === -1) return;
+
+        const cols = [...sections[secIdx].columns];
+        const idx = cols.findIndex(c => c.id === colId);
+        if (idx === -1) return;
+
+        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
+        if (newIdx < 0 || newIdx >= cols.length) return;
+
+        const temp = cols[idx];
+        cols[idx] = cols[newIdx];
+        cols[newIdx] = temp;
+
+        sections[secIdx].columns = cols;
+        await setDoc(strategyRef, { sections }, { merge: true });
     };
 
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
@@ -565,59 +644,103 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         });
     }, [ranges, searchTerm, allModels]);
 
+    const sortedSections = useMemo(() => {
+        return [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
+    }, [strategy?.sections]);
+
     const PricingTable = () => (
-        <div className="min-w-[1400px]">
+        <div className="min-w-[1600px]">
             <Table>
                 <TableHeader className="bg-muted/50 sticky top-0 z-20">
-                    <TableRow className="hover:bg-transparent border-b-2">
-                        <TableHead className="w-[350px] py-4 px-6 border-r bg-muted/20">Item Description & SKU</TableHead>
-                        <TableHead className="w-[80px] text-center border-r">ISO</TableHead>
-                        <TableHead className="w-[120px] text-center border-r bg-primary/5">Exchange Rate</TableHead>
-                        <TableHead className="w-[120px] text-right border-r">Base Cost</TableHead>
-                        <TableHead className="w-[120px] text-right border-r">Master Sell</TableHead>
-                        {strategy?.columns?.map((col, idx) => (
-                            <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r last:border-r-0">
-                                <div className="flex items-center justify-between gap-1">
-                                    <Button 
-                                        type="button"
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === 0 && "invisible")} 
-                                        onClick={() => handleMoveColumn(col.id, 'left')}
-                                    >
-                                        <ChevronLeft className="h-3 w-3" />
-                                    </Button>
-                                    <div className="flex flex-col items-center flex-1 min-w-0">
-                                        <div className="flex items-center gap-1.5 justify-center w-full">
-                                            {col.isCalculated && <Calculator className="h-3 w-3 text-primary shrink-0" />}
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate text-center">{col.name}</span>
-                                            {col.isMandatory && <span className="text-destructive font-black">*</span>}
+                    {/* Section Row */}
+                    <TableRow className="hover:bg-transparent border-b">
+                        <TableHead className="w-[350px] border-r bg-muted/20" colSpan={1}></TableHead>
+                        <TableHead className="w-[80px] border-r" colSpan={1}></TableHead>
+                        <TableHead className="w-[120px] border-r bg-primary/5" colSpan={1}></TableHead>
+                        <TableHead className="w-[120px] border-r" colSpan={1}></TableHead>
+                        <TableHead className="w-[120px] border-r" colSpan={1}></TableHead>
+                        <TableHead className="w-[120px] border-r bg-slate-50" colSpan={1}></TableHead>
+                        {sortedSections.map(sec => (
+                            <TableHead 
+                                key={sec.id} 
+                                colSpan={sec.isCollapsed ? 1 : sec.columns.length || 1} 
+                                className={cn(
+                                    "border-r last:border-r-0 px-4 py-2 group/sec transition-colors",
+                                    sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-primary/5"
+                                )}
+                            >
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>
+                                            {sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+                                        </Button>
+                                        {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
+                                    </div>
+                                    {!sec.isCollapsed && (
+                                        <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'up')}><ArrowLeft className="h-3 w-3 rotate-90" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'down')}><ArrowRight className="h-3 w-3 rotate-90" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>
                                         </div>
-                                        <Badge variant="outline" className="h-4 text-[8px] opacity-40 font-black uppercase p-0 border-none">{col.type}</Badge>
-                                    </div>
-                                    <div className="flex items-center gap-0.5">
-                                        <Button 
-                                            type="button"
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === (strategy?.columns?.length || 0) - 1 && "invisible")} 
-                                            onClick={() => handleMoveColumn(col.id, 'right')}
-                                        >
-                                            <ChevronRight className="h-3 w-3" />
-                                        </Button>
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
-                                            onClick={() => handleDeleteColumn(col.id)}
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </div>
+                                    )}
                                 </div>
                             </TableHead>
                         ))}
+                    </TableRow>
+                    {/* Columns Row */}
+                    <TableRow className="hover:bg-transparent border-b-2">
+                        <TableHead className="py-4 px-6 border-r bg-muted/20 font-black uppercase text-[10px]">Description & SKU</TableHead>
+                        <TableHead className="text-center border-r font-black uppercase text-[10px]">ISO</TableHead>
+                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px]">Ex. Rate</TableHead>
+                        <TableHead className="text-right border-r font-black uppercase text-[10px]">Cost</TableHead>
+                        <TableHead className="text-right border-r font-black uppercase text-[10px]">Master Sell</TableHead>
+                        <TableHead className="text-right border-r bg-slate-50 font-black uppercase text-[10px]">Packed m³</TableHead>
+                        {sortedSections.map(sec => {
+                            if (sec.isCollapsed) return <TableHead key={`coll-${sec.id}`} className="w-[60px] border-r last:border-r-0 bg-muted/20" />;
+                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r last:border-r-0 bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
+                            
+                            return sec.columns.map((col, idx) => (
+                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r last:border-r-0">
+                                    <div className="flex items-center justify-between gap-1">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === 0 && "invisible")} 
+                                            onClick={() => handleMoveColumn(sec.id, col.id, 'left')}
+                                        >
+                                            <ChevronLeft className="h-3 w-3" />
+                                        </Button>
+                                        <div className="flex flex-col items-center flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 justify-center w-full">
+                                                {col.isCalculated && <Calculator className="h-3 w-3 text-primary shrink-0" />}
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate text-center">{col.name}</span>
+                                                {col.isMandatory && <span className="text-destructive font-black">*</span>}
+                                            </div>
+                                            <Badge variant="outline" className="h-4 text-[8px] opacity-40 font-black uppercase p-0 border-none">{col.type}</Badge>
+                                        </div>
+                                        <div className="flex items-center gap-0.5">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === sec.columns.length - 1 && "invisible")} 
+                                                onClick={() => handleMoveColumn(sec.id, col.id, 'right')}
+                                            >
+                                                <ChevronRight className="h-3 w-3" />
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
+                                                onClick={() => handleDeleteColumn(sec.id, col.id)}
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </TableHead>
+                            ));
+                        })}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -629,7 +752,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             variants={allVariants} 
                             isExpanded={expandedRanges.includes(range.id)}
                             onToggle={() => toggleRange(range.id)}
-                            columns={strategy?.columns || []}
+                            sections={sortedSections}
+                            allColumns={allColumns}
                             strategy={strategy}
                             onUpdateValue={handleUpdateValue}
                             vendor={vendor}
@@ -662,8 +786,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </SelectContent>
                 </Select>
             </div>
-            <Button onClick={() => setIsAddColumnOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl">
-                <Plus className="h-4 w-4 mr-1.5" /> Add Metric
+            <Button onClick={() => setIsAddSectionOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl" variant="outline">
+                <FolderPlus className="h-4 w-4 mr-1.5" /> Add Section
             </Button>
         </div>
     );
@@ -747,7 +871,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                         <div className="flex items-center gap-2 mt-1.5">
                                             <span className="text-[9px] font-black uppercase tracking-widest text-primary">Strategic Pricing Mode</span>
                                             <Badge variant="outline" className="h-4 text-[8px] font-black border-primary/20 text-primary uppercase">
-                                                Active Matrix: {strategy?.columns?.length || 0} Metrics
+                                                Active Matrix: {sortedSections.length} Sections
                                             </Badge>
                                         </div>
                                     </DialogTitle>
@@ -774,12 +898,35 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </DialogContent>
             </Dialog>
 
+            {/* Section Creation Dialog */}
+            <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle>
+                        <DialogDescription className="text-xs font-bold uppercase text-muted-foreground/60 tracking-widest">Organize your matrix into high-level groupings.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-6">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Section Name</Label>
+                        <Input 
+                            placeholder="e.g. Sub Dealers" 
+                            className="font-bold h-11 border-2 focus-visible:ring-primary/20 mt-2"
+                            value={newSectionName}
+                            onChange={(e) => setNewSectionName(e.target.value)}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddSectionOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAddSection} disabled={!newSectionName.trim()}>Initialize Section</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Metric Configuration Dialog */}
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
                 <DialogContent className="sm:max-w-xl rounded-2xl border-4 shadow-2xl overflow-hidden p-0">
                     <DialogHeader className="p-8 border-b bg-muted/5">
                         <DialogTitle className="text-xl font-black uppercase tracking-tight">Strategy Metric Configuration</DialogTitle>
-                        <DialogDescription className="text-xs font-bold uppercase text-muted-foreground/60 tracking-widest">Define a new strategic calculation or data point for your matrix.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold uppercase text-muted-foreground/60 tracking-widest">Define a new strategic calculation or data point for the section.</DialogDescription>
                     </DialogHeader>
                     
                     <div className="p-8 space-y-8 bg-background">
@@ -830,7 +977,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                 <SelectContent>
                                                     <SelectItem value="baseCost" className="font-bold">Base Cost</SelectItem>
                                                     <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
-                                                    {strategy?.columns?.filter(c => !c.isCalculated).map(c => (
+                                                    {allColumns?.filter(c => !c.isCalculated).map(c => (
                                                         <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -860,7 +1007,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                     <SelectContent>
                                                         <SelectItem value="baseCost" className="font-bold">Base Cost</SelectItem>
                                                         <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
-                                                        {strategy?.columns?.filter(c => c.id !== formulaLeft && !c.isCalculated).map(c => (
+                                                        {allColumns?.filter(c => c.id !== formulaLeft && !c.isCalculated).map(c => (
                                                             <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -875,7 +1022,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                         </div>
                                     </div>
                                     <p className="text-[9px] font-bold text-primary uppercase italic text-center tracking-tighter">
-                                        Logic: Result = {formulaLeft === 'baseCost' ? 'Base Cost' : formulaLeft === 'masterSell' ? 'Master Sell' : strategy?.columns?.find(c => c.id === formulaLeft)?.name} {formulaOp} {formulaRight || '?'}
+                                        Logic: Result = {formulaLeft === 'baseCost' ? 'Base Cost' : formulaLeft === 'masterSell' ? 'Master Sell' : allColumns?.find(c => c.id === formulaLeft)?.name} {formulaOp} {formulaRight || '?'}
                                     </p>
                                 </div>
                             )}
@@ -916,7 +1063,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 }
 
-function RangeSection({ range, models, variants, isExpanded, onToggle, columns, strategy, onUpdateValue, vendor, exchangeRate }: any) {
+function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, exchangeRate }: any) {
     return (
         <>
             <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
@@ -925,14 +1072,15 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, columns, 
                     <span>{range.name} Range</span>
                     <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                 </TableCell>
-                <TableCell colSpan={4 + columns.length} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">Click to audit series and specific configurations</TableCell>
+                <TableCell colSpan={5 + sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">Click to audit series and specific configurations</TableCell>
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
                     key={model.id} 
                     model={model} 
                     variants={variants[model.id] || []} 
-                    columns={columns}
+                    sections={sections}
+                    allColumns={allColumns}
                     strategy={strategy}
                     onUpdateValue={onUpdateValue}
                     vendor={vendor}
@@ -943,7 +1091,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, columns, 
     );
 }
 
-function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendor, exchangeRate }: any) {
+function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, exchangeRate }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
 
     return (
@@ -960,20 +1108,11 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendor,
                         </div>
                     </div>
                 </TableCell>
-                <TableCell colSpan={4 + columns.length} className="bg-muted/5" />
+                <TableCell colSpan={5 + sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="bg-muted/5" />
             </TableRow>
 
             {isLocalExpanded && (
                 <>
-                    <TableRow className="bg-white/50 border-l-4 border-l-primary/40">
-                        <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60" colSpan={5 + columns.length}>
-                            <div className="flex items-center gap-2">
-                                <Ship className="h-3.5 w-3.5" />
-                                <span>Boat Variant SKUs</span>
-                            </div>
-                        </TableCell>
-                    </TableRow>
-
                     {variants.map((v: any) => (
                         <PricingRow 
                             key={v.id} 
@@ -984,17 +1123,19 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendor,
                             sell={v.sellPriceExclGst} 
                             vendor={vendor}
                             exchangeRate={exchangeRate}
-                            columns={columns}
+                            sections={sections}
+                            allColumns={allColumns}
                             strategy={strategy}
                             onUpdateValue={onUpdateValue}
                             indent
+                            isBoatVariant
                         />
                     ))}
 
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="bg-white/50 border-l-4 border-l-primary/40">
-                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60" colSpan={5 + columns.length}>
+                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60" colSpan={6 + sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)}>
                                     <div className="flex items-center gap-2">
                                         <Wrench className="h-3.5 w-3.5" />
                                         <span>Factory Options</span>
@@ -1011,7 +1152,8 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendor,
                                     sell={f.sellPriceExclGst} 
                                     vendor={vendor}
                                     exchangeRate={exchangeRate}
-                                    columns={columns}
+                                    sections={sections}
+                                    allColumns={allColumns}
                                     strategy={strategy}
                                     onUpdateValue={onUpdateValue}
                                     indent
@@ -1026,7 +1168,7 @@ function ModelGroup({ model, variants, columns, strategy, onUpdateValue, vendor,
     );
 }
 
-function PricingRow({ id, name, sku, cost, sell, columns, strategy, onUpdateValue, indent, isOption, vendor, exchangeRate }: any) {
+function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, isBoatVariant, vendor, exchangeRate }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
 
     return (
@@ -1049,26 +1191,51 @@ function PricingRow({ id, name, sku, cost, sell, columns, strategy, onUpdateValu
             <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4">
                 {formatCurrency(sell, vendor.currency || 'AUD')}
             </TableCell>
-            {columns.map((col: any) => (
-                <TableCell key={col.id} className="p-0 border-r last:border-r-0 bg-primary/5 group-hover:bg-primary/10 transition-colors">
-                    {col.isCalculated ? (
-                        <CalculatedCell 
-                            col={col} 
-                            baseCost={cost} 
-                            masterSell={sell} 
-                            itemValues={itemValues} 
-                            allCols={columns} 
+            
+            {/* Packed m³ Column */}
+            <TableCell className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
+                {isBoatVariant ? (
+                    <div className="relative h-full w-full flex items-center">
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            className="h-10 w-full bg-transparent border-none text-[11px] font-black text-right pr-8 focus:ring-2 focus:ring-primary focus:bg-background transition-all outline-none"
+                            placeholder="0.00"
+                            value={itemValues['packed_m3'] || ''}
+                            onChange={(e) => onUpdateValue(id, 'packed_m3', e.target.value)}
                         />
-                    ) : (
-                        <EditableCell 
-                            id={id}
-                            col={col}
-                            value={itemValues[col.id] || ''} 
-                            onChange={(val) => onUpdateValue(id, col.id, val)}
-                        />
-                    )}
-                </TableCell>
-            ))}
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">m³</span>
+                    </div>
+                ) : (
+                    <div className="h-full w-full bg-slate-100/50" />
+                )}
+            </TableCell>
+
+            {sections.map((sec: any) => {
+                if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r last:border-r-0" />;
+                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-primary/5 border-r last:border-r-0" />;
+
+                return sec.columns.map((col: any) => (
+                    <TableCell key={col.id} className="p-0 border-r last:border-r-0 bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                        {col.isCalculated ? (
+                            <CalculatedCell 
+                                col={col} 
+                                baseCost={cost} 
+                                masterSell={sell} 
+                                itemValues={itemValues} 
+                                allCols={allColumns} 
+                            />
+                        ) : (
+                            <EditableCell 
+                                id={id}
+                                col={col}
+                                value={itemValues[col.id] || ''} 
+                                onChange={(val) => onUpdateValue(id, col.id, val)}
+                            />
+                        )}
+                    </TableCell>
+                ));
+            })}
         </TableRow>
     );
 }
