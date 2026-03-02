@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
@@ -9,7 +10,7 @@ import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import Link from 'next/image';
+import NextImage from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MotorConfigurationDetails } from '@/components/motor-configuration-details';
 import { errorEmitter } from '@/firebase/error-emitter';

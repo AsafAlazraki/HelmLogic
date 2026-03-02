@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils';
 import { SUPPORTED_CURRENCIES, formatCurrency } from '@/lib/currency-utils';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import NextImage from "next/image";
 
 interface CustomColumn {
     id: string;
@@ -202,7 +203,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm shrink-0">
                             {vendor.logoUrl ? (
-                                <Image src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized />
+                                <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized />
                             ) : (
                                 <Building className="h-6 w-6 m-auto mt-1 text-muted-foreground" />
                             )}

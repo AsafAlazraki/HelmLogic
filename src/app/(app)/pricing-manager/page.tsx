@@ -13,7 +13,7 @@ import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert } from "luc
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+import NextImage from "next/image";
 import { HighfieldPricingWorkspace } from "@/components/highfield-pricing-workspace";
 
 interface Vendor {
@@ -150,7 +150,7 @@ export default function PricingManagerPage() {
                                         selectedVendorId === vendor.id ? "bg-white border-white/20" : "bg-white border-muted shadow-sm"
                                     )}>
                                         {vendor.logoUrl ? (
-                                            <Image src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized />
+                                            <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized />
                                         ) : (
                                             <Building className="h-5 w-5 text-muted-foreground" />
                                         )}
@@ -192,7 +192,7 @@ export default function PricingManagerPage() {
                                     <div className="flex items-center gap-4">
                                         <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm shrink-0">
                                             {activeVendor.logoUrl ? (
-                                                <Image src={activeVendor.logoUrl} alt={activeVendor.name} fill className="object-contain p-1" unoptimized />
+                                                <NextImage src={activeVendor.logoUrl} alt={activeVendor.name} fill className="object-contain p-1" unoptimized />
                                             ) : (
                                                 <Building className="h-6 w-6 m-auto mt-1 text-muted-foreground" />
                                             )}
