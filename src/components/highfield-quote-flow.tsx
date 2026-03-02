@@ -485,12 +485,14 @@ export function HighfieldQuoteFlow({
                                 </div>
                             </div>
 
-                            {/* Refined Build Summary Hub (Fixed Structure) */}
-                            <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-10 rounded-[2.5rem] flex flex-col gap-2 shrink-0">
+                            {/* Refined Build Summary Hub (2-Row Layout) */}
+                            <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-8 md:p-10 rounded-[2.5rem] flex flex-col gap-3 shrink-0">
+                                {/* Row 1: Labels */}
                                 <div className="flex items-center justify-between px-1">
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Current Build</span>
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Total (Excl. Tax)</span>
                                 </div>
+                                {/* Row 2: Values */}
                                 <div className="flex items-center justify-between px-1">
                                     <div className="flex items-center gap-3 text-4xl tracking-tight min-w-0">
                                         {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
@@ -508,28 +510,28 @@ export function HighfieldQuoteFlow({
 
                 {/* Configuration Panel (Right) */}
                 <div className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100 flex flex-col overflow-hidden relative">
-                    {/* Fixed Step Header */}
-                    <div className="p-8 md:p-12 pb-6 shrink-0 bg-slate-50/5 backdrop-blur-md z-20">
+                    {/* Fixed Step Header (Fixed Text Container) */}
+                    <div className="p-8 md:p-12 pb-2 shrink-0 bg-slate-50/5 backdrop-blur-md z-20">
                         {currentStep === 1 && (
-                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <h2 className="text-4xl font-black uppercase tracking-tight leading-none">The Foundation</h2>
                                 <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select your hull material and tube color to initialize the build specifications.</p>
                             </div>
                         )}
                         {currentStep === 2 && (
-                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Factory Options</h2>
                                 <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Customize your Highfield with approved consoles, seating, and technical upgrades.</p>
                             </div>
                         )}
                         {currentStep === 3 && (
-                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Engine & Rigging</h2>
                                 <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select a compatible outboard and associated rigging kits.</p>
                             </div>
                         )}
                         {currentStep > 3 && (
-                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <h2 className="text-4xl font-black uppercase tracking-tight leading-none">{STEPS.find(s => s.id === currentStep)?.label}</h2>
                                 <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Complete your configuration with trailer and dealer options.</p>
                             </div>
@@ -537,7 +539,8 @@ export function HighfieldQuoteFlow({
                     </div>
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
-                        <div className="px-8 md:px-12 pb-12 flex flex-col">
+                        {/* Persistent spacer to ensure title gap doesn't disappear when scrolling */}
+                        <div className="px-8 md:px-12 pb-12 pt-6 flex flex-col">
                             
                             {currentStep === 1 && (
                                 <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
@@ -595,7 +598,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-12 animate-in slide-in-from-right-4 duration-500">
+                                <div className="space-y-12 animate-in slide-in-from-right-4 duration-500 pt-4">
                                     {Object.entries(groupedOptions).map(([category, options]: [string, any]) => (
                                         <div key={category} className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest text-foreground border-l-4 border-primary pl-3">{category}</h3>
@@ -639,7 +642,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500 pt-4">
                                     {motorsLoading ? (
                                         <div className="flex flex-col items-center justify-center py-24 gap-4">
                                             <Loader2 className="h-12 w-12 animate-spin text-primary" />
