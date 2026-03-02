@@ -212,12 +212,12 @@ function GstInputPair({ control, name, label, gstPercentage }: { control: any; n
 
     return (
         <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1">
                 {label}
             </Label>
             <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                    <Label className="text-[9px] font-bold text-muted-foreground/40 uppercase ml-0.5">Excl.</Label>
+                    <Label className="text-[8px] font-bold text-muted-foreground/40 uppercase ml-0.5 tracking-tighter">Excl.</Label>
                     <div className="relative">
                         <div className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-[10px] font-bold">$</div>
                         <FormControl>
@@ -225,7 +225,7 @@ function GstInputPair({ control, name, label, gstPercentage }: { control: any; n
                                 type="text"
                                 inputMode="decimal"
                                 placeholder="0.00" 
-                                className="h-9 pl-5 text-xs font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
+                                className="h-8 pl-5 text-[11px] font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
                                 value={exclInput} 
                                 onChange={handleExclChange}
                                 onBlur={handleBlur}
@@ -234,7 +234,7 @@ function GstInputPair({ control, name, label, gstPercentage }: { control: any; n
                     </div>
                 </div>
                 <div className="space-y-1">
-                    <Label className="text-[9px] font-bold text-muted-foreground/40 uppercase ml-0.5">Incl.</Label>
+                    <Label className="text-[8px] font-bold text-muted-foreground/40 uppercase ml-0.5 tracking-tighter">Incl.</Label>
                     <div className="relative">
                         <div className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 text-[10px] font-bold">$</div>
                         <FormControl>
@@ -242,7 +242,7 @@ function GstInputPair({ control, name, label, gstPercentage }: { control: any; n
                                 type="text" 
                                 inputMode="decimal"
                                 placeholder="0.00" 
-                                className="h-9 pl-5 text-xs font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
+                                className="h-8 pl-5 text-[11px] font-bold bg-background border-muted transition-all focus-visible:ring-primary/10 focus-visible:border-primary" 
                                 value={inclInput} 
                                 onChange={handleInclChange}
                                 onBlur={handleBlur}
@@ -251,7 +251,7 @@ function GstInputPair({ control, name, label, gstPercentage }: { control: any; n
                     </div>
                 </div>
             </div>
-             <FormMessage className="text-[9px] font-semibold">{fieldState.error && String(fieldState.error.message)}</FormMessage>
+             <FormMessage className="text-[8px] font-semibold">{fieldState.error && String(fieldState.error.message)}</FormMessage>
         </div>
     );
 }
@@ -315,7 +315,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -443,9 +443,9 @@ function OptionalFeatureItem({
                 </div>
             </div>
             <CollapsibleContent>
-                <div className="p-4 space-y-8">
-                    <div className="flex flex-col md:flex-row gap-6 items-start">
-                        <div className="w-full md:w-[140px] shrink-0">
+                <div className="p-4 space-y-6">
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                        <div className="w-24 sm:w-32 shrink-0">
                             <FormField
                                 control={control}
                                 name={`optionalFeatures.${index}.imageUrl`}
@@ -461,8 +461,8 @@ function OptionalFeatureItem({
                                             </>
                                         ) : (
                                             <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50 transition-colors">
-                                                <Upload className="w-5 h-5 text-muted-foreground/50 mb-1" />
-                                                <span className="text-[9px] text-muted-foreground/60 uppercase font-black tracking-tighter">Upload</span>
+                                                <Upload className="w-4 h-4 text-muted-foreground/50 mb-1" />
+                                                <span className="text-[8px] text-muted-foreground/60 uppercase font-black tracking-tighter">Upload</span>
                                                 <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (file && storage) {
@@ -480,41 +480,41 @@ function OptionalFeatureItem({
                             />
                         </div>
 
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex-1 grid grid-cols-2 gap-3">
                             <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( 
-                                <FormItem>
+                                <FormItem className="col-span-2 sm:col-span-1">
                                     <FormLabel className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">Name</FormLabel>
-                                    <FormControl><Input placeholder="Name" className="h-10 text-xs font-bold" {...field} /></FormControl>
+                                    <FormControl><Input placeholder="Name" className="h-9 text-[11px] font-bold" {...field} /></FormControl>
                                 </FormItem> 
                             )} />
                             <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( 
-                                <FormItem>
+                                <FormItem className="col-span-2 sm:col-span-1">
                                     <FormLabel className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">Option Code</FormLabel>
-                                    <FormControl><Input placeholder="CODE" className="h-10 text-xs font-mono font-bold uppercase" {...field} /></FormControl>
+                                    <FormControl><Input placeholder="CODE" className="h-9 text-[11px] font-mono font-bold uppercase" {...field} /></FormControl>
                                 </FormItem> 
                             )} />
                             <FormField control={control} name={`optionalFeatures.${index}.color`} render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="col-span-2 sm:col-span-1">
                                     <FormLabel className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">Optional Color</FormLabel>
-                                    <FormControl><Input placeholder="e.g. White / Grey" className="h-10 text-xs font-bold" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormControl><Input placeholder="e.g. White / Grey" className="h-9 text-[11px] font-bold" {...field} value={field.value ?? ''} /></FormControl>
                                 </FormItem>
                             )} />
                             <FormField
                                 control={control}
                                 name={`optionalFeatures.${index}.category`}
                                 render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70">Category Assignment</FormLabel>
+                                    <FormItem className="col-span-2 sm:col-span-1">
+                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70">Category</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value || 'none'}>
                                             <FormControl>
-                                                <SelectTrigger className="h-10 text-xs font-bold bg-muted/10">
-                                                    <SelectValue placeholder="Select Category..." />
+                                                <SelectTrigger className="h-9 text-[11px] font-bold bg-muted/10">
+                                                    <SelectValue placeholder="Select..." />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="none">None (No Category)</SelectItem>
+                                                <SelectItem value="none" className="text-[11px]">None</SelectItem>
                                                 {categories.map(cat => (
-                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                    <SelectItem key={cat} value={cat} className="text-[11px]">{cat}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -524,11 +524,11 @@ function OptionalFeatureItem({
                         </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {isConsoleOrSeat && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <div className="space-y-3">
-                                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Fits SKU (Compatibility)</FormLabel>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">SKU Compatibility</FormLabel>
                                     <FormField
                                         control={control}
                                         name={`optionalFeatures.${index}.applicableVariantIds`}
@@ -538,10 +538,10 @@ function OptionalFeatureItem({
                                                     type="button"
                                                     variant="outline" 
                                                     size="sm" 
-                                                    className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 text-muted-foreground hover:bg-muted/10 hover:text-primary transition-colors"
+                                                    className="w-full h-9 justify-start text-[9px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 text-muted-foreground hover:bg-muted/10 hover:text-primary transition-colors"
                                                     onClick={() => setIsCompDialogOpen(true)}
                                                 >
-                                                    {field.value?.length > 0 ? `${field.value.length} SKUs Selected` : 'Define Variant Compatibility...'}
+                                                    {field.value?.length > 0 ? `${field.value.length} SKUs Selected` : 'Define SKUs...'}
                                                 </Button>
                                                 <SkuCompatibilityDialog 
                                                     isOpen={isCompDialogOpen}
@@ -557,19 +557,21 @@ function OptionalFeatureItem({
                                 </div>
 
                                 {isConsole && (
-                                    <div className="space-y-3">
-                                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Associated Seat (Optional)</FormLabel>
+                                    <div className="space-y-2">
+                                        <FormLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Associated Seat</FormLabel>
                                         <FormField
                                             control={control}
                                             name={`optionalFeatures.${index}.associatedSeatId`}
                                             render={({ field }) => (
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                        <Button variant="outline" size="sm" className="w-full h-10 justify-start text-[10px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 text-muted-foreground hover:bg-muted/10 hover:text-primary transition-colors">
-                                                            {field.value ? (() => {
-                                                                const s = seatOptions.find((s: any) => s.id === field.value);
-                                                                return s ? `${s.name} ${s.code ? `(${s.code})` : ''} - ${s.color || 'No Color'}` : 'Seat Selected';
-                                                            })() : 'No Linked Seat'}
+                                                        <Button variant="outline" size="sm" className="w-full h-9 justify-start text-[9px] font-black uppercase tracking-widest bg-muted/5 border-dashed border-2 text-muted-foreground hover:bg-muted/10 hover:text-primary transition-colors">
+                                                            <span className="truncate">
+                                                                {field.value ? (() => {
+                                                                    const s = seatOptions.find((s: any) => s.id === field.value);
+                                                                    return s ? `${s.name} ${s.code ? `(${s.code})` : ''}` : 'Seat Selected';
+                                                                })() : 'No Linked Seat'}
+                                                            </span>
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-[300px] sm:w-[350px] p-0" align="start">
@@ -604,7 +606,7 @@ function OptionalFeatureItem({
                             </div>
                         )}
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 border-t border-dashed">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-dashed">
                             <GstInputPair control={control} name={`optionalFeatures.${index}.cost`} label="Factory Cost" gstPercentage={gstPercentage} />
                             <GstInputPair control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} label="Retail Sell" gstPercentage={gstPercentage} />
                         </div>
