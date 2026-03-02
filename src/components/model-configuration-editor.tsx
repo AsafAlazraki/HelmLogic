@@ -4,9 +4,9 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
@@ -182,6 +182,7 @@ export function ModelConfigurationEditor({
     user, 
     isAdmin, 
     organisationId,
+    isMasterContext = false,
     permissions = { can_access_module: true, can_create_quotes: true, can_edit_boat_data: true, can_view_subdealers: true }
 }: { 
     model: any, 
@@ -192,12 +193,18 @@ export function ModelConfigurationEditor({
     user: User | null, 
     isAdmin: boolean, 
     organisationId?: string,
+    isMasterContext?: boolean,
     permissions?: Permissions
 }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
+    // Ant-revert guard: Prevents the form from resetting to stale data from 
+    // the stream immediately after a successful save.
+    const isRecentlySaved = useRef(false);
+    const saveTimer = useRef<NodeJS.Timeout | null>(null);
+
     const isModuleView = module?.id !== 'master';
     const currentSchema = getVendorSchema(vendor?.slug);
 
@@ -208,9 +215,9 @@ export function ModelConfigurationEditor({
     
     const { reset, control, formState: { isDirty } } = form;
 
-    // Synchronize form with server data while respecting local unsaved changes
+    // Synchronize form with server data while respecting local unsaved changes and recent saves
     useEffect(() => {
-        if (model && !isSubmitting && !isDirty) {
+        if (model && !isSubmitting && !isDirty && !isRecentlySaved.current) {
             const currentDefaults = getSafeDefaultValues(model, vendor?.slug);
             reset(currentDefaults);
         }
@@ -228,14 +235,33 @@ export function ModelConfigurationEditor({
 
         try {
             const sanitizedValues = sanitizeDataForFirestore(values);
+            
+            // Should we save to master data warehouse or build a local quote?
+            // Admins save to master if in Warehouse OR if in a Module but in "Master Data" context.
+            const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
-            if (isAdmin) {
+            if (shouldSaveToMaster) {
                 const modelDocRef = doc(firestore, docPath);
-                // Perform direct write and wait for confirmation
-                await setDoc(modelDocRef, sanitizedValues, { merge: true });
-                toast({ title: "Master Configuration Updated" });
-                // Reset form state to current values to clear isDirty immediately
+                
+                // Flag that we are saving to block resets from old stream data
+                isRecentlySaved.current = true;
+                if (saveTimer.current) clearTimeout(saveTimer.current);
+
+                await setDoc(modelDocRef, { 
+                    ...sanitizedValues, 
+                    lastMasterUpdate: serverTimestamp() 
+                }, { merge: true });
+                
+                toast({ title: "Master Configuration Updated", description: "Changes persisted to Data Warehouse." });
+                
+                // Reset form to clear dirty state
                 reset(values);
+
+                // Allow stream updates again after a 2 second stability window
+                saveTimer.current = setTimeout(() => {
+                    isRecentlySaved.current = false;
+                }, 2000);
+
             } else {
                 if (!organisationId || !user) throw new Error("Missing context for organization save");
                 const quotesColRef = collection(firestore, `organisations/${organisationId}/quotes`);
@@ -249,10 +275,12 @@ export function ModelConfigurationEditor({
                     customerName: 'Local Configuration',
                     pricingSummary: {},
                 });
-                toast({ title: "Local Configuration Saved" });
+                toast({ title: "Local Configuration Saved", description: "This setup is now available in your Quotes tab." });
             }
         } catch (e: any) {
+            console.error("Save failed:", e);
             toast({ variant: "destructive", title: "Error", description: e.message || "Could not save changes." });
+            isRecentlySaved.current = false;
         } finally {
             setIsSubmitting(false);
         }
@@ -283,6 +311,7 @@ export function ModelConfigurationEditor({
     };
 
     const canEdit = isAdmin || permissions.can_edit_boat_data;
+    const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
     return (
         <FormProvider {...form}>
@@ -296,21 +325,24 @@ export function ModelConfigurationEditor({
                                         <Wrench className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold">{model.name}</h2>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-xl font-bold">{model.name}</h2>
+                                            {shouldSaveToMaster && <Badge className="bg-primary/10 text-primary border-primary/20 uppercase text-[9px] font-black tracking-widest h-5">Master Editor</Badge>}
+                                        </div>
                                         {breadcrumbs}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     {isModuleView && (permissions.can_create_quotes || isAdmin) && (
-                                        <Button type="button" variant="outline">
+                                        <Button type="button" variant="outline" className="font-bold border-2">
                                             Create Quote
                                         </Button>
                                     )}
                                     {canEdit && (
-                                        <Button type="submit" disabled={isSubmitting}>
+                                        <Button type="submit" disabled={isSubmitting} className="font-black uppercase tracking-widest shadow-lg">
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             <Save className="mr-2 h-4 w-4" />
-                                            {isAdmin ? 'Save Master Changes' : 'Save Configuration'}
+                                            {shouldSaveToMaster ? 'Update Master' : 'Save Config'}
                                         </Button>
                                     )}
                                 </div>
@@ -362,7 +394,7 @@ export function ModelConfigurationEditor({
                                                                 {...field} 
                                                                 placeholder="Enter model name..." 
                                                                 className="h-10 font-bold border-2 focus-visible:ring-primary/20 bg-muted/10" 
-                                                                disabled={!canEdit}
+                                                                disabled={!shouldSaveToMaster}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
@@ -383,7 +415,7 @@ export function ModelConfigurationEditor({
                                                                 {...field} 
                                                                 placeholder="Enter master code..." 
                                                                 className="h-10 font-mono font-bold uppercase border-2 focus-visible:ring-primary/20 bg-muted/10" 
-                                                                disabled={!canEdit}
+                                                                disabled={!shouldSaveToMaster}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />

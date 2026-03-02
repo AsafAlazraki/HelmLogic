@@ -108,6 +108,7 @@ export default function DirectModelDetailsPage() {
             module={{ id: 'master', name: 'Data Warehouse' }}
             user={user}
             isAdmin={true}
+            isMasterContext={true}
             breadcrumbs={
                 <div className="flex items-center text-sm text-muted-foreground">
                     <span>Data Warehouse</span>

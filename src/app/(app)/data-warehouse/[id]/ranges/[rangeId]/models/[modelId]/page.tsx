@@ -64,29 +64,25 @@ export default function ModelDetailsPage() {
   const range = useMemo(() => rangesBySlug?.[0] || rangeById, [rangesBySlug, rangeById]);
 
   // 3. Robust Model Resolver
-  // First, try to see if the modelId in URL is a direct Firestore ID
   const modelByIdRef = useMemoFirebase(() => 
     vendor?.id && range?.id && modelSlugOrId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', range.id, 'models', modelSlugOrId) : null,
   [firestore, vendor?.id, range?.id, modelSlugOrId]);
   const { data: modelById, loading: idLoading } = useDoc<Model>(modelByIdRef);
 
-  // Second, try to find it by slug if ID lookup returns nothing (and we aren't loading)
   const modelQueryBySlug = useMemoFirebase(() => {
     if (!vendor?.id || !range?.id || !modelSlugOrId || (modelById && !idLoading)) return null;
     return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), where('slug', '==', modelSlugOrId));
   }, [firestore, vendor, range, modelSlugOrId, modelById, idLoading]);
   const { data: modelsBySlug, isLoading: slugLoading } = useCollection<Model>(modelQueryBySlug);
 
-  // 4. Final Real-time Sync
-  // Once we've found the model (either via ID or Slug), we use its actual Firestore ID 
-  // to set up a dedicated document listener for perfect persistence.
+  // 4. Final Real-time Sync via Direct Doc Listener
   const resolvedModelId = useMemo(() => modelById?.id || modelsBySlug?.[0]?.id, [modelById, modelsBySlug]);
   const finalModelRef = useMemoFirebase(() => 
     vendor?.id && range?.id && resolvedModelId ? doc(firestore, 'data-warehouse', vendor.id, 'ranges', range.id, 'models', resolvedModelId) : null,
   [firestore, vendor?.id, range?.id, resolvedModelId]);
   const { data: model, isLoading: modelLoading } = useDoc<Model>(finalModelRef);
 
-  const loading = !vendor || !range || modelLoading;
+  const loading = !vendor || !range || modelLoading || idLoading || slugLoading;
 
   const breadcrumbParts = useMemo((): BreadcrumbPart[] => {
     if (!vendor || !range || !model) return [];
@@ -125,6 +121,7 @@ export default function ModelDetailsPage() {
             module={{ id: 'master', name: 'Data Warehouse' }}
             user={user}
             isAdmin={true}
+            isMasterContext={true}
             breadcrumbs={<BreadcrumbNav parts={breadcrumbParts} />}
         />
     </div>

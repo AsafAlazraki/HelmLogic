@@ -750,6 +750,7 @@ export default function ModuleDetailsPage() {
         { href: `/modules/${slugOrId}`, label: moduleData.name },
     ];
 
+    const isMasterContext = viewContextOrgId === null;
     const currentContextLabel = availableContexts.find(c => c.id === (viewContextOrgId || 'master'))?.name || 'Master Data';
     const isImpersonating = viewContextOrgId !== null && (isAdmin || viewContextOrgId !== userProfile?.organisationId);
     
@@ -961,6 +962,7 @@ export default function ModuleDetailsPage() {
                                     breadcrumbs={<ModuleConfigurationBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} pendingMotor={pendingMotor} view={view} onBreadcrumbClick={handleBreadcrumbClick} />}
                                     user={user}
                                     isAdmin={isAdmin}
+                                    isMasterContext={isMasterContext}
                                     organisationId={dashboardOrg?.id}
                                     permissions={userPermissions as any}
                                 />
