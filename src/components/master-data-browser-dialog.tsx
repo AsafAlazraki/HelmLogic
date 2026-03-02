@@ -19,7 +19,7 @@ import { Loader2, PackagePlus, X, Plus, Table as TableIcon, Search, PlusCircle, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
@@ -45,7 +45,7 @@ interface DealerFitSelection {
   name: string;
   type: 'item' | 'package';
   categoryId: string;
-  category?: string; // Optional display category (e.g. Propeller, Rigging)
+  category?: string;
   items: {
     vendorId: string;
     rowId: string;
@@ -81,21 +81,21 @@ export function MasterDataBrowserDialog({
   allowedVendorIds?: string[];
 }) {
   const firestore = useFirestore();
+  const { toast } = useToast();
+  
   const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
   const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
   
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-  const [selectedDataSetId, setSelectedDataSetId] = useState<string | null>(null);
+  const [selectedDataSetId, setSelectedDataSetId] = useState<string | null>('master'); // Default to Global Master List
   const [searchTerm, setSearchTerm] = useState('');
   const [targetCategory, setTargetCategory] = useState(initialCategory || 'Other');
   const [stagedItems, setStagedItems] = useState<{ vendorId: string; vendorName: string; row: any }[]>([]);
   const [packageName, setPackageName] = useState('');
 
-  // Aggregation state for "Global Master List"
   const [aggregateData, setAggregateData] = useState<any[] | null>(null);
   const [isAggregating, setIsAggregating] = useState(false);
 
-  // Sync initial state when dialog opens
   useEffect(() => {
     if (isOpen) {
       if (initialVendorId) setSelectedVendorId(initialVendorId);
@@ -110,28 +110,18 @@ export function MasterDataBrowserDialog({
     return allVendors.filter(v => effectiveAllowedIds.includes(v.id));
   }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
 
-  // Auto-select vendor if only one is available
   useEffect(() => {
     if (isOpen && subscribedVendors.length === 1 && !selectedVendorId) {
         setSelectedVendorId(subscribedVendors[0].id);
     }
   }, [isOpen, subscribedVendors, selectedVendorId]);
 
-  // Fetch datasets for the selected vendor
   const dataSetsQuery = useMemoFirebase(() => {
     if (!selectedVendorId) return null;
     return query(collection(firestore, 'data-warehouse', selectedVendorId, 'dataSets'), orderBy('name'));
   }, [firestore, selectedVendorId]);
   const { data: dataSets, isLoading: setsLoading } = useCollection<DataSet>(dataSetsQuery);
 
-  // Auto-select first dataset for multi-table vendors only if none selected
-  useEffect(() => {
-    if (dataSets && dataSets.length > 0 && selectedDataSetId === null) {
-        setSelectedDataSetId(dataSets[0].id);
-    }
-  }, [dataSets, selectedDataSetId]);
-
-  // Fetch rows for either the specific dataset or the global master set (Yamaha etc)
   const masterDataQuery = useMemoFirebase(() => {
     if (!selectedVendorId) return null;
     if (selectedDataSetId && selectedDataSetId !== 'master') {
@@ -142,7 +132,6 @@ export function MasterDataBrowserDialog({
   
   const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
 
-  // Client-side Aggregation logic for "Global Master List" when selected for multi-table vendors
   useEffect(() => {
     const fetchAggregate = async () => {
       if (selectedDataSetId === 'master' && selectedVendorId && dataSets && dataSets.length > 0) {
@@ -168,7 +157,6 @@ export function MasterDataBrowserDialog({
 
   const displayData = useMemo(() => {
     if (selectedDataSetId === 'master') {
-        // Return aggregated data if we've successfully combined tables, otherwise the (likely empty) top-level set
         if (aggregateData && aggregateData.length > 0) return aggregateData;
         return masterData || [];
     }
@@ -184,23 +172,15 @@ export function MasterDataBrowserDialog({
     );
   }, [displayData, searchTerm]);
 
-  /**
-   * REFINED: Column Prioritization & Labeling
-   * Instead of showing all technical fields, we promote the "big things" 
-   * and limit visible columns to maintain a clean workspace.
-   */
   const headers = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return [];
     
     const allKeys = Object.keys(filteredData[0]);
-    
-    // Priority lists for column matching
     const codeKeys = ['Part_Number', 'SKU', 'PartNo', 'Code', 'PartNumber', 'id', 'Part Number'];
     const nameKeys = ['Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model'];
     const priceKeys = ['RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst'];
     
-    const findBestKey = (priorityList: string[]) => 
-        priorityList.find(k => allKeys.includes(k));
+    const findBestKey = (priorityList: string[]) => priorityList.find(k => allKeys.includes(k));
 
     const bestCode = findBestKey(codeKeys);
     const bestName = findBestKey(nameKeys);
@@ -211,18 +191,6 @@ export function MasterDataBrowserDialog({
     if (bestName) result.push(bestName);
     if (bestPrice) result.push(bestPrice);
 
-    // Limit visible columns to 4 + source + action to keep it tidy
-    if (result.length < 4) {
-        const extraKey = allKeys.find(k => 
-            !result.includes(k) && 
-            !['id', '_ref', '_sourceTable', 'imageUrl', 'SummaryImage', 'lastUpdated', 'createdAt'].includes(k) &&
-            !k.toLowerCase().includes('cost') &&
-            !k.match(/^[A-Z0-9]+$/) // Avoid purely technical short codes like "GP4" if possible
-        );
-        if (extraKey) result.push(extraKey);
-    }
-
-    // Always append Source Table indicator if in master view
     if (selectedDataSetId === 'master' && dataSets && dataSets.length > 0) {
         result.push('_sourceTable');
     }
@@ -231,9 +199,15 @@ export function MasterDataBrowserDialog({
   }, [filteredData, selectedDataSetId, dataSets]);
 
   const handleAddItem = (row: any) => {
-    const selectedVendor = subscribedVendors.find(v => v.id === selectedVendorId);
+    const vId = selectedVendorId || initialVendorId;
+    if (!vId) {
+        toast({ variant: 'destructive', title: "Vendor context missing" });
+        return;
+    }
+    const selectedVendor = subscribedVendors.find(v => v.id === vId);
     if (selectedVendor) {
       setStagedItems(prev => [...prev, { vendorId: selectedVendor.id, vendorName: selectedVendor.name, row }]);
+      toast({ title: "Item Added", description: `${row.Description || row.name || 'Item'} added to selection.` });
     }
   };
   
@@ -271,7 +245,7 @@ export function MasterDataBrowserDialog({
     onClose();
     setTimeout(() => {
         setSelectedVendorId(null);
-        setSelectedDataSetId(null);
+        setSelectedDataSetId('master');
         setStagedItems([]);
         setPackageName('');
         setSearchTerm('');
@@ -279,19 +253,12 @@ export function MasterDataBrowserDialog({
     }, 300);
   };
 
-  /**
-   * Helper to format values for the preview table
-   * Rounds long decimals and formats common technical keys
-   */
   const formatTableCell = (value: any, key: string) => {
     if (value === null || value === undefined) return '';
-    
-    // Round long technical numbers (like MU3, GP4 in the screenshot)
     if (typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)) && value.includes('.'))) {
         const num = parseFloat(value);
         return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-
     return String(value);
   };
 
@@ -306,13 +273,12 @@ export function MasterDataBrowserDialog({
         </DialogHeader>
         
         <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-          {/* Left Side: Browser */}
           <div className="flex-1 flex flex-col min-w-0 border-r">
             <div className="p-4 bg-muted/5 border-b space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">1. Select Vendor</Label>
-                        <Select onValueChange={(val) => { setSelectedVendorId(val); setSelectedDataSetId(null); setAggregateData(null); }} value={selectedVendorId || ''}>
+                        <Select onValueChange={(val) => { setSelectedVendorId(val); setSelectedDataSetId('master'); setAggregateData(null); }} value={selectedVendorId || ''}>
                             <SelectTrigger className="h-10 font-bold bg-background">
                                 <SelectValue placeholder={vendorsLoading ? 'Loading...' : 'Choose a vendor'} />
                             </SelectTrigger>
@@ -377,7 +343,11 @@ export function MasterDataBrowserDialog({
                             </TableHeader>
                             <TableBody>
                                 {filteredData.map((row, idx) => (
-                                    <TableRow key={row.id || idx} className="hover:bg-primary/5 transition-colors group">
+                                    <TableRow 
+                                        key={row.id || idx} 
+                                        className="hover:bg-primary/5 transition-colors group cursor-pointer"
+                                        onClick={() => handleAddItem(row)}
+                                    >
                                         {headers.map(header => (
                                             <TableCell key={header} className="text-[11px] font-medium py-3 px-4 truncate max-w-[250px]">
                                                 {header === '_sourceTable' ? (
@@ -392,7 +362,7 @@ export function MasterDataBrowserDialog({
                                                 variant="outline" 
                                                 size="sm" 
                                                 className="h-7 text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all"
-                                                onClick={() => handleAddItem(row)}
+                                                onClick={(e) => { e.stopPropagation(); handleAddItem(row); }}
                                             >
                                                 <Plus className="h-3 w-3 mr-1" /> Add
                                             </Button>
@@ -425,7 +395,6 @@ export function MasterDataBrowserDialog({
             </div>
           </div>
 
-          {/* Right Side: Staging Area */}
           <div className="w-full md:w-[380px] shrink-0 bg-muted/5 flex flex-col">
             <div className="p-6 border-b bg-background shadow-sm space-y-6">
                 <h3 className="font-black text-xs uppercase tracking-widest text-primary flex items-center gap-2">
