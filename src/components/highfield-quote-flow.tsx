@@ -23,7 +23,8 @@ import {
     Layers,
     Check,
     Waves,
-    Star
+    Star,
+    Maximize2
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -414,7 +415,7 @@ export function HighfieldQuoteFlow({
                                                 <CarouselItem key={`${url}-${idx}`} className="h-full w-full p-0">
                                                     <div 
                                                         className="relative h-full w-full cursor-zoom-in active:scale-[0.99] transition-all duration-500 flex items-center justify-center overflow-hidden"
-                                                        onClick={() => setLightboxIndex(idx)}
+                                                        onClickCapture={() => setLightboxIndex(idx)}
                                                     >
                                                         <Image 
                                                             src={url} 
@@ -433,10 +434,21 @@ export function HighfieldQuoteFlow({
                                                 </CarouselItem>
                                             )}
                                         </CarouselContent>
+                                        
+                                        {/* Standard Enlarge Trigger */}
+                                        <Button 
+                                            variant="secondary" 
+                                            size="icon" 
+                                            className="absolute top-6 right-6 h-12 w-12 rounded-full shadow-xl bg-white/90 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all z-40 hover:bg-primary hover:text-white"
+                                            onClick={() => setLightboxIndex(0)}
+                                        >
+                                            <Maximize2 className="h-5 w-5" />
+                                        </Button>
+
                                         {carouselImages.length > 1 && (
                                             <>
-                                                <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 backdrop-blur-md shadow-xl border-none text-primary hover:bg-primary hover:text-white transition-all z-30" />
-                                                <CarouselNext className="right-6 h-12 w-12 bg-white/90 backdrop-blur-md shadow-xl border-none text-primary hover:bg-primary hover:text-white transition-all z-30" />
+                                                <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 backdrop-blur-md shadow-xl border-none text-primary hover:bg-primary hover:text-white transition-all z-40" />
+                                                <CarouselNext className="right-6 h-12 w-12 bg-white/90 backdrop-blur-md shadow-xl border-none text-primary hover:bg-primary hover:text-white transition-all z-40" />
                                             </>
                                         )}
                                     </Carousel>
@@ -797,7 +809,7 @@ export function HighfieldQuoteFlow({
                                 key={`lightbox-${lightboxIndex}`}
                                 className="w-full h-full flex flex-col items-center justify-center" 
                                 opts={{ 
-                                    startIndex: lightboxIndex,
+                                    startIndex: lightboxIndex || 0,
                                     loop: true 
                                 }}
                             >
@@ -818,8 +830,8 @@ export function HighfieldQuoteFlow({
                                 </CarouselContent>
                                 {carouselImages.length > 1 && (
                                     <>
-                                        <CarouselPrevious className="left-4 h-14 w-14 bg-white/10 hover:bg-white/20 border-none text-white transition-all rounded-2xl shadow-xl z-50" />
-                                        <CarouselNext className="right-4 h-14 w-14 bg-white/10 hover:bg-white/20 border-none text-white transition-all rounded-2xl shadow-xl z-50" />
+                                        <CarouselPrevious className="left-4 h-14 w-14 bg-white/20 hover:bg-white/30 border-none text-white transition-all rounded-2xl shadow-xl z-[60]" />
+                                        <CarouselNext className="right-4 h-14 w-14 bg-white/20 hover:bg-white/30 border-none text-white transition-all rounded-2xl shadow-xl z-[60]" />
                                     </>
                                 )}
                             </Carousel>
@@ -828,7 +840,7 @@ export function HighfieldQuoteFlow({
                                 type="button"
                                 variant="ghost" 
                                 size="icon" 
-                                className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-[60] border border-white/10 shadow-lg"
+                                className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md z-[70] border border-white/10 shadow-lg"
                                 onClick={() => setLightboxIndex(null)}
                             >
                                 <X className="h-6 w-6" />
