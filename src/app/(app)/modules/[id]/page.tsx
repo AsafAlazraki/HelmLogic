@@ -455,7 +455,8 @@ export default function ModuleDetailsPage() {
     const moduleByIdRef = useMemoFirebase(() => slugOrId ? doc(firestore, 'modules', slugOrId) : null, [firestore, slugOrId]);
     const { data: moduleById, loading: idLoading } = useDoc<any>(moduleByIdRef);
     
-    const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
+    // Prioritize direct document listener for stability during updates
+    const moduleData = useMemo(() => moduleById || modulesBySlug?.[0], [modulesBySlug, moduleById]);
     const moduleLoading = slugLoading || idLoading;
     
     const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
