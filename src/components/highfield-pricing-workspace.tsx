@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -287,11 +286,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     const StrategyControls = () => (
-        <div className="flex items-end gap-4">
-            <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 px-1">Base Currency</Label>
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 whitespace-nowrap">Base Currency</Label>
                 <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
-                    <SelectTrigger className="w-[180px] h-9 font-bold bg-muted/30">
+                    <SelectTrigger className="w-[160px] h-9 font-bold bg-muted/30">
                         <Coins className="h-3.5 w-3.5 mr-2 text-primary" />
                         <SelectValue />
                     </SelectTrigger>
@@ -353,7 +352,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
             {/* Focus Mode Dialog */}
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-                <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+                <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl [&>button]:hidden">
                     <div className="flex flex-col h-full bg-background">
                         <div className="p-6 border-b bg-muted/5 shrink-0">
                             <div className="flex items-center justify-between gap-8">
@@ -369,12 +368,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </DialogTitle>
                                 </div>
 
-                                <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-4">
                                     <StrategyControls />
-                                    <Separator orientation="vertical" className="h-10" />
+                                    <div className="h-8 w-px bg-border mx-2" />
                                     <DialogClose asChild>
-                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                                            <Minimize2 className="h-6 w-6" />
+                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-destructive/10 hover:text-destructive border">
+                                            <Minimize2 className="h-5 w-5" />
                                         </Button>
                                     </DialogClose>
                                 </div>
