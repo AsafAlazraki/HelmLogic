@@ -181,9 +181,9 @@ export function HighfieldQuoteFlow({
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) {
                 const targetTop = colorsSectionRef.current.offsetTop;
-                // Precision scroll offset: 20px cushion from the header
+                // Precision scroll offset: 10px cushion from the header for tighter look
                 setTimeout(() => {
-                    viewport.scrollTo({ top: targetTop - 20, behavior: 'smooth' });
+                    viewport.scrollTo({ top: targetTop - 10, behavior: 'smooth' });
                 }, 600);
             }
         } else if (scrollAreaRef.current) {
@@ -540,8 +540,8 @@ export function HighfieldQuoteFlow({
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-8 md:px-12 pb-12 pt-0 flex flex-col">
-                            {/* Spacing alignment cushion */}
-                            <div className="h-10 shrink-0" />
+                            {/* Spacing alignment cushion - reduced for tighter feel */}
+                            <div className="h-6 shrink-0" />
                             
                             {currentStep === 1 && (
                                 <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
@@ -575,7 +575,7 @@ export function HighfieldQuoteFlow({
                                                         "flex items-center gap-2 mt-auto pt-4 text-[9px] font-black uppercase tracking-tighter transition-colors",
                                                         selectedMaterial === mat ? "text-white/80" : "text-muted-foreground"
                                                     )}>
-                                                        <CheckCircle2 className={cn("h-3 w-3", selectedMaterial === mat ? "text-white" : "text-primary")} />
+                                                        <Check className={cn("h-3 w-3", selectedMaterial === mat ? "text-white" : "text-primary")} />
                                                         <span>{mat === 'PVC' ? '5 Yrs Warranty' : '10 Yrs Warranty'}</span>
                                                     </div>
                                                 </button>
@@ -584,7 +584,7 @@ export function HighfieldQuoteFlow({
                                     </div>
 
                                     {selectedMaterial && (
-                                        <div ref={colorsSectionRef} className="space-y-5 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                        <div ref={colorsSectionRef} className="space-y-5 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                                             <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">2. Available Colors</span>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {availableColors.map((color) => (
