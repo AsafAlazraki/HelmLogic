@@ -176,20 +176,17 @@ export function MasterDataBrowserDialog({
     if (!filteredData || filteredData.length === 0) return [];
     
     const allKeys = Object.keys(filteredData[0]);
-    const codeKeys = ['Part_Number', 'SKU', 'PartNo', 'Code', 'PartNumber', 'id', 'Part Number'];
-    const nameKeys = ['Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model'];
-    const priceKeys = ['RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst'];
+    const priorityColumns = [
+        { keys: ['Part_Number', 'SKU', 'PartNo', 'Code', 'PartNumber', 'Part Number'], label: 'Code' },
+        { keys: ['Description', 'name', 'Model Name', 'ModelName', 'Title', 'Product', 'Model'], label: 'Description' },
+        { keys: ['RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst'], label: 'Price' }
+    ];
     
-    const findBestKey = (priorityList: string[]) => priorityList.find(k => allKeys.includes(k));
-
-    const bestCode = findBestKey(codeKeys);
-    const bestName = findBestKey(nameKeys);
-    const bestPrice = findBestKey(priceKeys);
-
     const result: string[] = [];
-    if (bestCode) result.push(bestCode);
-    if (bestName) result.push(bestName);
-    if (bestPrice) result.push(bestPrice);
+    priorityColumns.forEach(group => {
+        const matchingKey = group.keys.find(k => allKeys.includes(k));
+        if (matchingKey) result.push(matchingKey);
+    });
 
     if (selectedDataSetId === 'master' && dataSets && dataSets.length > 0) {
         result.push('_sourceTable');
@@ -200,14 +197,12 @@ export function MasterDataBrowserDialog({
 
   const handleAddItem = (row: any) => {
     const vId = selectedVendorId || initialVendorId;
-    if (!vId) {
-        toast({ variant: 'destructive', title: "Vendor context missing" });
-        return;
-    }
+    if (!vId) return;
+    
     const selectedVendor = subscribedVendors.find(v => v.id === vId);
     if (selectedVendor) {
       setStagedItems(prev => [...prev, { vendorId: selectedVendor.id, vendorName: selectedVendor.name, row }]);
-      toast({ title: "Item Added", description: `${row.Description || row.name || 'Item'} added to selection.` });
+      toast({ title: "Item Added", description: `${row.Description || row.name || row['Model Name'] || 'Item'} staged.` });
     }
   };
   
@@ -216,10 +211,8 @@ export function MasterDataBrowserDialog({
   };
 
   const handleSavePackage = () => {
-    if (stagedItems.length === 0) {
-      toast({ variant: 'destructive', title: 'No items selected' });
-      return;
-    }
+    if (stagedItems.length === 0) return;
+    
     const isPackage = stagedItems.length > 1;
     if (isPackage && !packageName.trim()) {
         toast({ variant: 'destructive', title: 'Package name required' });
@@ -253,11 +246,12 @@ export function MasterDataBrowserDialog({
     }, 300);
   };
 
-  const formatTableCell = (value: any, key: string) => {
+  const formatTableCell = (value: any) => {
     if (value === null || value === undefined) return '';
-    if (typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value)) && value.includes('.'))) {
+    if (typeof value === 'number') return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (typeof value === 'string' && /^\d*\.?\d+$/.test(value) && value.includes('.')) {
         const num = parseFloat(value);
-        return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return isNaN(num) ? value : num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     return String(value);
   };
@@ -353,12 +347,13 @@ export function MasterDataBrowserDialog({
                                                 {header === '_sourceTable' ? (
                                                     <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1 border-primary/20 text-primary">{row[header]}</Badge>
                                                 ) : (
-                                                    formatTableCell(row[header], header)
+                                                    formatTableCell(row[header])
                                                 )}
                                             </TableCell>
                                         ))}
                                         <TableCell className="text-right py-3 pr-6">
                                             <Button 
+                                                type="button"
                                                 variant="outline" 
                                                 size="sm" 
                                                 className="h-7 text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all"
@@ -446,6 +441,7 @@ export function MasterDataBrowserDialog({
                                 <p className="text-[9px] font-bold text-muted-foreground/60 mt-1 uppercase truncate">{item.vendorName}</p>
                             </div>
                             <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="icon" 
                                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
@@ -465,6 +461,7 @@ export function MasterDataBrowserDialog({
 
             <div className="p-6 border-t bg-background mt-auto shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
                 <Button 
+                    type="button"
                     onClick={handleSavePackage} 
                     disabled={stagedItems.length === 0}
                     className="w-full h-11 font-black uppercase tracking-widest shadow-lg rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"

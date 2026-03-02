@@ -94,6 +94,7 @@ function AccessoryCategory({
                     <span className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">{label}</span>
                 </div>
                 <Button 
+                    type="button"
                     variant="ghost" 
                     size="icon" 
                     className="h-6 w-6 rounded-full hover:bg-primary/10 text-primary transition-all opacity-40 group-hover/cat:opacity-100"
@@ -109,6 +110,7 @@ function AccessoryCategory({
                         <Package className="h-3 w-3 text-primary/40 shrink-0" />
                         <span className="text-[10px] font-bold truncate flex-1 leading-tight">{opt.name}</span>
                         <Button 
+                            type="button"
                             variant="ghost" 
                             size="icon" 
                             className="h-5 w-5 text-destructive hover:bg-destructive/10 opacity-0 group-hover/opt:opacity-100 transition-opacity"
@@ -192,6 +194,7 @@ function MotorCard({
                     )}
                     <div className="absolute top-2 right-2 opacity-0 group-hover/motor:opacity-100 transition-opacity flex items-center gap-1">
                         <Button 
+                            type="button"
                             variant="destructive" 
                             size="icon" 
                             className="h-6 w-6 rounded-full shadow-lg"
@@ -528,6 +531,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                             </AccordionPrimitive.Trigger>
                                         </AccordionPrimitive.Header>
                                         <Button 
+                                            type="button"
                                             variant="outline" 
                                             size="sm" 
                                             className="h-8 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover/trigger:opacity-100 transition-opacity"

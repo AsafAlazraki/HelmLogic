@@ -76,10 +76,17 @@ export function DealerFitOptions({
   const allowedVendorIds = useMemo(() => {
     if (!module) return [];
     
-    // For Dealer Fit (accessories), we show all associated vendors for this module.
-    // We explicitly EXCLUDE the main boat brand (Highfield, etc.) as these should be sourced from suppliers.
-    return (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
-  }, [module]);
+    // Admins always see all associated vendors defined in the module
+    if (isAdmin) {
+        return (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
+    }
+
+    // For regular users, we filter by what the organisation has access to
+    const orgModuleAccess = organisation?.moduleAssociatedVendorAccess?.[module.id] || [];
+    return (module.associatedVendorIds || []).filter((id: string) => 
+        id !== module.mainVendorId && orgModuleAccess.includes(id)
+    );
+  }, [module, organisation, isAdmin]);
 
   const selectionsByCategory = useMemo(() => {
     if (!selections) return new Map();
@@ -162,7 +169,7 @@ export function DealerFitOptions({
             <Card key={category.id}>
               <CardHeader className="flex flex-row items-center justify-between py-4">
                 <CardTitle className="text-lg">{category.name}</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => handleOpenBrowser(category.id)}>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleOpenBrowser(category.id)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Selection
                 </Button>
