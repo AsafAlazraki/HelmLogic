@@ -119,7 +119,7 @@ export function MasterDataBrowserDialog({
   }, [firestore, selectedVendorId]);
   const { data: dataSets, isLoading: setsLoading } = useCollection<DataSet>(dataSetsQuery);
 
-  // Auto-select dataset for multi-table vendors (like Document Upload vendors)
+  // Auto-select dataset for multi-table vendors
   useEffect(() => {
     if (dataSets && dataSets.length > 0 && !selectedDataSetId) {
         // Automatically pick the first table for multi-table vendors to avoid an empty start

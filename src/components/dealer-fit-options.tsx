@@ -88,18 +88,18 @@ export function DealerFitOptions({
   const allowedVendorIds = useMemo(() => {
     if (!module) return [];
     
-    // IMPORTANT: For Dealer Fit (accessories), we EXCLUDE the main boat brand (Highfield, etc.)
-    // These options are sourced from associated accessory suppliers like Sam Allen, Garmin, etc.
-    const moduleAssociatedIds = module.associatedVendorIds || [];
+    // IMPORTANT: For Dealer Fit (accessories), we explicitly EXCLUDE the main boat brand (Highfield, etc.)
+    // These options should be sourced from associated suppliers.
+    const moduleAssociatedIds = (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
     
-    if (isAdmin && !organisationId) {
-        // Master view: show all associated vendors for this module
+    // IF ADMIN: Always show all associated vendors defined for the module, bypass org restrictions
+    if (isAdmin) {
         return moduleAssociatedIds;
     }
     
     if (!organisation) return [];
     
-    // Organisation context: only show associated vendors that this specific organisation has been granted access to
+    // Non-admin context: only show associated vendors that this specific organisation has been granted access to
     const associatedFromOrg = organisation.moduleAssociatedVendorAccess?.[module.id] || [];
     
     // Ensure we only show vendors that are BOTH granted to the org AND associated with this module
@@ -176,7 +176,7 @@ export function DealerFitOptions({
             <Card key={category.id}>
               <CardHeader className="flex flex-row items-center justify-between py-4">
                 <CardTitle className="text-lg">{category.name}</CardTitle>
-                {organisationId && (
+                {(organisationId || isAdmin) && (
                     <Button variant="outline" size="sm" onClick={() => handleOpenBrowser(category.id)}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Selection
@@ -217,7 +217,7 @@ export function DealerFitOptions({
                             : "No associated vendors have been granted to this organisation for dealer fit selection.")
                         : "Master Categories View: Available for assignment to organisations."
                     }
-                    {organisationId && allowedVendorIds.length === 0 && (
+                    {organisationId && !isAdmin && allowedVendorIds.length === 0 && (
                         <div className="mt-4 flex justify-center">
                             <Button variant="ghost" size="sm" className="text-primary font-bold" asChild>
                                 <a href={`/modules/${module.slug || module.id}`}>
