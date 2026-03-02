@@ -32,12 +32,13 @@ import {
     Settings2,
     X,
     Maximize2,
-    Minimize2
+    Minimize2,
+    ChevronLeft
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     Dialog,
     DialogContent,
@@ -161,6 +162,22 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         toast({ title: "Column Removed" });
     };
 
+    const handleMoveColumn = async (colId: string, direction: 'left' | 'right') => {
+        const currentCols = [...(strategy?.columns || [])];
+        const index = currentCols.findIndex(c => c.id === colId);
+        if (index === -1) return;
+
+        const newIndex = direction === 'left' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= currentCols.length) return;
+
+        const temp = currentCols[index];
+        currentCols[index] = currentCols[newIndex];
+        currentCols[newIndex] = temp;
+
+        await setDoc(strategyRef, { columns: currentCols }, { merge: true });
+        toast({ title: "Column Order Updated" });
+    };
+
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
         const currentValues = strategy?.itemValues || {};
         const updated = {
@@ -209,21 +226,41 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <TableHead className="w-[120px] text-center border-r">Vendor ID</TableHead>
                         <TableHead className="w-[120px] text-right border-r">Base Cost</TableHead>
                         <TableHead className="w-[120px] text-right border-r">Master Sell</TableHead>
-                        {columns.map(col => (
-                            <TableHead key={col.id} className="min-w-[160px] bg-primary/5 text-center px-4 group/header border-r last:border-r-0">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex flex-col items-center flex-1">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">{col.name}</span>
+                        {columns.map((col, idx) => (
+                            <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r last:border-r-0">
+                                <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === 0 && "invisible")} 
+                                            onClick={() => handleMoveColumn(col.id, 'left')}
+                                        >
+                                            <ChevronLeft className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                    <div className="flex flex-col items-center flex-1 min-w-0">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate w-full text-center">{col.name}</span>
                                         <Badge variant="ghost" className="h-4 text-[8px] opacity-40 font-black uppercase p-0">{col.type}</Badge>
                                     </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
-                                        onClick={() => handleDeleteColumn(col.id)}
-                                    >
-                                        <X className="h-3 w-3" />
-                                    </Button>
+                                    <div className="flex items-center gap-0.5">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === columns.length - 1 && "invisible")} 
+                                            onClick={() => handleMoveColumn(col.id, 'right')}
+                                        >
+                                            <ChevronRight className="h-3 w-3" />
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
+                                            onClick={() => handleDeleteColumn(col.id)}
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </TableHead>
                         ))}
@@ -250,8 +287,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     const StrategyControls = () => (
-        <div className="flex items-center gap-4">
-            <div className="space-y-1">
+        <div className="flex items-end gap-4">
+            <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 px-1">Base Currency</Label>
                 <Select value={strategy?.baseCurrency || 'AUD'} onValueChange={handleCurrencyChange}>
                     <SelectTrigger className="w-[180px] h-9 font-bold bg-muted/30">
@@ -263,7 +300,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </SelectContent>
                 </Select>
             </div>
-            <Button onClick={() => setIsAddColumnOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-md mt-4">
+            <Button onClick={() => setIsAddColumnOpen(true)} className="h-9 font-black uppercase tracking-widest text-[10px] shadow-md">
                 <Plus className="h-4 w-4 mr-1.5" /> Add Column
             </Button>
         </div>
@@ -324,10 +361,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     <div className="h-10 w-10 relative bg-white rounded-lg border-2 p-1.5 shadow-sm">
                                         {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-5 w-5 m-auto text-muted-foreground" />}
                                     </div>
-                                    <div>
-                                        <DialogTitle className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} FOCUS MODE</DialogTitle>
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-primary mt-1.5">Strategy Workspace</p>
-                                    </div>
+                                    <DialogTitle>
+                                        <div>
+                                            <span className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} FOCUS MODE</span>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-primary mt-1.5">Strategy Workspace</p>
+                                        </div>
+                                    </DialogTitle>
                                 </div>
 
                                 <div className="flex items-center gap-6">
