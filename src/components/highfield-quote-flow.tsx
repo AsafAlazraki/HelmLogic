@@ -90,6 +90,7 @@ export function HighfieldQuoteFlow({
     const firestore = useFirestore();
     const [currentStep, setCurrentStep] = useState(1);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const colorsSectionRef = useRef<HTMLDivElement>(null);
     
     // Selection State
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
@@ -180,6 +181,16 @@ export function HighfieldQuoteFlow({
             }
         }
     }, [currentStep]);
+
+    // Refocus on colors when material is selected
+    useEffect(() => {
+        if (selectedMaterial && currentStep === 1) {
+            const timer = setTimeout(() => {
+                colorsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [selectedMaterial, currentStep]);
 
     // Data Derivations
     const activeVariant = useMemo(() => {
@@ -382,9 +393,6 @@ export function HighfieldQuoteFlow({
                                                         className="relative h-full w-full cursor-zoom-in active:scale-[0.99] transition-all duration-500 flex items-center justify-center overflow-hidden"
                                                         onClick={() => setLightboxIndex(idx)}
                                                     >
-                                                        {/* Soft Fade Overlay */}
-                                                        <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_100px_rgba(255,255,255,0.9)]" />
-                                                        
                                                         <Image 
                                                             src={url} 
                                                             alt={`Boat View ${idx}`} 
@@ -477,7 +485,7 @@ export function HighfieldQuoteFlow({
                                 </div>
                             </div>
 
-                            {/* Refined Build Summary Hub */}
+                            {/* Refined Build Summary Hub (Fixed Structure) */}
                             <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-[0_30px_100px_-10px_rgba(0,0,0,0.1)] p-10 rounded-[2.5rem] flex flex-col gap-2 shrink-0">
                                 <div className="flex items-center justify-between px-1">
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Current Build</span>
@@ -499,77 +507,95 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 {/* Configuration Panel (Right) */}
-                <ScrollArea ref={scrollAreaRef} className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100">
-                    <div className="p-8 md:p-12 pb-32 min-h-full flex flex-col">
-                        
+                <div className="w-full lg:w-5/12 h-full bg-slate-50/50 backdrop-blur-md border-l border-slate-100 flex flex-col overflow-hidden relative">
+                    {/* Fixed Step Header */}
+                    <div className="p-8 md:p-12 pb-6 shrink-0 bg-slate-50/5 backdrop-blur-md z-20">
                         {currentStep === 1 && (
-                            <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                                <div className="space-y-3">
-                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">The Foundation</h2>
-                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select your hull material and tube color to initialize the build specifications.</p>
-                                </div>
+                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <h2 className="text-4xl font-black uppercase tracking-tight leading-none">The Foundation</h2>
+                                <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select your hull material and tube color to initialize the build specifications.</p>
+                            </div>
+                        )}
+                        {currentStep === 2 && (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Factory Options</h2>
+                                <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Customize your Highfield with approved consoles, seating, and technical upgrades.</p>
+                            </div>
+                        )}
+                        {currentStep === 3 && (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Engine & Rigging</h2>
+                                <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select a compatible outboard and associated rigging kits.</p>
+                            </div>
+                        )}
+                        {currentStep > 3 && (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <h2 className="text-4xl font-black uppercase tracking-tight leading-none">{STEPS.find(s => s.id === currentStep)?.label}</h2>
+                                <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Complete your configuration with trailer and dealer options.</p>
+                            </div>
+                        )}
+                    </div>
 
-                                <div className="space-y-5">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">1. Tube Material</span>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {availableMaterials.map((mat) => (
-                                            <button
-                                                key={mat}
-                                                onClick={() => handleMaterialSelect(mat)}
-                                                className={cn(
-                                                    "group relative flex flex-col items-start p-6 border-2 rounded-[2rem] transition-all duration-300",
-                                                    selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
-                                                )}
-                                            >
-                                                <span className="text-base font-black uppercase tracking-tight">{mat}</span>
-                                                <p className={cn("text-[9px] font-bold mt-1 uppercase", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>
-                                                    {mat === 'PVC' ? 'Robust Standard' : 'Premium HYP'}
-                                                </p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {selectedMaterial && (
-                                    <div className="space-y-5 pt-10">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">2. Available Colors</span>
+                    <ScrollArea ref={scrollAreaRef} className="flex-1">
+                        <div className="px-8 md:px-12 pb-12 flex flex-col">
+                            
+                            {currentStep === 1 && (
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
+                                    <div className="space-y-5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">1. Tube Material</span>
                                         <div className="grid grid-cols-2 gap-4">
-                                            {availableColors.map((color) => (
+                                            {availableMaterials.map((mat) => (
                                                 <button
-                                                    key={color.id}
-                                                    onClick={() => setSelectedColor(color.id)}
+                                                    key={mat}
+                                                    onClick={() => handleMaterialSelect(mat)}
                                                     className={cn(
-                                                        "group flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all duration-300 text-left bg-white",
-                                                        selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-slate-100 hover:border-primary/20"
+                                                        "group relative flex flex-col items-start p-6 border-2 rounded-[2rem] transition-all duration-300",
+                                                        selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
                                                     )}
                                                 >
-                                                    <div className="relative aspect-video w-full border-b bg-white">
-                                                        {color.imageUrl ? (
-                                                            <Image src={color.imageUrl} alt={color.name} fill className="object-contain p-3" unoptimized />
-                                                        ) : (
-                                                            <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-8 w-8"/></div>
-                                                        )}
-                                                    </div>
-                                                    <div className={cn("p-4", selectedColor === color.id ? "bg-primary text-white" : "bg-white")}>
-                                                        <p className="text-[11px] font-black uppercase tracking-tight truncate">{color.name}</p>
-                                                        <p className={cn("text-[9px] font-bold uppercase", selectedColor === color.id ? "text-white/60" : "text-muted-foreground")}>{color.code}</p>
-                                                    </div>
+                                                    <span className="text-base font-black uppercase tracking-tight">{mat}</span>
+                                                    <p className={cn("text-[9px] font-bold mt-1 uppercase", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>
+                                                        {mat === 'PVC' ? 'Robust Standard' : 'Premium HYP'}
+                                                    </p>
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        )}
 
-                        {currentStep === 2 && (
-                            <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                                <div className="space-y-3">
-                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Factory Options</h2>
-                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Customize your Highfield with approved consoles, seating, and technical upgrades.</p>
+                                    {selectedMaterial && (
+                                        <div ref={colorsSectionRef} className="space-y-5 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-1 rounded">2. Available Colors</span>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {availableColors.map((color) => (
+                                                    <button
+                                                        key={color.id}
+                                                        onClick={() => setSelectedColor(color.id)}
+                                                        className={cn(
+                                                            "group flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all duration-300 text-left bg-white",
+                                                            selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-slate-100 hover:border-primary/20"
+                                                        )}
+                                                    >
+                                                        <div className="relative aspect-video w-full border-b bg-white">
+                                                            {color.imageUrl ? (
+                                                                <Image src={color.imageUrl} alt={color.name} fill className="object-contain p-3" unoptimized />
+                                                            ) : (
+                                                                <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-8 w-8"/></div>
+                                                            )}
+                                                        </div>
+                                                        <div className={cn("p-4", selectedColor === color.id ? "bg-primary text-white" : "bg-white")}>
+                                                            <p className="text-[11px] font-black uppercase tracking-tight truncate">{color.name}</p>
+                                                            <p className={cn("text-[9px] font-bold uppercase", selectedColor === color.id ? "text-white/60" : "text-muted-foreground")}>{color.code}</p>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
+                            )}
 
-                                <div className="space-y-12">
+                            {currentStep === 2 && (
+                                <div className="space-y-12 animate-in slide-in-from-right-4 duration-500">
                                     {Object.entries(groupedOptions).map(([category, options]: [string, any]) => (
                                         <div key={category} className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest text-foreground border-l-4 border-primary pl-3">{category}</h3>
@@ -610,106 +636,102 @@ export function HighfieldQuoteFlow({
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {currentStep === 3 && (
-                            <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                                <div className="space-y-3">
-                                    <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Engine & Rigging</h2>
-                                    <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select a compatible outboard and associated rigging kits.</p>
-                                </div>
-
-                                {motorsLoading ? (
-                                    <div className="flex flex-col items-center justify-center py-24 gap-4">
-                                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                                        <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing compatible motors...</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        <div className="grid gap-4">
-                                            {motors.map((motor) => {
-                                                const isSelected = selectedMotor?.id === motor.id;
-                                                const imgPath = motor.SummaryImage || motor.imageUrl;
-                                                const getImageUrl = (path: string) => {
-                                                    if (!path) return null;
-                                                    const clean = path.trim().replace(/\\/g, '/');
-                                                    if (clean.startsWith('http')) return clean;
-                                                    return `https://www.yamaha-motor.com.au${clean.startsWith('/') ? '' : '/'}${clean}`;
-                                                };
-                                                
-                                                return (
-                                                    <div key={motor.id} className="space-y-3">
-                                                        <button
-                                                            onClick={() => setSelectedMotor(isSelected ? null : motor)}
-                                                            className={cn(
-                                                                "w-full flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all duration-300 text-left group",
-                                                                isSelected ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
-                                                            )}
-                                                        >
-                                                            <div className="flex items-center gap-6">
-                                                                <div className="h-20 w-20 relative bg-white rounded-2xl border-2 overflow-hidden shrink-0 shadow-inner">
-                                                                    {getImageUrl(imgPath) ? <Image src={getImageUrl(imgPath)!} alt="Motor" fill className="object-contain p-2" unoptimized /> : <Ship className="h-8 w-8 m-auto mt-6 opacity-10" />}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="flex items-center gap-2 mb-1.5">
-                                                                        <Badge variant="outline" className={cn("font-black text-[10px] px-2 py-0.5", isSelected ? "border-white/20 text-white" : "border-primary/20 text-primary")}>
-                                                                            {motor['HP Rating'] || 'ENGINE'} HP
-                                                                        </Badge>
-                                                                        <span className="text-[10px] font-black uppercase opacity-60 tracking-widest">Outboard</span>
-                                                                    </div>
-                                                                    <p className="text-base font-black uppercase tracking-tight leading-tight">{motor['Model Name']}</p>
-                                                                    <p className={cn("text-[10px] font-mono font-bold mt-1.5 uppercase", isSelected ? "text-white/60" : "text-muted-foreground/60")}>{motor['Part Number']}</p>
-                                                                </div>
-                                                            </div>
-                                                            <p className="text-base font-black">${(motor.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                        </button>
-
-                                                        {isSelected && motor.masterAccessories && (
-                                                            <div className="p-6 bg-slate-50 border-2 border-dashed rounded-[2rem] space-y-5 animate-in slide-in-from-top-2 duration-300">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="h-6 w-6 bg-primary/10 rounded-full flex items-center justify-center"><Wrench className="h-3 w-3 text-primary" /></div>
-                                                                    <span className="text-[11px] font-black uppercase tracking-widest">Linked Rigging & Props</span>
-                                                                </div>
-                                                                <div className="space-y-2.5">
-                                                                    {motor.masterAccessories.map((acc: any, i: number) => (
-                                                                        <div key={i} className="flex items-center justify-between text-xs font-medium p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm">
-                                                                            <span className="truncate pr-4 uppercase tracking-tight">{acc.name}</span>
-                                                                            <span className="font-black text-primary shrink-0">${(acc.items?.[0]?.data?.sellPriceExclGst || 0).toLocaleString()}</span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                            {currentStep === 3 && (
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
+                                    {motorsLoading ? (
+                                        <div className="flex flex-col items-center justify-center py-24 gap-4">
+                                            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                                            <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing compatible motors...</p>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                                    ) : (
+                                        <div className="space-y-6">
+                                            <div className="grid gap-4">
+                                                {motors.map((motor) => {
+                                                    const isSelected = selectedMotor?.id === motor.id;
+                                                    const imgPath = motor.SummaryImage || motor.imageUrl;
+                                                    const getImageUrl = (path: string) => {
+                                                        if (!path) return null;
+                                                        const clean = path.trim().replace(/\\/g, '/');
+                                                        if (clean.startsWith('http')) return clean;
+                                                        return `https://www.yamaha-motor.com.au${clean.startsWith('/') ? '' : '/'}${clean}`;
+                                                    };
+                                                    
+                                                    return (
+                                                        <div key={motor.id} className="space-y-3">
+                                                            <button
+                                                                onClick={() => setSelectedMotor(isSelected ? null : motor)}
+                                                                className={cn(
+                                                                    "w-full flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all duration-300 text-left group",
+                                                                    isSelected ? "bg-primary border-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center gap-6">
+                                                                    <div className="h-20 w-20 relative bg-white rounded-2xl border-2 overflow-hidden shrink-0 shadow-inner">
+                                                                        {getImageUrl(imgPath) ? <Image src={getImageUrl(imgPath)!} alt="Motor" fill className="object-contain p-2" unoptimized /> : <Ship className="h-8 w-8 m-auto mt-6 opacity-10" />}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                                            <Badge variant="outline" className={cn("font-black text-[10px] px-2 py-0.5", isSelected ? "border-white/20 text-white" : "border-primary/20 text-primary")}>
+                                                                                {motor['HP Rating'] || 'ENGINE'} HP
+                                                                            </Badge>
+                                                                            <span className="text-[10px] font-black uppercase opacity-60 tracking-widest">Outboard</span>
+                                                                        </div>
+                                                                        <p className="text-base font-black uppercase tracking-tight leading-tight">{motor['Model Name']}</p>
+                                                                        <p className={cn("text-[10px] font-mono font-bold mt-1.5 uppercase", isSelected ? "text-white/60" : "text-muted-foreground/60")}>{motor['Part Number']}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-base font-black">${(motor.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            </button>
 
-                        <div className="pt-20 sticky bottom-0 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent pb-6 mt-auto">
-                            <div className="flex gap-4">
-                                {currentStep > 1 && (
-                                    <Button variant="outline" size="lg" className="h-16 w-24 rounded-2xl border-2 hover:bg-white transition-all active:scale-[0.98]" onClick={prevStep}>
-                                        <ChevronLeft className="h-6 w-6" />
-                                    </Button>
-                                )}
-                                <Button 
-                                    size="lg" 
-                                    className="flex-1 h-16 rounded-2xl font-black uppercase tracking-[0.1em] text-sm shadow-2xl shadow-primary/30 group transition-all active:scale-[0.98]"
-                                    disabled={currentStep === 1 && !isStep1Complete}
-                                    onClick={nextStep}
-                                >
-                                    {currentStep === STEPS.length ? 'Finalize Quote' : `Next: ${STEPS[currentStep].label}`}
-                                    <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
+                                                            {isSelected && motor.masterAccessories && (
+                                                                <div className="p-6 bg-slate-50 border-2 border-dashed rounded-[2rem] space-y-5 animate-in slide-in-from-top-2 duration-300">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="h-6 w-6 bg-primary/10 rounded-full flex items-center justify-center"><Wrench className="h-3 w-3 text-primary" /></div>
+                                                                        <span className="text-[11px] font-black uppercase tracking-widest">Linked Rigging & Props</span>
+                                                                    </div>
+                                                                    <div className="space-y-2.5">
+                                                                        {motor.masterAccessories.map((acc: any, i: number) => (
+                                                                            <div key={i} className="flex items-center justify-between text-xs font-medium p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm">
+                                                                                <span className="truncate pr-4 uppercase tracking-tight">{acc.name}</span>
+                                                                                <span className="font-black text-primary shrink-0">${(acc.items?.[0]?.data?.sellPriceExclGst || 0).toLocaleString()}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
+
+                    {/* Fixed Footer Buttons */}
+                    <div className="px-8 md:px-12 py-8 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent shrink-0 z-20 border-t border-slate-100/50">
+                        <div className="flex gap-4">
+                            {currentStep > 1 && (
+                                <Button variant="outline" size="lg" className="h-16 w-24 rounded-2xl border-2 hover:bg-white transition-all active:scale-[0.98]" onClick={prevStep}>
+                                    <ChevronLeft className="h-6 w-6" />
                                 </Button>
-                            </div>
+                            )}
+                            <Button 
+                                size="lg" 
+                                className="flex-1 h-16 rounded-2xl font-black uppercase tracking-[0.1em] text-sm shadow-2xl shadow-primary/30 group transition-all active:scale-[0.98]"
+                                disabled={currentStep === 1 && !isStep1Complete}
+                                onClick={nextStep}
+                            >
+                                {currentStep === STEPS.length ? 'Finalize Quote' : `Next: ${STEPS[currentStep].label}`}
+                                <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
+                            </Button>
                         </div>
                     </div>
-                </ScrollArea>
+                </div>
             </div>
 
             {/* Gallery Lightbox */}
