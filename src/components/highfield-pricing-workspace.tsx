@@ -62,7 +62,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { SUPPORTED_CURRENCIES, formatCurrency } from '@/lib/currency-utils';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import NextImage from "next/image";
@@ -737,7 +737,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <RangeSection 
                             key={range.id} 
                             range={range} 
-                            models={allModels.filter(m => m.rangeId === range.id)} 
+                            models={allModels.filter(m => m.rangeId === r.id)} 
                             variants={allVariants} 
                             isExpanded={expandedRanges.includes(range.id)}
                             onToggle={() => toggleRange(range.id)}
@@ -759,13 +759,13 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <Button 
                 onClick={() => setIsFreightManagerOpen(true)} 
                 variant="outline" 
-                className="h-10 font-black uppercase tracking-widest text-[10px] shadow-sm rounded-xl border-2 hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-2"
+                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 flex items-center gap-2 shadow-sm transition-all hover:bg-primary hover:text-white"
             >
                 <Truck className="h-4 w-4" /> Freight Management
             </Button>
             <Button 
                 onClick={() => setIsAddSectionOpen(true)} 
-                className="h-10 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl flex items-center gap-2"
+                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-primary bg-primary text-white hover:bg-primary/90 flex items-center gap-2 shadow-lg transition-all active:scale-[0.98]"
             >
                 <FolderPlus className="h-4 w-4" /> Add Section
             </Button>
@@ -834,6 +834,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
             <ScrollArea className="flex-1">
                 <PricingTable />
+                <ScrollBar orientation="horizontal" />
             </ScrollArea>
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
@@ -860,7 +861,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     <StrategyControls />
                                     <div className="h-10 w-px bg-border mx-2" />
                                     <DialogClose asChild>
-                                        <Button variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-accent border-2 flex items-center gap-2">
+                                        <Button variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 flex items-center gap-2 hover:bg-accent transition-all">
                                             <Minimize2 className="h-4 w-4" /> Collapse
                                         </Button>
                                     </DialogClose>
@@ -869,8 +870,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         </div>
 
                         <div className="flex-1 overflow-hidden">
-                            <ScrollArea className="h-full">
+                            <ScrollArea className="h-full w-full">
                                 <PricingTable />
+                                <ScrollBar orientation="horizontal" />
                             </ScrollArea>
                         </div>
                     </div>
@@ -880,7 +882,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
                 <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle>
+                        <DialogTitle>Create Strategy Section</DialogTitle>
                         <DialogDescription className="text-xs font-bold uppercase text-muted-foreground/60 tracking-widest">Organize your matrix into high-level groupings.</DialogDescription>
                     </DialogHeader>
                     <div className="py-6">
