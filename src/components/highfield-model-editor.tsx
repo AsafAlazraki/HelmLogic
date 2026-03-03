@@ -18,7 +18,7 @@ import {
     Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, 
     AlertTriangle, DollarSign, Ship, RefreshCw, 
     PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert, Settings2, 
-    Search, ListChecks, Star, ChevronDown 
+    Search, ListChecks, Star, ChevronDown, FileText, ExternalLink 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -645,9 +645,6 @@ function OptionalFeatureItem({
     );
 }
 
-/**
- * Standard Rule Item component to resolve Rules of Hooks order violation.
- */
 function RuleItem({ 
     index, 
     remove, 
@@ -788,6 +785,80 @@ function RuleItem({
                 </div>
             </div>
         </Card>
+    );
+}
+
+function DocumentsSection() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({ control, name: "documents" });
+    const storage = useStorage();
+    const [isUploading, setIsUploading] = useState(false);
+    const { toast } = useToast();
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !storage) return;
+        setIsUploading(true);
+        try {
+            const path = `documents/${Date.now()}-${file.name}`;
+            const url = await uploadFileToStorage(storage, file, path);
+            append({ id: `doc-${Date.now()}`, name: file.name, url });
+            toast({ title: "Document Uploaded" });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Upload Failed", description: error.message });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader title="Technical Documents" count={fields.length} />
+            <CollapsibleContent>
+                <CardContent className="pt-6 space-y-4">
+                    <div className="grid gap-2">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc">
+                                <FileText className="h-5 w-5 text-primary/40 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <FormField 
+                                        control={control} 
+                                        name={`documents.${index}.name`} 
+                                        render={({ field }) => (
+                                            <FormControl>
+                                                <Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" />
+                                            </FormControl>
+                                        )} 
+                                    />
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link">
+                                        <a href={(field as any).url} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                    </Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-all group/upload border-muted-foreground/20">
+                        {isUploading ? (
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        ) : (
+                            <>
+                                <Upload className="h-6 w-6 text-muted-foreground/40 group-hover/upload:text-primary transition-colors mb-2" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload Manual / Spec Sheet</p>
+                            </>
+                        )}
+                        <Input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
+                    </label>
+                </CardContent>
+            </CollapsibleContent>
+        </Collapsible>
     );
 }
 
@@ -1397,6 +1468,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
                             </CardContent>
                         </CollapsibleContent>
                     </Collapsible>
+                    <DocumentsSection />
                     <RulesSection model={model} modelCode={modelCode} />
                 </div>
             </div>
