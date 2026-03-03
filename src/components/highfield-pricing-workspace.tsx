@@ -677,11 +677,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [ranges, searchTerm, allModels]);
 
     const PricingTable = () => (
-        <div className="min-w-[1600px]">
-            <Table className="border-collapse table-fixed w-full">
-                <TableHeader className="bg-muted/50 sticky top-0 z-20">
-                    <TableRow className="hover:bg-transparent border-b">
-                        <TableHead className="w-[350px] border-r bg-muted/20 sticky left-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" colSpan={1}></TableHead>
+        <div className="min-w-[1600px] bg-background">
+            <Table className="border-separate border-spacing-0 table-fixed w-full">
+                <TableHeader className="sticky top-0 z-20">
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-[350px] border-r border-b bg-card sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
                         {sortedSections.map((sec, secIdx) => {
                             const isCoreSystem = ['sec-exchange', 'sec-master', 'sec-freight'].includes(sec.id);
                             const colSpan = getSectionColCount(sec);
@@ -691,77 +691,63 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     key={sec.id} 
                                     colSpan={colSpan} 
                                     className={cn(
-                                        "border-r last:border-r-0 px-4 py-2 group/sec transition-colors",
+                                        "border-r border-b last:border-r-0 p-0 group/sec transition-colors",
                                         sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-primary/5"
                                     )}
                                 >
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>
-                                                {sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
-                                            </Button>
-                                            {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
-                                        </div>
-                                        {!sec.isCollapsed && (
-                                            <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className={cn("h-6 w-6", secIdx === 0 && "opacity-20 pointer-events-none")} 
-                                                    onClick={() => handleMoveSection(sec.id, 'left')}
-                                                >
-                                                    <ArrowLeft className="h-3 w-3" />
+                                    <div className="flex flex-col h-full">
+                                        <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/5 min-h-[40px]">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full shrink-0" onClick={() => handleToggleSectionCollapse(sec.id)}>
+                                                    {sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
                                                 </Button>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className={cn("h-6 w-6", secIdx === sortedSections.length - 1 && "opacity-20 pointer-events-none")} 
-                                                    onClick={() => handleMoveSection(sec.id, 'right')}
-                                                >
-                                                    <ArrowRight className="h-3 w-3" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
-                                                {!isCoreSystem && (
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>
-                                                )}
+                                                {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
                                             </div>
-                                        )}
+                                            {!sec.isCollapsed && (
+                                                <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity shrink-0">
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'left')} disabled={secIdx === 0}><ArrowLeft className="h-3 w-3" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'right')} disabled={secIdx === sortedSections.length - 1}><ArrowRight className="h-3 w-3" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
+                                                    {!isCoreSystem && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </TableHead>
                             );
                         })}
                     </TableRow>
-                    <TableRow className="hover:bg-transparent border-b-2">
-                        <TableHead className="py-4 px-6 border-r bg-muted/20 font-black uppercase text-[10px] sticky left-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Description &amp; SKU</TableHead>
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead className="py-4 px-6 border-r border-b bg-muted/20 font-black uppercase text-[10px] sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Description &amp; SKU</TableHead>
                         {sortedSections.map(sec => {
-                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r last:border-r-0 bg-muted/20" />;
+                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b last:border-r-0 bg-muted/20" />;
                             
                             if (sec.id === 'sec-exchange') {
                                 return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
-                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
-                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
-                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
+                                        <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
+                                        <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
+                                        <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
+                                        <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
                                     </React.Fragment>
                                 );
                             }
                             if (sec.id === 'sec-master') {
                                 return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-right border-r bg-primary/5 font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
-                                        <TableHead className="text-right border-r bg-primary/5 font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
+                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
+                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
                                     </React.Fragment>
                                 );
                             }
                             if (sec.id === 'sec-freight') {
-                                return <TableHead key={sec.id} className="text-right border-r bg-primary/5 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
+                                return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
                             }
 
-                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r last:border-r-0 bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
+                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b last:border-r-0 bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
                             
                             return sec.columns.map((col, idx) => (
-                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r last:border-r-0">
+                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r border-b last:border-r-0">
                                     <div className="flex items-center justify-between gap-1">
                                         <Button 
                                             variant="ghost" 
@@ -1118,7 +1104,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     return (
         <>
             <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-r sticky left-0 z-10 bg-muted/30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-r sticky left-0 z-30 bg-muted/30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center gap-3">
                         {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                         <span>{range.name} Range</span>
@@ -1169,7 +1155,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-muted/5 border-l-4 border-l-primary/40">
-                <TableCell className="py-3 px-8 min-w-0 border-r sticky left-0 z-10 bg-muted/5 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableCell className="py-3 px-8 min-w-0 border-r sticky left-0 z-30 bg-muted/5 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setIsLocalExpanded(!isLocalExpanded)} className="hover:text-primary transition-colors">
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -1215,7 +1201,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="bg-white/50 border-l-4 border-l-primary/40">
-                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-r sticky left-0 z-10 bg-white/50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" colSpan={1}>
+                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-r sticky left-0 z-30 bg-white/50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" colSpan={1}>
                                     <div className="flex items-center gap-2">
                                         <Wrench className="h-3.5 w-3.5" />
                                         <span>Factory Options</span>
