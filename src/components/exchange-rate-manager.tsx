@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -40,7 +41,6 @@ import {
     ArrowRightLeft, 
     Maximize2, 
     Minimize2,
-    RefreshCw,
     Star,
     Building,
     ChevronDown,
@@ -367,83 +367,81 @@ export function ExchangeRateManager({
                                                             
                                                             {isExpanded && (
                                                                 <TableRow className="bg-primary/5 hover:bg-primary/5 border-none">
-                                                                    <TableCell colSpan={7} className="p-0">
-                                                                        <div className="p-8 animate-in slide-in-from-top-2 duration-300">
-                                                                            <Tabs defaultValue="brands" className="w-full">
-                                                                                <TabsList className="bg-muted/20 h-10 p-1 rounded-2xl border mb-4">
-                                                                                    <TabsTrigger value="brands" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 h-full data-[state=active]:bg-background data-[state=active]:shadow-md">
-                                                                                        <Link2 className="h-3 w-3 mr-2" />
-                                                                                        Linked Brands
-                                                                                    </TabsTrigger>
-                                                                                    <TabsTrigger value="log" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 h-full data-[state=active]:bg-background data-[state=active]:shadow-md">
-                                                                                        <ClipboardList className="h-3 w-3 mr-2" />
-                                                                                        Strategic Audit Log
-                                                                                    </TabsTrigger>
-                                                                                </TabsList>
+                                                                    <TableCell colSpan={7} className="p-8 animate-in slide-in-from-top-2 duration-300">
+                                                                        <Tabs defaultValue="brands" className="w-full">
+                                                                            <TabsList className="bg-muted/20 h-10 p-1 rounded-2xl border mb-4">
+                                                                                <TabsTrigger value="brands" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 h-full data-[state=active]:bg-background data-[state=active]:shadow-md">
+                                                                                    <Link2 className="h-3 w-3 mr-2" />
+                                                                                    Linked Brands
+                                                                                </TabsTrigger>
+                                                                                <TabsTrigger value="log" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 h-full data-[state=active]:bg-background data-[state=active]:shadow-md">
+                                                                                    <ClipboardList className="h-3 w-3 mr-2" />
+                                                                                    Strategic Audit Log
+                                                                                </TabsTrigger>
+                                                                            </TabsList>
 
-                                                                                <TabsContent value="brands">
-                                                                                    <div className="bg-background rounded-3xl border-2 shadow-2xl overflow-hidden border-primary/10">
-                                                                                        <div className="p-5 border-b bg-muted/10 flex items-center justify-between">
-                                                                                            <div className="flex items-center gap-2.5">
-                                                                                                <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                                                                                                    <Building className="h-4 w-4 text-primary" />
-                                                                                                </div>
-                                                                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Associated Brands ({rate.code})</span>
+                                                                            <TabsContent value="brands">
+                                                                                <div className="bg-background rounded-3xl border-2 shadow-2xl overflow-hidden border-primary/10">
+                                                                                    <div className="p-5 border-b bg-muted/10 flex items-center justify-between">
+                                                                                        <div className="flex items-center gap-2.5">
+                                                                                            <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                                                                <Building className="h-4 w-4 text-primary" />
                                                                                             </div>
-                                                                                            <Select onValueChange={(vId) => handleAssignVendor(vId, rate.code)}>
-                                                                                                <SelectTrigger className="h-9 w-[220px] text-[10px] font-black uppercase tracking-widest border-dashed border-2 hover:bg-primary/5 hover:border-primary/30 transition-all">
-                                                                                                    <Plus className="h-3 w-3 mr-2" />
-                                                                                                    <SelectValue placeholder="Map Brand to Currency" />
-                                                                                                </SelectTrigger>
-                                                                                                <SelectContent>
-                                                                                                    {vendors?.filter(v => v.currency !== rate.code).map(v => (
-                                                                                                        <SelectItem key={v.id} value={v.id} className="text-[10px] font-black uppercase tracking-widest">{v.name}</SelectItem>
-                                                                                                    ))}
-                                                                                                </SelectContent>
-                                                                                            </Select>
+                                                                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Associated Brands ({rate.code})</span>
                                                                                         </div>
-                                                                                        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                                                            {mappedVendors.length > 0 ? mappedVendors.map(vendor => (
-                                                                                                <div key={vendor.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-muted/5 group/vendor hover:border-primary/20 hover:bg-white transition-all">
-                                                                                                    <div className="flex items-center gap-4">
-                                                                                                        <div className="h-10 w-10 bg-white rounded-xl border p-1.5 shadow-sm">
-                                                                                                            {vendor.logoUrl ? (
-                                                                                                                <img src={vendor.logoUrl} alt={vendor.name} className="h-full w-full object-contain" />
-                                                                                                            ) : (
-                                                                                                                <Building className="h-5 w-5 m-auto mt-1 text-muted-foreground/30" />
-                                                                                                            )}
-                                                                                                        </div>
-                                                                                                        <span className="text-[11px] font-black uppercase tracking-tight">{vendor.name}</span>
-                                                                                                    </div>
-                                                                                                    <Button 
-                                                                                                        variant="ghost" 
-                                                                                                        size="icon" 
-                                                                                                        className="h-8 w-8 text-muted-foreground opacity-0 group-hover/vendor:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
-                                                                                                        onClick={() => handleAssignVendor(vendor.id, 'AUD')}
-                                                                                                    >
-                                                                                                        <Link2 className="h-4 w-4" />
-                                                                                                    </Button>
-                                                                                                </div>
-                                                                                            )) : (
-                                                                                                <div className="col-span-full py-12 text-center">
-                                                                                                    <div className="opacity-20 flex flex-col items-center gap-3">
-                                                                                                        <Link2 className="h-8 w-8" />
-                                                                                                        <p className="text-[10px] font-black uppercase tracking-widest">No brands currently associated with {rate.code}</p>
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                            )}
-                                                                                        </div>
+                                                                                        <Select onValueChange={(vId) => handleAssignVendor(vId, rate.code)}>
+                                                                                            <SelectTrigger className="h-9 w-[220px] text-[10px] font-black uppercase tracking-widest border-dashed border-2 hover:bg-primary/5 hover:border-primary/30 transition-all">
+                                                                                                <Plus className="h-3 w-3 mr-2" />
+                                                                                                <SelectValue placeholder="Map Brand to Currency" />
+                                                                                            </SelectTrigger>
+                                                                                            <SelectContent>
+                                                                                                {vendors?.filter(v => v.currency !== rate.code).map(v => (
+                                                                                                    <SelectItem key={v.id} value={v.id} className="text-[10px] font-black uppercase tracking-widest">{v.name}</SelectItem>
+                                                                                                ))}
+                                                                                            </SelectContent>
+                                                                                        </Select>
                                                                                     </div>
-                                                                                </TabsContent>
+                                                                                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                                                        {mappedVendors.length > 0 ? mappedVendors.map(vendor => (
+                                                                                            <div key={vendor.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-muted/5 group/vendor hover:border-primary/20 hover:bg-white transition-all">
+                                                                                                <div className="flex items-center gap-4">
+                                                                                                    <div className="h-10 w-10 bg-white rounded-xl border p-1.5 shadow-sm">
+                                                                                                        {vendor.logoUrl ? (
+                                                                                                            <img src={vendor.logoUrl} alt={vendor.name} className="h-full w-full object-contain" />
+                                                                                                        ) : (
+                                                                                                            <Building className="h-5 w-5 m-auto mt-1 text-muted-foreground/30" />
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                    <span className="text-[11px] font-black uppercase tracking-tight">{vendor.name}</span>
+                                                                                                </div>
+                                                                                                <Button 
+                                                                                                    variant="ghost" 
+                                                                                                    size="icon" 
+                                                                                                    className="h-8 w-8 text-muted-foreground opacity-0 group-hover/vendor:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                                                                                                    onClick={() => handleAssignVendor(vendor.id, 'AUD')}
+                                                                                                >
+                                                                                                    <Link2 className="h-4 w-4" />
+                                                                                                </Button>
+                                                                                            </div>
+                                                                                        )) : (
+                                                                                            <div className="col-span-full py-12 text-center">
+                                                                                                <div className="opacity-20 flex flex-col items-center gap-3">
+                                                                                                    <Link2 className="h-8 w-8" />
+                                                                                                    <p className="text-[10px] font-black uppercase tracking-widest">No brands currently associated with {rate.code}</p>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </TabsContent>
 
-                                                                                <TabsContent value="log">
-                                                                                    <AuditLogView 
-                                                                                        organisationId={organisationId} 
-                                                                                        currencyCode={rate.code} 
-                                                                                    />
-                                                                                </TabsContent>
-                                                                            </Tabs>
-                                                                        </div>
+                                                                            <TabsContent value="log">
+                                                                                <AuditLogView 
+                                                                                    organisationId={organisationId} 
+                                                                                    currencyCode={rate.code} 
+                                                                                />
+                                                                            </TabsContent>
+                                                                        </Tabs>
                                                                     </TableCell>
                                                                 </TableRow>
                                                             )}
@@ -478,99 +476,98 @@ export function ExchangeRateManager({
                             </div>
                         )}
                     </div>
+
+                    {/* Modals outside scroll area but inside main dialog structure */}
+                    <Dialog open={isAdding} onOpenChange={setIsAdding}>
+                        <DialogContent className="sm:max-w-md rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
+                            <DialogHeader className="p-8 border-b bg-muted/5">
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Add Strategic Currency</DialogTitle>
+                                <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Global Financial Matrix Integration</DialogDescription>
+                            </DialogHeader>
+                            <div className="p-8 space-y-8">
+                                <div className="space-y-2.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">1. ISO Currency Code</Label>
+                                    <Select value={newCode} onValueChange={setNewCode}>
+                                        <SelectTrigger className="h-14 font-black text-sm border-2 rounded-2xl shadow-sm">
+                                            <SelectValue placeholder="Select ISO Target..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-2xl shadow-2xl border-2">
+                                            {availableToChoose.map(c => (
+                                                <SelectItem key={c.code} value={c.code} className="font-bold py-3">{c.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">2. Initial Exchange Rate</Label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 bg-primary/10 rounded-lg flex items-center justify-center">
+                                            <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
+                                        </div>
+                                        <Input 
+                                            type="number" 
+                                            step="0.0001" 
+                                            value={newRate} 
+                                            onChange={e => setNewRate(e.target.value)}
+                                            className="pl-14 h-14 font-black text-xl border-2 rounded-2xl bg-muted/5 shadow-inner"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                                <Button variant="outline" onClick={() => setIsAdding(false)} className="h-12 px-8 font-black uppercase tracking-widest text-[10px] rounded-2xl border-2 transition-all hover:bg-background">Cancel</Button>
+                                <Button onClick={handleAddRate} disabled={!newCode} className="h-12 px-10 font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95">
+                                    <CheckCircle2 className="h-4 w-4 mr-2" /> Link Currency
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={!!isUpdating} onOpenChange={(open) => !open && setIsUpdating(null)}>
+                        <DialogContent className="sm:max-w-lg rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
+                            <DialogHeader className="p-8 border-b bg-muted/5">
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Update Strategic Rate: {isUpdating?.code}</DialogTitle>
+                                <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Manual Audit Point Creation</DialogDescription>
+                            </DialogHeader>
+                            <div className="p-8 space-y-6">
+                                <div className="space-y-2.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">Precision Exchange Rate</Label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 bg-primary/10 rounded-lg flex items-center justify-center">
+                                            <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
+                                        </div>
+                                        <Input 
+                                            type="number" 
+                                            step="0.0001" 
+                                            value={updateRateVal} 
+                                            onChange={e => setUpdateRateVal(e.target.value)}
+                                            className="pl-14 h-12 font-black text-lg border-2 rounded-xl bg-muted/5 shadow-inner"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">Strategic Audit Note (Mandatory)</Label>
+                                    <div className="relative">
+                                        <MessageSquare className="absolute left-4 top-4 h-4 w-4 text-primary opacity-40" />
+                                        <Textarea 
+                                            placeholder="Explain the reasoning for this rate adjustment..." 
+                                            value={updateNote}
+                                            onChange={e => setUpdateNote(e.target.value)}
+                                            className="pl-12 min-h-[120px] font-bold text-sm border-2 rounded-xl bg-background shadow-sm"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                                <Button variant="outline" onClick={() => setIsUpdating(null)} className="h-12 px-8 font-black uppercase tracking-widest text-[10px] rounded-2xl border-2 transition-all">Cancel</Button>
+                                <Button onClick={handlePerformUpdate} disabled={isProcessingUpdate || !updateRateVal || !updateNote.trim()} className="h-12 px-10 font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl transition-all hover:scale-105">
+                                    {isProcessingUpdate ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                    Persist Strategic Change
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
-
-                {/* Add Currency Dialog */}
-                <Dialog open={isAdding} onOpenChange={setIsAdding}>
-                    <DialogContent className="sm:max-w-md rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
-                        <DialogHeader className="p-8 border-b bg-muted/5">
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Add Strategic Currency</DialogTitle>
-                            <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Global Financial Matrix Integration</DialogDescription>
-                        </DialogHeader>
-                        <div className="p-8 space-y-8">
-                            <div className="space-y-2.5">
-                                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">1. ISO Currency Code</Label>
-                                <Select value={newCode} onValueChange={setNewCode}>
-                                    <SelectTrigger className="h-14 font-black text-sm border-2 rounded-2xl shadow-sm">
-                                        <SelectValue placeholder="Select ISO Target..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-2xl shadow-2xl border-2">
-                                        {availableToChoose.map(c => (
-                                            <SelectItem key={c.code} value={c.code} className="font-bold py-3">{c.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2.5">
-                                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">2. Initial Exchange Rate</Label>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 bg-primary/10 rounded-lg flex items-center justify-center">
-                                        <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
-                                    </div>
-                                    <Input 
-                                        type="number" 
-                                        step="0.0001" 
-                                        value={newRate} 
-                                        onChange={e => setNewRate(e.target.value)}
-                                        className="pl-14 h-14 font-black text-xl border-2 rounded-2xl bg-muted/5 shadow-inner"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
-                            <Button variant="outline" onClick={() => setIsAdding(false)} className="h-12 px-8 font-black uppercase tracking-widest text-[10px] rounded-2xl border-2 transition-all hover:bg-background">Cancel</Button>
-                            <Button onClick={handleAddRate} disabled={!newCode} className="h-12 px-10 font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95">
-                                <CheckCircle2 className="h-4 w-4 mr-2" /> Link Currency
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Update Rate & Note Dialog */}
-                <Dialog open={!!isUpdating} onOpenChange={(open) => !open && setIsUpdating(null)}>
-                    <DialogContent className="sm:max-w-lg rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
-                        <DialogHeader className="p-8 border-b bg-muted/5">
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Update Strategic Rate: {isUpdating?.code}</DialogTitle>
-                            <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Manual Audit Point Creation</DialogDescription>
-                        </DialogHeader>
-                        <div className="p-8 space-y-6">
-                            <div className="space-y-2.5">
-                                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">Precision Exchange Rate</Label>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 bg-primary/10 rounded-lg flex items-center justify-center">
-                                        <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
-                                    </div>
-                                    <Input 
-                                        type="number" 
-                                        step="0.0001" 
-                                        value={updateRateVal} 
-                                        onChange={e => setUpdateRateVal(e.target.value)}
-                                        className="pl-14 h-12 font-black text-lg border-2 rounded-xl bg-muted/5 shadow-inner"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2.5">
-                                <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 ml-1">Strategic Audit Note (Mandatory)</Label>
-                                <div className="relative">
-                                    <MessageSquare className="absolute left-4 top-4 h-4 w-4 text-primary opacity-40" />
-                                    <Textarea 
-                                        placeholder="Explain the reasoning for this rate adjustment..." 
-                                        value={updateNote}
-                                        onChange={e => setUpdateNote(e.target.value)}
-                                        className="pl-12 min-h-[120px] font-bold text-sm border-2 rounded-xl bg-background shadow-sm"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
-                            <Button variant="outline" onClick={() => setIsUpdating(null)} className="h-12 px-8 font-black uppercase tracking-widest text-[10px] rounded-2xl border-2 transition-all">Cancel</Button>
-                            <Button onClick={handlePerformUpdate} disabled={isProcessingUpdate || !updateRateVal || !updateNote.trim()} className="h-12 px-10 font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl transition-all hover:scale-105">
-                                {isProcessingUpdate ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                                Persist Strategic Change
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
             </DialogContent>
         </Dialog>
     );

@@ -25,6 +25,7 @@ interface Vendor {
     logoUrl?: string;
     vendorType: string;
     slug?: string;
+    currency?: string;
 }
 
 interface Organisation {
@@ -132,7 +133,7 @@ export default function PricingManagerPage() {
                 {/* Exchange Rates Strategic Card */}
                 {organisationId && (
                     <Card 
-                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer hover:scale-[1.02] transition-all group overflow-hidden h-24"
+                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer group overflow-hidden h-24"
                         onClick={() => setIsExchangeRateManagerOpen(true)}
                     >
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
