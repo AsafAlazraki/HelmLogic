@@ -59,6 +59,7 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -446,7 +447,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <Table className="border-separate border-spacing-0 w-full table-fixed">
                 <TableHeader className="sticky top-0 z-50 bg-white">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[300px] sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                        <TableHead className="w-[300px] sticky left-0 z-50 bg-card border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors">
                             Description & SKU
                         </TableHead>
                         {sortedSections.map((sec, secIdx) => {
@@ -475,7 +476,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         })}
                     </TableRow>
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[2px_0_5px_rgba(0,0,0,0.05)] h-12">
+                        <TableHead className="sticky left-0 z-50 bg-card border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12">
                             {isFocusMode && (
                                 <div className="relative">
                                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
@@ -623,8 +624,8 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
     return (
         <>
-            <TableRow className="bg-slate-50/50 border-l-4 border-l-primary group">
-                <TableCell className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+            <TableRow className="bg-slate-50 border-l-4 border-l-primary group">
+                <TableCell colSpan={totalCalculatedCols + 1} className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
                         <button onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}>
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
@@ -633,18 +634,16 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         <span className="text-[9px] font-mono text-muted-foreground/60">{model.modelCode || 'NO CODE'}</span>
                     </div>
                 </TableCell>
-                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-slate-50/20" />)}
             </TableRow>
             {isLocalExpanded && (
                 <>
                     <TableRow className="hover:bg-transparent">
-                        <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                        <TableCell colSpan={totalCalculatedCols + 1} className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                             <div className="flex items-center gap-2">
                                 <Ship className="h-3 w-3 text-primary opacity-40" />
                                 <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Boat Variants</span>
                             </div>
                         </TableCell>
-                        {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-muted/5" />)}
                     </TableRow>
                     {variants.map((v: any) => (
                         <PricingRow 
@@ -669,13 +668,12 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="hover:bg-transparent">
-                                <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                <TableCell colSpan={totalCalculatedCols + 1} className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                     <div className="flex items-center gap-2">
                                         <Layers className="h-3 w-3 text-primary opacity-40" />
                                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Factory Options</span>
                                     </div>
                                 </TableCell>
-                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-muted/5" />)}
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 
@@ -745,6 +743,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                                     onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} 
                                     align="right" 
                                     suffix={vendorCurrency}
+                                    prefix="$"
                                 />
                             </TableCell>
                             <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">
@@ -762,7 +761,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     );
                 }
                 if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
-                if (sec.columns.length === 0) return <TableCell key={sec.id} className="bg-primary/5 border-r border-b" />;
+                if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-primary/5 border-r border-b" />;
                 return sec.columns.map((col: any) => (
                     <TableCell key={col.id} className="p-0 border-r border-b bg-primary/5">
                         {col.isCalculated ? (
