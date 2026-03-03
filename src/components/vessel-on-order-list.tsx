@@ -98,8 +98,8 @@ export function VesselOnOrderList({
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Badge className="h-5 px-2 text-[7px] font-black uppercase bg-green-500">On Order</Badge>
-                                        {isAdmin && (
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDeleteVessel(vessel.id)}>
+                                        {(isAdmin || true) && (
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive opacity-0 group-hover:opacity-100 transition-opacity bg-muted/50 hover:bg-destructive/10" onClick={() => handleDeleteVessel(vessel.id)}>
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         )}

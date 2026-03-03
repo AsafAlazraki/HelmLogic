@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -130,8 +129,8 @@ export default function PricingManagerPage() {
                     <Card 
                         className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl group overflow-hidden h-24 relative"
                     >
-                        <div className="absolute -bottom-4 -right-4 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <ArrowRightLeft className="h-24 w-24 -rotate-12" />
+                        <div className="absolute -bottom-6 -right-6 p-3 opacity-10 group-hover:opacity-20 transition-all z-0">
+                            <ArrowRightLeft className="h-28 w-28 -rotate-[30deg]" />
                         </div>
                         <CardHeader className="p-3 pb-1 relative z-10">
                             <div className="flex items-center justify-between">

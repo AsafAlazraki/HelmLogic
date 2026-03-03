@@ -34,7 +34,7 @@ import {
     ImageIcon,
     Save
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -43,7 +43,7 @@ import { ModelConfigurationEditor } from '@/components/model-configuration-edito
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, createSlug } from '@/lib/utils';
 import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
@@ -556,9 +556,8 @@ export default function ModuleDetailsPage() {
             {isTransitioning && <BuildTransitionOverlay organisation={currentMemberOrg as any} model={selectedModel} />}
 
             {/* Cinematic Hero */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-32 border-b border-white/10 shadow-2xl">
+            <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-40 border-b-2 border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
-                    {/* Animated Mesh Blobs */}
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
                     <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
                     <div className="absolute top-[10%] right-[20%] w-[40%] h-[100%] bg-sky-300/10 blur-[100px] rounded-full animate-pulse duration-[6000ms] pointer-events-none" />
@@ -685,16 +684,17 @@ export default function ModuleDetailsPage() {
                                 <Button 
                                     variant="outline" 
                                     onClick={handleBackToCatalog} 
-                                    className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-primary border-primary/20 bg-primary/5 hover:bg-primary hover:text-white transition-all rounded-xl shadow-sm group"
+                                    className="h-10 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-primary border-primary border-2 bg-primary/5 hover:bg-primary hover:text-white transition-all rounded-xl shadow-lg group overflow-hidden"
                                 >
-                                    <ChevronLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" /> 
-                                    Back to {view === 'bmt' ? 'Series Selection' : 'Product Ranges'}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] transition-transform" />
+                                    <ChevronLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1 relative z-10" /> 
+                                    <span className="relative z-10">Back to {view === 'bmt' ? 'Series Selection' : 'Product Ranges'}</span>
                                 </Button>
                             </div>
                         )}
                         <div className="flex-1 min-h-0 relative">
                             <ScrollArea className="h-full">
-                                <div className="pb-10">
+                                <div className="pb-10 pt-10">
                                     {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} isAdmin={isAdmin} />}
                                     {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
                                     {view === 'bmt' && selectedModel && selectedRange && (
