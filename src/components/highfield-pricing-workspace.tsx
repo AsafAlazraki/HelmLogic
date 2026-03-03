@@ -33,6 +33,8 @@ import {
     Maximize2,
     Minimize2,
     ChevronLeft,
+    ArrowLeft,
+    ArrowRight,
     ArrowRightLeft,
     ShieldCheck,
     Truck,
@@ -44,8 +46,6 @@ import {
     Lock,
     FolderPlus,
     LayoutGrid,
-    ArrowLeft,
-    ArrowRight,
     Star
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -553,19 +553,24 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         toast({ title: "Metric Initialized" });
     };
 
-    const handleMoveSection = async (secId: string, direction: 'up' | 'down') => {
-        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
+    const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
+        let sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
         const idx = sections.findIndex(s => s.id === secId);
         if (idx === -1) return;
 
-        const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
         if (newIdx < 0 || newIdx >= sections.length) return;
 
-        const temp = sections[idx].order;
-        sections[idx].order = sections[newIdx].order;
-        sections[newIdx].order = temp;
+        // Perform swap
+        const temp = sections[idx];
+        sections[idx] = sections[newIdx];
+        sections[newIdx] = temp;
 
-        await setDoc(strategyRef, { sections }, { merge: true });
+        // Normalize orders to sequence
+        sections = sections.map((s, i) => ({ ...s, order: i }));
+
+        await updateDoc(strategyRef, { sections });
+        toast({ title: "Section Position Updated" });
     };
 
     const handleToggleSectionCollapse = async (secId: string) => {
@@ -610,7 +615,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         cols[newIdx] = temp;
 
         sections[secIdx].columns = cols;
-        await setDoc(strategyRef, { sections }, { merge: true });
+        await updateDoc(strategyRef, { sections });
+        toast({ title: "Metric Position Updated" });
     };
 
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
@@ -633,9 +639,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (!ranges) return [];
         if (!searchTerm) return ranges;
         const lower = searchTerm.toLowerCase();
-        return ranges.filter(r => {
-            const modelsInRange = allModels.filter(m => m.rangeId === r.id);
-            return r.name.toLowerCase().includes(lower) || 
+        return ranges.filter(range => {
+            const modelsInRange = allModels.filter(m => m.rangeId === range.id);
+            return range.name.toLowerCase().includes(lower) || 
                    modelsInRange.some(m => m.name.toLowerCase().includes(lower) || m.modelCode?.toLowerCase().includes(lower));
         });
     }, [ranges, searchTerm, allModels]);
@@ -677,8 +683,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </div>
                                     {!sec.isCollapsed && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'up')}><ArrowLeft className="h-3 w-3 rotate-90" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'down')}><ArrowRight className="h-3 w-3 rotate-90" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
                                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>
                                         </div>
@@ -779,7 +785,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 onClick={() => setIsAddSectionOpen(true)} 
                 className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-primary bg-primary text-white hover:bg-primary/90 flex items-center gap-2 shadow-lg transition-all active:scale-[0.98]"
             >
-                <FolderPlus className="h-4 w-4" /> Add Section
+                <Plus className="h-4 w-4" /> Add Section
             </Button>
         </div>
     );
@@ -1063,7 +1069,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
                 </TableCell>
                 <TableCell className="text-center border-r bg-primary/5">
-                    <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate.toFixed(4)}</span>
+                    <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
                 </TableCell>
                 <TableCell className="text-center border-r bg-primary/5">
                     <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
@@ -1091,7 +1097,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     onUpdateValue={onUpdateValue}
                     vendor={vendor}
                     organisation={organisation}
-                    exchangeRate={activeExchangeRate}
+                    exchangeRate={exchangeRate}
                 />
             ))}
         </>
