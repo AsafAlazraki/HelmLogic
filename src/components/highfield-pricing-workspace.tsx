@@ -390,22 +390,24 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             </div>
 
             <div className="flex items-center gap-3">
-                <div className="flex items-center bg-muted/50 rounded-xl p-1 border-2 border-dashed mr-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={expandAllRanges} title="Expand All Groups">
-                        <UnfoldVertical className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10" onClick={collapseAllRanges} title="Collapse All Groups">
-                        <FoldVertical className="h-4 w-4" />
-                    </Button>
-                </div>
+                {isFocus && (
+                    <div className="flex items-center bg-muted/50 rounded-xl p-1 border-2 border-dashed mr-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={expandAllRanges} title="Expand All Groups">
+                            <UnfoldVertical className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10" onClick={collapseAllRanges} title="Collapse All Groups">
+                            <FoldVertical className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
 
                 {isFocus ? (
                     <>
                         <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
-                            <Truck className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> FREIGHT
+                            <Truck className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> FREIGHT MANAGEMENT
                         </Button>
                         <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
-                            <History className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> AUDIT
+                            <History className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> CHANGE LOG
                         </Button>
                         <Separator orientation="vertical" className="h-8 mx-2" />
                         <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-slate-100"><Minimize2 className="h-4 w-4 mr-2" /> EXIT FOCUS</Button>
@@ -488,7 +490,13 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 </div>
                             </TableHead>
                             {sortedSections.map(sec => {
-                                if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b bg-muted/5 transition-all" />;
+                                if (sec.isCollapsed) return (
+                                    <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b bg-muted/5 transition-all text-center p-0">
+                                        <div className="flex flex-col items-center justify-center h-full opacity-20">
+                                            <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest">{sec.name}</span>
+                                        </div>
+                                    </TableHead>
+                                );
                                 if (sec.id === 'sec-exchange') return (
                                     <React.Fragment key={sec.id}>
                                         <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[80px]">VND ISO</TableHead>
@@ -814,7 +822,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
             </TableCell>
             {sections.map((sec: any) => {
                 if (sec.id === 'sec-exchange') {
-                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/5 border-r border-b" />;
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/5 border-r border-b p-0"><div className="h-full w-full opacity-10 bg-slate-200" /></TableCell>;
                     return (
                         <React.Fragment key={sec.id}>
                             <TableCell className="text-center border-r border-b bg-slate-50/10"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter opacity-30">{vendorCurrency}</Badge></TableCell>
@@ -825,7 +833,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     );
                 }
                 if (sec.id === 'sec-vendor') {
-                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/5 border-r border-b" />;
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/5 border-r border-b p-0"><div className="h-full w-full opacity-10 bg-slate-200" /></TableCell>;
                     const costOverride = itemValues['base_cost_override'];
                     const effectiveCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : cost;
                     const convertedCost = (effectiveCost || 0) * (exchangeRate || 1);
@@ -850,14 +858,14 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     );
                 }
                 if (sec.id === 'sec-freight') {
-                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/5 border-r border-b" />;
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/5 border-r border-b p-0"><div className="h-full w-full opacity-10 bg-slate-200" /></TableCell>;
                     return (
                         <TableCell key={sec.id} className="p-0 border-r border-b">
                             {isBoatVariant ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-muted/5" />}
                         </TableCell>
                     );
                 }
-                if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/5 border-r border-b" />;
+                if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/5 border-r border-b p-0"><div className="h-full w-full opacity-10 bg-slate-200" /></TableCell>;
                 if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-muted/5 border-r border-b" />;
                 return sec.columns.map((col: any) => (
                     <TableCell key={col.id} className="p-0 border-r border-b">
@@ -941,7 +949,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                             <History className="h-6 w-6" />
                         </div>
                         <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">TACTICAL AUDIT</DialogTitle>
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">CHANGE LOG</DialogTitle>
                             <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Strategic Price Change Verification History</DialogDescription>
                         </div>
                     </div>
@@ -1029,7 +1037,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                                 <Truck className="h-6 w-6" />
                             </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">FREIGHT</DialogTitle>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">FREIGHT MANAGEMENT</DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Shipping Containers & Global Transportation Cost Controls</DialogDescription>
                             </div>
                         </div>
@@ -1125,7 +1133,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                                                     <TableCell colSpan={5} className="h-48 text-center">
                                                         <div className="flex flex-col items-center justify-center opacity-10 grayscale">
                                                             <Truck className="h-16 w-16 mb-4" />
-                                                            <p className="font-black uppercase tracking-[0.3em] text-xs">Registry Empty</p>
+                                                            <p className="font-black uppercase tracking-[0.4em] text-sm">Registry Empty</p>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
