@@ -223,9 +223,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         
         if (missingIds.length > 0) {
             const defaults: Record<string, PricingSection> = {
-                'sec-exchange': { id: 'sec-exchange', name: 'Exchange', order: 0, columns: [] },
-                'sec-vendor': { id: 'sec-vendor', name: 'Vendor', order: 1, columns: [] },
-                'sec-freight': { id: 'sec-freight', name: 'Freight', order: 2, columns: [] },
+                'sec-exchange': { id: 'sec-exchange', name: 'EXCHANGE', order: 0, columns: [] },
+                'sec-vendor': { id: 'sec-vendor', name: 'VENDOR', order: 1, columns: [] },
+                'sec-freight': { id: 'sec-freight', name: 'FREIGHT', order: 2, columns: [] },
             };
             let nextOrder = currentSections.length > 0 ? Math.max(...currentSections.map(s => s.order)) + 1 : 0;
             const newSections = [...currentSections];
@@ -306,7 +306,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         const currentSections = strategy?.sections || [];
         const newSection: PricingSection = {
             id: `sec-${Date.now()}`,
-            name: newSectionName,
+            name: newSectionName.toUpperCase(),
             order: currentSections.length,
             columns: []
         };
@@ -401,29 +401,29 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
                 {isFocus ? (
                     <>
-                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
-                            <Truck className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> FREIGHT ANALYTICS
+                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
+                            <Truck className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> FREIGHT
                         </Button>
-                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
-                            <History className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> TACTICAL AUDIT
+                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
+                            <History className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> AUDIT
                         </Button>
                         <Separator orientation="vertical" className="h-8 mx-2" />
-                        <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-slate-100"><Minimize2 className="h-4 w-4 mr-2" /> EXIT FOCUS</Button>
+                        <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-slate-100"><Minimize2 className="h-4 w-4 mr-2" /> EXIT FOCUS</Button>
                     </>
                 ) : (
                     <>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button size="sm" className="h-9 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl active:scale-95 transition-transform">
-                                    <Plus className="h-4 w-4 mr-2" /> ADD LOGIC
+                                <Button size="sm" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl active:scale-95 transition-transform">
+                                    <Plus className="h-4 w-4 mr-2" /> ADD
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 shadow-2xl p-1">
                                 <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter cursor-pointer focus:bg-primary/5 focus:text-primary rounded-lg" onClick={() => setIsAddSectionOpen(true)}>
-                                    <Layers className="h-4 w-4 mr-3" /> New Strategy Section
+                                    <Layers className="h-4 w-4 mr-3" /> Section
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter cursor-pointer focus:bg-primary/5 focus:text-primary rounded-lg" onClick={() => { setTargetSectionId(sortedSections[0]?.id || null); setIsAddColumnOpen(true); }}>
-                                    <Calculator className="h-4 w-4 mr-3" /> New Financial Metric
+                                    <Calculator className="h-4 w-4 mr-3" /> Column
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -433,10 +433,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             onClick={() => setIsFocusMode(true)} 
                             variant="outline" 
                             size="sm"
-                            className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 bg-white hover:bg-slate-50 shadow-sm"
+                            className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 bg-white hover:bg-slate-50 shadow-sm"
                         >
                             <Maximize2 className="h-4 w-4 mr-2" />
-                            FOCUS MODE
+                            FOCUS
                         </Button>
                     </>
                 )}
@@ -447,7 +447,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const PricingTable = () => (
         <div className="relative w-full h-full overflow-hidden bg-white flex flex-col">
             <div className="flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-slate-200">
-                <Table className="border-separate border-spacing-0 w-full table-fixed min-w-[1200px]">
+                <Table className="border-separate border-spacing-0 w-max table-fixed min-w-full">
                     <TableHeader className="sticky top-0 z-50 bg-white">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[340px] sticky left-0 z-[60] bg-white border-r border-b-2 font-black uppercase text-[10px] shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)] py-5 px-8">
@@ -470,9 +470,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                 </Button>
                                                 {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
                                             </div>
-                                            {!sec.isCollapsed && (
-                                                <Badge variant="outline" className="text-[8px] font-black h-4 px-1.5 opacity-40 whitespace-nowrap">Section Context</Badge>
-                                            )}
                                         </div>
                                     </TableHead>
                                 );
@@ -510,7 +507,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                         </React.Fragment>
                                     );
                                 }
-                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[120px]">PACKED M³</TableHead>;
+                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[160px]">PACKED M³</TableHead>;
                                 if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-slate-50/30 text-center text-[8px] font-bold text-muted-foreground/40 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
                                 return sec.columns.map((col) => (
                                     <TableHead key={col.id} className="min-w-[180px] bg-slate-50/30 text-center px-4 border-r border-b font-black uppercase text-[9px] tracking-tight text-primary/70">{col.name}</TableHead>
@@ -563,27 +560,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 shadow-2xl flex flex-col [&>button]:hidden">
                     <DialogHeader className="sr-only"><DialogTitle>Financial Matrix Focus Mode</DialogTitle></DialogHeader>
                     <div className="flex flex-col h-full bg-background">
-                        <div className="p-8 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
-                            <div className="flex items-center gap-5">
-                                <div className="h-12 w-12 relative bg-white rounded-2xl border-2 p-2 shadow-sm shrink-0">
-                                    {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-6 w-6 m-auto mt-1" />}
-                                </div>
-                                <div>
-                                    <span className="font-black uppercase text-[14px] tracking-[0.2em]">{vendor.name} MASTER STRATEGIC MATRIX</span>
-                                    <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">High-Precision Executive Mode</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 bg-slate-50 hover:bg-primary hover:text-white transition-all group">
-                                    <Truck className="h-5 w-5 mr-2.5 text-primary group-hover:text-white transition-colors" /> FREIGHT ANALYTICS
-                                </Button>
-                                <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 bg-slate-50 hover:bg-primary hover:text-white transition-all group">
-                                    <History className="h-5 w-5 mr-2.5 text-primary group-hover:text-white transition-colors" /> TACTICAL AUDIT
-                                </Button>
-                                <Separator orientation="vertical" className="h-8 mx-2" />
-                                <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 hover:bg-slate-100 transition-all group"><Minimize2 className="h-5 w-5 mr-2.5 group-hover:text-white transition-colors" /> EXIT FOCUS</Button>
-                            </div>
-                        </div>
+                        <WorkspaceHeader isFocus />
                         <div className="flex-1 min-h-0 bg-white p-0">
                             <PricingTable />
                         </div>
@@ -640,10 +617,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         </div>
                         <div className="flex items-center justify-between p-5 bg-primary/5 rounded-[1.5rem] border-2 border-dashed border-primary/20">
                             <div className="space-y-0.5">
-                                <Label className="text-xs font-black uppercase tracking-tight text-primary">Enable Formula Engine</Label>
-                                <p className="text-[9px] font-bold text-muted-foreground uppercase">Automate values based on other metrics</p>
+                                <Label className="text-xs font-black uppercase tracking-tight text-primary">Calculation Type</Label>
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase">{isCalculated ? 'Automated Formula Engine' : 'Manual Entry Data Point'}</p>
                             </div>
-                            <Switch checked={isCalculated} onCheckedChange={setIsCalculated} />
+                            <div className="flex items-center gap-3">
+                                <span className={cn("text-[10px] font-black uppercase tracking-tighter transition-opacity", !isCalculated ? "text-primary" : "opacity-30")}>Manual</span>
+                                <Switch checked={isCalculated} onCheckedChange={setIsCalculated} />
+                                <span className={cn("text-[10px] font-black uppercase tracking-tighter transition-opacity", isCalculated ? "text-primary" : "opacity-30")}>Calculated</span>
+                            </div>
                         </div>
                         {isCalculated && (
                             <div className="grid grid-cols-3 gap-3 animate-in slide-in-from-top-2 p-1">
@@ -702,7 +683,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                             <span>{range.name} RANGE</span>
                         </div>
                         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[9px] font-black h-5 px-2 uppercase tracking-tighter">
-                            {models.length} SERIES CATALOGED
+                            {models.length} SERIES
                         </Badge>
                     </div>
                 </TableCell>
@@ -743,7 +724,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         </button>
                         <div className="flex flex-col min-w-0">
                             <span className="font-black text-[11px] uppercase tracking-tight truncate leading-none mb-1 text-slate-900">{model.name}</span>
-                            <span className="text-[8px] font-black text-primary/60 uppercase tracking-[0.2em]">SERIES CODE: {model.modelCode || 'NO-SKU'}</span>
+                            <span className="text-[8px] font-black text-primary/60 uppercase tracking-[0.2em]">SKU: {model.modelCode || 'NO-SKU'}</span>
                         </div>
                     </div>
                 </TableCell>
@@ -751,15 +732,6 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
             </TableRow>
             {isLocalExpanded && (
                 <>
-                    <TableRow className="hover:bg-transparent">
-                        <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-r border-b border-dashed shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)]">
-                            <div className="flex items-center gap-2.5">
-                                <Badge className="h-1.5 w-1.5 rounded-full bg-primary/40 p-0" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">REGISTERED VARIATIONS</span>
-                            </div>
-                        </TableCell>
-                        {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b border-dashed bg-muted/5" />)}
-                    </TableRow>
                     {variants.map((v: any, idx: number) => (
                         <PricingRow 
                             key={v.id} 
@@ -787,7 +759,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                 <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-r border-b border-dashed shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)]">
                                     <div className="flex items-center gap-2.5">
                                         <Badge className="h-1.5 w-1.5 rounded-full bg-orange-500/40 p-0" />
-                                        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">STRATEGIC OPTIONS</span>
+                                        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">OPTIONS</span>
                                     </div>
                                 </TableCell>
                                 {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b border-dashed bg-muted/5" />)}
@@ -969,7 +941,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                             <History className="h-6 w-6" />
                         </div>
                         <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">TACTICAL AUDIT MATRIX</DialogTitle>
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">TACTICAL AUDIT</DialogTitle>
                             <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Strategic Price Change Verification History</DialogDescription>
                         </div>
                     </div>
@@ -1028,7 +1000,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                     )}
                 </div>
                 <DialogFooter className="p-8 border-t bg-muted/5">
-                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 font-black uppercase text-[10px] tracking-widest rounded-2xl border-2">Close Matrix Audit</Button></DialogClose>
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 font-black uppercase text-[10px] tracking-widest rounded-2xl border-2">Close</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -1057,7 +1029,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                                 <Truck className="h-6 w-6" />
                             </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">FREIGHT MANAGEMENT</DialogTitle>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">FREIGHT</DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Shipping Containers & Global Transportation Cost Controls</DialogDescription>
                             </div>
                         </div>
@@ -1166,7 +1138,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                     )}
                 </div>
                 <DialogFooter className="p-10 border-t bg-muted/5">
-                    <DialogClose asChild><Button variant="outline" className="h-14 px-10 font-black uppercase text-[11px] tracking-widest rounded-2xl border-2 shadow-sm">Exit Logistics Console</Button></DialogClose>
+                    <DialogClose asChild><Button variant="outline" className="h-14 px-10 font-black uppercase text-[11px] tracking-widest rounded-2xl border-2 shadow-sm">Exit</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
