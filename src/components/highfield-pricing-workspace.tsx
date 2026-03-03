@@ -134,7 +134,7 @@ interface FreightContainer {
 const getSectionColCount = (sec: PricingSection) => {
     if (sec.isCollapsed) return 1;
     if (sec.id === 'sec-exchange') return 4;
-    if (sec.id === 'sec-vendor') return 2; // Base Price ISO, Base Price Converted
+    if (sec.id === 'sec-vendor') return 2; // Base Price Vendor ISO, Base Price Converted
     if (sec.id === 'sec-freight') return 1;
     return Math.max(1, sec.columns.length);
 };
@@ -469,22 +469,22 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (strategyLoading || !strategy) return;
         
         const currentSections = strategy.sections || [];
-        // Removed sec-master as requested. sec-vendor is now a primary system section.
+        // Ensure Exchange, Vendor, and Freight exist as core sections
         const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight'];
         const missingIds = requiredIds.filter(id => !currentSections.some(s => s.id === id));
         
         if (missingIds.length > 0) {
             const defaults: Record<string, PricingSection> = {
                 'sec-exchange': { id: 'sec-exchange', name: 'Exchange', order: 0, columns: [] },
-                'sec-vendor': { id: 'sec-vendor', name: 'Vendor Catalog', order: 1, columns: [] },
-                'sec-freight': { id: 'sec-freight', name: 'Freight Logistics', order: 2, columns: [] },
+                'sec-vendor': { id: 'sec-vendor', name: 'Vendor', order: 1, columns: [] },
+                'sec-freight': { id: 'sec-freight', name: 'Freight', order: 2, columns: [] },
             };
             
             let nextOrder = currentSections.length > 0 
                 ? Math.max(...currentSections.map(s => s.order)) + 1 
                 : 0;
                 
-            const newSections = currentSections.filter(s => s.id !== 'sec-master'); // Ensure sec-master is gone
+            const newSections = currentSections.filter(s => s.id !== 'sec-master'); // Remove old Master Core if present
             missingIds.forEach(id => {
                 if (!newSections.some(s => s.id === id)) {
                     newSections.push({ ...defaults[id], order: nextOrder++ });
@@ -497,7 +497,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
             updateDoc(strategyRef, { sections: normalized });
         } else if (currentSections.some(s => s.id === 'sec-master')) {
-            // Remove sec-master if it exists
             const filtered = currentSections
                 .filter(s => s.id !== 'sec-master')
                 .map((s, i) => ({ ...s, order: i }));
@@ -1260,7 +1259,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
             </TableCell>
             
-            {/* Vendor Catalog Section logic */}
+            {/* Core Sections logic */}
             {sections.map((sec: any) => {
                 if (sec.id === 'sec-vendor') {
                     if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r" />;
@@ -1299,7 +1298,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     );
                 }
                 
-                // Exchange handled above separately, or we skip cost/sell from here
+                // Exchange handled above separately
                 if (sec.id === 'sec-exchange') return null;
 
                 if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r last:border-r-0" />;
