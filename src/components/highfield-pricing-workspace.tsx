@@ -134,7 +134,7 @@ interface FreightContainer {
 const getSectionColCount = (sec: PricingSection) => {
     if (sec.isCollapsed) return 1;
     if (sec.id === 'sec-exchange') return 4;
-    if (sec.id === 'sec-vendor') return 2; // Base Price Vendor ISO, Base Price Converted
+    if (sec.id === 'sec-vendor') return 2; // Base Price ISO, Base Price Converted
     if (sec.id === 'sec-freight') return 1;
     return Math.max(1, sec.columns.length);
 };
@@ -1104,7 +1104,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     return (
         <>
             <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-r sticky left-0 z-30 bg-muted/30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-r sticky left-0 z-30 bg-card shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center gap-3">
                         {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                         <span>{range.name} Range</span>
@@ -1123,11 +1123,11 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                 <TableCell className="text-center border-r bg-primary/5">
                     <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
                 </TableCell>
-                <TableCell className="border-r bg-primary/5" />
-                <TableCell className="border-r bg-primary/5" />
+                <TableCell className="border-r" />
+                <TableCell className="border-r" />
                 <TableCell className="border-r bg-slate-50" />
                 
-                <TableCell colSpan={strategyColCount} className="pr-6" />
+                <TableCell colSpan={strategyColCount} className="pr-6 bg-muted/30" />
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -1154,7 +1154,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-muted/5 border-l-4 border-l-primary/40">
-                <TableCell className="py-3 px-8 min-w-0 border-r sticky left-0 z-30 bg-muted/5 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableCell className="py-3 px-8 border-r sticky left-0 z-30 bg-card shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setIsLocalExpanded(!isLocalExpanded)} className="hover:text-primary transition-colors">
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -1191,7 +1191,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                             sections={sections}
                             allColumns={allColumns}
                             strategy={strategy}
-                            onUpdateValue={handleUpdateValue}
+                            onUpdateValue={onUpdateValue}
                             indent
                             isBoatVariant
                         />
@@ -1200,7 +1200,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="bg-white/50 border-l-4 border-l-primary/40">
-                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-r sticky left-0 z-30 bg-white/50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]" colSpan={1}>
+                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-r sticky left-0 z-30 bg-card shadow-[2px_0_5px_rgba(0,0,0,0.05)]" colSpan={1}>
                                     <div className="flex items-center gap-2">
                                         <Wrench className="h-3.5 w-3.5" />
                                         <span>Factory Options</span>
@@ -1222,7 +1222,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                     sections={sections}
                                     allColumns={allColumns}
                                     strategy={strategy}
-                                    onUpdateValue={handleUpdateValue}
+                                    onUpdateValue={onUpdateValue}
                                     indent
                                     isOption
                                 />
@@ -1240,7 +1240,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 
     return (
         <TableRow className="hover:bg-muted/30 group transition-colors">
-            <TableCell className={cn("py-2.5 border-r sticky left-0 z-10 bg-background group-hover:bg-muted/30 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)]", indent ? "pl-16" : "px-6")}>
+            <TableCell className={cn("py-2.5 border-r sticky left-0 z-30 bg-background group-hover:bg-muted/30 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)]", indent ? "pl-16" : "px-6")}>
                 <div className="flex flex-col">
                     <span className="font-bold text-[11px] uppercase tracking-tight">{name}</span>
                     <span className="text-[9px] font-mono text-muted-foreground uppercase">{sku || 'NO SKU'}</span>

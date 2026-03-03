@@ -322,7 +322,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -460,7 +460,7 @@ function OptionalFeatureItem({
                                 name={`optionalFeatures.${index}.imageUrl`}
                                 render={({ field }) => (
                                     <div className="relative aspect-square w-full overflow-hidden rounded-xl border-2 border-dashed bg-muted/20 group/feat-img shadow-inner">
-                                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                                        {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                                         {imageUrl ? (
                                             <>
                                                 <Image src={imageUrl} alt="Feature" fill className="object-cover" />
