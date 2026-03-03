@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -43,7 +44,7 @@ export function VesselOnOrderList({
     const { user } = useUser();
     
     const isSubDealer = !!parentOrg;
-    const targetOrgId = isSubDealer ? parentOrg?.id : organisation?.id;
+    const targetOrgId = isSubDealer ? parentOrg?.id : (organisation?.id || null);
 
     const vesselsQuery = useMemoFirebase(() => {
         if (!targetOrgId) return null;

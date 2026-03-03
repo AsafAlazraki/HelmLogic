@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -21,10 +22,11 @@ import {
     Navigation,
     Anchor,
     Ship,
-    LayoutGrid
+    LayoutGrid,
+    X,
+    LayoutDashboard
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -215,7 +217,7 @@ export default function ModuleDetailsPage() {
     const handleModelSelect = (model: Model) => { setSelectedModel(model); setView('bmt'); };
 
     return (
-        <div className="flex flex-col h-[calc(100vh)] overflow-hidden bg-background">
+        <div className="flex flex-col h-screen overflow-hidden bg-background">
             {/* Cinematic Module Hero */}
             <div className="relative shrink-0 overflow-hidden bg-primary px-10 py-12 text-primary-foreground shadow-2xl z-20">
                 {/* Fluid Background Animation */}
@@ -225,24 +227,26 @@ export default function ModuleDetailsPage() {
                     <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-white/5 blur-[100px] rounded-full" />
                 </div>
                 
-                <div className="relative z-10 flex flex-col gap-4">
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-4">
-                            <BreadcrumbNav parts={[
-                                { href: "/dashboard", label: "Hub" },
-                                { href: "#", label: moduleData.name }
-                            ]} />
+                <div className="relative z-10 flex flex-col gap-1">
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
+                            <Navigation className="h-3 w-3" />
+                            <span>Command Center</span>
                         </div>
-                        <div className="flex items-baseline gap-4 mt-2">
-                            <h1 className="text-6xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
-                                {moduleData.name}
-                            </h1>
-                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] opacity-40 translate-y-[-4px]">
-                                <Navigation className="h-3 w-3" />
-                                <span>Command Center</span>
-                            </div>
-                        </div>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 px-4 font-black uppercase tracking-widest text-[9px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10"
+                            onClick={() => router.push('/dashboard')}
+                        >
+                            <X className="h-3.5 w-3.5 mr-1.5" />
+                            Back to Hub
+                        </Button>
                     </div>
+                    
+                    <h1 className="text-6xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl mt-4">
+                        {moduleData.name}
+                    </h1>
                 </div>
             </div>
 
@@ -387,7 +391,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pt-6">
             {ranges?.map(range => (
                 <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onRangeSelect(range)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
@@ -410,7 +414,7 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pt-6">
             {models?.map(model => (
                 <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onModelSelect(model)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
