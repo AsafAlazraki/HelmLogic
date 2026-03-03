@@ -625,15 +625,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         updateDoc(strategyRef, { itemValues: updated });
     };
 
-    const handleVendorCurrencyChange = async (val: string) => {
-        try {
-            await updateDoc(doc(firestore, 'data-warehouse', vendor.id), { currency: val });
-            toast({ title: "Vendor Currency Updated" });
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Update Failed" });
-        }
-    };
-
     const toggleRange = (id: string) => {
         setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
@@ -819,37 +810,18 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-end gap-1 px-4 border-r pr-6">
-                            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Vendor Master ISO</Label>
-                            <Select value={vendor.currency || 'AUD'} onValueChange={handleVendorCurrencyChange}>
-                                <SelectTrigger className="h-8 w-32 font-black uppercase text-[10px] bg-muted/20 border-dashed">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold text-xs">{c.code}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <StrategyControls />
+                        <div className="h-10 w-px bg-border mx-2" />
                         <Button 
                             type="button"
                             variant="outline"
                             onClick={() => setIsFullScreen(true)}
-                            className="h-9 font-black uppercase tracking-widest text-[10px] shadow-sm flex items-center gap-2 border-2 hover:bg-primary hover:text-primary-foreground transition-all"
+                            className="h-10 font-black uppercase tracking-widest text-[10px] shadow-sm flex items-center gap-2 border-2 hover:bg-primary hover:text-primary-foreground transition-all rounded-xl"
                         >
                             <Maximize2 className="h-4 w-4" />
                             Strategy Focus Mode
                         </Button>
                     </div>
-                </div>
-
-                <div className="relative mt-6">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Filter by series, model or part code..." 
-                        className="pl-10 h-10 font-bold border-2 focus-visible:ring-primary/20"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
                 </div>
             </CardHeader>
 
@@ -878,6 +850,16 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                             </Badge>
                                         </div>
                                     </DialogTitle>
+                                </div>
+
+                                <div className="flex-1 max-w-md relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Search series or SKUs..." 
+                                        className="pl-10 h-10 font-bold border-2 focus-visible:ring-primary/20 bg-background rounded-xl"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
                                 </div>
 
                                 <div className="flex items-center gap-3">
@@ -1109,7 +1091,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     onUpdateValue={onUpdateValue}
                     vendor={vendor}
                     organisation={organisation}
-                    exchangeRate={exchangeRate}
+                    exchangeRate={activeExchangeRate}
                 />
             ))}
         </>
