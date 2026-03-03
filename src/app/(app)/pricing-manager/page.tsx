@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -127,8 +128,7 @@ export default function PricingManagerPage() {
                 {/* Exchange Rates Strategic Card */}
                 {organisationId && (
                     <Card 
-                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer group overflow-hidden h-24 relative"
-                        onClick={() => setIsExchangeRateManagerOpen(true)}
+                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl group overflow-hidden h-24 relative"
                     >
                         <div className="absolute -bottom-4 -right-4 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                             <ArrowRightLeft className="h-24 w-24 -rotate-12" />
@@ -136,7 +136,10 @@ export default function PricingManagerPage() {
                         <CardHeader className="p-3 pb-1 relative z-10">
                             <div className="flex items-center justify-between">
                                 <Badge variant="secondary" className="bg-white/20 text-white border-none font-black text-[8px] uppercase tracking-[0.1em] h-4">Strategy Panel</Badge>
-                                <Maximize2 className="h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                <Maximize2 
+                                    className="h-3 w-3 opacity-60 hover:opacity-100 transition-opacity cursor-pointer" 
+                                    onClick={() => setIsExchangeRateManagerOpen(true)}
+                                />
                             </div>
                             <CardTitle className="text-xs font-black uppercase tracking-widest mt-1.5 flex items-center gap-2">
                                 Exchange Rates
