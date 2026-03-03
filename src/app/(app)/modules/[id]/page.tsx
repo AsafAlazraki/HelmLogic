@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where, orderBy, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
 import { 
     Loader2, 
     ChevronRight, 
@@ -26,7 +26,8 @@ import {
     X,
     LayoutDashboard,
     Waves,
-    Zap
+    Zap,
+    Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -288,6 +289,33 @@ export default function ModuleDetailsPage() {
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
+    const handleWipePipeline = async () => {
+        if (!currentMemberOrg) return;
+        const q = query(
+            collection(firestore, 'vessels'), 
+            where('organisationId', '==', currentMemberOrg.id), 
+            where('status', '==', 'On Order')
+        );
+        const snap = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        toast({ title: "Pipeline Strategic Wipe Complete" });
+    };
+
+    const handleWipeStock = async () => {
+        if (!currentMemberOrg) return;
+        const q = query(
+            collection(firestore, 'inventory'), 
+            where('organisationId', '==', currentMemberOrg.id)
+        );
+        const snap = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        toast({ title: "Stock Strategic Wipe Complete" });
+    };
+
     const loading = slugLoading || idLoading || mainVendorLoading;
 
     if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>;
@@ -360,11 +388,22 @@ export default function ModuleDetailsPage() {
                             {/* Lateral Panels */}
                             <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
-                                        <div className="flex items-center gap-3">
+                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                        <div className="flex items-center gap-3 shrink-0">
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
                                         </div>
+                                        {isAdmin && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-7 w-7 rounded-full text-destructive/40 hover:text-destructive hover:bg-destructive/10 transition-all"
+                                                onClick={handleWipeStock}
+                                                title="Wipe Stock"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
                                         <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
@@ -372,11 +411,22 @@ export default function ModuleDetailsPage() {
                                 </Card>
 
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
-                                        <div className="flex items-center gap-3">
+                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                        <div className="flex items-center gap-3 shrink-0">
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
                                         </div>
+                                        {isAdmin && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-7 w-7 rounded-full text-destructive/40 hover:text-destructive hover:bg-destructive/10 transition-all"
+                                                onClick={handleWipePipeline}
+                                                title="Wipe Pipeline"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
                                         <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
