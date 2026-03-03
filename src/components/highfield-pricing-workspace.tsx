@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -685,7 +685,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     colSpan={colSpan} 
                                     className={cn(
                                         "border-r last:border-r-0 px-4 py-2 group/sec transition-colors",
-                                        sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-primary/5"
+                                        sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-muted/10"
                                     )}
                                 >
                                     <div className="flex items-center justify-between gap-2">
@@ -734,10 +734,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             if (sec.id === 'sec-exchange') {
                                 return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
-                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
-                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
-                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
+                                        <TableHead className="text-center border-r bg-muted/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
+                                        <TableHead className="text-center border-r bg-muted/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
+                                        <TableHead className="text-center border-r bg-muted/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
+                                        <TableHead className="text-center border-r bg-muted/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
                                     </React.Fragment>
                                 );
                             }
@@ -753,10 +753,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 return <TableHead key={sec.id} className="text-right border-r bg-slate-50 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
                             }
 
-                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r last:border-r-0 bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
+                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r last:border-r-0 bg-muted/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
                             
                             return sec.columns.map((col, idx) => (
-                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r last:border-r-0">
+                                <TableHead key={col.id} className="min-w-[180px] bg-muted/5 text-center px-2 group/header border-r last:border-r-0">
                                     <div className="flex items-center justify-between gap-1">
                                         <Button 
                                             variant="ghost" 
@@ -1232,16 +1232,16 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 if (sec.id === 'sec-exchange') {
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-center border-r bg-primary/5">
+                            <TableCell className="text-center border-r bg-muted/5">
                                 <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
                             </TableCell>
-                            <TableCell className="text-center border-r bg-primary/5">
+                            <TableCell className="text-center border-r bg-muted/5">
                                 <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
                             </TableCell>
-                            <TableCell className="text-center border-r bg-primary/5">
+                            <TableCell className="text-center border-r bg-muted/5">
                                 <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
                             </TableCell>
-                            <TableCell className="text-center border-r bg-primary/5">
+                            <TableCell className="text-center border-r bg-muted/5">
                                 <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
                             </TableCell>
                         </React.Fragment>
@@ -1283,10 +1283,10 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     );
                 }
 
-                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-primary/5 border-r last:border-r-0" />;
+                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-muted/5 border-r last:border-r-0" />;
 
                 return sec.columns.map((col: any) => (
-                    <TableCell key={col.id} className="p-0 border-r last:border-r-0 bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                    <TableCell key={col.id} className="p-0 border-r last:border-r-0 bg-muted/5 group-hover:bg-muted/10 transition-colors">
                         {col.isCalculated ? (
                             <CalculatedCell 
                                 col={col} 
