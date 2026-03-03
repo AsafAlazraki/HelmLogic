@@ -7,7 +7,6 @@ import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where } from "firebase/firestore";
 import { useState, useMemo } from "react";
-import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, TrendingUp, ArrowRightLeft, Maximize2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -102,10 +101,6 @@ export default function PricingManagerPage() {
     if (!hasPermission) {
         return (
             <div className="space-y-4">
-                <div>
-                    <h1 className="text-2xl font-black uppercase tracking-tight">Pricing Manager</h1>
-                    <BreadcrumbNav />
-                </div>
                 <Card className="border-destructive/50">
                     <CardHeader>
                         <div className="flex items-center gap-2 text-destructive">
@@ -123,11 +118,11 @@ export default function PricingManagerPage() {
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-theme(spacing.24))] space-y-4 overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-theme(spacing.24))] space-y-6 overflow-hidden">
             <div className="shrink-0 flex items-start justify-between">
                 <div>
-                    <h1 className="text-2xl font-black uppercase tracking-tight">Pricing Manager</h1>
-                    <BreadcrumbNav />
+                    <h1 className="text-3xl font-black uppercase tracking-tight">Pricing Manager</h1>
+                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-1">Strategic Profitability Matrix</p>
                 </div>
 
                 {/* Exchange Rates Strategic Card */}

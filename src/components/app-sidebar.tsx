@@ -131,7 +131,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="h-16 flex items-center justify-between px-4">
         <Logo />
-        <SidebarTrigger className="group-data-[collapsible=icon]:hidden" />
+        <SidebarTrigger className="hidden md:flex" />
       </SidebarHeader>
       
       <SidebarContent>
