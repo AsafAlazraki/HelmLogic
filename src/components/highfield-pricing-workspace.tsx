@@ -3,8 +3,8 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs, updateDoc, addDoc, serverTimestamp, where, deleteDoc, setDoc } from 'firebase/firestore';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { collection, query, orderBy, doc, getDocs, updateDoc, addDoc, serverTimestamp, where, deleteDoc } from 'firebase/firestore';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
     Table, 
     TableBody, 
@@ -33,6 +33,7 @@ import {
     Clock,
     Save,
     Layers,
+    ArrowRightLeft,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -53,7 +54,7 @@ import {
     DropdownMenuItem, 
     DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -109,7 +110,6 @@ interface Variant {
     name: string;
     cost?: number;
     sellPriceExclGst?: number;
-    material?: string;
 }
 
 const getSectionColCount = (sec: PricingSection) => {
@@ -162,7 +162,7 @@ const calculateValue = (
         case '-': result = left - right; break;
         case '*': result = left * right; break;
         case '/': 
-            if (right === 0) return { value: null, error: 'Division by zero' };
+            if (right === 0) return { value: null, error: 'Div/0' };
             result = left / right; 
             break;
     }
@@ -276,30 +276,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
         const currentValues = strategy?.itemValues || {};
-        const oldValue = currentValues[itemId]?.[colId];
-        if (String(oldValue || '') === String(value || '')) return;
-        
         const updated = { 
             ...currentValues, 
             [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } 
         };
-        
         await updateDoc(strategyRef, { itemValues: updated });
-        
-        try {
-            const auditLogRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}/auditLog`);
-            await addDoc(auditLogRef, { 
-                itemId, 
-                colId, 
-                oldValue: oldValue ?? null, 
-                newValue: value, 
-                timestamp: serverTimestamp(), 
-                userId: user?.uid || 'anonymous', 
-                userName: user?.displayName || user?.email || 'Anonymous Strategist' 
-            });
-        } catch (e) { 
-            console.error("Audit log failed", e); 
-        }
     };
 
     const handleToggleSectionCollapse = async (sectionId: string) => {
@@ -372,44 +353,50 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <Calculator className="h-4 w-4" />
                 </div>
                 <div>
-                    <h2 className="text-sm font-black uppercase tracking-widest text-foreground leading-none">Highfield Strategy</h2>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-foreground leading-none">
+                        {isFocus ? "Strategic Matrix Focus" : "Highfield Strategy"}
+                    </h2>
                     <p className="text-[10px] font-black uppercase tracking-tighter text-primary mt-1">Strategic Pricing Workspace</p>
                 </div>
             </div>
 
             <div className="flex items-center gap-3">
-                {isFocus && (
+                {isFocus ? (
                     <>
-                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
-                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
+                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
+                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
+                        <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2"><Minimize2 className="h-4 w-4 mr-2" /> Exit Focus</Button>
+                    </>
+                ) : (
+                    <>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button size="sm" className="h-9 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl">
+                                    <Plus className="h-4 w-4 mr-2" /> Add
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 rounded-xl border-2 shadow-2xl">
+                                <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => setIsAddSectionOpen(true)}>
+                                    <Layers className="h-4 w-4 mr-2 text-primary" /> New Section
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => { setTargetSectionId(sortedSections[0]?.id || null); setIsAddColumnOpen(true); }}>
+                                    <Calculator className="h-4 w-4 mr-2 text-primary" /> New Metric
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <Button 
+                            type="button"
+                            onClick={() => setIsFocusMode(true)} 
+                            variant="outline" 
+                            size="sm"
+                            className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"
+                        >
+                            <Maximize2 className="h-4 w-4 mr-2" />
+                            Focus Mode
+                        </Button>
                     </>
                 )}
-                
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button className="h-9 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl">
-                            <Plus className="h-4 w-4 mr-2" /> Add
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 rounded-xl border-2 shadow-2xl">
-                        <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => setIsAddSectionOpen(true)}>
-                            <Layers className="h-4 w-4 mr-2 text-primary" /> New Section
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => { setTargetSectionId(sortedSections[0]?.id || null); setIsAddColumnOpen(true); }}>
-                            <Calculator className="h-4 w-4 mr-2 text-primary" /> New Metric
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                <Button 
-                    type="button"
-                    onClick={() => setIsFocusMode(!isFocus)} 
-                    variant="outline" 
-                    className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"
-                >
-                    {isFocus ? <Minimize2 className="h-4 w-4 mr-2" /> : <Maximize2 className="h-4 w-4 mr-2" />}
-                    Focus Mode
-                </Button>
             </div>
         </div>
     );
@@ -503,23 +490,26 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-                <DialogContent className="max-w-full w-screen h-screen rounded-none p-0 overflow-hidden border-none [&>button]:hidden z-[100]">
-                    <DialogHeader className="sr-only"><DialogTitle>{vendor.name} Full Screen Strategy Matrix</DialogTitle></DialogHeader>
+                <DialogContent className="max-w-[95vw] w-[1400px] h-[90vh] rounded-[2rem] p-0 overflow-hidden border-4 shadow-2xl flex flex-col [&>button]:hidden">
+                    <DialogHeader className="sr-only"><DialogTitle>Financial Matrix Focus Mode</DialogTitle></DialogHeader>
                     <div className="flex flex-col h-full bg-background">
-                        <div className="p-4 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
+                        <div className="p-6 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
                             <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 relative bg-white rounded-lg border p-1 shadow-sm">
-                                    {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-4 w-4 m-auto mt-1" />}
+                                <div className="h-10 w-10 relative bg-white rounded-xl border-2 p-1.5 shadow-sm">
+                                    {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-5 w-5 m-auto mt-1" />}
                                 </div>
-                                <span className="font-black uppercase text-[11px] tracking-widest">{vendor.name} Strategic Matrix</span>
+                                <div className="space-y-0.5">
+                                    <span className="font-black uppercase text-[12px] tracking-widest">{vendor.name} STRATEGIC MATRIX</span>
+                                    <p className="text-[9px] font-bold text-primary uppercase tracking-widest">Enhanced Precision Mode</p>
+                                </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
-                                <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
-                                <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Minimize2 className="h-4 w-4 mr-2" /> Exit Focus</Button>
+                                <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-5 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 shadow-sm"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
+                                <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-5 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 shadow-sm"><History className="h-4 w-4 mr-2" /> History</Button>
+                                <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" className="h-10 px-5 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 shadow-sm"><Minimize2 className="h-4 w-4 mr-2" /> Exit Focus</Button>
                             </div>
                         </div>
-                        <div className="flex-1 min-h-0">
+                        <div className="flex-1 min-h-0 bg-white">
                             <PricingTable />
                         </div>
                     </div>
@@ -532,8 +522,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
                 <DialogContent className="rounded-2xl border-4 shadow-2xl">
                     <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle></DialogHeader>
-                    <div className="py-6"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Section Name</Label><Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2 h-12 font-bold text-lg rounded-xl border-2" placeholder="e.g. Regional Margins" /></div>
-                    <DialogFooter><Button variant="outline" onClick={() => setIsAddSectionOpen(false)}>Cancel</Button><Button onClick={handleAddSection}>Create</Button></DialogFooter>
+                    <div className="py-6">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Section Name</Label>
+                        <Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2 h-12 font-bold text-lg rounded-xl border-2" placeholder="e.g. Regional Margins" />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddSectionOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAddSection}>Create</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
@@ -765,7 +761,17 @@ function EditableCell({ id, col, value, onChange, placeholder, prefix, suffix, a
     return (
         <div className="relative h-full flex items-center bg-background px-2">
             {prefix && <span className="text-[9px] font-black opacity-40 mr-1">{prefix}</span>}
-            <input type={col.type === 'text' ? 'text' : 'number'} className={cn("h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none focus:bg-background", align === 'right' ? "text-right" : "text-center")} value={localValue} onChange={e => setLocalValue(e.target.value)} onBlur={handleBlur} placeholder={placeholder || "-"} />
+            <input 
+                type={col.type === 'text' ? 'text' : 'number'} 
+                className={cn(
+                    "h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none transition-all focus:bg-white focus:ring-1 focus:ring-primary/20 rounded",
+                    align === 'right' ? "text-right" : "text-center"
+                )} 
+                value={localValue} 
+                onChange={e => setLocalValue(e.target.value)} 
+                onBlur={handleBlur} 
+                placeholder={placeholder || "-"} 
+            />
             {suffix && <span className="text-[9px] font-black opacity-40 ml-1">{suffix}</span>}
         </div>
     );
