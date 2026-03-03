@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs, updateDoc, addDoc, serverTimestamp, where, deleteDoc, setDoc } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -117,26 +117,6 @@ interface Variant {
     material?: string;
 }
 
-interface FreightContainer {
-    id: string;
-    size: string;
-    description: string;
-    cost: number;
-    currency: string;
-    cubicMeters: number;
-}
-
-interface AuditLogEntry {
-    id: string;
-    itemId: string;
-    colId: string;
-    oldValue: any;
-    newValue: any;
-    timestamp: any;
-    userId: string;
-    userName: string;
-}
-
 const getSectionColCount = (sec: PricingSection) => {
     if (sec.isCollapsed) return 1;
     if (sec.id === 'sec-exchange') return 4;
@@ -230,7 +210,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [newColName, setNewColName] = useState('');
     const [newColType, setNewColType] = useState<CustomColumn['type']>('percent');
     const [isCalculated, setIsCalculated] = useState(false);
-    const [isMandatory, setIsMandatory] = useState(false);
     const [formulaLeft, setFormulaLeft] = useState('baseCost');
     const [formulaOp, setFormulaOp] = useState<CustomColumn['formula']['operator']>('+');
     const [formulaRight, setFormulaRight] = useState('');
@@ -300,93 +279,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
     }, [strategy?.sections]);
 
-    const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
-        const sections = [...sortedSections];
-        const idx = sections.findIndex(s => s.id === secId);
-        if (idx === -1) return;
-        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
-        if (newIdx < 0 || newIdx >= sections.length) return;
-        
-        const temp = sections[idx];
-        sections[idx] = sections[newIdx];
-        sections[newIdx] = temp;
-        
-        await updateDoc(strategyRef, { 
-            sections: sections.map((s, i) => ({ ...s, order: i })) 
-        });
-    };
-
-    const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
-        const sections = [...sortedSections];
-        const secIdx = sections.findIndex(s => s.id === secId);
-        if (secIdx === -1) return;
-        
-        const cols = [...sections[secIdx].columns];
-        const idx = cols.findIndex(c => c.id === colId);
-        if (idx === -1) return;
-        
-        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
-        if (newIdx < 0 || newIdx >= cols.length) return;
-        
-        const temp = cols[idx];
-        cols[idx] = cols[newIdx];
-        cols[newIdx] = temp;
-        
-        sections[secIdx].columns = cols;
-        await updateDoc(strategyRef, { sections });
-    };
-
-    const handleAddSection = async () => {
-        if (!newSectionName.trim()) return;
-        const newSection: PricingSection = { 
-            id: `sec-${Date.now()}`, 
-            name: newSectionName, 
-            order: sortedSections.length, 
-            columns: [] 
-        };
-        await updateDoc(strategyRef, { sections: [...sortedSections, newSection] });
-        setIsAddSectionOpen(false);
-        setNewSectionName('');
-    };
-
-    const handleAddColumn = async () => {
-        if (!newColName.trim() || !targetSectionId) return;
-        const newCol: CustomColumn = {
-            id: `col-${Date.now()}`,
-            name: newColName,
-            type: newColType,
-            isMandatory,
-            isCalculated,
-            formula: isCalculated ? { 
-                leftId: formulaLeft, 
-                operator: formulaOp, 
-                rightId: isNaN(parseFloat(formulaRight)) ? formulaRight : parseFloat(formulaRight) 
-            } : undefined
-        };
-        const currentSections = [...sortedSections];
-        const sectionIdx = currentSections.findIndex(s => s.id === targetSectionId);
-        if (sectionIdx !== -1) {
-            currentSections[sectionIdx].columns.push(newCol);
-            await updateDoc(strategyRef, { sections: currentSections });
-        }
-        setIsAddColumnOpen(false);
-        setNewColName('');
-    };
-
-    const handleToggleSectionCollapse = async (secId: string) => {
-        const sections = [...sortedSections];
-        const idx = sections.findIndex(s => s.id === secId);
-        if (idx !== -1) {
-            sections[idx].isCollapsed = !sections[idx].isCollapsed;
-            await updateDoc(strategyRef, { sections });
-        }
-    };
-
-    const handleDeleteSection = async (secId: string) => {
-        const sections = sortedSections.filter(s => s.id !== secId);
-        await updateDoc(strategyRef, { sections: sections.map((s, i) => ({ ...s, order: i })) });
-    };
-
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
         const currentValues = strategy?.itemValues || {};
         const oldValue = currentValues[itemId]?.[colId];
@@ -431,69 +323,71 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return sortedSections.reduce((acc, sec) => acc + getSectionColCount(sec), 0);
     }, [sortedSections]);
 
-    const HeaderActions = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center gap-3">
-            {isFocus && (
-                <>
-                    <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
-                    <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
-                </>
-            )}
-            
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button className="h-10 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl shadow-primary/20">
-                        <Plus className="h-4 w-4 mr-2" /> Add
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 rounded-xl border-2 shadow-2xl">
-                    <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => setIsAddSectionOpen(true)}>
-                        <Layers className="h-4 w-4 mr-2 text-primary" /> New Section
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => { setTargetSectionId(sortedSections[0]?.id || null); setIsAddColumnOpen(true); }}>
-                        <Calculator className="h-4 w-4 mr-2 text-primary" /> New Metric
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+    const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
+        <div className="flex items-center justify-between gap-4 py-4 px-1 shrink-0">
+            <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary shadow-sm">
+                    <Calculator className="h-4 w-4" />
+                </div>
+                <div>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-foreground leading-none">Highfield Strategy</h2>
+                    <p className="text-[10px] font-black uppercase tracking-tighter text-primary mt-1">Strategic Pricing Workspace</p>
+                </div>
+            </div>
 
-            <Button 
-                type="button"
-                onClick={() => setIsFocusMode(!isFocus)} 
-                variant="outline" 
-                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"
-            >
-                {isFocus ? <Minimize2 className="h-4 w-4 mr-2" /> : <Maximize2 className="h-4 w-4 mr-2" />}
-                {isFocus ? 'Exit Focus' : 'Focus Mode'}
-            </Button>
+            <div className="flex items-center gap-3">
+                {isFocus && (
+                    <>
+                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
+                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
+                    </>
+                )}
+                
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button className="h-9 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl">
+                            <Plus className="h-4 w-4 mr-2" /> Add
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 rounded-xl border-2 shadow-2xl">
+                        <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => setIsAddSectionOpen(true)}>
+                            <Layers className="h-4 w-4 mr-2 text-primary" /> New Section
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => { setTargetSectionId(sortedSections[0]?.id || null); setIsAddColumnOpen(true); }}>
+                            <Calculator className="h-4 w-4 mr-2 text-primary" /> New Metric
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button 
+                    type="button"
+                    onClick={() => setIsFocusMode(!isFocus)} 
+                    variant="outline" 
+                    className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"
+                >
+                    {isFocus ? <Minimize2 className="h-4 w-4 mr-2" /> : <Maximize2 className="h-4 w-4 mr-2" />}
+                    Focus Mode
+                </Button>
+            </div>
         </div>
     );
 
     const PricingTable = () => (
-        <div className="relative w-full h-full overflow-auto bg-white">
+        <div className="relative w-full h-full overflow-auto bg-white rounded-xl border shadow-inner">
             <Table className="border-separate border-spacing-0 w-full table-fixed">
                 <TableHeader className="sticky top-0 z-50 bg-white">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[300px] sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                        <TableHead className="w-[300px] sticky left-0 z-[60] bg-white border-r-2 border-b-2 font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] py-4 px-6">
                             Description & SKU
                         </TableHead>
-                        {sortedSections.map((sec, secIdx) => {
+                        {sortedSections.map((sec) => {
                             const colSpan = getSectionColCount(sec);
                             return (
-                                <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b p-0 group/sec", sec.isCollapsed ? "w-[60px]" : "bg-primary/5")}>
-                                    <div className="flex flex-col h-full">
-                                        <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/5 min-h-[40px]">
-                                            <div className="flex items-center gap-2 overflow-hidden">
-                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}</Button>
-                                                {!sec.isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
-                                            </div>
-                                            {!sec.isCollapsed && (
-                                                <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === 0} onClick={() => handleMoveSection(sec.id, 'left')}><ChevronLeft className="h-3 w-3" /></Button>
-                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === sortedSections.length - 1} onClick={() => handleMoveSection(sec.id, 'right')}><ChevronRight className="h-3 w-3" /></Button>
-                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
-                                                    {!['sec-exchange', 'sec-vendor', 'sec-freight'].includes(sec.id) && <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
-                                                </div>
-                                            )}
+                                <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b-2 p-0 bg-primary/5", sec.isCollapsed ? "w-[60px]" : "")}>
+                                    <div className="flex items-center justify-between gap-2 p-2 min-h-[40px]">
+                                        <div className="flex items-center gap-2">
+                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}</Button>
+                                            {!sec.isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest text-primary">{sec.name}</span>}
                                         </div>
                                     </div>
                                 </TableHead>
@@ -501,15 +395,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         })}
                     </TableRow>
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12">
+                        <TableHead className="sticky left-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12 py-0 px-4">
                             <div className="relative">
                                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                                <input 
-                                    placeholder="Quick Search..." 
-                                    className="w-full pl-7 bg-muted/20 border rounded h-7 text-[10px] font-bold" 
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                />
+                                <input placeholder="Quick Search..." className="w-full pl-7 bg-muted/20 border rounded h-8 text-[10px] font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                             </div>
                         </TableHead>
                         {sortedSections.map(sec => {
@@ -534,20 +423,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             }
                             if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">Packed m³</TableHead>;
                             if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Empty Group</TableHead>;
-                            return sec.columns.map((col, idx) => (
-                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r border-b">
-                                    <div className="flex items-center justify-between gap-1">
-                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === 0} onClick={() => handleMoveColumn(sec.id, col.id, 'left')}><ChevronLeft className="h-3 w-3" /></Button>
-                                        <div className="flex flex-col items-center flex-1 min-w-0">
-                                            <span className="text-[9px] font-black uppercase tracking-tight text-primary truncate">{col.name}</span>
-                                            <div className="flex items-center gap-1.5">
-                                                {col.isCalculated && <Calculator className="h-2.5 w-2.5 text-primary/40" />}
-                                                <Badge variant="outline" className="h-3.5 text-[7px] uppercase p-0 border-none opacity-40">{col.type}</Badge>
-                                            </div>
-                                        </div>
-                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === sec.columns.length - 1} onClick={() => handleMoveColumn(sec.id, col.id, 'right')}><ChevronRight className="h-3 w-3" /></Button>
-                                    </div>
-                                </TableHead>
+                            return sec.columns.map((col) => (
+                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-4 border-r border-b font-black uppercase text-[9px] text-primary">{col.name}</TableHead>
                             ));
                         })}
                     </TableRow>
@@ -578,28 +455,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-background">
-            <div className="p-6 shrink-0 bg-background">
-                <div className="flex items-center justify-between border-b pb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm">
-                            {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-6 w-6 m-auto mt-1" />}
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
-                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Strategic Pricing Workspace</CardDescription>
-                        </div>
-                    </div>
-                    <HeaderActions />
-                </div>
-            </div>
-            
-            <Card className="flex-1 min-h-0 mx-6 mb-6 overflow-hidden flex flex-col shadow-xl border-2 bg-white">
+            <WorkspaceHeader />
+            <div className="flex-1 min-h-0 bg-white">
                 <PricingTable />
-            </Card>
+            </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
                 <DialogContent className="max-w-full w-screen h-screen rounded-none p-0 overflow-hidden border-none [&>button]:hidden z-[100]">
-                    <DialogTitle className="sr-only">{vendor.name} Focus Mode Strategic Workspace</DialogTitle>
+                    <DialogTitle className="sr-only">{vendor.name} Full Screen Strategy Matrix</DialogTitle>
                     <div className="flex flex-col h-full bg-background">
                         <div className="p-4 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
                             <div className="flex items-center gap-3">
@@ -608,7 +471,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 </div>
                                 <span className="font-black uppercase text-[11px] tracking-widest">{vendor.name} Strategic Matrix</span>
                             </div>
-                            <HeaderActions isFocus />
+                            <div className="flex items-center gap-3">
+                                <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
+                                <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
+                                <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Minimize2 className="h-4 w-4 mr-2" /> Exit Focus</Button>
+                            </div>
                         </div>
                         <div className="flex-1 min-h-0">
                             <PricingTable />
@@ -617,87 +484,38 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </DialogContent>
             </Dialog>
 
-            <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             <FreightManager organisationId={organisationId} vendorId={vendor.id} isOpen={isFreightManagerOpen} onClose={() => setIsFreightManagerOpen(false)} />
+            <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
                 <DialogContent className="rounded-2xl border-4 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle>
-                        <DialogDescription className="text-xs font-bold uppercase tracking-widest text-primary">New Tactical Grouping</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-6">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Section Name</Label>
-                        <Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2 h-12 font-bold text-lg rounded-xl border-2" placeholder="e.g. Regional Margins" />
-                    </div>
-                    <DialogFooter className="gap-2">
-                        <DialogClose asChild><Button variant="outline" className="font-bold border-2">Cancel</Button></DialogClose>
-                        <Button onClick={handleAddSection} className="font-black uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg">Initialize Section</Button>
-                    </DialogFooter>
+                    <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle></DialogHeader>
+                    <div className="py-6"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Section Name</Label><Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2 h-12 font-bold text-lg rounded-xl border-2" placeholder="e.g. Regional Margins" /></div>
+                    <DialogFooter><Button variant="outline" onClick={() => setIsAddSectionOpen(false)}>Cancel</Button><Button onClick={handleAddSection}>Create</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
                 <DialogContent className="sm:max-w-xl rounded-2xl border-4 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Metric Configuration</DialogTitle>
-                        <DialogDescription className="text-xs font-bold uppercase tracking-widest text-primary">Define Strategic Calculation</DialogDescription>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Metric Configuration</DialogTitle></DialogHeader>
                     <div className="space-y-6 py-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
-                                <Input value={newColName} onChange={e => setNewColName(e.target.value)} className="font-bold border-2" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Unit Type</Label>
-                                <Select value={newColType} onValueChange={(v: any) => setNewColType(v)}>
-                                    <SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                        <SelectItem value="percent">Percentage %</SelectItem>
-                                        <SelectItem value="currency">Currency $</SelectItem>
-                                        <SelectItem value="cost">Cost Point</SelectItem>
-                                        <SelectItem value="text">Textual Data</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest">Label</Label><Input value={newColName} onChange={e => setNewColName(e.target.value)} className="font-bold border-2" /></div>
+                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest">Unit Type</Label><Select value={newColType} onValueChange={(v: any) => setNewColType(v)}><SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="percent">Percentage %</SelectItem><SelectItem value="currency">Currency $</SelectItem><SelectItem value="cost">Cost Point</SelectItem><SelectItem value="text">Textual Data</SelectItem></SelectContent></Select></div>
                         </div>
                         <div className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border-2 border-dashed">
-                            <div>
-                                <Label className="text-xs font-black uppercase tracking-tight">Enable Formula Engine</Label>
-                                <p className="text-[10px] text-muted-foreground font-medium">Automatic calculated logic</p>
-                            </div>
+                            <div><Label className="text-xs font-black uppercase tracking-tight">Enable Formula Engine</Label></div>
                             <Switch checked={isCalculated} onCheckedChange={setIsCalculated} />
                         </div>
                         {isCalculated && (
                             <div className="grid grid-cols-3 gap-2 animate-in slide-in-from-top-2">
-                                <Select value={formulaLeft} onValueChange={setFormulaLeft}>
-                                    <SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                        <SelectItem value="baseCost">Base Cost</SelectItem>
-                                        <SelectItem value="masterSell">Master Sell</SelectItem>
-                                        {allColumns.filter(c => c.id !== targetSectionId).map(c => (
-                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}>
-                                    <SelectTrigger className="font-black text-lg border-2"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                        <SelectItem value="+">+</SelectItem>
-                                        <SelectItem value="-">-</SelectItem>
-                                        <SelectItem value="*">×</SelectItem>
-                                        <SelectItem value="/">÷</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Select value={formulaLeft} onValueChange={setFormulaLeft}><SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="baseCost">Base Cost</SelectItem><SelectItem value="masterSell">Master Sell</SelectItem>{allColumns.filter(c => c.id !== targetSectionId).map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select>
+                                <Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}><SelectTrigger className="font-black text-lg border-2"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="+">+</SelectItem><SelectItem value="-">-</SelectItem><SelectItem value="*">×</SelectItem><SelectItem value="/">÷</SelectItem></SelectContent></Select>
                                 <Input placeholder="Modifier..." value={formulaRight} onChange={e => setFormulaRight(e.target.value)} className="font-bold border-2" />
                             </div>
                         )}
                     </div>
-                    <DialogFooter className="gap-2">
-                        <DialogClose asChild><Button variant="outline" className="font-bold border-2">Cancel</Button></DialogClose>
-                        <Button onClick={handleAddColumn} className="font-black uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg">Commit Metric</Button>
-                    </DialogFooter>
+                    <DialogFooter><Button variant="outline" onClick={() => setIsAddColumnOpen(false)}>Cancel</Button><Button onClick={handleAddColumn}>Commit Metric</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
@@ -708,7 +526,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     return (
         <>
             <TableRow className="bg-slate-100/80 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="sticky left-0 z-30 bg-slate-100 py-3 px-6 font-black uppercase text-[11px] border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-slate-200">
+                <TableCell className="sticky left-0 z-[40] bg-slate-100 py-3 px-6 font-black uppercase text-[11px] border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
                         <span>{range.name} RANGE</span>
@@ -740,7 +558,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-slate-50 border-l-4 border-l-primary group">
-                <TableCell className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-slate-100">
+                <TableCell className="sticky left-0 z-[40] bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
                         <button onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}>
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
@@ -754,7 +572,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
             {isLocalExpanded && (
                 <>
                     <TableRow className="hover:bg-transparent">
-                        <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                        <TableCell className="sticky left-0 z-[40] bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                             <div className="flex items-center gap-2">
                                 <Ship className="h-3 w-3 text-primary opacity-40" />
                                 <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Boat Variants</span>
@@ -785,7 +603,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="hover:bg-transparent">
-                                <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                <TableCell className="sticky left-0 z-[40] bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                     <div className="flex items-center gap-2">
                                         <Layers className="h-3 w-3 text-primary opacity-40" />
                                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Factory Options</span>
@@ -827,7 +645,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 
     return (
         <TableRow className="hover:bg-muted/30 transition-colors group">
-            <TableCell className={cn("sticky left-0 z-30 bg-white py-2.5 border-r border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-slate-50", indent ? "pl-16" : "px-6")}>
+            <TableCell className={cn("sticky left-0 z-[40] bg-white py-2.5 border-r border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-slate-50", indent ? "pl-16" : "px-6")}>
                 <div className="flex flex-col min-w-0">
                     <span className={cn("font-bold text-[11px] uppercase truncate", isOption ? "text-muted-foreground" : "text-slate-900")}>{name}</span>
                     <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">{sku || 'NO SKU'}</span>
@@ -853,16 +671,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     return (
                         <React.Fragment key={sec.id}>
                             <TableCell className="p-0 border-r border-b bg-primary/5">
-                                <EditableCell 
-                                    id={id} 
-                                    col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} 
-                                    value={costOverride || ''} 
-                                    placeholder={cost ? cost.toFixed(2) : "0.00"} 
-                                    onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} 
-                                    align="right" 
-                                    suffix={vendorCurrency}
-                                    prefix="$"
-                                />
+                                <EditableCell id={id} col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} value={costOverride || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" suffix={vendorCurrency} prefix="$" />
                             </TableCell>
                             <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">
                                 {formatCurrency(convertedCost, orgCurrency)}
@@ -894,7 +703,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
     );
 }
 
-function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix }: { col: CustomColumn, baseCost: number, masterSell: number, itemValues: any, allCols: CustomColumn[], suffix?: string }) {
+function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix }: any) {
     const { value, error } = calculateValue(col, baseCost, masterSell, itemValues, allCols);
     return (
         <div className="flex items-center justify-center h-full px-2">
@@ -914,42 +723,32 @@ function EditableCell({ id, col, value, onChange, placeholder, prefix, suffix, a
     return (
         <div className="relative h-full flex items-center bg-background px-2">
             {prefix && <span className="text-[9px] font-black opacity-40 mr-1">{prefix}</span>}
-            <input 
-                type={col.type === 'text' ? 'text' : 'number'} 
-                className={cn(
-                    "h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none focus:bg-background", 
-                    align === 'right' ? 'text-right' : 'text-center'
-                )} 
-                value={localValue} 
-                onChange={e => setLocalValue(e.target.value)} 
-                onBlur={handleBlur} 
-                placeholder={placeholder || "-"} 
-            />
+            <input type={col.type === 'text' ? 'text' : 'number'} className={cn("h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none focus:bg-background", align === 'right' ? "text-right" : "text-center")} value={localValue} onChange={e => setLocalValue(e.target.value)} onBlur={handleBlur} placeholder={placeholder || "-"} />
             {suffix && <span className="text-[9px] font-black opacity-40 ml-1">{suffix}</span>}
         </div>
     );
 }
 
-function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: { organisationId: string; vendorId: string; isOpen: boolean; onClose: () => void; }) {
+function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
     const firestore = useFirestore();
     const logQuery = useMemoFirebase(() => query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/auditLog`), orderBy('timestamp', 'desc')), [firestore, organisationId, vendorId]);
-    const { data: logs, loading } = useCollection<AuditLogEntry>(logQuery);
+    const { data: logs, loading } = useCollection<any>(logQuery);
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl z-[150]">
-                <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><History className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Strategy Audit Log</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Chronological record of tactical modifications</DialogDescription></div></div></DialogHeader>
-                <div className="flex-1 min-h-0">{loading ? (<div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : logs && logs.length > 0 ? (<ScrollArea className="h-full"><Table><TableHeader className="bg-muted/5 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Timestamp</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">User</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Metric</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Previous</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">New Value</TableHead></TableRow></TableHeader><TableBody>{logs.map((log) => (<TableRow key={log.id} className="hover:bg-muted/10 transition-colors"><TableCell className="py-4 px-6 font-medium text-[10px] text-muted-foreground">{log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}</TableCell><TableCell className="py-4 px-6"><div className="flex items-center gap-2"><UserIcon className="h-3 w-3 text-primary opacity-40" /><span className="font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</span></div></TableCell><TableCell className="py-4 px-6"><Badge variant="outline" className="font-black text-[8px] uppercase border-primary/20 text-primary">{log.colId}</Badge></TableCell><TableCell className="py-4 px-6 font-mono text-[10px] text-muted-foreground/60">{log.oldValue ?? '-'}</TableCell><TableCell className="py-4 px-6 font-mono text-[10px] font-black text-primary">{log.newValue}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-20"><Clock className="h-16 w-16 mb-4" /><p className="text-sm font-black uppercase tracking-widest">No strategic modifications logged yet.</p></div>)}</div>
-                <DialogFooter className="p-6 border-t bg-muted/5"><DialogClose asChild><Button variant="outline" className="font-bold border-2">Close Log</Button></DialogClose></DialogFooter>
+                <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight">Audit Log</DialogTitle></DialogHeader>
+                <div className="flex-1 min-h-0">{loading ? (<div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : logs && logs.length > 0 ? (<ScrollArea className="h-full"><Table><TableHeader className="bg-muted/5 sticky top-0 z-10"><TableRow><TableHead className="py-4 px-6 text-[10px] font-black uppercase">Timestamp</TableHead><TableHead className="py-4 px-6 text-[10px] font-black uppercase">User</TableHead><TableHead className="py-4 px-6 text-[10px] font-black uppercase">Metric</TableHead><TableHead className="py-4 px-6 text-[10px] font-black uppercase">Old</TableHead><TableHead className="py-4 px-6 text-[10px] font-black uppercase">New</TableHead></TableRow></TableHeader><TableBody>{logs.map((log: any) => (<TableRow key={log.id}><TableCell className="py-4 px-6 text-[10px] font-medium text-muted-foreground">{log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}</TableCell><TableCell className="py-4 px-6 font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</TableCell><TableCell className="py-4 px-6 font-black text-primary text-[10px]">{log.colId}</TableCell><TableCell className="py-4 px-6 font-mono text-[10px]">{String(log.oldValue ?? '-')}</TableCell><TableCell className="py-4 px-6 font-mono font-black text-primary text-[10px]">{String(log.newValue)}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<div className="flex items-center justify-center h-full opacity-20"><Clock className="h-16 w-16" /></div>)}</div>
+                <DialogFooter className="p-6 border-t bg-muted/5"><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
             </DialogContent>
         </Dialog>
     );
 }
 
-function FreightManager({ organisationId, vendorId, isOpen, onClose }: { organisationId: string; vendorId: string; isOpen: boolean; onClose: () => void; }) {
+function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const freightQuery = useMemoFirebase(() => query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`), orderBy('size')), [firestore, organisationId, vendorId]);
-    const { data: containers, loading } = useCollection<FreightContainer>(freightQuery);
+    const { data: containers, loading } = useCollection<any>(freightQuery);
     const [isAdding, setIsAdding] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [size, setSize] = useState('');
@@ -959,48 +758,9 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: { organis
     const handleDelete = async (id: string) => { try { await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id)); toast({ title: "Container Removed" }); } catch (e) { toast({ variant: 'destructive', title: "Delete Failed" }); } };
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl z-[150]">
-                <DialogHeader className="p-8 border-b bg-muted/5">
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle>
-                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Shipping Containers & Logistics Cost Matrix</DialogDescription>
-                </DialogHeader>
-                <div className="flex-1 min-h-0 overflow-hidden">
-                    {loading ? (
-                        <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                    ) : (
-                        <ScrollArea className="h-full">
-                            <div className="p-8">
-                                {isAdding && (
-                                    <Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden"><CardHeader className="p-6 border-b bg-background"><CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle></CardHeader><CardContent className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label><Select value={size} onValueChange={setSize}><SelectTrigger className="h-10 font-bold bg-background"><SelectValue placeholder="Select Size..." /></SelectTrigger><SelectContent><SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem><SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem><SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem><SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label><Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label><Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" /></div></div></CardContent><CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button><Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button></CardFooter></Card>
-                                )}
-                                <div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm">
-                                    <Table>
-                                        <TableHeader className="bg-muted/50 border-b-2">
-                                            <TableRow>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {containers?.map((c) => (
-                                                <TableRow key={c.id}>
-                                                    <TableCell className="py-4 px-6 font-black uppercase">{c.size}</TableCell>
-                                                    <TableCell className="py-4 px-6 text-right font-bold">{c.cubicMeters} m³</TableCell>
-                                                    <TableCell className="py-4 px-6 text-right font-black">{formatCurrency(c.cost, c.currency)}</TableCell>
-                                                    <TableCell className="py-4 px-6 text-center"><Badge>{c.currency}</Badge></TableCell>
-                                                    <TableCell className="py-4 px-6 text-right"><Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4" /></Button></TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </div>
-                        </ScrollArea>
-                    )}
-                </div>
+            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+                <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Truck className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Shipping Containers & Logistics Cost Matrix</DialogDescription></div></div><Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-9 px-6 rounded-xl shadow-lg transition-transform hover:scale-105"><Plus className="h-4 w-4 mr-1.5" /> Add Container</Button></div></DialogHeader>
+                <div className="flex-1 min-h-0 overflow-hidden">{loading ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : (<ScrollArea className="h-full"><div className="p-8">{isAdding && (<Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden"><CardHeader className="p-6 border-b bg-background"><CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle></CardHeader><CardContent className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label><Select value={size} onValueChange={setSize}><SelectTrigger className="h-10 font-bold bg-background"><SelectValue placeholder="Select Size..." /></SelectTrigger><SelectContent><SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem><SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem><SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem><SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label><Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label><Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" /></div></div></CardContent><CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button><Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button></CardFooter></Card>)}<div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm"><Table><TableHeader className="bg-muted/50 border-b-2"><TableRow><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{containers?.map((c: any) => (<TableRow key={c.id}><TableCell className="py-4 px-6 font-black uppercase">{c.size}</TableCell><TableCell className="py-4 px-6 text-right font-bold">{c.cubicMeters} m³</TableCell><TableCell className="py-4 px-6 text-right font-black">{formatCurrency(c.cost, c.currency)}</TableCell><TableCell className="py-4 px-6 text-center"><Badge>{c.currency}</Badge></TableCell><TableCell className="py-4 px-6 text-right"><Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>))}</TableBody></Table></div></div></ScrollArea>)}</div>
             </DialogContent>
         </Dialog>
     );
