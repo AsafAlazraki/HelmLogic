@@ -668,16 +668,16 @@ export default function ModuleDetailsPage() {
             });
     };
 
-    const handleToggleModuleAccess = async (orgId: string, hasAccess: boolean) => {
+    const handleToggleSubDealerAccess = async (sdId: string, hasAccess: boolean) => {
         if (!moduleData) return;
-        const org = allOrganisations?.find(o => o.id === orgId);
-        if (!org) return;
-        const currentSubs = org.enabledModuleSubscriptions || [];
+        const sd = allOrganisations?.find(o => o.id === sdId);
+        if (!sd) return;
+        const currentSubs = sd.enabledModuleSubscriptions || [];
         const newSubs = hasAccess 
             ? [...new Set([...currentSubs, moduleData.id])]
             : currentSubs.filter(id => id !== moduleData.id);
         
-        const orgRef = doc(firestore, 'organisations', orgId);
+        const orgRef = doc(firestore, 'organisations', sdId);
         updateDoc(orgRef, {
             enabledModuleSubscriptions: newSubs
         })
@@ -1121,7 +1121,7 @@ export default function ModuleDetailsPage() {
                                         onBack={() => setSelectedOrgId(null)}
                                         onUpdateVendors={(vids) => handleUpdateOrgVendorAccess(selectedOrgId, vids)}
                                         onUpdateCategories={(cids) => handleUpdateOrgCategories(selectedOrgId, cids)}
-                                        onToggleSubDealerAccess={handleToggleModuleAccess}
+                                        onToggleSubDealerAccess={handleToggleSubDealerAccess}
                                         onUpdateSubDealerVendors={handleUpdateOrgVendorAccess}
                                     />
                                 ) : allOrganisations?.filter(org => org.enabledModuleSubscriptions?.includes(moduleData.id) && !org.parentOrganisationId).length! > 0 ? (
@@ -1191,7 +1191,7 @@ export default function ModuleDetailsPage() {
                                                                     <Checkbox 
                                                                         id={`sd-access-${sd.id}`} 
                                                                         checked={hasAccess} 
-                                                                        onCheckedChange={(checked) => handleToggleModuleAccess(sd.id, !!checked)} 
+                                                                        onCheckedChange={(checked) => handleToggleSubDealerAccess(sd.id, !!checked)} 
                                                                     />
                                                                     <label htmlFor={`sd-access-${sd.id}`} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground cursor-pointer">Access</label>
                                                                 </div>

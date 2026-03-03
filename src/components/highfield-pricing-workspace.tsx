@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
-import { Card, CardHeader, CardTitle, CardDescription, CardFooter, CardContent } from '@/components/ui/card';
+import { collection, query, orderBy, doc, getDocs, updateDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
     Table, 
     TableBody, 
@@ -19,9 +19,7 @@ import {
     ChevronDown, 
     ChevronRight, 
     Ship, 
-    Wrench, 
     DollarSign, 
-    Percent, 
     Coins,
     Building,
     Search,
@@ -29,23 +27,16 @@ import {
     Maximize2,
     Minimize2,
     ChevronLeft,
-    ArrowLeft,
-    ArrowRight,
     ArrowRightLeft,
     ShieldCheck,
     Truck,
-    CheckCircle2,
     Calculator,
     AlertCircle,
     History,
     Clock,
     User as UserIcon,
     Save,
-    Expand,
-    Shrink,
     Layers,
-    MoreHorizontal,
-    Settings2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -74,6 +65,7 @@ import { Badge } from '@/components/ui/badge';
 import NextImage from "next/image";
 import { Switch } from './ui/switch';
 import { formatDistanceToNow } from 'date-fns';
+import { Textarea } from './ui/textarea';
 
 interface CustomColumn {
     id: string;
@@ -453,7 +445,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         <div className="flex items-center gap-3">
             {isFocus && (
                 <>
-                    <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Logistics</Button>
+                    <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
                     <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
                 </>
             )}
@@ -480,7 +472,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 variant="outline" 
                 className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"
             >
-                {isFocus ? <Shrink className="h-4 w-4 mr-2" /> : <Expand className="h-4 w-4 mr-2" />}
+                {isFocus ? <Minimize2 className="h-4 w-4 mr-2" /> : <Maximize2 className="h-4 w-4 mr-2" />}
                 {isFocus ? 'Exit Focus' : 'Focus Mode'}
             </Button>
         </div>
@@ -506,8 +498,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                             </div>
                                             {!sec.isCollapsed && (
                                                 <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === 0} onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
-                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === sortedSections.length - 1} onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === 0} onClick={() => handleMoveSection(sec.id, 'left')}><ChevronLeft className="h-3 w-3" /></Button>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === sortedSections.length - 1} onClick={() => handleMoveSection(sec.id, 'right')}><ChevronRight className="h-3 w-3" /></Button>
                                                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
                                                     {!['sec-exchange', 'sec-vendor', 'sec-freight'].includes(sec.id) && <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
                                                 </div>
@@ -596,8 +588,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-background">
-            <CardHeader className="p-6 border-b shrink-0 bg-white shadow-sm z-50">
-                <div className="flex items-center justify-between">
+            <div className="p-6 shrink-0 bg-background">
+                <div className="flex items-center justify-between border-b pb-6">
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm">
                             {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-6 w-6 m-auto mt-1" />}
@@ -609,14 +601,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </div>
                     <HeaderActions />
                 </div>
-            </CardHeader>
-            <div className="flex-1 overflow-hidden min-h-0">
-                <PricingTable />
             </div>
+            
+            <Card className="flex-1 min-h-0 mx-6 mb-6 overflow-hidden flex flex-col shadow-xl border-2 bg-white">
+                <PricingTable />
+            </Card>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
                 <DialogContent className="max-w-full w-screen h-screen rounded-none p-0 overflow-hidden border-none [&>button]:hidden z-[100]">
-                    <DialogTitle className="sr-only">Focus Mode Strategic Workspace</DialogTitle>
+                    <DialogTitle className="sr-only">{vendor.name} Focus Mode Strategic Workspace</DialogTitle>
                     <div className="flex flex-col h-full bg-background">
                         <div className="p-4 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
                             <div className="flex items-center gap-3">
