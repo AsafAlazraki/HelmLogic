@@ -216,62 +216,71 @@ export default function ModuleDetailsPage() {
 
     return (
         <div className="flex flex-col h-[calc(100vh)] overflow-hidden bg-background">
-            {/* Absolute Top Hero Section */}
-            <div className="relative shrink-0 overflow-hidden bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary via-primary/95 to-indigo-900 px-10 py-10 text-primary-foreground shadow-2xl z-20 border-b border-white/5">
-                <div className="absolute inset-0 bg-black/10 opacity-50" />
-                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-[100px] animate-pulse" />
+            {/* Cinematic Module Hero */}
+            <div className="relative shrink-0 overflow-hidden bg-primary px-10 py-12 text-primary-foreground shadow-2xl z-20">
+                {/* Fluid Background Animation */}
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse" />
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/30 blur-[150px] rounded-full animate-pulse duration-[4000ms]" />
+                    <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-white/5 blur-[100px] rounded-full" />
+                </div>
                 
                 <div className="relative z-10 flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-2">
-                                <Navigation className="h-3 w-3" />
-                                <span>Command Center</span>
-                            </div>
-                            <h1 className="text-5xl font-black tracking-tighter uppercase italic leading-none text-white drop-shadow-2xl">
-                                {moduleData.name}
-                            </h1>
-                        </div>
-                        
-                        <div className="flex items-center gap-10">
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-4">
                             <BreadcrumbNav parts={[
                                 { href: "/dashboard", label: "Hub" },
                                 { href: "#", label: moduleData.name }
                             ]} />
                         </div>
+                        <div className="flex items-baseline gap-4 mt-2">
+                            <h1 className="text-6xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                                {moduleData.name}
+                            </h1>
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] opacity-40 translate-y-[-4px]">
+                                <Navigation className="h-3 w-3" />
+                                <span>Command Center</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Segmented Navigation Line */}
+            {/* Premium Navigation Ribbon */}
             <div className="bg-white border-b shrink-0 z-10 shadow-sm px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid grid-cols-5 w-full h-14 bg-transparent p-0 gap-8">
-                        {['dashboard', 'bmt', 'operations', 'pricing', 'network'].map((t) => (
+                    <TabsList className="grid grid-cols-5 w-full h-16 bg-transparent p-0 gap-8">
+                        {[
+                            { id: 'dashboard', label: 'Dashboard' },
+                            { id: 'bmt', label: 'Product Catalog' },
+                            { id: 'operations', label: 'Operations' },
+                            { id: 'pricing', label: 'Pricing Strategy' },
+                            { id: 'network', label: 'Market Network' }
+                        ].map((t) => (
                             <TabsTrigger 
-                                key={t} 
-                                value={t} 
-                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[11px] tracking-[0.2em] h-full transition-all duration-300"
+                                key={t.id} 
+                                value={t.id} 
+                                className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[11px] tracking-[0.2em] h-full transition-all duration-300 text-slate-400 data-[state=active]:text-slate-900 hover:text-slate-600"
                             >
-                                {t === 'bmt' ? 'Product Catalog' : t}
+                                {t.label}
                             </TabsTrigger>
                         ))}
                     </TabsList>
                 </Tabs>
             </div>
 
-            {/* Main Screen Workspace */}
+            {/* Operational Workspace */}
             <main className="flex-1 overflow-hidden relative p-8">
                 <Tabs value={activeTab} className="h-full">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div className="grid grid-cols-12 gap-8 h-full">
-                            {/* Lateral Intelligence */}
+                            {/* Lateral Panels */}
                             <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
-                                <Card className="flex-1 flex flex-col border-2 rounded-[2rem] shadow-sm bg-white overflow-hidden">
-                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
+                                    <CardHeader className="py-6 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3">
-                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5">Asset</Badge>
-                                            <h3 className="font-black uppercase italic text-sm tracking-tight">Stock</h3>
+                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Live Stock</h3>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
@@ -279,11 +288,11 @@ export default function ModuleDetailsPage() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="flex-1 flex flex-col border-2 rounded-[2rem] shadow-sm bg-white overflow-hidden">
-                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
+                                    <CardHeader className="py-6 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3">
-                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50">Pipeline</Badge>
-                                            <h3 className="font-black uppercase italic text-sm tracking-tight">On Order</h3>
+                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">On Order</h3>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
@@ -292,31 +301,31 @@ export default function ModuleDetailsPage() {
                                 </Card>
                             </div>
 
-                            {/* Focus Intelligence */}
-                            <Card className="col-span-8 flex flex-col border-2 rounded-[2.5rem] shadow-xl bg-white overflow-hidden">
-                                <CardHeader className="p-8 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
+                            {/* Center Action Panel */}
+                            <Card className="col-span-8 flex flex-col border-2 rounded-[3rem] shadow-2xl bg-white overflow-hidden">
+                                <CardHeader className="p-10 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
                                     <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary">
+                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
                                             <Anchor className="h-3.5 w-3.5" />
-                                            <span>Sales Strategy</span>
+                                            <span>Quotation Engine</span>
                                         </div>
-                                        <h2 className="text-3xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
+                                        <h2 className="text-4xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
                                     </div>
                                     <Button 
-                                        className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl hover:scale-[1.02] transition-all bg-primary"
+                                        className="h-16 px-10 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl hover:scale-[1.03] active:scale-95 transition-all bg-primary text-white"
                                         onClick={() => setIsNewQuoteOpen(true)}
                                     >
                                         <PlusCircle className="mr-2 h-4 w-4" />
                                         Draft New Quote
                                     </Button>
                                 </CardHeader>
-                                <CardContent className="flex-1 p-8 flex flex-col items-center justify-center text-center gap-6">
-                                    <div className="h-24 w-24 bg-muted/30 rounded-[2rem] flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
-                                        <FileText className="h-10 w-10 text-muted-foreground/20" />
+                                <CardContent className="flex-1 p-10 flex flex-col items-center justify-center text-center gap-8">
+                                    <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
+                                        <FileText className="h-12 w-12 text-slate-200" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <p className="font-black uppercase tracking-[0.2em] text-sm text-slate-400">Proposal Queue Empty</p>
-                                        <p className="text-[11px] text-muted-foreground max-w-xs mx-auto leading-relaxed">Initiate a new build to start generating precision quotations.</p>
+                                    <div className="space-y-3">
+                                        <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
+                                        <p className="text-[12px] font-medium text-slate-500 max-w-sm mx-auto leading-relaxed">Select a model range to begin building a precision configuration for your client.</p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -338,7 +347,7 @@ export default function ModuleDetailsPage() {
                                         isAdmin={isAdmin}
                                         organisationId={currentMemberOrg?.id}
                                         breadcrumbs={
-                                            <div className="flex items-center text-[10px] font-bold uppercase tracking-widest opacity-60">
+                                            <div className="flex items-center text-[10px] font-black uppercase tracking-widest opacity-60">
                                                 <span>{selectedRange.name}</span>
                                                 <ChevronRight className="h-3 w-3 mx-1" />
                                                 <span className="text-primary">{selectedModel.name}</span>

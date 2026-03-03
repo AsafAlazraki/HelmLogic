@@ -41,7 +41,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const isModulePage = pathname?.includes('/modules/');
   
   return (
-      <SidebarProvider defaultOpen={true}>
+      <SidebarProvider defaultOpen={false}>
         <AppSidebar />
         <SidebarInset className="overflow-hidden flex flex-col h-screen max-w-full relative bg-background">
           <main className={cn(
