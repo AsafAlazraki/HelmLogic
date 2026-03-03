@@ -6,7 +6,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRightLeft, PackagePlus, Trash2, Box, Anchor, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowRightLeft, Trash2, Box, Anchor, CheckCircle2 } from 'lucide-react';
 import {
     Select,
     SelectContent,

@@ -20,22 +20,17 @@ import {
     ChevronDown, 
     ChevronRight, 
     Ship, 
-    DollarSign, 
     Coins,
     Building,
     Search,
     X,
     Maximize2,
     Minimize2,
-    ChevronLeft,
-    ArrowRightLeft,
-    ShieldCheck,
     Truck,
     Calculator,
     AlertCircle,
     History,
     Clock,
-    User as UserIcon,
     Save,
     Layers,
 } from 'lucide-react';
@@ -509,7 +504,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
                 <DialogContent className="max-w-full w-screen h-screen rounded-none p-0 overflow-hidden border-none [&>button]:hidden z-[100]">
-                    <DialogTitle className="sr-only">{vendor.name} Full Screen Strategy Matrix</DialogTitle>
+                    <DialogHeader className="sr-only"><DialogTitle>{vendor.name} Full Screen Strategy Matrix</DialogTitle></DialogHeader>
                     <div className="flex flex-col h-full bg-background">
                         <div className="p-4 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
                             <div className="flex items-center gap-3">

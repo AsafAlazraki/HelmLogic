@@ -65,6 +65,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 interface Vendor {
     id: string;
@@ -155,7 +156,7 @@ function QuoteSelectorDialog({
             setIsOpen(open);
             if (!open) setSelectedRange(null);
         }}>
-            <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-[2.5rem]">
+            <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-[2.5rem] border-4 shadow-2xl">
                 <DialogHeader className="p-8 border-b bg-slate-50">
                     <DialogTitle className="text-3xl font-black uppercase tracking-tight italic">Initiate New Build</DialogTitle>
                     <DialogDescription className="text-base font-medium text-slate-500">
@@ -172,21 +173,21 @@ function QuoteSelectorDialog({
                                 {ranges?.map(range => (
                                     <Card 
                                         key={range.id} 
-                                        className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[2rem] overflow-hidden group"
+                                        className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[2rem] overflow-hidden group border-2"
                                         onClick={() => setSelectedRange(range)}
                                     >
-                                        <div className="aspect-video bg-muted relative">
-                                            {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-cover p-4" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
+                                        <div className="aspect-video bg-muted relative border-b">
+                                            {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
                                         </div>
                                         <CardContent className="p-6 text-center">
-                                            <p className="font-black uppercase tracking-tight text-lg">{range.name}</p>
+                                            <p className="font-black uppercase tracking-tight text-lg leading-tight">{range.name}</p>
                                         </CardContent>
                                     </Card>
                                 ))}
                             </div>
                         ) : (
                             <div className="space-y-6">
-                                <Button variant="ghost" onClick={() => setSelectedRange(null)} className="font-bold -ml-2">
+                                <Button variant="ghost" onClick={() => setSelectedRange(null)} className="font-bold -ml-2 text-primary">
                                     <ChevronLeft className="mr-2 h-4 w-4" /> Back to Ranges
                                 </Button>
                                 {modelsLoading ? (
@@ -196,15 +197,15 @@ function QuoteSelectorDialog({
                                         {models?.map(model => (
                                             <Card 
                                                 key={model.id} 
-                                                className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[2rem] overflow-hidden group"
+                                                className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[2rem] overflow-hidden group border-2"
                                                 onClick={() => handleModelSelect(model)}
                                             >
-                                                <div className="aspect-video bg-muted relative">
+                                                <div className="aspect-video bg-muted relative border-b">
                                                     {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="opacity-10" /></div>}
                                                 </div>
-                                                <CardContent className="p-6 text-center">
-                                                    <p className="font-black uppercase tracking-tight">{model.name}</p>
-                                                    {model.modelCode && <Badge variant="secondary" className="mt-2 font-mono text-[9px]">{model.modelCode}</Badge>}
+                                                <CardContent className="p-6 text-center space-y-2">
+                                                    <p className="font-black uppercase tracking-tight leading-tight">{model.name}</p>
+                                                    {model.modelCode && <Badge variant="secondary" className="font-mono text-[9px] px-2">{model.modelCode}</Badge>}
                                                 </CardContent>
                                             </Card>
                                         ))}
@@ -222,11 +223,11 @@ function QuoteSelectorDialog({
 function ModuleBreadcrumbs({ module, range, model, pendingMotor, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; pendingMotor: any; view: string, onBreadcrumbClick: (level: 'ranges' | 'models' | 'motors') => void }) {
     return (
         <div className="flex items-center text-[10px] font-bold uppercase tracking-widest text-white/60">
-            <button type="button" className="hover:text-white" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
+            <button type="button" className="hover:text-white transition-colors" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
             {range && (
                 <>
                     <ChevronRight className="h-3 w-3 mx-1" />
-                    <button type="button" className="hover:text-white" onClick={() => onBreadcrumbClick('models')}>{range.name}</button>
+                    <button type="button" className="hover:text-white transition-colors" onClick={() => onBreadcrumbClick('models')}>{range.name}</button>
                 </>
             )}
             {model && (
@@ -296,28 +297,6 @@ export default function ModuleDetailsPage() {
 
     const isViewingOrg = !!dashboardOrg;
 
-    const overrideRef = useMemoFirebase(() => 
-        dashboardOrg?.id && selectedModel?.id 
-            ? doc(firestore, 'organisations', dashboardOrg.id, 'modelOverrides', selectedModel.id) 
-            : null,
-    [firestore, dashboardOrg?.id, selectedModel?.id]);
-    const { data: modelOverride } = useDoc<any>(overrideRef);
-
-    const mergedModel = useMemo(() => {
-        if (!selectedModel) return null;
-        if (!modelOverride) return selectedModel;
-        return { ...selectedModel, ...modelOverride };
-    }, [selectedModel, modelOverride]);
-
-    const parentOrg = useMemo(() => 
-        dashboardOrg?.parentOrganisationId ? allOrganisations?.find(o => o.id === dashboardOrg.parentOrganisationId) : null,
-    [dashboardOrg, allOrganisations]);
-
-    const dashboardSubDealers = useMemo(() => {
-        if (!dashboardOrg || !allOrganisations) return [];
-        return allOrganisations.filter(o => o.parentOrganisationId === dashboardOrg.id);
-    }, [dashboardOrg, allOrganisations]);
-
     const userPermissions = useMemo(() => {
         if (isAdmin) return {
             can_access_module: true,
@@ -352,67 +331,15 @@ export default function ModuleDetailsPage() {
 
     const [activeTab, setActiveTab] = useState('dashboard');
 
-    const settingsForm = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: { name: '', mainVendorId: '', associatedVendorIds: [] },
-    });
+    const dashboardSubDealers = useMemo(() => {
+        if (!dashboardOrg || !allOrganisations) return [];
+        return allOrganisations.filter(o => o.parentOrganisationId === dashboardOrg.id);
+    }, [dashboardOrg, allOrganisations]);
 
-    useEffect(() => {
-        if (moduleData) {
-            settingsForm.reset({
-                name: moduleData.name,
-                mainVendorId: moduleData.mainVendorId,
-                associatedVendorIds: moduleData.associatedVendorIds || [],
-            });
-        }
-    }, [moduleData, settingsForm]);
+    const parentOrg = useMemo(() => 
+        dashboardOrg?.parentOrganisationId ? allOrganisations?.find(o => o.id === dashboardOrg.parentOrganisationId) : null,
+    [dashboardOrg, allOrganisations]);
 
-    async function onSettingsSubmit(values: z.infer<typeof formSchema>) {
-        if (!moduleData) return;
-        setIsSavingModule(true);
-        const moduleRef = doc(firestore, 'modules', moduleData.id);
-        const vendor = allVendors?.find(v => v.id === values.mainVendorId);
-        const dataToUpdate = {
-            name: values.name,
-            slug: createSlug(values.name),
-            mainVendorId: values.mainVendorId,
-            associatedVendorIds: values.associatedVendorIds,
-            logoUrl: vendor?.logoUrl || null,
-        };
-
-        updateDoc(moduleRef, dataToUpdate)
-            .then(() => {
-                toast({ title: 'Module Updated' });
-                if (dataToUpdate.slug !== slugOrId) {
-                    router.replace(`/modules/${dataToUpdate.slug}`);
-                }
-            })
-            .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: moduleRef.path,
-                    operation: 'update',
-                    requestResourceData: dataToUpdate,
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
-            })
-            .finally(() => setIsSavingModule(false));
-    }
-
-    const handleBreadcrumbClick = (level: 'ranges' | 'models' | 'motors') => {
-        if (level === 'ranges') {
-            setView('ranges');
-            setSelectedRange(null);
-            setSelectedModel(null);
-            setPendingMotor(null);
-        } else if (level === 'models') {
-            setView('models');
-            setSelectedModel(null);
-        } else if (level === 'motors') {
-            setView('motors');
-            setPendingMotor(null);
-        }
-    };
-    
     const loading = moduleLoading || mainVendorLoading || vendorsLoading || orgsLoading || userLoading || profileLoading;
 
     if (loading) {
@@ -427,8 +354,6 @@ export default function ModuleDetailsPage() {
         return <Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>Your role does not have permission to access modules.</CardDescription></CardHeader></Card>;
     }
     
-    const isMasterContext = viewContextOrgId === null;
-    const isImpersonating = viewContextOrgId !== null && (isAdmin || viewContextOrgId !== userProfile?.organisationId);
     const showSubDealersTab = isViewingOrg && dashboardOrg?.subDealersEnabled && userPermissions.can_view_subdealers;
     const tabGridCols = (isAdmin && !viewContextOrgId) ? "grid-cols-5" : showSubDealersTab ? "grid-cols-6" : "grid-cols-5";
 
@@ -450,10 +375,25 @@ export default function ModuleDetailsPage() {
         setView('motors');
     };
 
+    const handleBreadcrumbClick = (level: 'ranges' | 'models' | 'motors') => {
+        if (level === 'ranges') {
+            setView('ranges');
+            setSelectedRange(null);
+            setSelectedModel(null);
+            setPendingMotor(null);
+        } else if (level === 'models') {
+            setView('models');
+            setSelectedModel(null);
+        } else if (level === 'motors') {
+            setView('motors');
+            setPendingMotor(null);
+        }
+    };
+
     return (
-        <div className="flex flex-col h-[calc(100vh-64px)] -m-4 md:-m-6 overflow-hidden">
-            {/* Cinematic Header */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-accent px-8 py-6 text-primary-foreground shadow-2xl shrink-0 border-b border-white/10">
+        <div className="flex flex-col h-[calc(100vh-64px)] -m-4 md:-m-6 overflow-hidden bg-slate-50/30">
+            {/* Top-Pinned Hero Navigation */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-accent px-8 py-6 text-primary-foreground shadow-2xl shrink-0 border-b border-white/10 z-20">
                 <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-white/5 blur-[80px]" />
                 <div className="relative z-10 flex items-center justify-between gap-8">
                     <div className="flex items-center gap-8">
@@ -472,13 +412,13 @@ export default function ModuleDetailsPage() {
                             <ModuleBreadcrumbs 
                                 module={moduleData} 
                                 range={selectedRange} 
-                                model={mergedModel} 
+                                model={selectedModel} 
                                 pendingMotor={pendingMotor} 
                                 view={view} 
                                 onBreadcrumbClick={handleBreadcrumbClick} 
                             />
                             <h1 className="text-2xl font-black tracking-tight uppercase italic leading-none">
-                                {dashboardOrg?.name || 'Local Fleet'}
+                                {dashboardOrg?.name || 'Local Workspace'}
                             </h1>
                         </div>
                     </div>
@@ -490,7 +430,7 @@ export default function ModuleDetailsPage() {
                                     value={viewContextOrgId || 'master'} 
                                     onValueChange={(val) => setViewContextOrgId(val === 'master' ? null : val)}
                                 >
-                                    <SelectTrigger className={cn("w-40 h-8 font-bold bg-white/10 border-none text-white text-[10px]", isImpersonating && "bg-white text-primary")}>
+                                    <SelectTrigger className="w-40 h-8 font-bold bg-white/10 border-none text-white text-[10px]">
                                         <Eye className="h-3.5 w-3.5 mr-2" />
                                         <SelectValue />
                                     </SelectTrigger>
@@ -523,32 +463,34 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
 
-            <div className="px-8 bg-white border-b shrink-0">
+            {/* Tactical Menu Bar */}
+            <div className="px-8 bg-white border-b shrink-0 z-10 shadow-sm">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className={cn("grid w-full h-12 bg-transparent p-0", tabGridCols)}>
-                        {isViewingOrg && <TabsTrigger value="dashboard" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Dashboard</TabsTrigger>}
-                        <TabsTrigger value="bmt" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">
+                        {isViewingOrg && <TabsTrigger value="dashboard" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Dashboard</TabsTrigger>}
+                        <TabsTrigger value="bmt" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">
                             {isMotorBrand ? 'Engine Catalog' : 'BMT Catalog'}
                         </TabsTrigger>
-                        <TabsTrigger value="operations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Operations</TabsTrigger>
-                        {isViewingOrg && userPermissions.can_access_settings && <TabsTrigger value="pricing" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Strategic Pricing</TabsTrigger>}
-                        {isAdmin && !viewContextOrgId && <TabsTrigger value="organisations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Orgs</TabsTrigger>}
-                        {isAdmin && !viewContextOrgId && <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Config</TabsTrigger>}
-                        {showSubDealersTab && <TabsTrigger value="sub-dealers" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Network</TabsTrigger>}
+                        <TabsTrigger value="operations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Operations</TabsTrigger>
+                        {isViewingOrg && userPermissions.can_access_settings && <TabsTrigger value="pricing" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Strategic Pricing</TabsTrigger>}
+                        {isAdmin && !viewContextOrgId && <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Config</TabsTrigger>}
+                        {showSubDealersTab && <TabsTrigger value="sub-dealers" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Network</TabsTrigger>}
                     </TabsList>
                 </Tabs>
             </div>
 
-            <main className="flex-1 overflow-hidden bg-slate-50/50">
+            {/* Main Single-Screen Workspace */}
+            <main className="flex-1 overflow-hidden relative">
                 <Tabs value={activeTab} className="h-full">
                     {isViewingOrg && (
-                        <TabsContent value="dashboard" className="m-0 h-full p-6">
+                        <TabsContent value="dashboard" className="m-0 h-full p-6 animate-in fade-in duration-500">
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+                                {/* Lateral Panels */}
                                 <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-hidden">
                                     <Card className="flex flex-col border-2 rounded-[2rem] shadow-sm bg-white h-1/2 overflow-hidden">
-                                        <CardHeader className="py-4 px-6 border-b shrink-0 flex flex-row items-center justify-between">
+                                        <CardHeader className="py-4 px-6 border-b shrink-0 flex flex-row items-center justify-between bg-muted/5">
                                             <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="h-5 text-[8px] font-black uppercase">Stock</Badge>
+                                                <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-primary/20 text-primary">Stock</Badge>
                                                 <h3 className="font-black uppercase italic text-sm">Local Inventory</h3>
                                             </div>
                                             {dashboardSubDealers.length > 0 && (
@@ -577,9 +519,9 @@ export default function ModuleDetailsPage() {
                                     </Card>
 
                                     <Card className="flex flex-col border-2 rounded-[2rem] shadow-sm bg-white h-1/2 overflow-hidden">
-                                        <CardHeader className="py-4 px-6 border-b shrink-0 flex items-center gap-2">
-                                            <Badge variant="outline" className="h-5 text-[8px] font-black uppercase">Order</Badge>
-                                            <h3 className="font-black uppercase italic text-sm">Pipeline</h3>
+                                        <CardHeader className="py-4 px-6 border-b shrink-0 flex items-center gap-2 bg-muted/5">
+                                            <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-green-500/20 text-green-600">Order</Badge>
+                                            <h3 className="font-black uppercase italic text-sm">On-Water Pipeline</h3>
                                         </CardHeader>
                                         <CardContent className="flex-1 min-h-0 p-0">
                                             <VesselOnOrderList 
@@ -592,6 +534,7 @@ export default function ModuleDetailsPage() {
                                     </Card>
                                 </div>
 
+                                {/* Central Focus Panel */}
                                 <div className="lg:col-span-8 h-full overflow-hidden">
                                     <Card className="h-full flex flex-col border-2 rounded-[2.5rem] shadow-xl bg-white overflow-hidden">
                                         <CardHeader className="p-8 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
@@ -600,7 +543,7 @@ export default function ModuleDetailsPage() {
                                                     <Navigation className="h-3 w-3" />
                                                     <span>Sales Intelligence</span>
                                                 </div>
-                                                <h2 className="text-2xl font-black tracking-tight text-slate-950 uppercase italic">Recent Quotes</h2>
+                                                <h2 className="text-2xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
                                             </div>
                                             <Button 
                                                 className="h-12 px-6 rounded-2xl font-black uppercase tracking-widest text-[9px] shadow-lg hover:scale-105 transition-transform"
@@ -615,9 +558,12 @@ export default function ModuleDetailsPage() {
                                                 <div className="h-16 w-16 bg-white rounded-2xl shadow-xl border flex items-center justify-center text-slate-200 group-hover:scale-110 transition-all">
                                                     <FileText className="h-8 w-8" />
                                                 </div>
-                                                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Tactical Pipeline Empty</p>
-                                                <Button variant="outline" className="border-2 rounded-xl h-9 px-6 font-bold text-xs">
-                                                    View Archive
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Proposals Pipeline Empty</p>
+                                                    <p className="text-[10px] text-slate-400 font-medium max-w-[200px] leading-relaxed mx-auto">Initiate a new build to generate a high-precision quotation.</p>
+                                                </div>
+                                                <Button variant="outline" className="border-2 rounded-xl h-9 px-6 font-bold text-xs mt-2">
+                                                    Archive Explorer
                                                 </Button>
                                             </div>
                                         </CardContent>
@@ -627,9 +573,9 @@ export default function ModuleDetailsPage() {
                         </TabsContent>
                     )}
 
-                    <TabsContent value="bmt" className="m-0 h-full p-6 overflow-hidden">
+                    <TabsContent value="bmt" className="m-0 h-full p-6 overflow-hidden animate-in slide-in-from-bottom-2 duration-500">
                         <ScrollArea className="h-full">
-                            <Card className="border-2 rounded-[2.5rem] bg-white overflow-hidden">
+                            <Card className="border-2 rounded-[2.5rem] bg-white overflow-hidden shadow-sm">
                                 <CardContent className="p-10">
                                     {isBoatBrand && mainVendor ? (
                                         <>
@@ -658,7 +604,7 @@ export default function ModuleDetailsPage() {
                                     ) : isMotorBrand && mainVendor ? (
                                         <MotorModuleBrowser vendor={mainVendor} onMotorSelect={handleMotorSelect} />
                                     ) : (
-                                        <div className="py-20 text-center opacity-20"><Wrench className="h-16 w-16 mx-auto" /></div>
+                                        <div className="py-24 text-center opacity-20"><Wrench className="h-16 w-16 mx-auto" /></div>
                                     )}
                                 </CardContent>
                             </Card>
@@ -695,17 +641,17 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: any; onRangeSelect: (ra
     }, [firestore, vendor.id]);
     const { data: ranges, loading } = useCollection<Range>(rangesQuery);
 
-    if (loading) return <Loader2 className="animate-spin mx-auto my-12" />;
+    if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {ranges?.map(range => (
-                <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-3xl overflow-hidden" onClick={() => onRangeSelect(range)}>
+                <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:scale-105" onClick={() => onRangeSelect(range)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
-                        {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-cover p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="opacity-10" /></div>}
+                        {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
                     <CardHeader className="p-4 text-center">
-                        <CardTitle className="text-sm font-black uppercase tracking-tight">{range.name}</CardTitle>
+                        <CardTitle className="text-sm font-black uppercase tracking-tight leading-tight">{range.name}</CardTitle>
                     </CardHeader>
                 </Card>
             ))}
@@ -721,18 +667,18 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
     }, [firestore, vendor.id, range.id]);
     const { data: models, loading } = useCollection<Model>(modelsQuery);
 
-    if (loading) return <Loader2 className="animate-spin mx-auto my-12" />;
+    if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {models?.map(model => (
-                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-3xl overflow-hidden" onClick={() => onModelSelect(model)}>
+                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:scale-105" onClick={() => onModelSelect(model)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
-                        {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="opacity-10" /></div>}
+                        {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
-                    <CardHeader className="p-4 text-center">
-                        <CardTitle className="text-xs font-black uppercase tracking-tight">{model.name}</CardTitle>
-                        {model.modelCode && <Badge variant="secondary" className="mt-1 font-mono text-[8px] uppercase">{model.modelCode}</Badge>}
+                    <CardHeader className="p-4 text-center space-y-1">
+                        <CardTitle className="text-xs font-black uppercase tracking-tight leading-tight">{model.name}</CardTitle>
+                        {model.modelCode && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4">{model.modelCode}</Badge>}
                     </CardHeader>
                 </Card>
             ))}
