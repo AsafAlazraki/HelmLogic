@@ -98,13 +98,15 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
             <div className="relative z-10 flex flex-col items-center gap-8 max-w-md text-center">
                 <div className="relative h-24 w-24 bg-white/10 backdrop-blur-md rounded-3xl p-4 border border-white/20 shadow-2xl animate-in zoom-in-95 duration-700">
                     {organisation?.primaryLogoUrl ? (
-                        <Image 
-                            src={organisation.primaryLogoUrl} 
-                            alt={organisation.name} 
-                            fill 
-                            className="object-contain p-3 brightness-0 invert" 
-                            unoptimized
-                        />
+                        <div className="relative h-full w-full">
+                            <Image 
+                                src={organisation.primaryLogoUrl} 
+                                alt={organisation.name} 
+                                fill 
+                                className="object-contain p-3 brightness-0 invert" 
+                                unoptimized
+                            />
+                        </div>
                     ) : (
                         <Ship className="h-full w-full text-white/40" />
                     )}
@@ -210,7 +212,11 @@ function QuoteSelectorDialog({
                                             onClick={() => setSelectedRange(range)}
                                         >
                                             <div className="aspect-video bg-muted/30 relative border-b p-4">
-                                                {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-2" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
+                                                {range.imageUrl ? (
+                                                    <div className="relative h-full w-full">
+                                                        <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-2" unoptimized />
+                                                    </div>
+                                                ) : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
                                             </div>
                                             <div className="p-4 text-center">
                                                 <p className="font-black uppercase tracking-tighter text-sm">{range.name}</p>
@@ -234,7 +240,11 @@ function QuoteSelectorDialog({
                                                     onClick={() => handleModelSelect(model)}
                                                 >
                                                     <div className="aspect-video bg-muted/30 relative border-b">
-                                                        {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="opacity-10" /></div>}
+                                                        {model.coverImageUrl ? (
+                                                            <div className="relative h-full w-full">
+                                                                <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized />
+                                                            </div>
+                                                        ) : <div className="flex items-center justify-center h-full"><Ship className="opacity-10" /></div>}
                                                     </div>
                                                     <div className="p-4 text-center space-y-1">
                                                         <p className="font-black uppercase tracking-tighter text-xs">{model.name}</p>
@@ -341,10 +351,12 @@ export default function ModuleDetailsPage() {
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
             {/* Cinematic Compact Hero */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-8 py-3 text-primary-foreground z-20 h-20 border-b border-white/10">
+            <div className="relative shrink-0 overflow-hidden bg-primary px-8 py-3 text-primary-foreground z-20 h-28 border-b border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
+                    {/* Animated Mesh Blobs */}
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
                     <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
+                    <div className="absolute top-[10%] right-[20%] w-[40%] h-[100%] bg-sky-300/10 blur-[100px] rounded-full animate-pulse duration-[6000ms] pointer-events-none" />
                 </div>
                 
                 <div className="relative z-10 flex flex-col h-full justify-center">
@@ -354,17 +366,17 @@ export default function ModuleDetailsPage() {
                                 <Navigation className="h-2 w-2" />
                                 <span>COMMAND CENTER</span>
                             </div>
-                            <h1 className="text-3xl font-black tracking-tighter uppercase italic leading-none drop-shadow-lg">
+                            <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
                                 {moduleData.name}
                             </h1>
                         </div>
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-7 px-4 font-black uppercase tracking-widest text-[8px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 group"
+                            className="h-8 px-5 font-black uppercase tracking-widest text-[9px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 group shadow-xl"
                             onClick={() => router.push('/dashboard')}
                         >
-                            <X className="h-3 w-3 mr-2 transition-transform group-hover:rotate-90" />
+                            <X className="h-3.5 w-3.5 mr-2 transition-transform group-hover:rotate-90" />
                             Back to Hub
                         </Button>
                     </div>
@@ -464,9 +476,14 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
                         {(view === 'models' || view === 'bmt') && (
-                            <div className="mb-4 shrink-0 px-1">
-                                <Button variant="ghost" onClick={handleBackToCatalog} className="font-black uppercase text-[10px] tracking-widest text-primary hover:bg-primary/5 h-8">
-                                    <ChevronLeft className="mr-2 h-4 w-4" /> Back to {view === 'bmt' ? 'Models' : 'Ranges'}
+                            <div className="mb-6 shrink-0 px-1">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={handleBackToCatalog} 
+                                    className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-primary border-primary/20 bg-primary/5 hover:bg-primary hover:text-white transition-all rounded-xl shadow-sm group"
+                                >
+                                    <ChevronLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" /> 
+                                    Back to {view === 'bmt' ? 'Series Selection' : 'Product Ranges'}
                                 </Button>
                             </div>
                         )}
@@ -563,7 +580,7 @@ export default function ModuleDetailsPage() {
                                 ) : (
                                     <div className="p-20 text-center text-muted-foreground opacity-20 flex flex-col items-center justify-center">
                                         <Building className="h-12 w-12 mb-4" />
-                                        <p className="font-black uppercase tracking-widest text-[10px]">No Sub Dealers Registered</p>
+                                        <p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -593,11 +610,15 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1 pt-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
             {ranges?.map(range => (
                 <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 bg-white" onClick={() => onRangeSelect(range)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
-                        {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
+                        {range.imageUrl ? (
+                            <div className="relative h-full w-full">
+                                <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized />
+                            </div>
+                        ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
                     <div className="p-5 text-center">
                         <p className="text-sm font-black uppercase tracking-tight">{range.name}</p>
@@ -616,11 +637,15 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1 pt-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
             {models?.map(model => (
-                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white">
+                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white" onClick={() => onModelSelect(model)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
-                        {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
+                        {model.coverImageUrl ? (
+                            <div className="relative h-full w-full">
+                                <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized />
+                            </div>
+                        ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
                     <div className="p-5 text-center space-y-2">
                         <p className="text-xs font-black uppercase tracking-tight">{model.name}</p>
