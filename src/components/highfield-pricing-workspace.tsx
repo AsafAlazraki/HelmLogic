@@ -645,7 +645,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 <TableHeader className="bg-muted/50 sticky top-0 z-20">
                     <TableRow className="hover:bg-transparent border-b">
                         <TableHead className="w-[350px] border-r bg-muted/20" colSpan={1}></TableHead>
-                        <TableHead className="w-[200px] border-r bg-primary/5 text-center" colSpan={2}>
+                        <TableHead className="w-[280px] border-r bg-primary/5 text-center" colSpan={3}>
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Exchange</span>
                         </TableHead>
                         <TableHead className="w-[240px] border-r text-center" colSpan={2}>
@@ -684,7 +684,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </TableRow>
                     <TableRow className="hover:bg-transparent border-b-2">
                         <TableHead className="py-4 px-6 border-r bg-muted/20 font-black uppercase text-[10px]">Description & SKU</TableHead>
-                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">ISO</TableHead>
+                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Master ISO</TableHead>
+                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Local ISO</TableHead>
                         <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[120px]">Ex. Rate</TableHead>
                         <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
                         <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
@@ -750,6 +751,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             strategy={strategy}
                             onUpdateValue={handleUpdateValue}
                             vendor={vendor}
+                            organisation={organisation}
                             exchangeRate={activeExchangeRate}
                         />
                     ))}
@@ -1048,7 +1050,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 }
 
-function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, exchangeRate }: any) {
+function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
+    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
+
     return (
         <>
             <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
@@ -1062,6 +1066,9 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
                 </TableCell>
                 <TableCell className="text-center border-r bg-primary/5">
+                    <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
+                </TableCell>
+                <TableCell className="text-center border-r bg-primary/5">
                     <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate.toFixed(4)}</span>
                 </TableCell>
                 <TableCell className="border-r" />
@@ -1069,7 +1076,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                 <TableCell className="border-r bg-slate-50" />
                 
                 {/* Placeholder for dynamic strategy sections */}
-                <TableCell colSpan={sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
+                <TableCell colSpan={strategyColCount} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
                     Click to audit series and specific configurations
                 </TableCell>
             </TableRow>
@@ -1083,6 +1090,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     strategy={strategy}
                     onUpdateValue={onUpdateValue}
                     vendor={vendor}
+                    organisation={organisation}
                     exchangeRate={exchangeRate}
                 />
             ))}
@@ -1090,8 +1098,9 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     );
 }
 
-function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, exchangeRate }: any) {
+function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
+    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
 
     return (
         <>
@@ -1112,7 +1121,8 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                 <TableCell className="bg-muted/5 border-r" />
                 <TableCell className="bg-muted/5 border-r" />
                 <TableCell className="bg-muted/5 border-r" />
-                <TableCell colSpan={sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="bg-muted/5" />
+                <TableCell className="bg-muted/5 border-r" />
+                <TableCell colSpan={strategyColCount} className="bg-muted/5" />
             </TableRow>
 
             {isLocalExpanded && (
@@ -1126,6 +1136,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                             cost={v.cost} 
                             sell={v.sellPriceExclGst} 
                             vendor={vendor}
+                            organisation={organisation}
                             exchangeRate={exchangeRate}
                             sections={sections}
                             allColumns={allColumns}
@@ -1145,7 +1156,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                         <span>Factory Options</span>
                                     </div>
                                 </TableCell>
-                                <TableCell colSpan={5 + sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="bg-white/50" />
+                                <TableCell colSpan={6 + strategyColCount} className="bg-white/50" />
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 
@@ -1156,6 +1167,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                     cost={f.cost} 
                                     sell={f.sellPriceExclGst} 
                                     vendor={vendor}
+                                    organisation={organisation}
                                     exchangeRate={exchangeRate}
                                     sections={sections}
                                     allColumns={allColumns}
@@ -1173,7 +1185,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     );
 }
 
-function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, isBoatVariant, vendor, exchangeRate }: any) {
+function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, isBoatVariant, vendor, organisation, exchangeRate }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
 
     return (
@@ -1186,6 +1198,9 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
             </TableCell>
             <TableCell className="text-center border-r bg-primary/5">
                 <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
+            </TableCell>
+            <TableCell className="text-center border-r bg-primary/5">
+                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
             </TableCell>
             <TableCell className="text-center border-r bg-primary/5">
                 <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
