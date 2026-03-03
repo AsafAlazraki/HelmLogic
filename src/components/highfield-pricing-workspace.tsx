@@ -685,7 +685,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     colSpan={colSpan} 
                                     className={cn(
                                         "border-r last:border-r-0 px-4 py-2 group/sec transition-colors",
-                                        sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-muted/10"
+                                        sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-primary/5"
                                     )}
                                 >
                                     <div className="flex items-center justify-between gap-2">
@@ -693,7 +693,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>
                                                 {sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
                                             </Button>
-                                            {!sec.isCollapsed && <span className={cn("text-[10px] font-black uppercase tracking-widest truncate", isSystem ? "text-muted-foreground" : "text-primary")}>{sec.name}</span>}
+                                            {!sec.isCollapsed && <span className={cn("text-[10px] font-black uppercase tracking-widest truncate", isSystem ? "text-primary" : "text-primary")}>{sec.name}</span>}
                                         </div>
                                         {!sec.isCollapsed && (
                                             <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
@@ -734,29 +734,29 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             if (sec.id === 'sec-exchange') {
                                 return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-center border-r bg-muted/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
-                                        <TableHead className="text-center border-r bg-muted/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
-                                        <TableHead className="text-center border-r bg-muted/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
-                                        <TableHead className="text-center border-r bg-muted/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
+                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
+                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
+                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
+                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
                                     </React.Fragment>
                                 );
                             }
                             if (sec.id === 'sec-master') {
                                 return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
-                                        <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
+                                        <TableHead className="text-right border-r bg-primary/5 font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
+                                        <TableHead className="text-right border-r bg-primary/5 font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
                                     </React.Fragment>
                                 );
                             }
                             if (sec.id === 'sec-freight') {
-                                return <TableHead key={sec.id} className="text-right border-r bg-slate-50 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
+                                return <TableHead key={sec.id} className="text-right border-r bg-primary/5 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
                             }
 
-                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r last:border-r-0 bg-muted/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
+                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r last:border-r-0 bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
                             
                             return sec.columns.map((col, idx) => (
-                                <TableHead key={col.id} className="min-w-[180px] bg-muted/5 text-center px-2 group/header border-r last:border-r-0">
+                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r last:border-r-0">
                                     <div className="flex items-center justify-between gap-1">
                                         <Button 
                                             variant="ghost" 
@@ -1232,16 +1232,16 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 if (sec.id === 'sec-exchange') {
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-center border-r bg-muted/5">
+                            <TableCell className="text-center border-r bg-primary/5">
                                 <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
                             </TableCell>
-                            <TableCell className="text-center border-r bg-muted/5">
+                            <TableCell className="text-center border-r bg-primary/5">
                                 <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
                             </TableCell>
-                            <TableCell className="text-center border-r bg-muted/5">
+                            <TableCell className="text-center border-r bg-primary/5">
                                 <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
                             </TableCell>
-                            <TableCell className="text-center border-r bg-muted/5">
+                            <TableCell className="text-center border-r bg-primary/5">
                                 <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
                             </TableCell>
                         </React.Fragment>
@@ -1251,10 +1251,10 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 if (sec.id === 'sec-master') {
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4">
+                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4 bg-primary/5">
                                 {formatCurrency(cost, vendor.currency || 'AUD')}
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4">
+                            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4 bg-primary/5">
                                 {formatCurrency(sell, vendor.currency || 'AUD')}
                             </TableCell>
                         </React.Fragment>
@@ -1263,7 +1263,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 
                 if (sec.id === 'sec-freight') {
                     return (
-                        <TableCell key={sec.id} className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
+                        <TableCell key={sec.id} className="text-right bg-primary/5 border-r p-0 group-hover:bg-primary/10 transition-colors">
                             {isBoatVariant ? (
                                 <div className="relative h-full w-full flex items-center">
                                     <input 
@@ -1277,16 +1277,17 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">m³</span>
                                 </div>
                             ) : (
-                                <div className="h-full w-full bg-slate-100/50" />
+                                <div className="h-full w-full bg-primary/5 opacity-50" />
                             )}
                         </TableCell>
                     );
                 }
 
-                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-muted/5 border-r last:border-r-0" />;
+                const isStrategySection = sec.id === 'sec-vendor';
+                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className={cn("bg-muted/5 border-r last:border-r-0", isStrategySection && "bg-primary/5")} />;
 
                 return sec.columns.map((col: any) => (
-                    <TableCell key={col.id} className="p-0 border-r last:border-r-0 bg-muted/5 group-hover:bg-muted/10 transition-colors">
+                    <TableCell key={col.id} className={cn("p-0 border-r last:border-r-0 bg-muted/5 group-hover:bg-muted/10 transition-colors", isStrategySection && "bg-primary/5 group-hover:bg-primary/10")}>
                         {col.isCalculated ? (
                             <CalculatedCell 
                                 col={col} 
