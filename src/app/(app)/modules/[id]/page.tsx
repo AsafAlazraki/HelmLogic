@@ -1328,7 +1328,7 @@ export default function ModuleDetailsPage() {
                     <DialogHeader className="p-12 bg-slate-50 border-b">
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
+                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-2">
                                     <Navigation className="h-3.5 w-3.5" />
                                     <span>Command Selection</span>
                                 </div>

@@ -442,8 +442,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return sortedSections.reduce((acc, sec) => acc + getSectionColCount(sec), 0);
     }, [sortedSections]);
 
-    const PricingTable = () => (
-        <div className="relative w-full h-full overflow-auto bg-white border-t">
+    const PricingTable = ({ isModal = false }: { isModal?: boolean }) => (
+        <div className={cn("relative w-full h-full overflow-auto bg-white", !isModal && "border-t")}>
             <Table className="border-separate border-spacing-0 w-full table-fixed">
                 <TableHeader className="sticky top-0 z-50 bg-white">
                     <TableRow className="hover:bg-transparent">
@@ -477,17 +477,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </TableRow>
                     <TableRow className="hover:bg-transparent">
                         <TableHead className="sticky left-0 z-50 bg-card border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12">
-                            {isFocusMode && (
-                                <div className="relative">
-                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                                    <input 
-                                        placeholder="Quick Search..." 
-                                        className="w-full pl-7 bg-muted/20 border rounded h-7 text-[10px] font-bold" 
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                            )}
+                            <div className="relative">
+                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                <input 
+                                    placeholder="Quick Search..." 
+                                    className="w-full pl-7 bg-muted/20 border rounded h-7 text-[10px] font-bold" 
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                            </div>
                         </TableHead>
                         {sortedSections.map(sec => {
                             if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b bg-muted/10" />;
@@ -569,12 +567,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <div className="flex items-center gap-2">
                         <Button 
                             type="button"
-                            onClick={() => setIsFocusMode(!isFocusMode)} 
-                            variant={isFocusMode ? "default" : "outline"} 
+                            onClick={() => setIsFocusMode(true)} 
+                            variant="outline" 
                             className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"
                         >
-                            {isFocusMode ? <Shrink className="h-4 w-4 mr-2" /> : <Expand className="h-4 w-4 mr-2" />}
-                            {isFocusMode ? "Exit Focus" : "Focus Mode"}
+                            <Expand className="h-4 w-4 mr-2" /> Focus Mode
                         </Button>
                         <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><History className="h-4 w-4 mr-2" /> History</Button>
                         <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Truck className="h-4 w-4 mr-2" /> Logistics</Button>
@@ -585,6 +582,27 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <div className="flex-1 overflow-hidden min-h-0">
                 <PricingTable />
             </div>
+
+            <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
+                <DialogContent className="max-w-full w-screen h-screen rounded-none p-0 overflow-hidden border-none [&>button]:hidden">
+                    <div className="flex flex-col h-full">
+                        <div className="p-4 border-b bg-background flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 relative bg-white rounded-lg border p-1 shadow-sm">
+                                    {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-4 w-4 m-auto mt-1" />}
+                                </div>
+                                <span className="font-black uppercase text-[11px] tracking-widest">{vendor.name} Strategic Matrix</span>
+                            </div>
+                            <Button variant="ghost" className="font-black uppercase text-[10px] tracking-widest" onClick={() => setIsFocusMode(false)}>
+                                <Shrink className="h-4 w-4 mr-2" /> Exit Focus
+                            </Button>
+                        </div>
+                        <div className="flex-1 min-h-0">
+                            <PricingTable isModal />
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             <FreightManager organisationId={organisationId} vendorId={vendor.id} isOpen={isFreightManagerOpen} onClose={() => setIsFreightManagerOpen(false)} />
@@ -855,41 +873,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: { organis
                     <ScrollArea className="h-full">
                         <div className="p-8">
                             {isAdding && (
-                                <Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden">
-                                    <CardHeader className="p-6 border-b bg-background">
-                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="p-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label>
-                                                <Select value={size} onValueChange={setSize}>
-                                                    <SelectTrigger className="h-10 font-bold bg-background">
-                                                        <SelectValue placeholder="Select Size..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem>
-                                                        <SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem>
-                                                        <SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem>
-                                                        <SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label>
-                                                <Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
-                                                <Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" />
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3">
-                                        <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
-                                        <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button>
-                                    </CardFooter>
-                                </Card>
+                                <Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden"><CardHeader className="p-6 border-b bg-background"><CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle></CardHeader><CardContent className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label><Select value={size} onValueChange={setSize}><SelectTrigger className="h-10 font-bold bg-background"><SelectValue placeholder="Select Size..." /></SelectTrigger><SelectContent><SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem><SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem><SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem><SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label><Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label><Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" /></div></div></CardContent><CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button><Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button></CardFooter></Card>
                             )}
                             <div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm">
                                 <Table>
