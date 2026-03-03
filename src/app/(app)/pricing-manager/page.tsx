@@ -127,7 +127,8 @@ export default function PricingManagerPage() {
                 {/* Exchange Rates Strategic Card */}
                 {organisationId && (
                     <Card 
-                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl group overflow-hidden h-24 relative"
+                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl group overflow-hidden h-24 relative cursor-pointer hover:scale-[1.02] transition-all active:scale-[0.98]"
+                        onClick={() => setIsExchangeRateManagerOpen(true)}
                     >
                         <div className="absolute -bottom-6 -right-6 p-3 opacity-10 group-hover:opacity-20 transition-all z-0">
                             <ArrowRightLeft className="h-28 w-28 -rotate-[30deg]" />
@@ -135,10 +136,6 @@ export default function PricingManagerPage() {
                         <CardHeader className="p-3 pb-1 relative z-10">
                             <div className="flex items-center justify-between">
                                 <Badge variant="secondary" className="bg-white/20 text-white border-none font-black text-[8px] uppercase tracking-[0.1em] h-4">Strategy Panel</Badge>
-                                <Maximize2 
-                                    className="h-3 w-3 opacity-60 hover:opacity-100 transition-opacity cursor-pointer" 
-                                    onClick={() => setIsExchangeRateManagerOpen(true)}
-                                />
                             </div>
                             <CardTitle className="text-xs font-black uppercase tracking-widest mt-1.5 flex items-center gap-2">
                                 Exchange Rates
