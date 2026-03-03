@@ -67,6 +67,8 @@ import NextImage from "next/image";
 import { Switch } from './ui/switch';
 import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from './ui/textarea';
+import { Separator } from './ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface CustomColumn {
     id: string;
@@ -399,8 +401,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
                 {isFocus ? (
                     <>
-                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary/5 transition-all"><Truck className="h-4 w-4 mr-2" /> Freight Logic</Button>
-                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary/5 transition-all"><History className="h-4 w-4 mr-2" /> Audit Log</Button>
+                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary/5 transition-all"><Truck className="h-4 w-4 mr-2" /> Freight Analytics</Button>
+                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary/5 transition-all"><History className="h-4 w-4 mr-2" /> Tactical Audit</Button>
+                        <Separator orientation="vertical" className="h-8 mx-2" />
                         <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2"><Minimize2 className="h-4 w-4 mr-2" /> Exit Focus</Button>
                     </>
                 ) : (
@@ -703,7 +706,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     sections={sections} 
                     allColumns={allColumns} 
                     strategy={strategy} 
-                    onUpdateValue={onUpdateValue} 
+                    onUpdateValue={handleUpdateValue} 
                     vendor={vendor} 
                     organisation={organisation} 
                     exchangeRate={exchangeRate} 
@@ -760,7 +763,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                             sections={sections} 
                             allColumns={allColumns} 
                             strategy={strategy} 
-                            onUpdateValue={onUpdateValue} 
+                            onUpdateValue={handleUpdateValue} 
                             indent 
                             isBoatVariant
                             rowIndex={idx}
