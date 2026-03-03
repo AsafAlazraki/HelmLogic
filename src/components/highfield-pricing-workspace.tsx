@@ -241,6 +241,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     useEffect(() => {
         const fetchDeepData = async () => {
             if (!ranges || ranges.length === 0) return;
+            setAllModels([]);
             setLoadingModels(true);
             try {
                 const models: Model[] = [];
@@ -372,18 +373,18 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 <div>
                     <div className="flex items-center gap-2">
                         <h2 className="text-base font-black uppercase tracking-widest text-foreground leading-none">
-                            {isFocus ? "Strategic Matrix Focus" : "Highfield Strategic Workspace"}
+                            HIGHFIELD STRATEGIC WORKSPACE
                         </h2>
                         {strategy?.lastUpdateAt && (
                             <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 text-[8px] font-black uppercase tracking-tighter">
-                                <CheckCircle2 className="h-2 w-2" />
-                                Live Sync: {formatDistanceToNow(new Date(strategy.lastUpdateAt.seconds * 1000), { addSuffix: true })}
+                                <CheckCircle2 className="h-2.5 w-2.5" />
+                                STRATEGIC SYNC: {formatDistanceToNow(new Date(strategy.lastUpdateAt.seconds * 1000), { addSuffix: true })}
                             </div>
                         )}
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
-                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-primary/10">Precision Mode Enabled</Badge>
-                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-muted/50 text-muted-foreground">{vendor.currency || 'AUD'} Base</Badge>
+                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-primary/10">PRECISION MODE ENABLED</Badge>
+                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-muted/50 text-muted-foreground">{vendor.currency || 'USD'} BASE</Badge>
                     </div>
                 </div>
             </div>
@@ -401,20 +402,20 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 {isFocus ? (
                     <>
                         <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
-                            <Truck className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> Freight Analytics
+                            <Truck className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> FREIGHT ANALYTICS
                         </Button>
                         <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
-                            <History className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> Tactical Audit
+                            <History className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> TACTICAL AUDIT
                         </Button>
                         <Separator orientation="vertical" className="h-8 mx-2" />
-                        <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-slate-100"><Minimize2 className="h-4 w-4 mr-2" /> Exit Focus</Button>
+                        <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-slate-100"><Minimize2 className="h-4 w-4 mr-2" /> EXIT FOCUS</Button>
                     </>
                 ) : (
                     <>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button size="sm" className="h-9 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl active:scale-95 transition-transform">
-                                    <Plus className="h-4 w-4 mr-2" /> Add Logic
+                                    <Plus className="h-4 w-4 mr-2" /> ADD LOGIC
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 shadow-2xl p-1">
@@ -435,7 +436,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 bg-white hover:bg-slate-50 shadow-sm"
                         >
                             <Maximize2 className="h-4 w-4 mr-2" />
-                            Focus Mode
+                            FOCUS MODE
                         </Button>
                     </>
                 )}
@@ -450,7 +451,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <TableHeader className="sticky top-0 z-50 bg-white">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[340px] sticky left-0 z-[60] bg-white border-r border-b-2 font-black uppercase text-[10px] shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)] py-5 px-8">
-                                Series Description & SKU
+                                SERIES DESCRIPTION & SKU
                             </TableHead>
                             {sortedSections.map((sec) => {
                                 const colSpan = getSectionColCount(sec);
@@ -470,7 +471,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                 {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
                                             </div>
                                             {!sec.isCollapsed && (
-                                                <Badge variant="outline" className="text-[8px] font-black h-4 px-1.5 opacity-40">Section Context</Badge>
+                                                <Badge variant="outline" className="text-[8px] font-black h-4 px-1.5 opacity-40 whitespace-nowrap">Section Context</Badge>
                                             )}
                                         </div>
                                     </TableHead>
@@ -493,14 +494,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b bg-muted/5 transition-all" />;
                                 if (sec.id === 'sec-exchange') return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[80px]">Vnd ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[100px]">Ex. Rate</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[80px]">Org ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[100px]">Ex. Rate</TableHead>
+                                        <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[80px]">VND ISO</TableHead>
+                                        <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[100px]">EX. RATE</TableHead>
+                                        <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[80px]">ORG ISO</TableHead>
+                                        <TableHead className="text-center border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[100px]">EX. RATE</TableHead>
                                     </React.Fragment>
                                 );
                                 if (sec.id === 'sec-vendor') {
-                                    const vndIso = vendor.currency || 'ISO';
+                                    const vndIso = vendor.currency || 'USD';
                                     const orgIso = organisation?.tradingCurrency || 'AUD';
                                     return (
                                         <React.Fragment key={sec.id}>
@@ -509,8 +510,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                         </React.Fragment>
                                     );
                                 }
-                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[120px]">Packed m³</TableHead>;
-                                if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-slate-50/30 text-center text-[8px] font-bold text-muted-foreground/40 uppercase tracking-tighter italic">Empty Segment</TableHead>;
+                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-slate-50/30 font-black uppercase text-[9px] tracking-tight w-[120px]">PACKED M³</TableHead>;
+                                if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-slate-50/30 text-center text-[8px] font-bold text-muted-foreground/40 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
                                 return sec.columns.map((col) => (
                                     <TableHead key={col.id} className="min-w-[180px] bg-slate-50/30 text-center px-4 border-r border-b font-black uppercase text-[9px] tracking-tight text-primary/70">{col.name}</TableHead>
                                 ));
@@ -540,7 +541,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 <TableCell colSpan={totalCalculatedCols + 1} className="h-64 text-center">
                                     <div className="flex flex-col items-center justify-center opacity-20">
                                         <Search className="h-12 w-12 mb-4" />
-                                        <p className="font-black uppercase tracking-widest text-xs">No records matching search</p>
+                                        <p className="font-black uppercase tracking-widest text-xs">NO RECORDS MATCHING SEARCH</p>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -574,13 +575,13 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             </div>
                             <div className="flex items-center gap-4">
                                 <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 bg-slate-50 hover:bg-primary hover:text-white transition-all group">
-                                    <Truck className="h-5 w-5 mr-2.5 text-primary group-hover:text-white transition-colors" /> Freight Analytics
+                                    <Truck className="h-5 w-5 mr-2.5 text-primary group-hover:text-white transition-colors" /> FREIGHT ANALYTICS
                                 </Button>
                                 <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 bg-slate-50 hover:bg-primary hover:text-white transition-all group">
-                                    <History className="h-5 w-5 mr-2.5 text-primary group-hover:text-white transition-colors" /> Tactical Audit
+                                    <History className="h-5 w-5 mr-2.5 text-primary group-hover:text-white transition-colors" /> TACTICAL AUDIT
                                 </Button>
                                 <Separator orientation="vertical" className="h-8 mx-2" />
-                                <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 hover:bg-slate-100 transition-all"><Minimize2 className="h-5 w-5 mr-2.5" /> Exit Focus</Button>
+                                <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 hover:bg-slate-100 transition-all group"><Minimize2 className="h-5 w-5 mr-2.5 group-hover:text-white transition-colors" /> EXIT FOCUS</Button>
                             </div>
                         </div>
                         <div className="flex-1 min-h-0 bg-white p-0">
@@ -691,7 +692,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalCalculatedCols }: any) {
     return (
         <>
-            <TableRow className="bg-slate-100/80 border-b border-slate-200 cursor-pointer group transition-colors hover:bg-slate-200/50" onClick={onToggle}>
+            <TableRow className="bg-slate-100 border-b border-slate-200 cursor-pointer group transition-colors hover:bg-slate-200/50" onClick={onToggle}>
                 <TableCell className="sticky left-0 z-[40] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-900 border-r border-b shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -701,7 +702,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                             <span>{range.name} RANGE</span>
                         </div>
                         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[9px] font-black h-5 px-2 uppercase tracking-tighter">
-                            {models.length} Series Cataloged
+                            {models.length} SERIES CATALOGED
                         </Badge>
                     </div>
                 </TableCell>
@@ -734,6 +735,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                 <TableCell className="sticky left-0 z-[40] bg-slate-50 py-3.5 px-10 border-r border-b-2 border-white shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center gap-4">
                         <button 
+                            type="button"
                             className="h-7 w-7 rounded-lg hover:bg-primary/10 flex items-center justify-center transition-all text-primary border bg-white"
                             onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}
                         >
@@ -741,7 +743,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         </button>
                         <div className="flex flex-col min-w-0">
                             <span className="font-black text-[11px] uppercase tracking-tight truncate leading-none mb-1 text-slate-900">{model.name}</span>
-                            <span className="text-[8px] font-black text-primary/60 uppercase tracking-[0.2em]">Series Code: {model.modelCode || 'NO-SKU'}</span>
+                            <span className="text-[8px] font-black text-primary/60 uppercase tracking-[0.2em]">SERIES CODE: {model.modelCode || 'NO-SKU'}</span>
                         </div>
                     </div>
                 </TableCell>
@@ -753,7 +755,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-r border-b border-dashed shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)]">
                             <div className="flex items-center gap-2.5">
                                 <Badge className="h-1.5 w-1.5 rounded-full bg-primary/40 p-0" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">Registered Variations</span>
+                                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">REGISTERED VARIATIONS</span>
                             </div>
                         </TableCell>
                         {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b border-dashed bg-muted/5" />)}
@@ -785,7 +787,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                 <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-r border-b border-dashed shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)]">
                                     <div className="flex items-center gap-2.5">
                                         <Badge className="h-1.5 w-1.5 rounded-full bg-orange-500/40 p-0" />
-                                        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">Strategic Options</span>
+                                        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">STRATEGIC OPTIONS</span>
                                     </div>
                                 </TableCell>
                                 {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b border-dashed bg-muted/5" />)}
@@ -821,7 +823,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
 function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, isBoatVariant, rowIndex }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
-    const vendorCurrency = vendor.currency || 'ISO';
+    const vendorCurrency = vendor.currency || 'USD';
     
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/20";
 
@@ -906,7 +908,7 @@ function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix
             {error ? (
                 <TooltipProvider>
                     <Tooltip>
-                        <TooltipTrigger><AlertCircle className="h-3.5 w-3.5 text-destructive/30" /></TooltipTrigger>
+                        <TooltipTrigger type="button"><AlertCircle className="h-3.5 w-3.5 text-destructive/30" /></TooltipTrigger>
                         <TooltipContent className="bg-destructive text-white border-none font-bold text-[10px] uppercase">{error}</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -967,7 +969,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                             <History className="h-6 w-6" />
                         </div>
                         <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Tactical Audit Matrix</DialogTitle>
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">TACTICAL AUDIT MATRIX</DialogTitle>
                             <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Strategic Price Change Verification History</DialogDescription>
                         </div>
                     </div>
@@ -1055,7 +1057,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                                 <Truck className="h-6 w-6" />
                             </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">FREIGHT MANAGEMENT</DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Shipping Containers & Global Transportation Cost Controls</DialogDescription>
                             </div>
                         </div>
