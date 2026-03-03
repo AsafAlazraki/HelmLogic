@@ -5,9 +5,8 @@ import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRightLeft, PackagePlus, Trash2, Box, Anchor, ChevronRight } from 'lucide-react';
+import { Loader2, ArrowRightLeft, PackagePlus, Trash2, Box, Anchor, ChevronRight, CheckCircle2 } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -26,6 +25,7 @@ import {
     DialogClose,
 } from '@/components/ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
+import { Label } from '@/components/ui/label';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { Badge } from './ui/badge';

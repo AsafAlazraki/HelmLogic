@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter, CardContent } from '@/components/ui/card';
 import { 
     Table, 
     TableBody, 
@@ -59,7 +59,7 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -458,15 +458,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     <div className="flex flex-col h-full">
                                         <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/5 min-h-[40px]">
                                             <div className="flex items-center gap-2 overflow-hidden">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}</Button>
+                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}</Button>
                                                 {!sec.isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
                                             </div>
                                             {!sec.isCollapsed && (
                                                 <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === 0} onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === sortedSections.length - 1} onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
-                                                    {!isCoreSystem && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
+                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === 0} onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === sortedSections.length - 1} onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
+                                                    {!isCoreSystem && <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
                                                 </div>
                                             )}
                                         </div>
@@ -499,18 +499,22 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[100px]">Ex. Rate</TableHead>
                                 </React.Fragment>
                             );
-                            if (sec.id === 'sec-vendor') return (
-                                <React.Fragment key={sec.id}>
-                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">Base ({vendor.currency || 'ISO'}) $</TableHead>
-                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">Conv ({organisation?.tradingCurrency || 'AUD'}) $</TableHead>
-                                </React.Fragment>
-                            );
+                            if (sec.id === 'sec-vendor') {
+                                const vndIso = vendor.currency || 'ISO';
+                                const orgIso = organisation?.tradingCurrency || 'AUD';
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">BASE PRICE ({vndIso}) $</TableHead>
+                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">BASE PRICE ({orgIso}) $</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
                             if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">Packed m³</TableHead>;
                             if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Empty Group</TableHead>;
                             return sec.columns.map((col, idx) => (
                                 <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r border-b">
                                     <div className="flex items-center justify-between gap-1">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === 0} onClick={() => handleMoveColumn(sec.id, col.id, 'left')}><ChevronLeft className="h-3 w-3" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === 0} onClick={() => handleMoveColumn(sec.id, col.id, 'left')}><ChevronLeft className="h-3 w-3" /></Button>
                                         <div className="flex flex-col items-center flex-1 min-w-0">
                                             <span className="text-[9px] font-black uppercase tracking-tight text-primary truncate">{col.name}</span>
                                             <div className="flex items-center gap-1.5">
@@ -518,7 +522,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                 <Badge variant="outline" className="h-3.5 text-[7px] uppercase p-0 border-none opacity-40">{col.type}</Badge>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === sec.columns.length - 1} onClick={() => handleMoveColumn(sec.id, col.id, 'right')}><ChevronRight className="h-3 w-3" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === sec.columns.length - 1} onClick={() => handleMoveColumn(sec.id, col.id, 'right')}><ChevronRight className="h-3 w-3" /></Button>
                                     </div>
                                 </TableHead>
                             ));
@@ -564,6 +568,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </div>
                     <div className="flex items-center gap-2">
                         <Button 
+                            type="button"
                             onClick={() => setIsFocusMode(!isFocusMode)} 
                             variant={isFocusMode ? "default" : "outline"} 
                             className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"
@@ -571,9 +576,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             {isFocusMode ? <Shrink className="h-4 w-4 mr-2" /> : <Expand className="h-4 w-4 mr-2" />}
                             {isFocusMode ? "Exit Focus" : "Focus Mode"}
                         </Button>
-                        <Button onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><History className="h-4 w-4 mr-2" /> History</Button>
-                        <Button onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Truck className="h-4 w-4 mr-2" /> Logistics</Button>
-                        <Button onClick={() => setIsAddSectionOpen(true)} className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-primary/20"><Plus className="h-4 w-4 mr-2" /> Add Section</Button>
+                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><History className="h-4 w-4 mr-2" /> History</Button>
+                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Truck className="h-4 w-4 mr-2" /> Logistics</Button>
+                        <Button type="button" onClick={() => setIsAddSectionOpen(true)} className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-primary/20"><Plus className="h-4 w-4 mr-2" /> Add Section</Button>
                     </div>
                 </div>
             </CardHeader>
@@ -625,7 +630,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-slate-50 border-l-4 border-l-primary group">
-                <TableCell colSpan={totalCalculatedCols + 1} className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                <TableCell className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
                         <button onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}>
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
@@ -634,16 +639,18 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         <span className="text-[9px] font-mono text-muted-foreground/60">{model.modelCode || 'NO CODE'}</span>
                     </div>
                 </TableCell>
+                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-slate-50/50" />)}
             </TableRow>
             {isLocalExpanded && (
                 <>
                     <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={totalCalculatedCols + 1} className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                        <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                             <div className="flex items-center gap-2">
                                 <Ship className="h-3 w-3 text-primary opacity-40" />
                                 <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Boat Variants</span>
                             </div>
                         </TableCell>
+                        {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-muted/5" />)}
                     </TableRow>
                     {variants.map((v: any) => (
                         <PricingRow 
@@ -668,12 +675,13 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="hover:bg-transparent">
-                                <TableCell colSpan={totalCalculatedCols + 1} className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                     <div className="flex items-center gap-2">
                                         <Layers className="h-3 w-3 text-primary opacity-40" />
                                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Factory Options</span>
                                     </div>
                                 </TableCell>
+                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-muted/5" />)}
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 
@@ -843,7 +851,73 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: { organis
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
                 <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Truck className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Shipping Containers & Logistics Cost Matrix</DialogDescription></div></div><Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-9 px-6 rounded-xl shadow-lg transition-transform hover:scale-105"><Plus className="h-4 w-4 mr-1.5" /> Add Container</Button></div></DialogHeader>
-                <div className="flex-1 min-h-0 overflow-hidden">{loading ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : (<ScrollArea className="h-full"><div className="p-8">{isAdding && (<Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden"><CardHeader className="p-6 border-b bg-background"><CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle></CardHeader><CardContent className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label><Select value={size} onValueChange={setSize}><SelectTrigger className="h-10 font-bold bg-background"><SelectValue placeholder="Select Size..." /></SelectTrigger><SelectContent><SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem><SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem><SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem><SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label><Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label><Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" /></div></div></CardContent><CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button><Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button></CardFooter></Card>)}<div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm"><Table><TableHeader className="bg-muted/50 border-b-2"><TableRow><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{containers?.map((c) => (<TableRow key={c.id}><TableCell className="py-4 px-6 font-black uppercase">{c.size}</TableCell><TableCell className="py-4 px-6 text-right font-bold">{c.cubicMeters} m³</TableCell><TableCell className="py-4 px-6 text-right font-black">{formatCurrency(c.cost, c.currency)}</TableCell><TableCell className="py-4 px-6 text-center"><Badge>{c.currency}</Badge></TableCell><TableCell className="py-4 px-6 text-right"><Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>))}</TableBody></Table></div></div></ScrollArea>)}</div>
+                <div className="flex-1 min-h-0 overflow-hidden">{loading ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : (
+                    <ScrollArea className="h-full">
+                        <div className="p-8">
+                            {isAdding && (
+                                <Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden">
+                                    <CardHeader className="p-6 border-b bg-background">
+                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label>
+                                                <Select value={size} onValueChange={setSize}>
+                                                    <SelectTrigger className="h-10 font-bold bg-background">
+                                                        <SelectValue placeholder="Select Size..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem>
+                                                        <SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem>
+                                                        <SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem>
+                                                        <SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label>
+                                                <Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
+                                                <Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3">
+                                        <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
+                                        <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button>
+                                    </CardFooter>
+                                </Card>
+                            )}
+                            <div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm">
+                                <Table>
+                                    <TableHeader className="bg-muted/50 border-b-2">
+                                        <TableRow>
+                                            <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead>
+                                            <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead>
+                                            <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead>
+                                            <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead>
+                                            <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {containers?.map((c) => (
+                                            <TableRow key={c.id}>
+                                                <TableCell className="py-4 px-6 font-black uppercase">{c.size}</TableCell>
+                                                <TableCell className="py-4 px-6 text-right font-bold">{c.cubicMeters} m³</TableCell>
+                                                <TableCell className="py-4 px-6 text-right font-black">{formatCurrency(c.cost, c.currency)}</TableCell>
+                                                <TableCell className="py-4 px-6 text-center"><Badge>{c.currency}</Badge></TableCell>
+                                                <TableCell className="py-4 px-6 text-right"><Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4" /></Button></TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                )}</div>
             </DialogContent>
         </Dialog>
     );

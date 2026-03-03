@@ -23,7 +23,6 @@ import {
     Settings2, 
     Users, 
     Eye, 
-    ArrowRightLeft, 
     X, 
     LayoutDashboard,
     PlusCircle,
@@ -33,9 +32,8 @@ import {
     Ship,
     Cog,
     TrendingUp,
-    Package,
-    Navigation,
-    Anchor
+    Anchor,
+    Navigation
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
@@ -45,7 +43,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel, FormDescription } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -53,7 +50,6 @@ import { createSlug, cn } from '@/lib/utils';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { InventoryList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
-import { Label } from '@/components/ui/label';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { MotorModuleBrowser } from '@/components/motor-module-browser';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -461,7 +457,6 @@ export default function ModuleDetailsPage() {
     const moduleByIdRef = useMemoFirebase(() => slugOrId ? doc(firestore, 'modules', slugOrId) : null, [firestore, slugOrId]);
     const { data: moduleById, loading: idLoading } = useDoc<any>(moduleByIdRef);
     
-    // Prioritize direct document listener for stability during updates
     const moduleData = useMemo(() => moduleById || modulesBySlug?.[0], [modulesBySlug, moduleById]);
     const moduleLoading = slugLoading || idLoading;
     
@@ -489,7 +484,6 @@ export default function ModuleDetailsPage() {
 
     const isViewingOrg = !!dashboardOrg;
 
-    // Fetch Overrides for the currently selected model in this organization context
     const overrideRef = useMemoFirebase(() => 
         dashboardOrg?.id && selectedModel?.id 
             ? doc(firestore, 'organisations', dashboardOrg.id, 'modelOverrides', selectedModel.id) 
@@ -1183,7 +1177,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all duration-500 rounded-[2rem] overflow-hidden", hasAccess ? "border-primary/50 shadow-xl" : "opacity-50 grayscale border-dashed")}>
                                                         <div className="p-6 flex flex-col gap-6">
