@@ -24,11 +24,11 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { Badge } from './ui/badge';
+import { Badge } from '@/components/ui/badge';
 
 interface InventoryItem {
     id: string;
@@ -221,7 +221,7 @@ export function InventoryList({
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Destination Organization</Label>
                             <Select value={targetId} onValueChange={setTargetId}>
-                                <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs">
+                                <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-background">
                                     <SelectValue placeholder="Select target..." />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">

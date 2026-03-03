@@ -58,7 +58,7 @@ import {
     DropdownMenuItem, 
     DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -305,6 +305,53 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         } catch (e) { 
             console.error("Audit log failed", e); 
         }
+    };
+
+    const handleToggleSectionCollapse = async (sectionId: string) => {
+        if (!strategy) return;
+        const newSections = (strategy.sections || []).map(s => 
+            s.id === sectionId ? { ...s, isCollapsed: !s.isCollapsed } : s
+        );
+        await updateDoc(strategyRef, { sections: newSections });
+    };
+
+    const handleAddSection = async () => {
+        if (!newSectionName.trim()) return;
+        const currentSections = strategy?.sections || [];
+        const newSection: PricingSection = {
+            id: `sec-${Date.now()}`,
+            name: newSectionName,
+            order: currentSections.length,
+            columns: []
+        };
+        await updateDoc(strategyRef, { sections: [...currentSections, newSection] });
+        setIsAddSectionOpen(false);
+        setNewSectionName('');
+    };
+
+    const handleAddColumn = async () => {
+        if (!newColName.trim() || !targetSectionId) return;
+        const currentSections = strategy?.sections || [];
+        const newCol: CustomColumn = {
+            id: `col-${Date.now()}`,
+            name: newColName,
+            type: newColType,
+            isCalculated,
+            formula: isCalculated ? {
+                leftId: formulaLeft,
+                operator: formulaOp,
+                rightId: isNaN(parseFloat(formulaRight)) ? formulaRight : parseFloat(formulaRight)
+            } : undefined
+        };
+
+        const updatedSections = currentSections.map(s => 
+            s.id === targetSectionId ? { ...s, columns: [...s.columns, newCol] } : s
+        );
+
+        await updateDoc(strategyRef, { sections: updatedSections });
+        setIsAddColumnOpen(false);
+        setNewColName('');
+        setIsCalculated(false);
     };
 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);

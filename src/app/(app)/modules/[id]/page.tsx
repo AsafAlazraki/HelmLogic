@@ -200,7 +200,7 @@ function QuoteSelectorDialog({
                                                 onClick={() => handleModelSelect(model)}
                                             >
                                                 <div className="aspect-video bg-muted relative">
-                                                    {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
+                                                    {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="opacity-10" /></div>}
                                                 </div>
                                                 <CardContent className="p-6 text-center">
                                                     <p className="font-black uppercase tracking-tight">{model.name}</p>
@@ -435,14 +435,28 @@ export default function ModuleDetailsPage() {
     const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
     const isMotorBrand = mainVendor?.vendorType === 'Motor Brand';
 
+    const handleRangeSelect = (range: Range) => {
+        setSelectedRange(range);
+        setView('models');
+    };
+
+    const handleModelSelect = (model: Model) => {
+        setSelectedModel(model);
+        setView('bmt');
+    };
+
+    const handleMotorSelect = (motor: any, dataSetId: string) => {
+        setPendingMotor({ motor, dataSetId });
+        setView('motors');
+    };
+
     return (
         <div className="flex flex-col h-[calc(100vh-64px)] -m-4 md:-m-6 overflow-hidden">
-            {/* Cinematic Compact Header */}
+            {/* Cinematic Header */}
             <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-accent px-8 py-6 text-primary-foreground shadow-2xl shrink-0 border-b border-white/10">
                 <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-white/5 blur-[80px]" />
                 <div className="relative z-10 flex items-center justify-between gap-8">
                     <div className="flex items-center gap-8">
-                        {/* Logo Plate */}
                         <div className="h-12 w-48 relative bg-white/95 rounded-xl p-2 shadow-xl border border-white/20 shrink-0">
                             {moduleData.logoUrl ? (
                                 <Image src={moduleData.logoUrl} alt={moduleData.name} fill className="object-contain" unoptimized />
@@ -509,7 +523,6 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
 
-            {/* Navigation Tabs Bar */}
             <div className="px-8 bg-white border-b shrink-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className={cn("grid w-full h-12 bg-transparent p-0", tabGridCols)}>
@@ -526,13 +539,11 @@ export default function ModuleDetailsPage() {
                 </Tabs>
             </div>
 
-            {/* Main Workspace Content (Fixed Height) */}
             <main className="flex-1 overflow-hidden bg-slate-50/50">
                 <Tabs value={activeTab} className="h-full">
                     {isViewingOrg && (
                         <TabsContent value="dashboard" className="m-0 h-full p-6">
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-                                {/* Left Column: Logistics (Two Panels) */}
                                 <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-hidden">
                                     <Card className="flex flex-col border-2 rounded-[2rem] shadow-sm bg-white h-1/2 overflow-hidden">
                                         <CardHeader className="py-4 px-6 border-b shrink-0 flex flex-row items-center justify-between">
@@ -581,7 +592,6 @@ export default function ModuleDetailsPage() {
                                     </Card>
                                 </div>
 
-                                {/* Right Column: Sales Hub */}
                                 <div className="lg:col-span-8 h-full overflow-hidden">
                                     <Card className="h-full flex flex-col border-2 rounded-[2.5rem] shadow-xl bg-white overflow-hidden">
                                         <CardHeader className="p-8 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
@@ -625,6 +635,25 @@ export default function ModuleDetailsPage() {
                                         <>
                                             {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
                                             {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} isAdmin={isAdmin && !viewContextOrgId} />}
+                                            {view === 'bmt' && selectedModel && selectedRange && (
+                                                <ModelConfigurationEditor 
+                                                    model={selectedModel}
+                                                    docPath={`data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`}
+                                                    vendor={mainVendor}
+                                                    module={moduleData}
+                                                    user={user}
+                                                    isAdmin={isAdmin}
+                                                    organisationId={dashboardOrg?.id}
+                                                    permissions={userPermissions}
+                                                    breadcrumbs={
+                                                        <div className="flex items-center text-[10px] font-bold uppercase tracking-widest opacity-60">
+                                                            <span>{selectedRange.name}</span>
+                                                            <ChevronRight className="h-3 w-3 mx-1" />
+                                                            <span className="text-primary">{selectedModel.name}</span>
+                                                        </div>
+                                                    }
+                                                />
+                                            )}
                                         </>
                                     ) : isMotorBrand && mainVendor ? (
                                         <MotorModuleBrowser vendor={mainVendor} onMotorSelect={handleMotorSelect} />
@@ -658,19 +687,7 @@ export default function ModuleDetailsPage() {
     );
 }
 
-function handleRangeSelect(range: Range) {
-    // Logic inside component
-}
-
-function handleModelSelect(model: Model) {
-    // Logic inside component
-}
-
-function handleMotorSelect(motor: any, dataSetId: string) {
-    // Logic inside component
-}
-
-function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
+function RangesGrid({ vendor, onRangeSelect }: { vendor: any; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
     const rangesQuery = useMemoFirebase(() => {
         if (!vendor?.id) return null;
@@ -696,7 +713,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
     );
 }
 
-function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; isAdmin: boolean }) {
+function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; vendor: any; onModelSelect: (model: Model) => void; isAdmin: boolean }) {
     const firestore = useFirestore();
     const modelsQuery = useMemoFirebase(() => {
         if (!vendor?.id || !range?.id) return null;
