@@ -368,7 +368,7 @@ export function ExchangeRateManager({
                                                             {isExpanded && (
                                                                 <TableRow className="bg-primary/5 hover:bg-primary/5 border-none">
                                                                     <TableCell colSpan={7} className="p-0">
-                                                                        <div className="p-6 pt-0 ml-[60px] animate-in slide-in-from-top-2 duration-300">
+                                                                        <div className="p-8 animate-in slide-in-from-top-2 duration-300">
                                                                             <Tabs defaultValue="brands" className="w-full">
                                                                                 <TabsList className="bg-muted/20 h-10 p-1 rounded-2xl border mb-4">
                                                                                     <TabsTrigger value="brands" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 h-full data-[state=active]:bg-background data-[state=active]:shadow-md">
