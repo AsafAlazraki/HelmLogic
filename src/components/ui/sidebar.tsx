@@ -168,24 +168,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile, setOpen } = useSidebar()
-    const timerRef = React.useRef<NodeJS.Timeout | null>(null)
-
-    const handleMouseEnter = () => {
-      if (isMobile || collapsible !== "icon") return
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        setOpen(true)
-      }, 600) // Intentional opening delay
-    }
-
-    const handleMouseLeave = () => {
-      if (isMobile || collapsible !== "icon") return
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        setOpen(false)
-      }, 300) // Smooth gradual exit
-    }
+    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
     if (collapsible === "none") {
       return (
@@ -230,8 +213,6 @@ const Sidebar = React.forwardRef<
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
       >
         <div
           className={cn(
