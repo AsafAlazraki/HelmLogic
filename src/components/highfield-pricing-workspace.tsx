@@ -466,15 +466,34 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
 
     useEffect(() => {
-        // Initialize default sections for Highfield if missing
-        if (!strategyLoading && strategy && (!strategy.sections || strategy.sections.length === 0)) {
-            const initialSections: PricingSection[] = [
-                { id: 'sec-exchange', name: 'Exchange', order: 0, columns: [] },
-                { id: 'sec-master', name: 'Master Core', order: 1, columns: [] },
-                { id: 'sec-freight', name: 'Freight', order: 2, columns: [] },
-                { id: 'sec-vendor', name: 'Vendor', order: 3, columns: [] },
-            ];
-            setDoc(strategyRef, { sections: initialSections }, { merge: true });
+        if (strategyLoading || !strategy) return;
+        
+        const currentSections = strategy.sections || [];
+        const requiredIds = ['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'];
+        const missingIds = requiredIds.filter(id => !currentSections.some(s => s.id === id));
+        
+        if (missingIds.length > 0) {
+            const defaults: Record<string, PricingSection> = {
+                'sec-exchange': { id: 'sec-exchange', name: 'Exchange', order: 0, columns: [] },
+                'sec-master': { id: 'sec-master', name: 'Master Core', order: 1, columns: [] },
+                'sec-freight': { id: 'sec-freight', name: 'Freight', order: 2, columns: [] },
+                'sec-vendor': { id: 'sec-vendor', name: 'Vendor', order: 3, columns: [] },
+            };
+            
+            let nextOrder = currentSections.length > 0 
+                ? Math.max(...currentSections.map(s => s.order)) + 1 
+                : 0;
+                
+            const newSections = [...currentSections];
+            missingIds.forEach(id => {
+                newSections.push({ ...defaults[id], order: nextOrder++ });
+            });
+            
+            const normalized = newSections
+                .sort((a, b) => a.order - b.order)
+                .map((s, i) => ({ ...s, order: i }));
+
+            updateDoc(strategyRef, { sections: normalized });
         }
     }, [strategy, strategyLoading, strategyRef]);
 
@@ -518,31 +537,29 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return strategy.sections.flatMap(s => s.columns);
     }, [strategy?.sections]);
 
+    const sortedSections = useMemo(() => {
+        return [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
+    }, [strategy?.sections]);
+
     const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
-        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
+        const sections = [...sortedSections];
         const idx = sections.findIndex(s => s.id === secId);
         if (idx === -1) return;
 
         const newIdx = direction === 'left' ? idx - 1 : idx + 1;
         if (newIdx < 0 || newIdx >= sections.length) return;
 
-        // Swap
         const temp = sections[idx];
         sections[idx] = sections[newIdx];
         sections[newIdx] = temp;
 
-        // Re-normalize sequential orders
         const normalized = sections.map((s, i) => ({ ...s, order: i }));
-
-        await updateDoc(strategyRef, { sections: normalized }).catch(async (e) => {
-            console.error("Error updating section order:", e);
-            toast({ title: "Failed to Update Section Position", variant: "destructive" });
-        });
+        await updateDoc(strategyRef, { sections: normalized });
         toast({ title: "Section Position Updated" });
     };
 
     const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
-        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
+        const sections = [...sortedSections];
         const secIdx = sections.findIndex(s => s.id === secId);
         if (secIdx === -1) return;
 
@@ -558,10 +575,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         cols[newIdx] = temp;
 
         sections[secIdx].columns = cols;
-        await updateDoc(strategyRef, { sections }).catch(async (e) => {
-            console.error("Error updating column order:", e);
-            toast({ title: "Failed to Update Metric Position", variant: "destructive" });
-        });
+        await updateDoc(strategyRef, { sections });
         toast({ title: "Metric Position Updated" });
     };
 
@@ -570,11 +584,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         const newSection: PricingSection = {
             id: `sec-${Date.now()}`,
             name: newSectionName,
-            order: (strategy?.sections?.length || 0),
+            order: sortedSections.length,
             columns: []
         };
-        const currentSections = strategy?.sections || [];
-        await setDoc(strategyRef, { sections: [...currentSections, newSection] }, { merge: true });
+        await updateDoc(strategyRef, { sections: [...sortedSections, newSection] });
         setIsAddSectionOpen(false);
         setNewSectionName('');
         toast({ title: "Section Created" });
@@ -596,11 +609,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             } : undefined
         };
 
-        const currentSections = [...(strategy?.sections || [])];
+        const currentSections = [...sortedSections];
         const sectionIdx = currentSections.findIndex(s => s.id === targetSectionId);
         if (sectionIdx !== -1) {
             currentSections[sectionIdx].columns.push(newCol);
-            await setDoc(strategyRef, { sections: currentSections }, { merge: true });
+            await updateDoc(strategyRef, { sections: currentSections });
         }
         
         setIsAddColumnOpen(false);
@@ -611,29 +624,27 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     };
 
     const handleToggleSectionCollapse = async (secId: string) => {
-        const sections = [...(strategy?.sections || [])];
+        const sections = [...sortedSections];
         const idx = sections.findIndex(s => s.id === secId);
         if (idx !== -1) {
             sections[idx].isCollapsed = !sections[idx].isCollapsed;
-            await setDoc(strategyRef, { sections }, { merge: true });
+            await updateDoc(strategyRef, { sections });
         }
     };
 
     const handleDeleteSection = async (secId: string) => {
-        const sections = strategy?.sections?.filter(s => s.id !== secId) || [];
-        const normalized = sections
-            .sort((a, b) => a.order - b.order)
-            .map((s, i) => ({ ...s, order: i }));
+        const sections = sortedSections.filter(s => s.id !== secId);
+        const normalized = sections.map((s, i) => ({ ...s, order: i }));
         await updateDoc(strategyRef, { sections: normalized });
         toast({ title: "Section Removed" });
     };
 
     const handleDeleteColumn = async (secId: string, colId: string) => {
-        const sections = [...(strategy?.sections || [])];
+        const sections = [...sortedSections];
         const idx = sections.findIndex(s => s.id === secId);
         if (idx !== -1) {
             sections[idx].columns = sections[idx].columns.filter(c => c.id !== colId);
-            await setDoc(strategyRef, { sections }, { merge: true });
+            await updateDoc(strategyRef, { sections });
             toast({ title: "Metric Removed" });
         }
     };
@@ -665,10 +676,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         });
     }, [ranges, searchTerm, allModels]);
 
-    const sortedSections = useMemo(() => {
-        return [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
-    }, [strategy?.sections]);
-
     const PricingTable = () => (
         <div className="min-w-[1600px]">
             <Table>
@@ -676,7 +683,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <TableRow className="hover:bg-transparent border-b">
                         <TableHead className="w-[350px] border-r bg-muted/20" colSpan={1}></TableHead>
                         {sortedSections.map((sec, secIdx) => {
-                            const isSystem = ['sec-exchange', 'sec-master', 'sec-freight'].includes(sec.id);
+                            const isSystem = ['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'].includes(sec.id);
                             const colSpan = getSectionColCount(sec);
 
                             return (
@@ -693,7 +700,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>
                                                 {sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
                                             </Button>
-                                            {!sec.isCollapsed && <span className={cn("text-[10px] font-black uppercase tracking-widest truncate", isSystem ? "text-primary" : "text-primary")}>{sec.name}</span>}
+                                            {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
                                         </div>
                                         {!sec.isCollapsed && (
                                             <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
@@ -1101,7 +1108,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 }
 
 function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
-    const strategyColCount = sections.reduce((acc: number, s: any) => acc + getSectionColCount(s), 0);
+    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
 
     return (
         <>
@@ -1111,7 +1118,44 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     <span>{range.name} Range</span>
                     <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                 </TableCell>
-                <TableCell colSpan={strategyColCount} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
+                
+                {sections.map((sec: any) => {
+                    if (sec.id === 'sec-exchange') {
+                        return (
+                            <React.Fragment key={sec.id}>
+                                <TableCell className="text-center border-r bg-primary/5">
+                                    <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
+                                </TableCell>
+                                <TableCell className="text-center border-r bg-primary/5">
+                                    <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
+                                </TableCell>
+                                <TableCell className="text-center border-r bg-primary/5">
+                                    <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
+                                </TableCell>
+                                <TableCell className="text-center border-r bg-primary/5">
+                                    <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
+                                </TableCell>
+                            </React.Fragment>
+                        );
+                    }
+                    if (sec.id === 'sec-master') {
+                        return (
+                            <React.Fragment key={sec.id}>
+                                <TableCell className="border-r bg-primary/5" />
+                                <TableCell className="border-r bg-primary/5" />
+                            </React.Fragment>
+                        );
+                    }
+                    if (sec.id === 'sec-freight') {
+                        return <TableCell key={sec.id} className="border-r bg-primary/5" />;
+                    }
+                    if (sec.id === 'sec-vendor') {
+                        return <TableCell key={sec.id} colSpan={sec.isCollapsed ? 1 : Math.max(1, sec.columns.length)} className="bg-primary/5 border-r" />;
+                    }
+                    return null;
+                })}
+
+                <TableCell colSpan={sections.filter((s: any) => !['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'].includes(s.id)).reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
                     Click to audit series and specific configurations
                 </TableCell>
             </TableRow>
@@ -1135,7 +1179,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
 
 function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
-    const strategyColCount = sections.reduce((acc: number, s: any) => acc + getSectionColCount(s), 0);
+    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
 
     return (
         <>
@@ -1151,7 +1195,10 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         </div>
                     </div>
                 </TableCell>
-                <TableCell colSpan={strategyColCount} className="bg-muted/5" />
+                
+                {sections.map((sec: any) => (
+                    <TableCell key={`group-sec-${sec.id}`} colSpan={getSectionColCount(sec)} className={cn("bg-muted/5 border-r", ['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'].includes(sec.id) && "bg-primary/5")} />
+                ))}
             </TableRow>
 
             {isLocalExpanded && (
@@ -1185,7 +1232,9 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                         <span>Factory Options</span>
                                     </div>
                                 </TableCell>
-                                <TableCell colSpan={strategyColCount} className="bg-white/50" />
+                                {sections.map((sec: any) => (
+                                    <TableCell key={`opt-group-sec-${sec.id}`} colSpan={getSectionColCount(sec)} className={cn("bg-white/50 border-r", ['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'].includes(sec.id) && "bg-primary/5")} />
+                                ))}
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 
