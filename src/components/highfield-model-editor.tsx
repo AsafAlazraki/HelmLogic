@@ -817,10 +817,6 @@ function MotorConfigurationsSection() {
     );
 }
 
-/**
- * Extracted RuleItem component to solve the Rules of Hooks violation
- * where hooks were being called inside a .map() loop in RulesSection.
- */
 function RuleItem({ 
     index, 
     remove, 
@@ -1120,6 +1116,91 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                             </label>
                         </div>
                     </div>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: any, vendorId: string, rangeId: string, gstPercentage: number }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const variantsQuery = useMemoFirebase(() => 
+        query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
+    [firestore, vendorId, rangeId, model.id]);
+    
+    const { data: variants, loading } = useCollection<any>(variantsQuery);
+
+    const handleMoveVariant = async (index: number, direction: 'up' | 'down') => {
+        if (!variants) return;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= variants.length) return;
+
+        const v1 = variants[index];
+        const v2 = variants[newIndex];
+
+        const batch = writeBatch(firestore);
+        const ref1 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v1.id);
+        const ref2 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v2.id);
+
+        batch.update(ref1, { order: v2.order ?? newIndex });
+        batch.update(ref2, { order: v1.order ?? index });
+
+        try {
+            await batch.commit();
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Move Failed" });
+        }
+    };
+
+    if (loading) return <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>;
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="Model SKUs & Base Pricing" 
+                count={variants?.length || 0} 
+            />
+            <CollapsibleContent>
+                <div className="p-0">
+                    <Table>
+                        <TableHeader className="bg-muted/30">
+                            <TableRow>
+                                <TableHead className="w-[200px] text-[10px] font-black uppercase tracking-widest pl-6">Variant Name</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Base Cost (Excl.)</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Master Sell (Excl.)</TableHead>
+                                <TableHead className="text-right pr-6 w-20"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {variants?.map((v, i) => (
+                                <TableRow key={v.id} className="group/row transition-colors hover:bg-muted/5">
+                                    <TableCell className="pl-6 py-3">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-xs uppercase">{v.name}</span>
+                                            <span className="text-[9px] font-mono text-muted-foreground uppercase">{v.sku || 'NO SKU'}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-xs font-medium text-muted-foreground">{formatCurrency(v.cost)}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-xs font-black text-primary">{formatCurrency(v.sellPriceExclGst)}</span>
+                                    </TableCell>
+                                    <TableCell className="text-right pr-6">
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMoveVariant(i, 'up')} disabled={i === 0}>
+                                                <ArrowUp className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMoveVariant(i, 'down')} disabled={i === variants.length - 1}>
+                                                <ArrowDown className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
             </CollapsibleContent>
         </Collapsible>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -130,6 +130,14 @@ interface FreightContainer {
     currency: string;
     cubicMeters: number;
 }
+
+const getSectionColCount = (sec: PricingSection) => {
+    if (sec.isCollapsed) return 1;
+    if (sec.id === 'sec-exchange') return 4;
+    if (sec.id === 'sec-master') return 2;
+    if (sec.id === 'sec-freight') return 1;
+    return Math.max(1, sec.columns.length);
+};
 
 const calculateValue = (
     col: CustomColumn, 
@@ -458,15 +466,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
 
     useEffect(() => {
-        // Initialize default "Vendor" section for Highfield if it's missing
+        // Initialize default sections for Highfield if missing
         if (!strategyLoading && strategy && (!strategy.sections || strategy.sections.length === 0)) {
-            const defaultSection: PricingSection = {
-                id: 'sec-vendor',
-                name: 'Vendor',
-                order: 0,
-                columns: []
-            };
-            setDoc(strategyRef, { sections: [defaultSection] }, { merge: true });
+            const initialSections: PricingSection[] = [
+                { id: 'sec-exchange', name: 'Exchange', order: 0, columns: [] },
+                { id: 'sec-master', name: 'Master Core', order: 1, columns: [] },
+                { id: 'sec-freight', name: 'Freight', order: 2, columns: [] },
+                { id: 'sec-vendor', name: 'Vendor', order: 3, columns: [] },
+            ];
+            setDoc(strategyRef, { sections: initialSections }, { merge: true });
         }
     }, [strategy, strategyLoading, strategyRef]);
 
@@ -511,8 +519,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [strategy?.sections]);
 
     const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
-        if (!strategy?.sections) return;
-        const sections = [...strategy.sections].sort((a, b) => a.order - b.order);
+        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
         const idx = sections.findIndex(s => s.id === secId);
         if (idx === -1) return;
 
@@ -535,8 +542,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     };
 
     const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
-        if (!strategy?.sections) return;
-        const sections = [...strategy.sections].sort((a, b) => a.order - b.order);
+        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
         const secIdx = sections.findIndex(s => s.id === secId);
         if (secIdx === -1) return;
 
@@ -669,68 +675,84 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 <TableHeader className="bg-muted/50 sticky top-0 z-20">
                     <TableRow className="hover:bg-transparent border-b">
                         <TableHead className="w-[350px] border-r bg-muted/20" colSpan={1}></TableHead>
-                        <TableHead className="w-[380px] border-r bg-primary/5 text-center" colSpan={4}>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Exchange</span>
-                        </TableHead>
-                        <TableHead className="w-[240px] border-r text-center" colSpan={2}>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Master Core</span>
-                        </TableHead>
-                        <TableHead className="w-[120px] border-r bg-slate-50 text-center" colSpan={1}>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Freight</span>
-                        </TableHead>
-                        {sortedSections.map((sec, secIdx) => (
-                            <TableHead 
-                                key={sec.id} 
-                                colSpan={sec.isCollapsed ? 1 : Math.max(1, sec.columns.length)} 
-                                className={cn(
-                                    "border-r last:border-r-0 px-4 py-2 group/sec transition-colors",
-                                    sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-primary/5"
-                                )}
-                            >
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>
-                                            {sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
-                                        </Button>
-                                        {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
-                                    </div>
-                                    {!sec.isCollapsed && (
-                                        <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className={cn("h-6 w-6", secIdx === 0 && "opacity-20 pointer-events-none")} 
-                                                onClick={() => handleMoveSection(sec.id, 'left')}
-                                            >
-                                                <ArrowLeft className="h-3 w-3" />
-                                            </Button>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className={cn("h-6 w-6", secIdx === sortedSections.length - 1 && "opacity-20 pointer-events-none")} 
-                                                onClick={() => handleMoveSection(sec.id, 'right')}
-                                            >
-                                                <ArrowRight className="h-3 w-3" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>
-                                        </div>
+                        {sortedSections.map((sec, secIdx) => {
+                            const isSystem = ['sec-exchange', 'sec-master', 'sec-freight'].includes(sec.id);
+                            const colSpan = getSectionColCount(sec);
+
+                            return (
+                                <TableHead 
+                                    key={sec.id} 
+                                    colSpan={colSpan} 
+                                    className={cn(
+                                        "border-r last:border-r-0 px-4 py-2 group/sec transition-colors",
+                                        sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-primary/5"
                                     )}
-                                </div>
-                            </TableHead>
-                        ))}
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>
+                                                {sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+                                            </Button>
+                                            {!sec.isCollapsed && <span className={cn("text-[10px] font-black uppercase tracking-widest truncate", isSystem ? "text-muted-foreground" : "text-primary")}>{sec.name}</span>}
+                                        </div>
+                                        {!sec.isCollapsed && (
+                                            <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className={cn("h-6 w-6", secIdx === 0 && "opacity-20 pointer-events-none")} 
+                                                    onClick={() => handleMoveSection(sec.id, 'left')}
+                                                >
+                                                    <ArrowLeft className="h-3 w-3" />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className={cn("h-6 w-6", secIdx === sortedSections.length - 1 && "opacity-20 pointer-events-none")} 
+                                                    onClick={() => handleMoveSection(sec.id, 'right')}
+                                                >
+                                                    <ArrowRight className="h-3 w-3" />
+                                                </Button>
+                                                {!isSystem && (
+                                                    <>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </TableHead>
+                            );
+                        })}
                     </TableRow>
                     <TableRow className="hover:bg-transparent border-b-2">
                         <TableHead className="py-4 px-6 border-r bg-muted/20 font-black uppercase text-[10px]">Description & SKU</TableHead>
-                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
-                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
-                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
-                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
-                        <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
-                        <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
-                        <TableHead className="text-right border-r bg-slate-50 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>
                         {sortedSections.map(sec => {
-                            if (sec.isCollapsed) return <TableHead key={`coll-${sec.id}`} className="w-[60px] border-r last:border-r-0 bg-muted/20" />;
+                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r last:border-r-0 bg-muted/20" />;
+                            
+                            if (sec.id === 'sec-exchange') {
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
+                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
+                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
+                                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
+                            if (sec.id === 'sec-master') {
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
+                                        <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
+                            if (sec.id === 'sec-freight') {
+                                return <TableHead key={sec.id} className="text-right border-r bg-slate-50 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
+                            }
+
                             if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r last:border-r-0 bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
                             
                             return sec.columns.map((col, idx) => (
@@ -1079,7 +1101,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 }
 
 function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
-    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
+    const strategyColCount = sections.reduce((acc: number, s: any) => acc + getSectionColCount(s), 0);
 
     return (
         <>
@@ -1089,22 +1111,6 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     <span>{range.name} Range</span>
                     <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                 </TableCell>
-                <TableCell className="text-center border-r bg-primary/5">
-                    <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
-                </TableCell>
-                <TableCell className="text-center border-r bg-primary/5">
-                    <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
-                </TableCell>
-                <TableCell className="text-center border-r bg-primary/5">
-                    <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
-                </TableCell>
-                <TableCell className="text-center border-r bg-primary/5">
-                    <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
-                </TableCell>
-                <TableCell className="border-r" />
-                <TableCell className="border-r" />
-                <TableCell className="border-r bg-slate-50" />
-                
                 <TableCell colSpan={strategyColCount} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
                     Click to audit series and specific configurations
                 </TableCell>
@@ -1129,7 +1135,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
 
 function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
-    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
+    const strategyColCount = sections.reduce((acc: number, s: any) => acc + getSectionColCount(s), 0);
 
     return (
         <>
@@ -1145,13 +1151,6 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         </div>
                     </div>
                 </TableCell>
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
                 <TableCell colSpan={strategyColCount} className="bg-muted/5" />
             </TableRow>
 
@@ -1186,7 +1185,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                         <span>Factory Options</span>
                                     </div>
                                 </TableCell>
-                                <TableCell colSpan={7 + strategyColCount} className="bg-white/50" />
+                                <TableCell colSpan={strategyColCount} className="bg-white/50" />
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 
@@ -1226,45 +1225,64 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     <span className="text-[9px] font-mono text-muted-foreground uppercase">{sku || 'NO SKU'}</span>
                 </div>
             </TableCell>
-            <TableCell className="text-center border-r bg-primary/5">
-                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
-            </TableCell>
-            <TableCell className="text-center border-r bg-primary/5">
-                <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
-            </TableCell>
-            <TableCell className="text-center border-r bg-primary/5">
-                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
-            </TableCell>
-            <TableCell className="text-center border-r bg-primary/5">
-                <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
-            </TableCell>
-            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4">
-                {formatCurrency(cost, vendor.currency || 'AUD')}
-            </TableCell>
-            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4">
-                {formatCurrency(sell, vendor.currency || 'AUD')}
-            </TableCell>
             
-            <TableCell className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
-                {isBoatVariant ? (
-                    <div className="relative h-full w-full flex items-center">
-                        <input 
-                            type="number" 
-                            step="0.01"
-                            className="h-10 w-full bg-transparent border-none text-[11px] font-black text-right pr-8 focus:ring-2 focus:ring-primary focus:bg-background transition-all outline-none"
-                            placeholder="0.00"
-                            value={itemValues['packed_m3'] || ''}
-                            onChange={(e) => onUpdateValue(id, 'packed_m3', e.target.value)}
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">m³</span>
-                    </div>
-                ) : (
-                    <div className="h-full w-full bg-slate-100/50" />
-                )}
-            </TableCell>
-
             {sections.map((sec: any) => {
                 if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r last:border-r-0" />;
+
+                if (sec.id === 'sec-exchange') {
+                    return (
+                        <React.Fragment key={sec.id}>
+                            <TableCell className="text-center border-r bg-primary/5">
+                                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center border-r bg-primary/5">
+                                <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
+                            </TableCell>
+                            <TableCell className="text-center border-r bg-primary/5">
+                                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center border-r bg-primary/5">
+                                <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
+                            </TableCell>
+                        </React.Fragment>
+                    );
+                }
+
+                if (sec.id === 'sec-master') {
+                    return (
+                        <React.Fragment key={sec.id}>
+                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4">
+                                {formatCurrency(cost, vendor.currency || 'AUD')}
+                            </TableCell>
+                            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4">
+                                {formatCurrency(sell, vendor.currency || 'AUD')}
+                            </TableCell>
+                        </React.Fragment>
+                    );
+                }
+
+                if (sec.id === 'sec-freight') {
+                    return (
+                        <TableCell key={sec.id} className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
+                            {isBoatVariant ? (
+                                <div className="relative h-full w-full flex items-center">
+                                    <input 
+                                        type="number" 
+                                        step="0.01"
+                                        className="h-10 w-full bg-transparent border-none text-[11px] font-black text-right pr-8 focus:ring-2 focus:ring-primary focus:bg-background transition-all outline-none"
+                                        placeholder="0.00"
+                                        value={itemValues['packed_m3'] || ''}
+                                        onChange={(e) => onUpdateValue(id, 'packed_m3', e.target.value)}
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">m³</span>
+                                </div>
+                            ) : (
+                                <div className="h-full w-full bg-slate-100/50" />
+                            )}
+                        </TableCell>
+                    );
+                }
+
                 if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-primary/5 border-r last:border-r-0" />;
 
                 return sec.columns.map((col: any) => (
