@@ -791,7 +791,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                             <Button 
                                                 variant="ghost" 
                                                 size="icon" 
-                                                className="h-6 w-6 text-destructive opacity-0 group-hover/header:opacity-100 transition-opacity"
+                                                className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-all"
                                                 onClick={() => handleDeleteColumn(sec.id, col.id)}
                                             >
                                                 <X className="h-3 w-3" />
@@ -1142,9 +1142,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                 <TableCell className="border-r" />
                 <TableCell className="border-r bg-slate-50" />
                 
-                <TableCell colSpan={strategyColCount} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
-                    Click to audit series and specific configurations
-                </TableCell>
+                <TableCell colSpan={strategyColCount} className="pr-6" />
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -1208,7 +1206,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                             sections={sections}
                             allColumns={allColumns}
                             strategy={strategy}
-                            onUpdateValue={onUpdateValue}
+                            onUpdateValue={handleUpdateValue}
                             indent
                             isBoatVariant
                         />
@@ -1239,7 +1237,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                     sections={sections}
                                     allColumns={allColumns}
                                     strategy={strategy}
-                                    onUpdateValue={onUpdateValue}
+                                    onUpdateValue={handleUpdateValue}
                                     indent
                                     isOption
                                 />
