@@ -24,11 +24,9 @@ import {
     Wrench, 
     DollarSign, 
     Percent, 
-    Type, 
     Coins,
     Building,
     Search,
-    Settings2,
     X,
     Maximize2,
     Minimize2,
@@ -42,14 +40,10 @@ import {
     Box,
     Calculator,
     AlertCircle,
-    Info,
-    Lock,
-    FolderPlus,
-    LayoutGrid,
-    Star,
     History,
     Clock,
-    User as UserIcon
+    User as UserIcon,
+    Save
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -73,8 +67,6 @@ import NextImage from "next/image";
 import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { formatDistanceToNow } from 'date-fns';
 
 interface CustomColumn {
@@ -161,7 +153,6 @@ const calculateValue = (
     itemValues: Record<string, any>, 
     allCols: CustomColumn[]
 ): { value: number | string | null, error?: string } => {
-    // Check for strategic cost override
     const costOverride = itemValues['base_cost_override'];
     const effectiveBaseCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) 
         ? parseFloat(costOverride) 
@@ -190,9 +181,7 @@ const calculateValue = (
     const right = getVal(col.formula.rightId);
 
     if (left === null || right === null) {
-        const missing = left === null ? col.formula.leftId : col.formula.rightId;
-        const missingName = missing === 'baseCost' ? 'Base Price' : missing === 'masterSell' ? 'Master Sell' : allCols.find(c => c.id === missing)?.name || 'Reference';
-        return { value: null, error: `Missing source: ${missingName}` };
+        return { value: null, error: `Missing source` };
     }
 
     let result = 0;
@@ -385,7 +374,7 @@ function FreightManager({
                         <ScrollArea className="h-full">
                             <div className="p-8">
                                 {isAdding && (
-                                    <Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden animate-in slide-in-from-top-4 duration-300">
+                                    <Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden">
                                         <CardHeader className="p-6 border-b bg-background">
                                             <CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle>
                                         </CardHeader>
@@ -406,59 +395,18 @@ function FreightManager({
                                                     </Select>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Optional Description</Label>
-                                                    <Input 
-                                                        placeholder="e.g. Ship from China" 
-                                                        className="h-10 font-bold bg-background"
-                                                        value={description}
-                                                        onChange={e => description(e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
                                                     <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label>
-                                                    <div className="relative">
-                                                        <Box className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                                                        <Input 
-                                                            type="number" 
-                                                            placeholder="0.00" 
-                                                            className="pl-10 h-10 font-bold bg-background"
-                                                            value={cbm}
-                                                            onChange={e => setCbm(e.target.value)}
-                                                        />
-                                                    </div>
+                                                    <Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
-                                                    <div className="relative">
-                                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                                                        <Input 
-                                                            type="number" 
-                                                            placeholder="0.00" 
-                                                            className="pl-10 h-10 font-bold bg-background"
-                                                            value={cost}
-                                                            onChange={e => setCost(e.target.value)}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cost Currency</Label>
-                                                    <Select value={currency} onValueChange={setCurrency}>
-                                                        <SelectTrigger className="h-10 font-bold bg-background">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {SUPPORTED_CURRENCIES.map(c => <SelectItem key={c.code} value={c.code} className="font-bold">{c.code}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" />
                                                 </div>
                                             </div>
                                         </CardContent>
                                         <CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3">
-                                            <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold">Cancel</Button>
-                                            <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm} className="font-black uppercase tracking-widest text-[10px] h-9 px-8 rounded-xl shadow-lg">
-                                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                                                Initialize Container
-                                            </Button>
+                                            <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
+                                            <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button>
                                         </CardFooter>
                                     </Card>
                                 )}
@@ -466,52 +414,26 @@ function FreightManager({
                                 <div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm">
                                     <Table>
                                         <TableHeader className="bg-muted/50 border-b-2">
-                                            <TableRow className="hover:bg-transparent">
+                                            <TableRow>
                                                 <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Description</TableHead>
                                                 <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead>
                                                 <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead>
                                                 <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right w-[100px]">Actions</TableHead>
+                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {containers && containers.length > 0 ? containers.map((c) => (
-                                                <TableRow key={c.id} className="hover:bg-primary/5 transition-colors group">
-                                                    <TableCell className="py-4 px-6 font-black text-sm uppercase tracking-tight">{c.size}</TableCell>
-                                                    <TableCell className="py-4 px-6 text-[11px] font-bold text-muted-foreground uppercase">{c.description || '-'}</TableCell>
+                                            {containers?.map((c) => (
+                                                <TableRow key={c.id}>
+                                                    <TableCell className="py-4 px-6 font-black uppercase">{c.size}</TableCell>
+                                                    <TableCell className="py-4 px-6 text-right font-bold">{c.cubicMeters} m³</TableCell>
+                                                    <TableCell className="py-4 px-6 text-right font-black">{formatCurrency(c.cost, c.currency)}</TableCell>
+                                                    <TableCell className="py-4 px-6 text-center"><Badge>{c.currency}</Badge></TableCell>
                                                     <TableCell className="py-4 px-6 text-right">
-                                                        <Badge variant="outline" className="h-6 font-mono font-black text-[10px] px-2.5 bg-muted/20 border-primary/10 text-primary">
-                                                            {c.cubicMeters} m³
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="py-4 px-6 text-right font-black text-sm">
-                                                        {formatCurrency(c.cost, c.currency)}
-                                                    </TableCell>
-                                                    <TableCell className="py-4 px-6 text-center">
-                                                        <Badge className="font-black text-[10px] h-6 px-2 uppercase">{c.currency}</Badge>
-                                                    </TableCell>
-                                                    <TableCell className="py-4 px-6 text-right">
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10 rounded-lg"
-                                                            onClick={() => handleDelete(c.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4" /></Button>
                                                     </TableCell>
                                                 </TableRow>
-                                            )) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={6} className="h-40 text-center text-muted-foreground italic">
-                                                        <div className="flex flex-col items-center gap-2">
-                                                            <Truck className="h-8 w-8 opacity-10" />
-                                                            <span className="text-[10px] font-black uppercase tracking-widest">No containers configured.</span>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
+                                            ))}
                                         </TableBody>
                                     </Table>
                                 </div>
@@ -519,12 +441,6 @@ function FreightManager({
                         </ScrollArea>
                     )}
                 </div>
-
-                <DialogFooter className="p-6 border-t bg-muted/5 shrink-0">
-                    <DialogClose asChild>
-                        <Button variant="outline" className="font-bold border-2 rounded-xl">Close Workspace</Button>
-                    </DialogClose>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
@@ -559,7 +475,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
     
     const [newSectionName, setNewSectionName] = useState('');
-
     const [newColName, setNewColName] = useState('');
     const [newColType, setNewColType] = useState<CustomColumn['type']>('percent');
     const [isCalculated, setIsCalculated] = useState(false);
@@ -573,7 +488,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     useEffect(() => {
         if (strategyLoading || !strategy) return;
-        
         const currentSections = strategy.sections || [];
         const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight'];
         const missingIds = requiredIds.filter(id => !currentSections.some(s => s.id === id));
@@ -584,23 +498,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 'sec-vendor': { id: 'sec-vendor', name: 'Vendor', order: 1, columns: [] },
                 'sec-freight': { id: 'sec-freight', name: 'Freight', order: 2, columns: [] },
             };
-            
-            let nextOrder = currentSections.length > 0 
-                ? Math.max(...currentSections.map(s => s.order)) + 1 
-                : 0;
-                
-            const newSections = currentSections.filter(s => s.id !== 'sec-master');
+            let nextOrder = currentSections.length > 0 ? Math.max(...currentSections.map(s => s.order)) + 1 : 0;
+            const newSections = [...currentSections];
             missingIds.forEach(id => {
                 if (!newSections.some(s => s.id === id)) {
                     newSections.push({ ...defaults[id], order: nextOrder++ });
                 }
             });
-            
-            const normalized = newSections
-                .sort((a, b) => a.order - b.order)
-                .map((s, i) => ({ ...s, order: i }));
-
-            updateDoc(strategyRef, { sections: normalized });
+            updateDoc(strategyRef, { sections: newSections.sort((a, b) => a.order - b.order) });
         }
     }, [strategy, strategyLoading, strategyRef]);
 
@@ -611,13 +516,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             try {
                 const models: Model[] = [];
                 const variantMap: Record<string, Variant[]> = {};
-
                 for (const range of ranges) {
                     const mSnap = await getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')));
                     for (const mDoc of mSnap.docs) {
                         const mData = { id: mDoc.id, ...mDoc.data() } as Model;
                         models.push(mData);
-                        
                         const vSnap = await getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models/${mDoc.id}/variants`), orderBy('order')));
                         variantMap[mDoc.id] = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Variant));
                     }
@@ -625,7 +528,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 setAllModels(models);
                 setAllVariants(variantMap);
             } catch (e) {
-                console.error("Failed to load Highfield structure", e);
+                console.error(e);
             } finally {
                 setLoadingModels(false);
             }
@@ -648,90 +551,60 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
     }, [strategy?.sections]);
 
-    const totalMatrixCols = useMemo(() => {
-        return sortedSections.reduce((acc, s) => acc + getSectionColCount(s), 0);
-    }, [sortedSections]);
-
     const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
         const sections = [...sortedSections];
         const idx = sections.findIndex(s => s.id === secId);
         if (idx === -1) return;
-
         const newIdx = direction === 'left' ? idx - 1 : idx + 1;
         if (newIdx < 0 || newIdx >= sections.length) return;
-
         const temp = sections[idx];
         sections[idx] = sections[newIdx];
         sections[newIdx] = temp;
-
-        const normalized = sections.map((s, i) => ({ ...s, order: i }));
-        await updateDoc(strategyRef, { sections: normalized });
-        toast({ title: "Section Position Updated" });
+        updateDoc(strategyRef, { sections: sections.map((s, i) => ({ ...s, order: i })) });
     };
 
     const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
         const sections = [...sortedSections];
         const secIdx = sections.findIndex(s => s.id === secId);
         if (secIdx === -1) return;
-
         const cols = [...sections[secIdx].columns];
         const idx = cols.findIndex(c => c.id === colId);
         if (idx === -1) return;
-
         const newIdx = direction === 'left' ? idx - 1 : idx + 1;
         if (newIdx < 0 || newIdx >= cols.length) return;
-
         const temp = cols[idx];
         cols[idx] = cols[newIdx];
         cols[newIdx] = temp;
-
         sections[secIdx].columns = cols;
-        await updateDoc(strategyRef, { sections });
-        toast({ title: "Metric Position Updated" });
+        updateDoc(strategyRef, { sections });
     };
 
     const handleAddSection = async () => {
         if (!newSectionName.trim()) return;
-        const newSection: PricingSection = {
-            id: `sec-${Date.now()}`,
-            name: newSectionName,
-            order: sortedSections.length,
-            columns: []
-        };
+        const newSection: PricingSection = { id: `sec-${Date.now()}`, name: newSectionName, order: sortedSections.length, columns: [] };
         await updateDoc(strategyRef, { sections: [...sortedSections, newSection] });
         setIsAddSectionOpen(false);
         setNewSectionName('');
-        toast({ title: "Section Created" });
     };
 
     const handleAddColumn = async () => {
         if (!newColName.trim() || !targetSectionId) return;
-        
         const newCol: CustomColumn = {
             id: `col-${Date.now()}`,
             name: newColName,
             type: newColType,
             isMandatory,
             isCalculated,
-            formula: isCalculated ? {
-                leftId: formulaLeft,
-                operator: formulaOp,
-                rightId: isNaN(parseFloat(formulaRight)) ? formulaRight : parseFloat(formulaRight)
-            } : undefined
+            formula: isCalculated ? { leftId: formulaLeft, operator: formulaOp, rightId: isNaN(parseFloat(formulaRight)) ? formulaRight : parseFloat(formulaRight) } : undefined
         };
-
         const currentSections = [...sortedSections];
         const sectionIdx = currentSections.findIndex(s => s.id === targetSectionId);
         if (sectionIdx !== -1) {
             currentSections[sectionIdx].columns.push(newCol);
             await updateDoc(strategyRef, { sections: currentSections });
         }
-        
         setIsAddColumnOpen(false);
         setNewColName('');
-        setIsCalculated(false);
-        setIsMandatory(false);
-        toast({ title: "Metric Initialized" });
     };
 
     const handleToggleSectionCollapse = async (secId: string) => {
@@ -745,9 +618,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const handleDeleteSection = async (secId: string) => {
         const sections = sortedSections.filter(s => s.id !== secId);
-        const normalized = sections.map((s, i) => ({ ...s, order: i }));
-        await updateDoc(strategyRef, { sections: normalized });
-        toast({ title: "Section Removed" });
+        updateDoc(strategyRef, { sections: sections.map((s, i) => ({ ...s, order: i })) });
     };
 
     const handleDeleteColumn = async (secId: string, colId: string) => {
@@ -756,93 +627,53 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (idx !== -1) {
             sections[idx].columns = sections[idx].columns.filter(c => c.id !== colId);
             await updateDoc(strategyRef, { sections });
-            toast({ title: "Metric Removed" });
         }
     };
 
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
         const currentValues = strategy?.itemValues || {};
         const oldValue = currentValues[itemId]?.[colId];
-        
-        // Strict value comparison
         if (String(oldValue || '') === String(value || '')) return;
-
-        const updated = {
-            ...currentValues,
-            [itemId]: {
-                ...(currentValues[itemId] || {}),
-                [colId]: value
-            }
-        };
-        
-        // 1. Update persistent strategy values
+        const updated = { ...currentValues, [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } };
         updateDoc(strategyRef, { itemValues: updated });
-
-        // 2. LOG STRATEGIC CHANGE
         try {
             const auditLogRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}/auditLog`);
-            addDoc(auditLogRef, {
-                itemId,
-                colId,
-                oldValue: oldValue ?? null,
-                newValue: value,
-                timestamp: serverTimestamp(),
-                userId: user?.uid || 'anonymous',
-                userName: user?.displayName || user?.email || 'Anonymous Strategist'
-            });
-        } catch (e) {
-            console.error("Audit log failed:", e);
-        }
+            addDoc(auditLogRef, { itemId, colId, oldValue: oldValue ?? null, newValue: value, timestamp: serverTimestamp(), userId: user?.uid || 'anonymous', userName: user?.displayName || user?.email || 'Anonymous Strategist' });
+        } catch (e) { console.error(e); }
     };
 
-    const toggleRange = (id: string) => {
-        setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    };
+    const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
     const filteredRanges = useMemo(() => {
         if (!ranges) return [];
         if (!searchTerm) return ranges;
         const lower = searchTerm.toLowerCase();
-        return ranges.filter(range => {
-            const modelsInRange = allModels.filter(m => m.rangeId === range.id);
-            return range.name.toLowerCase().includes(lower) || 
-                   modelsInRange.some(m => m.name.toLowerCase().includes(lower) || m.modelCode?.toLowerCase().includes(lower));
-        });
+        return ranges.filter(range => range.name.toLowerCase().includes(lower) || allModels.filter(m => m.rangeId === range.id).some(m => m.name.toLowerCase().includes(lower) || m.modelCode?.toLowerCase().includes(lower)));
     }, [ranges, searchTerm, allModels]);
 
     const PricingTable = () => (
-        <div className="min-w-[1600px] bg-background">
-            <Table className="border-separate border-spacing-0 table-fixed w-full">
-                <TableHeader className="sticky top-0 z-40">
+        <div className="min-w-full bg-background overflow-x-auto">
+            <Table className="border-collapse table-fixed w-full">
+                <TableHeader className="sticky top-0 z-40 bg-white">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[350px] border-r border-b bg-white sticky left-0 z-50 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]"></TableHead>
+                        <TableHead className="w-[300px] border-r border-b">Description & SKU</TableHead>
                         {sortedSections.map((sec, secIdx) => {
                             const isCoreSystem = ['sec-exchange', 'sec-vendor', 'sec-freight'].includes(sec.id);
                             const colSpan = getSectionColCount(sec);
-
                             return (
-                                <TableHead 
-                                    key={sec.id} 
-                                    colSpan={colSpan} 
-                                    className={cn(
-                                        "border-r border-b last:border-r-0 p-0 group/sec transition-colors",
-                                        sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-primary/5"
-                                    )}
-                                >
+                                <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b p-0 group/sec", sec.isCollapsed ? "w-[60px]" : "bg-primary/5")}>
                                     <div className="flex flex-col h-full">
                                         <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/5 min-h-[40px]">
                                             <div className="flex items-center gap-2 overflow-hidden">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full shrink-0" onClick={() => handleToggleSectionCollapse(sec.id)}>
-                                                    {sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
-                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}</Button>
                                                 {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
                                             </div>
                                             {!sec.isCollapsed && (
-                                                <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity shrink-0">
-                                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6", secIdx === 0 && "opacity-20 pointer-events-none")} onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
-                                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6", secIdx === sortedSections.length - 1 && "opacity-20 pointer-events-none")} onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === 0} onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === sortedSections.length - 1} onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
-                                                    {!isCoreSystem && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
+                                                    {!isCoreSystem && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
                                                 </div>
                                             )}
                                         </div>
@@ -852,71 +683,34 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         })}
                     </TableRow>
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="py-4 px-6 border-r border-b bg-white font-black uppercase text-[10px] sticky left-0 z-50 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">Description &amp; SKU</TableHead>
+                        <TableHead className="py-4 px-6 border-r border-b font-black uppercase text-[10px]">Description & SKU</TableHead>
                         {sortedSections.map(sec => {
-                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b last:border-r-0 bg-muted/20" />;
-                            
-                            if (sec.id === 'sec-exchange') {
-                                return (
-                                    <React.Fragment key={sec.id}>
-                                        <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[100px]">Vendor Ex. Rate</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[100px]">Org Ex. Rate</TableHead>
-                                    </React.Fragment>
-                                );
-                            }
-                            if (sec.id === 'sec-vendor') {
-                                return (
-                                    <React.Fragment key={sec.id}>
-                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Price ({vendor.currency || 'ISO'})</TableHead>
-                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Price ({organisation?.tradingCurrency || 'Conv'})</TableHead>
-                                    </React.Fragment>
-                                );
-                            }
-                            if (sec.id === 'sec-freight') {
-                                return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
-                            }
-
-                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b last:border-r-0 bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
-                            
+                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b" />;
+                            if (sec.id === 'sec-exchange') return (
+                                <React.Fragment key={sec.id}>
+                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[100px]">Ex. Rate</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[100px]">Ex. Rate</TableHead>
+                                </React.Fragment>
+                            );
+                            if (sec.id === 'sec-vendor') return (
+                                <React.Fragment key={sec.id}>
+                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Price ({vendor.currency || 'ISO'})</TableHead>
+                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Converted</TableHead>
+                                </React.Fragment>
+                            );
+                            if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
+                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
                             return sec.columns.map((col, idx) => (
-                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r border-b last:border-r-0">
+                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r border-b">
                                     <div className="flex items-center justify-between gap-1">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === 0 && "invisible")} 
-                                            onClick={() => handleMoveColumn(sec.id, col.id, 'left')}
-                                        >
-                                            <ChevronLeft className="h-3 w-3" />
-                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === 0} onClick={() => handleMoveColumn(sec.id, col.id, 'left')}><ChevronLeft className="h-3 w-3" /></Button>
                                         <div className="flex flex-col items-center flex-1 min-w-0">
-                                            <div className="flex items-center gap-1.5 justify-center w-full">
-                                                {col.isCalculated && <Calculator className="h-3 w-3 text-primary shrink-0" />}
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate text-center">{col.name}</span>
-                                                {col.isMandatory && <span className="text-destructive font-black">*</span>}
-                                            </div>
-                                            <Badge variant="outline" className="h-4 text-[8px] opacity-40 font-black uppercase p-0 border-none">{col.type}</Badge>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{col.name}</span>
+                                            <Badge variant="outline" className="h-4 text-[8px] uppercase p-0 border-none">{col.type}</Badge>
                                         </div>
-                                        <div className="flex items-center gap-0.5">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className={cn("h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity", idx === sec.columns.length - 1 && "invisible")} 
-                                                onClick={() => handleMoveColumn(sec.id, col.id, 'right')}
-                                            >
-                                                <ChevronRight className="h-3 w-3" />
-                                            </Button>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-all"
-                                                onClick={() => handleDeleteColumn(sec.id, col.id)}
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === sec.columns.length - 1} onClick={() => handleMoveColumn(sec.id, col.id, 'right')}><ChevronRight className="h-3 w-3" /></Button>
                                     </div>
                                 </TableHead>
                             ));
@@ -925,532 +719,132 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </TableHeader>
                 <TableBody>
                     {filteredRanges.map(range => (
-                        <RangeSection 
-                            key={range.id} 
-                            range={range} 
-                            models={allModels.filter(m => m.rangeId === range.id)} 
-                            variants={allVariants} 
-                            isExpanded={expandedRanges.includes(range.id)}
-                            onToggle={() => toggleRange(range.id)}
-                            sections={sortedSections}
-                            allColumns={allColumns}
-                            strategy={strategy}
-                            onUpdateValue={handleUpdateValue}
-                            vendor={vendor}
-                            organisation={organisation}
-                            exchangeRate={activeExchangeRate}
-                            totalMatrixCols={totalMatrixCols}
-                        />
+                        <RangeSection key={range.id} range={range} models={allModels.filter(m => m.rangeId === range.id)} variants={allVariants} isExpanded={expandedRanges.includes(range.id)} onToggle={() => toggleRange(range.id)} sections={sortedSections} allColumns={allColumns} strategy={strategy} onUpdateValue={handleUpdateValue} vendor={vendor} organisation={organisation} exchangeRate={activeExchangeRate} />
                     ))}
                 </TableBody>
             </Table>
         </div>
     );
 
-    const StrategyControls = () => (
-        <div className="flex items-center gap-3">
-            <Button 
-                onClick={() => setIsAuditLogOpen(true)} 
-                variant="outline" 
-                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 flex items-center gap-2 shadow-sm transition-all hover:bg-primary hover:text-white"
-            >
-                <History className="h-4 w-4" /> Strategic Log
-            </Button>
-            <Button 
-                onClick={() => setIsFreightManagerOpen(true)} 
-                variant="outline" 
-                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 flex items-center gap-2 shadow-sm transition-all hover:bg-primary hover:text-white"
-            >
-                <Truck className="h-4 w-4" /> Freight Management
-            </Button>
-            <Button 
-                onClick={() => setIsAddSectionOpen(true)} 
-                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-primary bg-primary text-white hover:bg-primary/90 flex items-center gap-2 shadow-lg transition-all active:scale-[0.98]"
-            >
-                <Plus className="h-4 w-4" /> Add Section
-            </Button>
-        </div>
-    );
-
     return (
         <div className="flex flex-col h-full overflow-hidden">
             <CardHeader className="p-6 border-b bg-background shrink-0">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm shrink-0">
-                            {vendor.logoUrl ? (
-                                <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized />
-                            ) : (
-                                <Building className="h-6 w-6 m-auto mt-1 text-muted-foreground" />
-                            )}
+                        <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2">
+                            {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-6 w-6 m-auto mt-1" />}
                         </div>
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-3">
-                                <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
-                            </div>
-                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Pricing &amp; Profitability Strategy</CardDescription>
+                        <div>
+                            <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
+                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Pricing & Profitability Strategy</CardDescription>
                         </div>
                     </div>
-
                     <div className="flex items-center gap-3">
-                        <StrategyControls />
-                        <div className="h-10 w-px bg-border mx-2" />
-                        <Button 
-                            type="button"
-                            variant="outline"
-                            onClick={() => setIsFullScreen(true)}
-                            className="h-10 font-black uppercase tracking-widest text-[10px] shadow-sm flex items-center gap-2 border-2 hover:bg-primary hover:text-primary-foreground transition-all rounded-xl"
-                        >
-                            <Maximize2 className="h-4 w-4" />
-                            Strategy Focus Mode
-                        </Button>
+                        <Button onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><History className="h-4 w-4 mr-2" /> Audit Log</Button>
+                        <Button onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
+                        <Button onClick={() => setIsAddSectionOpen(true)} className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Plus className="h-4 w-4 mr-2" /> Add Section</Button>
                     </div>
                 </div>
             </CardHeader>
-
-            <div className="flex-1 overflow-hidden relative">
-                <ScrollArea className="h-full w-full">
-                    <PricingTable />
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
+            <div className="flex-1 overflow-auto">
+                <PricingTable />
             </div>
-
-            <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-                <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl [&>button]:hidden">
-                    <div className="flex flex-col h-full bg-background">
-                        <div className="p-6 border-b bg-muted/5 shrink-0">
-                            <div className="flex items-center justify-between gap-8">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 relative bg-white rounded-lg border-2 p-1.5 shadow-sm">
-                                        {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-5 w-5 m-auto text-muted-foreground" />}
-                                    </div>
-                                    <DialogTitle className="flex flex-col">
-                                        <span className="text-lg font-black uppercase tracking-tight leading-none">{vendor.name} STRATEGY WORKSPACE</span>
-                                        <div className="flex items-center gap-2 mt-1.5">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-primary">Strategic Pricing Mode</span>
-                                            <Badge variant="outline" className="h-4 text-[8px] font-black border-primary/20 text-primary uppercase">
-                                                Active Matrix: {sortedSections.length} Sections
-                                            </Badge>
-                                        </div>
-                                    </DialogTitle>
-                                </div>
-
-                                <div className="flex-1 max-w-md relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input 
-                                        placeholder="Search series or SKUs..." 
-                                        className="pl-10 h-10 font-bold border-2 focus-visible:ring-primary/20 bg-background rounded-xl"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <StrategyControls />
-                                    <div className="h-10 w-px bg-border mx-2" />
-                                    <DialogClose asChild>
-                                        <Button variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 flex items-center gap-2 hover:bg-accent transition-all">
-                                            <Minimize2 className="h-4 w-4" /> Collapse
-                                        </Button>
-                                    </DialogClose>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-hidden">
-                            <ScrollArea className="h-full w-full">
-                                <PricingTable />
-                                <ScrollBar orientation="horizontal" />
-                            </ScrollArea>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
-                <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Create Strategy Section</DialogTitle>
-                        <DialogDescription className="text-xs font-bold uppercase text-muted-foreground/60 tracking-widest">Organize your matrix into high-level groupings.</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-6">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Section Name</Label>
-                        <Input 
-                            placeholder="e.g. Sub Dealers" 
-                            className="font-bold h-11 border-2 focus-visible:ring-primary/20 mt-2"
-                            value={newSectionName}
-                            onChange={(e) => setNewSectionName(e.target.value)}
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddSectionOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddSection} disabled={!newSectionName.trim()}>Initialize Section</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
-                <DialogContent className="sm:max-w-xl rounded-2xl border-4 shadow-2xl overflow-hidden p-0">
-                    <DialogHeader className="p-8 border-b bg-muted/5">
-                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Strategy Metric Configuration</DialogTitle>
-                        <DialogDescription className="text-xs font-bold uppercase text-muted-foreground/60 tracking-widest">Define a new strategic calculation or data point for the section.</DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="p-8 space-y-8 bg-background">
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Display Name</Label>
-                                <Input 
-                                    placeholder="e.g. Adjusted Margin" 
-                                    className="font-bold h-11 border-2 focus-visible:ring-primary/20"
-                                    value={newColName}
-                                    onChange={(e) => setNewColName(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Metric Type</Label>
-                                <Select value={newColType} onValueChange={(v: any) => setNewColType(v)}>
-                                    <SelectTrigger className="h-11 font-bold border-2">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="percent" className="font-bold">Percentage (%)</SelectItem>
-                                        <SelectItem value="currency" className="font-bold">Retail Sell ($)</SelectItem>
-                                        <SelectItem value="cost" className="font-bold">Landing Cost ($)</SelectItem>
-                                        <SelectItem value="text" className="font-bold">General Text</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-6 p-6 rounded-2xl bg-muted/5 border-2">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest">Calculated Logic</Label>
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Derive value from other metrics</p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground">Is Calculated</span>
-                                    <Switch checked={isCalculated} onCheckedChange={setIsCalculated} />
-                                </div>
-                            </div>
-
-                            {isCalculated && (
-                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                                    <div className="grid grid-cols-[1fr_50px_1fr] items-end gap-3">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[8px] font-black uppercase text-muted-foreground/60">Operand 1</Label>
-                                            <Select value={formulaLeft} onValueChange={setFormulaLeft}>
-                                                <SelectTrigger className="h-10 font-bold bg-background">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="baseCost" className="font-bold">Base Price</SelectItem>
-                                                    <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
-                                                    {allColumns?.filter(c => !c.isCalculated).map(c => (
-                                                        <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[8px] font-black uppercase text-muted-foreground/60">Op</Label>
-                                            <Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}>
-                                                <SelectTrigger className="h-10 font-black text-primary bg-background">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="+" className="font-black">+</SelectItem>
-                                                    <SelectItem value="-" className="font-black">-</SelectItem>
-                                                    <SelectItem value="*" className="font-black">*</SelectItem>
-                                                    <SelectItem value="/" className="font-black">/</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[8px] font-black uppercase text-muted-foreground/60">Operand 2</Label>
-                                            <div className="flex gap-2">
-                                                <Select value={formulaRight} onValueChange={setFormulaRight}>
-                                                    <SelectTrigger className="h-10 font-bold bg-background flex-1">
-                                                        <SelectValue placeholder="Ref..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="baseCost" className="font-bold">Base Price</SelectItem>
-                                                        <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
-                                                        {allColumns?.filter(c => c.id !== formulaLeft && !c.isCalculated).map(c => (
-                                                            <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <Input 
-                                                    placeholder="Val" 
-                                                    className="w-20 h-10 font-bold bg-background" 
-                                                    value={formulaRight}
-                                                    onChange={e => setFormulaRight(e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p className="text-[9px] font-bold text-primary uppercase italic text-center tracking-tighter">
-                                        Logic: Result = {formulaLeft === 'baseCost' ? 'Base Price' : formulaLeft === 'masterSell' ? 'Master Sell' : allColumns?.find(c => c.id === formulaLeft)?.name} {formulaOp} {formulaRight || '?'}
-                                    </p>
-                                </div>
-                            )}
-
-                            <Separator />
-
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest">Enforcement</Label>
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Require value before finalization</p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground">Mandatory Field</span>
-                                    <Switch checked={isMandatory} onCheckedChange={setIsMandatory} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
-                        <Button variant="outline" onClick={() => setIsAddColumnOpen(false)} className="h-11 px-6 font-bold rounded-xl border-2">Discard</Button>
-                        <Button onClick={handleAddColumn} disabled={!newColName.trim()} className="h-11 px-8 font-black uppercase tracking-widest rounded-xl shadow-xl">
-                            Initialize Metric
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {organisationId && (
-                <FreightManager 
-                    organisationId={organisationId} 
-                    vendorId={vendor.id} 
-                    isOpen={isFreightManagerOpen} 
-                    onClose={() => setIsFreightManagerOpen(false)} 
-                />
-            )}
-
-            {organisationId && (
-                <AuditLogDialog 
-                    organisationId={organisationId}
-                    vendorId={vendor.id}
-                    isOpen={isAuditLogOpen}
-                    onClose={() => setIsAuditLogOpen(false)}
-                />
-            )}
+            <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
+            <FreightManager organisationId={organisationId} vendorId={vendor.id} isOpen={isFreightManagerOpen} onClose={() => setIsFreightManagerOpen(false)} />
+            <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}><DialogContent><DialogHeader><DialogTitle>Create Strategy Section</DialogTitle></DialogHeader><div className="py-6"><Label>Section Name</Label><Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2" /></div><DialogFooter><Button onClick={handleAddSection}>Create</Button></DialogFooter></DialogContent></Dialog>
+            <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}><DialogContent><DialogHeader><DialogTitle>Metric Configuration</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div className="grid grid-cols-2 gap-4"><div><Label>Name</Label><Input value={newColName} onChange={e => setNewColName(e.target.value)} /></div><div><Label>Type</Label><Select value={newColType} onValueChange={(v: any) => setNewColType(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="percent">Percentage</SelectItem><SelectItem value="currency">Currency</SelectItem><SelectItem value="cost">Cost</SelectItem><SelectItem value="text">Text</SelectItem></SelectContent></Select></div></div><div className="flex items-center justify-between p-4 bg-muted/20 rounded-xl"><div><Label>Calculated</Label></div><Switch checked={isCalculated} onCheckedChange={setIsCalculated} /></div>{isCalculated && <div className="grid grid-cols-3 gap-2"><Select value={formulaLeft} onValueChange={setFormulaLeft}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="baseCost">Base Cost</SelectItem><SelectItem value="masterSell">Master Sell</SelectItem></SelectContent></Select><Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="+">+</SelectItem><SelectItem value="-">-</SelectItem><SelectItem value="*">*</SelectItem><SelectItem value="/">/</SelectItem></SelectContent></Select><Input placeholder="Value" value={formulaRight} onChange={e => setFormulaRight(e.target.value)} /></div>}</div><DialogFooter><Button onClick={handleAddColumn}>Initialize Metric</Button></DialogFooter></DialogContent></Dialog>
         </div>
     );
 }
 
-function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalMatrixCols }: any) {
+function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
+    const totalCols = sections.reduce((acc: number, s: any) => acc + getSectionColCount(s), 0);
     return (
         <>
-            <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
-                <TableCell colSpan={totalMatrixCols + 1} className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                    <div className="flex items-center gap-3">
-                        {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                        <span>{range.name} Range</span>
-                        <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
-                    </div>
+            <TableRow className="bg-muted/30 cursor-pointer" onClick={onToggle}>
+                <TableCell className="py-3 px-6 font-black uppercase text-xs border-b">
+                    <div className="flex items-center gap-2">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}<span>{range.name} RANGE</span></div>
                 </TableCell>
+                <TableCell colSpan={totalCols} className="border-b" />
             </TableRow>
             {isExpanded && models.map((model: any) => (
-                <ModelGroup 
-                    key={model.id} 
-                    model={model} 
-                    variants={variants[model.id] || []} 
-                    sections={sections}
-                    allColumns={allColumns}
-                    strategy={strategy}
-                    onUpdateValue={onUpdateValue}
-                    vendor={vendor}
-                    organisation={organisation}
-                    exchangeRate={exchangeRate}
-                    totalMatrixCols={totalMatrixCols}
-                />
+                <ModelGroup key={model.id} model={model} variants={variants[model.id] || []} sections={sections} allColumns={allColumns} strategy={strategy} onUpdateValue={onUpdateValue} vendor={vendor} organisation={organisation} exchangeRate={exchangeRate} />
             ))}
         </>
     );
 }
 
-function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalMatrixCols }: any) {
+function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
-
+    const totalCols = sections.reduce((acc: number, s: any) => acc + getSectionColCount(s), 0);
     return (
         <>
-            <TableRow className="bg-muted/5 border-l-4 border-l-primary/40 group">
-                <TableCell colSpan={totalMatrixCols + 1} className="py-3 px-8 border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => setIsLocalExpanded(!isLocalExpanded)} className="hover:text-primary transition-colors shrink-0">
-                            {isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        </button>
-                        <div className="flex items-center gap-3 min-w-0">
-                            <span className="font-black text-[11px] uppercase tracking-tight leading-tight truncate">{model.name}</span>
-                            <span className="text-[9px] font-mono text-muted-foreground uppercase opacity-60 tracking-widest shrink-0">{model.modelCode || 'NO CODE'}</span>
-                        </div>
-                    </div>
+            <TableRow className="bg-muted/5 border-l-4 border-l-primary">
+                <TableCell className="py-3 px-8 border-b">
+                    <div className="flex items-center gap-3"><button onClick={() => setIsLocalExpanded(!isLocalExpanded)}>{isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button><span className="font-black text-[11px] uppercase truncate">{model.name}</span><span className="text-[9px] font-mono text-muted-foreground">{model.modelCode || 'NO CODE'}</span></div>
                 </TableCell>
+                <TableCell colSpan={totalCols} className="border-b" />
             </TableRow>
-
             {isLocalExpanded && (
                 <>
                     {variants.map((v: any) => (
-                        <PricingRow 
-                            key={v.id} 
-                            id={v.id} 
-                            name={v.name} 
-                            sku={v.sku} 
-                            cost={v.cost} 
-                            sell={v.sellPriceExclGst} 
-                            vendor={vendor}
-                            organisation={organisation}
-                            exchangeRate={exchangeRate}
-                            sections={sections}
-                            allColumns={allColumns}
-                            strategy={strategy}
-                            onUpdateValue={onUpdateValue}
-                            indent
-                            isBoatVariant
-                        />
+                        <PricingRow key={v.id} id={v.id} name={v.name} sku={v.sku} cost={v.cost} sell={v.sellPriceExclGst} vendor={vendor} organisation={organisation} exchangeRate={exchangeRate} sections={sections} allColumns={allColumns} strategy={strategy} onUpdateValue={onUpdateValue} indent />
                     ))}
-
-                    {model.optionalFeatures && model.optionalFeatures.length > 0 && (
-                        <>
-                            <TableRow className="bg-white/50 border-l-4 border-l-primary/40 group">
-                                <TableCell colSpan={totalMatrixCols + 1} className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                                    <div className="flex items-center gap-2">
-                                        <Wrench className="h-3.5 w-3.5" />
-                                        <span>Factory Options</span>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                            {model.optionalFeatures.map((f: any) => (
-                                <PricingRow 
-                                    key={f.id} 
-                                    id={f.id} 
-                                    name={f.name} 
-                                    sku={f.code} 
-                                    cost={f.cost} 
-                                    sell={f.sellPriceExclGst} 
-                                    vendor={vendor}
-                                    organisation={organisation}
-                                    exchangeRate={exchangeRate}
-                                    sections={sections}
-                                    allColumns={allColumns}
-                                    strategy={strategy}
-                                    onUpdateValue={onUpdateValue}
-                                    indent
-                                    isOption
-                                />
-                            ))}
-                        </>
-                    )}
+                    {model.optionalFeatures && model.optionalFeatures.length > 0 && model.optionalFeatures.map((f: any) => (
+                        <PricingRow key={f.id} id={f.id} name={f.name} sku={f.code} cost={f.cost} sell={f.sellPriceExclGst} vendor={vendor} organisation={organisation} exchangeRate={exchangeRate} sections={sections} allColumns={allColumns} strategy={strategy} onUpdateValue={onUpdateValue} indent isOption />
+                    ))}
                 </>
             )}
         </>
     );
 }
 
-function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, isBoatVariant, vendor, organisation, exchangeRate }: any) {
+function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
-
     return (
-        <TableRow className="hover:bg-muted/30 group transition-colors">
-            <TableCell className={cn("py-2.5 border-r border-b sticky left-0 z-30 bg-white group-hover:bg-muted/30 transition-colors shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]", indent ? "pl-16" : "px-6")}>
-                <div className="flex flex-col min-w-0">
-                    <span className="font-bold text-[11px] uppercase tracking-tight truncate">{name}</span>
-                    <span className="text-[9px] font-mono text-muted-foreground uppercase">{sku || 'NO SKU'}</span>
-                </div>
+        <TableRow className="hover:bg-muted/30 transition-colors">
+            <TableCell className={cn("py-2.5 border-r border-b", indent ? "pl-16" : "px-6")}>
+                <div className="flex flex-col min-w-0"><span className="font-bold text-[11px] uppercase truncate">{name}</span><span className="text-[9px] font-mono text-muted-foreground uppercase">{sku || 'NO SKU'}</span></div>
             </TableCell>
-            
             {sections.map((sec: any) => {
                 if (sec.id === 'sec-exchange') {
-                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b" />;
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-center border-r border-b bg-primary/5">
-                                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
-                            </TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5">
-                                <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
-                            </TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5">
-                                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
-                            </TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5">
-                                <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
-                            </TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[10px]">{vendor.currency || 'AUD'}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono">{exchangeRate.toFixed(4)}</TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[10px]">{organisation?.tradingCurrency || 'AUD'}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono">1.0000</TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-vendor') {
-                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b" />;
-                    
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
                     const costOverride = itemValues['base_cost_override'];
-                    const effectiveCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) 
-                        ? parseFloat(costOverride) 
-                        : cost;
+                    const effectiveCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : cost;
                     const convertedCost = (effectiveCost || 0) * (exchangeRate || 1);
-                    
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="p-0 border-r border-b bg-primary/5 group-hover:bg-primary/10 transition-colors">
-                                <EditableCell 
-                                    id={id}
-                                    col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }}
-                                    value={costOverride || ''}
-                                    placeholder={cost ? cost.toFixed(2) : "0.00"}
-                                    onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)}
-                                    align="right"
-                                />
+                            <TableCell className="p-0 border-r border-b bg-primary/5">
+                                <EditableCell id={id} col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} value={costOverride || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" />
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5 align-middle">
-                                {formatCurrency(convertedCost, organisation?.tradingCurrency || 'AUD')}
-                            </TableCell>
+                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">{formatCurrency(convertedCost, organisation?.tradingCurrency || 'AUD')}</TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-freight') {
-                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b" />;
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
                     return (
-                        <TableCell key={sec.id} className="p-0 border-r border-b bg-slate-50 group-hover:bg-slate-100 transition-colors">
-                            {isBoatVariant ? (
-                                <EditableCell 
-                                    id={id}
-                                    col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }}
-                                    value={itemValues['packed_m3'] || ''}
-                                    onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)}
-                                    suffix="m³"
-                                    align="right"
-                                />
-                            ) : (
-                                <div className="h-full w-full bg-slate-100/50" />
-                            )}
+                        <TableCell key={sec.id} className="p-0 border-r border-b bg-primary/5">
+                            {!isOption ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-muted/10" />}
                         </TableCell>
                     );
                 }
-
-                if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b last:border-r-0" />;
-                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-primary/5 border-r border-b last:border-r-0" />;
-
+                if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
+                if (sec.columns.length === 0) return <TableCell key={sec.id} className="bg-primary/5 border-r border-b" />;
                 return sec.columns.map((col: any) => (
-                    <TableCell key={col.id} className="p-0 border-r border-b last:border-r-0 bg-primary/5 group-hover:bg-primary/10 transition-colors">
-                        {col.isCalculated ? (
-                            <CalculatedCell 
-                                col={col} 
-                                baseCost={cost} 
-                                masterSell={sell} 
-                                itemValues={itemValues} 
-                                allCols={allColumns} 
-                            />
-                        ) : (
-                            <EditableCell 
-                                id={id}
-                                col={col}
-                                value={itemValues[col.id] || ''} 
-                                onChange={(val: any) => onUpdateValue(id, col.id, val)}
-                            />
-                        )}
+                    <TableCell key={col.id} className="p-0 border-r border-b bg-primary/5">
+                        {col.isCalculated ? <CalculatedCell col={col} baseCost={cost} masterSell={sell} itemValues={itemValues} allCols={allColumns} /> : <EditableCell id={id} col={col} value={itemValues[col.id] || ''} onChange={(val: any) => onUpdateValue(id, col.id, val)} />}
                     </TableCell>
                 ));
             })}
@@ -1460,74 +854,21 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 
 function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols }: { col: CustomColumn, baseCost: number, masterSell: number, itemValues: any, allCols: CustomColumn[] }) {
     const { value, error } = calculateValue(col, baseCost, masterSell, itemValues, allCols);
-
     return (
-        <div className="flex items-center justify-center h-full w-full px-2 relative group/calc">
-            {error ? (
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-destructive/10 text-destructive animate-pulse cursor-help">
-                                <AlertCircle className="h-3 w-3" />
-                                <span className="text-[8px] font-black uppercase">Missing Data</span>
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-destructive text-destructive-foreground border-none font-bold text-[10px] uppercase p-3 rounded-xl shadow-xl">
-                            {error}
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            ) : (
-                <span className="text-[11px] font-black text-primary">
-                    {col.type === 'percent' ? `${(Number(value) * 100).toFixed(2)}%` : 
-                     (col.type === 'currency' || col.type === 'cost') ? formatCurrency(Number(value)) : 
-                     String(value || '-')}
-                </span>
-            )}
-            <div className="absolute top-1 left-1 opacity-0 group-hover/calc:opacity-40 transition-opacity">
-                <Lock className="h-2.5 w-2.5 text-primary" />
-            </div>
+        <div className="flex items-center justify-center h-full px-2">
+            {error ? <AlertCircle className="h-3 w-3 text-destructive" title={error} /> : <span className="text-[11px] font-black text-primary">{col.type === 'percent' ? `${(Number(value) * 100).toFixed(2)}%` : (col.type === 'currency' || col.type === 'cost') ? formatCurrency(Number(value)) : String(value || '-')}</span>}
         </div>
     );
 }
 
 function EditableCell({ id, col, value, onChange, placeholder, suffix, align = 'center' }: any) {
     const [localValue, setLocalValue] = useState(value);
-    const isMissingMandatory = col.isMandatory && (value === undefined || value === null || value === '');
-
-    useEffect(() => {
-        setLocalValue(value);
-    }, [value]);
-
-    const handleBlur = () => {
-        if (String(localValue || '') !== String(value || '')) {
-            onChange(localValue);
-        }
-    };
-
+    useEffect(() => { setLocalValue(value); }, [value]);
+    const handleBlur = () => { if (String(localValue || '') !== String(value || '')) onChange(localValue); };
     return (
-        <div className="relative h-full w-full flex items-center">
-            <input 
-                type={col.type === 'text' ? 'text' : 'number'}
-                className={cn(
-                    "h-10 w-full bg-transparent border-none text-[11px] font-bold transition-all outline-none px-3 focus:ring-2 focus:ring-primary focus:bg-background",
-                    align === 'right' ? 'text-right pr-8' : align === 'center' ? 'text-center' : 'text-left',
-                    isMissingMandatory ? "bg-destructive/5 placeholder:text-destructive/40" : ""
-                )}
-                value={localValue}
-                onChange={(e) => setLocalValue(e.target.value)}
-                onBlur={handleBlur}
-                placeholder={placeholder || (col.isMandatory ? "REQUIRED" : "-")}
-            />
-            {col.type === 'percent' && localValue && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-primary/40">%</span>}
-            {col.type === 'currency' && localValue && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-primary/40">$</span>}
-            {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-muted-foreground/40">{suffix}</span>}
-            
-            {isMissingMandatory && (
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <AlertCircle className="h-3 w-3 text-destructive opacity-40" />
-                </div>
-            )}
+        <div className="relative h-full flex items-center">
+            <input type={col.type === 'text' ? 'text' : 'number'} className={cn("h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none px-3 focus:bg-background", align === 'right' ? 'text-right pr-8' : 'text-center')} value={localValue} onChange={e => setLocalValue(e.target.value)} onBlur={handleBlur} placeholder={placeholder || "-"} />
+            {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black opacity-40">{suffix}</span>}
         </div>
     );
 }
