@@ -80,9 +80,9 @@ interface CustomColumn {
     isMandatory?: boolean;
     isCalculated?: boolean;
     formula?: {
-        leftId: string; // 'baseCost', 'masterSell', or a col-ID
+        leftId: string;
         operator: '+' | '-' | '*' | '/';
-        rightId: string | number; // 'baseCost', 'masterSell', a col-ID, or a numeric constant
+        rightId: string | number;
     };
 }
 
@@ -134,7 +134,7 @@ interface FreightContainer {
 const getSectionColCount = (sec: PricingSection) => {
     if (sec.isCollapsed) return 1;
     if (sec.id === 'sec-exchange') return 4;
-    if (sec.id === 'sec-vendor') return 2; // Base Price ISO, Base Price Converted
+    if (sec.id === 'sec-vendor') return 2;
     if (sec.id === 'sec-freight') return 1;
     return Math.max(1, sec.columns.length);
 };
@@ -469,7 +469,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (strategyLoading || !strategy) return;
         
         const currentSections = strategy.sections || [];
-        // Ensure Exchange, Vendor, and Freight exist as core sections
         const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight'];
         const missingIds = requiredIds.filter(id => !currentSections.some(s => s.id === id));
         
@@ -484,7 +483,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 ? Math.max(...currentSections.map(s => s.order)) + 1 
                 : 0;
                 
-            const newSections = currentSections.filter(s => s.id !== 'sec-master'); // Remove old Master Core if present
+            const newSections = currentSections.filter(s => s.id !== 'sec-master');
             missingIds.forEach(id => {
                 if (!newSections.some(s => s.id === id)) {
                     newSections.push({ ...defaults[id], order: nextOrder++ });
@@ -496,11 +495,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 .map((s, i) => ({ ...s, order: i }));
 
             updateDoc(strategyRef, { sections: normalized });
-        } else if (currentSections.some(s => s.id === 'sec-master')) {
-            const filtered = currentSections
-                .filter(s => s.id !== 'sec-master')
-                .map((s, i) => ({ ...s, order: i }));
-            updateDoc(strategyRef, { sections: filtered });
         }
     }, [strategy, strategyLoading, strategyRef]);
 
@@ -547,6 +541,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const sortedSections = useMemo(() => {
         return [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
     }, [strategy?.sections]);
+
+    const totalMatrixCols = useMemo(() => {
+        return sortedSections.reduce((acc, s) => acc + getSectionColCount(s), 0);
+    }, [sortedSections]);
 
     const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
         const sections = [...sortedSections];
@@ -686,9 +684,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const PricingTable = () => (
         <div className="min-w-[1600px] bg-background">
             <Table className="border-separate border-spacing-0 table-fixed w-full">
-                <TableHeader className="sticky top-0 z-20">
+                <TableHeader className="sticky top-0 z-40">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[350px] border-r border-b bg-card sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
+                        <TableHead className="w-[350px] border-r border-b bg-white sticky left-0 z-50 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]"></TableHead>
                         {sortedSections.map((sec, secIdx) => {
                             const isCoreSystem = ['sec-exchange', 'sec-vendor', 'sec-freight'].includes(sec.id);
                             const colSpan = getSectionColCount(sec);
@@ -725,7 +723,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         })}
                     </TableRow>
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="py-4 px-6 border-r border-b bg-muted/20 font-black uppercase text-[10px] sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Description &amp; SKU</TableHead>
+                        <TableHead className="py-4 px-6 border-r border-b bg-white font-black uppercase text-[10px] sticky left-0 z-50 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">Description &amp; SKU</TableHead>
                         {sortedSections.map(sec => {
                             if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b last:border-r-0 bg-muted/20" />;
                             
@@ -812,6 +810,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             vendor={vendor}
                             organisation={organisation}
                             exchangeRate={activeExchangeRate}
+                            totalMatrixCols={totalMatrixCols}
                         />
                     ))}
                 </TableBody>
@@ -1098,36 +1097,18 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 }
 
-function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
-    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
-
+function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalMatrixCols }: any) {
     return (
         <>
             <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-r sticky left-0 z-30 bg-card shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-r sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
                         {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                         <span>{range.name} Range</span>
                         <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                     </div>
                 </TableCell>
-                <TableCell className="text-center border-r bg-primary/5">
-                    <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
-                </TableCell>
-                <TableCell className="text-center border-r bg-primary/5">
-                    <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
-                </TableCell>
-                <TableCell className="text-center border-r bg-primary/5">
-                    <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
-                </TableCell>
-                <TableCell className="text-center border-r bg-primary/5">
-                    <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
-                </TableCell>
-                <TableCell className="border-r" />
-                <TableCell className="border-r" />
-                <TableCell className="border-r bg-slate-50" />
-                
-                <TableCell colSpan={strategyColCount} className="pr-6 bg-muted/30" />
+                <TableCell colSpan={totalMatrixCols} className="bg-muted/10 border-b" />
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -1141,38 +1122,38 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     vendor={vendor}
                     organisation={organisation}
                     exchangeRate={exchangeRate}
+                    totalMatrixCols={totalMatrixCols}
                 />
             ))}
         </>
     );
 }
 
-function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
+function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalMatrixCols }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
-    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
 
     return (
         <>
-            <TableRow className="bg-muted/5 border-l-4 border-l-primary/40">
-                <TableCell className="py-3 px-8 border-r sticky left-0 z-30 bg-card shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+            <TableRow className="bg-muted/5 border-l-4 border-l-primary/40 group">
+                <TableCell className="py-3 px-8 border-r border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setIsLocalExpanded(!isLocalExpanded)} className="hover:text-primary transition-colors">
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </button>
-                        <div className="flex flex-col">
-                            <span className="font-black text-[11px] uppercase tracking-tight leading-tight">{model.name}</span>
+                        <div className="flex flex-col min-w-0">
+                            <span className="font-black text-[11px] uppercase tracking-tight leading-tight truncate">{model.name}</span>
                             <span className="text-[9px] font-mono text-muted-foreground uppercase opacity-60 tracking-widest">{model.modelCode || 'NO CODE'}</span>
                         </div>
                     </div>
                 </TableCell>
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell className="bg-muted/5 border-r" />
-                <TableCell colSpan={strategyColCount} className="bg-muted/5" />
+                {/* Spanned Cell for Series Identity across the whole matrix width */}
+                <TableCell colSpan={totalMatrixCols} className="bg-muted/5 border-b p-0">
+                    <div className="h-full w-full flex items-center px-6">
+                        <div className="h-px flex-1 bg-primary/10" />
+                        <span className="mx-4 text-[8px] font-black uppercase tracking-[0.3em] text-primary/30">Series Identity Boundary</span>
+                        <div className="h-px flex-1 bg-primary/10" />
+                    </div>
+                </TableCell>
             </TableRow>
 
             {isLocalExpanded && (
@@ -1199,14 +1180,14 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
 
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
-                            <TableRow className="bg-white/50 border-l-4 border-l-primary/40">
-                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-r sticky left-0 z-30 bg-card shadow-[2px_0_5px_rgba(0,0,0,0.05)]" colSpan={1}>
+                            <TableRow className="bg-white/50 border-l-4 border-l-primary/40 group">
+                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-r border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                     <div className="flex items-center gap-2">
                                         <Wrench className="h-3.5 w-3.5" />
                                         <span>Factory Options</span>
                                     </div>
                                 </TableCell>
-                                <TableCell colSpan={7 + strategyColCount} className="bg-white/50" />
+                                <TableCell colSpan={totalMatrixCols} className="bg-white/50 border-b" />
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 
@@ -1240,45 +1221,51 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 
     return (
         <TableRow className="hover:bg-muted/30 group transition-colors">
-            <TableCell className={cn("py-2.5 border-r sticky left-0 z-30 bg-background group-hover:bg-muted/30 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)]", indent ? "pl-16" : "px-6")}>
-                <div className="flex flex-col">
-                    <span className="font-bold text-[11px] uppercase tracking-tight">{name}</span>
+            <TableCell className={cn("py-2.5 border-r border-b sticky left-0 z-30 bg-white group-hover:bg-muted/30 transition-colors shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]", indent ? "pl-16" : "px-6")}>
+                <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-[11px] uppercase tracking-tight truncate">{name}</span>
                     <span className="text-[9px] font-mono text-muted-foreground uppercase">{sku || 'NO SKU'}</span>
                 </div>
             </TableCell>
-            <TableCell className="text-center border-r bg-primary/5">
-                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
-            </TableCell>
-            <TableCell className="text-center border-r bg-primary/5">
-                <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
-            </TableCell>
-            <TableCell className="text-center border-r bg-primary/5">
-                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
-            </TableCell>
-            <TableCell className="text-center border-r bg-primary/5">
-                <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
-            </TableCell>
             
-            {/* Core Sections logic */}
             {sections.map((sec: any) => {
+                if (sec.id === 'sec-exchange') {
+                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b" />;
+                    return (
+                        <React.Fragment key={sec.id}>
+                            <TableCell className="text-center border-r border-b bg-primary/5">
+                                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5">
+                                <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
+                            </TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5">
+                                <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{organisation?.tradingCurrency || 'AUD'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5">
+                                <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
+                            </TableCell>
+                        </React.Fragment>
+                    );
+                }
                 if (sec.id === 'sec-vendor') {
-                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r" />;
+                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b" />;
                     const convertedCost = (cost || 0) * (exchangeRate || 1);
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4 bg-primary/5">
+                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r border-b px-4 bg-primary/5">
                                 {formatCurrency(cost, vendor.currency || 'AUD')}
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-primary border-r px-4 bg-primary/5">
+                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">
                                 {formatCurrency(convertedCost, organisation?.tradingCurrency || 'AUD')}
                             </TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-freight') {
-                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r" />;
+                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b" />;
                     return (
-                        <TableCell key={sec.id} className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
+                        <TableCell key={sec.id} className="text-right bg-slate-50 border-r border-b p-0 group-hover:bg-slate-100 transition-colors">
                             {isBoatVariant ? (
                                 <div className="relative h-full w-full flex items-center">
                                     <input 
@@ -1297,15 +1284,12 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                         </TableCell>
                     );
                 }
-                
-                // Exchange handled above separately
-                if (sec.id === 'sec-exchange') return null;
 
-                if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r last:border-r-0" />;
-                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-primary/5 border-r last:border-r-0" />;
+                if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b last:border-r-0" />;
+                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-primary/5 border-r border-b last:border-r-0" />;
 
                 return sec.columns.map((col: any) => (
-                    <TableCell key={col.id} className="p-0 border-r last:border-r-0 bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                    <TableCell key={col.id} className="p-0 border-r border-b last:border-r-0 bg-primary/5 group-hover:bg-primary/10 transition-colors">
                         {col.isCalculated ? (
                             <CalculatedCell 
                                 col={col} 
