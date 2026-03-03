@@ -9,15 +9,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
+import { ClipboardList } from "lucide-react";
 
-const reports = [
-  { id: "REP-001", date: "2024-05-15", vessel: "Neptune Voyager", route: "SHA-RTM", status: "Completed" },
-  { id: "REP-002", date: "2024-05-16", vessel: "Triton Express", route: "LGB-SIN", status: "In Progress" },
-  { id: "REP-003", date: "2024-05-17", vessel: "Poseidon Runner", route: "TYO-HAM", status: "Completed" },
-  { id: "REP-004", date: "2024-05-18", vessel: "Oceanic Sprinter", route: "SYD-LAX", status: "Delayed" },
-  { id: "REP-005", date: "2024-05-19", vessel: "Neptune Voyager", route: "RTM-NYC", status: "Scheduled" },
-  { id: "REP-006", date: "2024-05-20", vessel: "Triton Express", route: "SIN-DXB", status: "In Progress" },
-]
+// Hardcoded test data removed for production state.
+const reports: any[] = [];
 
 export default function ReportingPage() {
   const getStatusVariant = (status: string) => {
@@ -41,34 +36,41 @@ export default function ReportingPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity Reports</CardTitle>
-          <CardDescription>A summary of recent vessel journeys and their statuses.</CardDescription>
+          <CardTitle>Activity Reports</CardTitle>
+          <CardDescription>A summary of current vessel journeys and logistical status.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Report ID</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Vessel</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reports.map((report) => (
-                <TableRow key={report.id}>
-                  <TableCell className="font-medium">{report.id}</TableCell>
-                  <TableCell>{report.date}</TableCell>
-                  <TableCell>{report.vessel}</TableCell>
-                  <TableCell>{report.route}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(report.status) as any}>{report.status}</Badge>
-                  </TableCell>
+          {reports.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Report ID</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Vessel</TableHead>
+                  <TableHead>Route</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {reports.map((report) => (
+                  <TableRow key={report.id}>
+                    <TableCell className="font-medium">{report.id}</TableCell>
+                    <TableCell>{report.date}</TableCell>
+                    <TableCell>{report.vessel}</TableCell>
+                    <TableCell>{report.route}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(report.status) as any}>{report.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground opacity-20">
+                <ClipboardList className="h-16 w-16 mb-4" />
+                <p className="font-black uppercase tracking-widest text-sm">No Active Reports Found</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

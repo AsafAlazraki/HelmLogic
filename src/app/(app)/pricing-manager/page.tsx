@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -8,7 +7,7 @@ import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where } from "firebase/firestore";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, TrendingUp, ArrowRightLeft, Maximize2 } from "lucide-react";
+import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, TrendingUp, ArrowRightLeft, Maximize2, Minimize2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -128,11 +127,11 @@ export default function PricingManagerPage() {
                 {/* Exchange Rates Strategic Card */}
                 {organisationId && (
                     <Card 
-                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer group overflow-hidden h-24"
+                        className="w-72 bg-gradient-to-br from-primary to-accent text-primary-foreground border-none shadow-xl cursor-pointer group overflow-hidden h-24 relative"
                         onClick={() => setIsExchangeRateManagerOpen(true)}
                     >
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <ArrowRightLeft className="h-12 w-12 rotate-12" />
+                        <div className="absolute -bottom-4 -right-4 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <ArrowRightLeft className="h-24 w-24 -rotate-12" />
                         </div>
                         <CardHeader className="p-3 pb-1 relative z-10">
                             <div className="flex items-center justify-between">
