@@ -46,7 +46,10 @@ import {
     Lock,
     FolderPlus,
     LayoutGrid,
-    Star
+    Star,
+    History,
+    Clock,
+    User as UserIcon
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -72,6 +75,7 @@ import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { formatDistanceToNow } from 'date-fns';
 
 interface CustomColumn {
     id: string;
@@ -131,6 +135,17 @@ interface FreightContainer {
     cubicMeters: number;
 }
 
+interface AuditLogEntry {
+    id: string;
+    itemId: string;
+    colId: string;
+    oldValue: any;
+    newValue: any;
+    timestamp: any;
+    userId: string;
+    userName: string;
+}
+
 const getSectionColCount = (sec: PricingSection) => {
     if (sec.isCollapsed) return 1;
     if (sec.id === 'sec-exchange') return 4;
@@ -146,11 +161,17 @@ const calculateValue = (
     itemValues: Record<string, any>, 
     allCols: CustomColumn[]
 ): { value: number | string | null, error?: string } => {
+    // Check for strategic cost override
+    const costOverride = itemValues['base_cost_override'];
+    const effectiveBaseCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) 
+        ? parseFloat(costOverride) 
+        : baseCost;
+
     if (!col.isCalculated || !col.formula) return { value: itemValues[col.id] ?? null };
 
     const getVal = (id: string | number): number | null => {
         if (typeof id === 'number') return id;
-        if (id === 'baseCost') return baseCost;
+        if (id === 'baseCost') return effectiveBaseCost;
         if (id === 'masterSell') return masterSell;
         
         const sourceCol = allCols.find(c => c.id === id);
@@ -170,7 +191,7 @@ const calculateValue = (
 
     if (left === null || right === null) {
         const missing = left === null ? col.formula.leftId : col.formula.rightId;
-        const missingName = missing === 'baseCost' ? 'Base Cost' : missing === 'masterSell' ? 'Master Sell' : allCols.find(c => c.id === missing)?.name || 'Reference';
+        const missingName = missing === 'baseCost' ? 'Base Price' : missing === 'masterSell' ? 'Master Sell' : allCols.find(c => c.id === missing)?.name || 'Reference';
         return { value: null, error: `Missing source: ${missingName}` };
     }
 
@@ -187,6 +208,89 @@ const calculateValue = (
 
     return { value: result };
 };
+
+function AuditLogDialog({ 
+    organisationId, 
+    vendorId, 
+    isOpen, 
+    onClose 
+}: { 
+    organisationId: string; 
+    vendorId: string; 
+    isOpen: boolean; 
+    onClose: () => void;
+}) {
+    const firestore = useFirestore();
+    const logQuery = useMemoFirebase(() => 
+        query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/auditLog`), orderBy('timestamp', 'desc')),
+    [firestore, organisationId, vendorId]);
+    const { data: logs, loading } = useCollection<AuditLogEntry>(logQuery);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+                <DialogHeader className="p-8 border-b bg-muted/5">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
+                            <History className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-1">
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Strategy Audit Log</DialogTitle>
+                            <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Chronological record of tactical modifications</DialogDescription>
+                        </div>
+                    </div>
+                </DialogHeader>
+                <div className="flex-1 min-h-0">
+                    {loading ? (
+                        <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                    ) : logs && logs.length > 0 ? (
+                        <ScrollArea className="h-full">
+                            <Table>
+                                <TableHeader className="bg-muted/50 sticky top-0 z-10 shadow-sm">
+                                    <TableRow>
+                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Timestamp</TableHead>
+                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">User</TableHead>
+                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Metric</TableHead>
+                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Previous</TableHead>
+                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">New Value</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {logs.map((log) => (
+                                        <TableRow key={log.id} className="hover:bg-muted/10 transition-colors">
+                                            <TableCell className="py-4 px-6 font-medium text-[10px] text-muted-foreground">
+                                                {log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6">
+                                                <div className="flex items-center gap-2">
+                                                    <UserIcon className="h-3 w-3 text-primary opacity-40" />
+                                                    <span className="font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6">
+                                                <Badge variant="outline" className="font-black text-[8px] uppercase border-primary/20 text-primary">{log.colId}</Badge>
+                                            </TableCell>
+                                            <TableCell className="py-4 px-6 font-mono text-[10px] text-muted-foreground/60">{log.oldValue ?? '-'}</TableCell>
+                                            <TableCell className="py-4 px-6 font-mono text-[10px] font-black text-primary">{log.newValue}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-20">
+                            <Clock className="h-16 w-16 mb-4" />
+                            <p className="text-sm font-black uppercase tracking-widest">No strategic modifications logged yet.</p>
+                        </div>
+                    )}
+                </div>
+                <DialogFooter className="p-6 border-t bg-muted/5">
+                    <DialogClose asChild><Button variant="outline" className="font-bold border-2">Close Log</Button></DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function FreightManager({ 
     organisationId, 
@@ -428,6 +532,7 @@ function FreightManager({
 
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
     
     const rangesQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')), [firestore, vendor.id]);
@@ -451,6 +556,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isFreightManagerOpen, setIsFreightManagerOpen] = useState(false);
+    const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
     
     const [newSectionName, setNewSectionName] = useState('');
 
@@ -656,6 +762,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
         const currentValues = strategy?.itemValues || {};
+        const oldValue = currentValues[itemId]?.[colId];
+        
+        // Strict value comparison
+        if (String(oldValue || '') === String(value || '')) return;
+
         const updated = {
             ...currentValues,
             [itemId]: {
@@ -663,7 +774,25 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 [colId]: value
             }
         };
+        
+        // 1. Update persistent strategy values
         updateDoc(strategyRef, { itemValues: updated });
+
+        // 2. LOG STRATEGIC CHANGE
+        try {
+            const auditLogRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}/auditLog`);
+            addDoc(auditLogRef, {
+                itemId,
+                colId,
+                oldValue: oldValue ?? null,
+                newValue: value,
+                timestamp: serverTimestamp(),
+                userId: user?.uid || 'anonymous',
+                userName: user?.displayName || user?.email || 'Anonymous Strategist'
+            });
+        } catch (e) {
+            console.error("Audit log failed:", e);
+        }
     };
 
     const toggleRange = (id: string) => {
@@ -820,6 +949,13 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const StrategyControls = () => (
         <div className="flex items-center gap-3">
+            <Button 
+                onClick={() => setIsAuditLogOpen(true)} 
+                variant="outline" 
+                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 flex items-center gap-2 shadow-sm transition-all hover:bg-primary hover:text-white"
+            >
+                <History className="h-4 w-4" /> Strategic Log
+            </Button>
             <Button 
                 onClick={() => setIsFreightManagerOpen(true)} 
                 variant="outline" 
@@ -1009,7 +1145,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="baseCost" className="font-bold">Base Cost</SelectItem>
+                                                    <SelectItem value="baseCost" className="font-bold">Base Price</SelectItem>
                                                     <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
                                                     {allColumns?.filter(c => !c.isCalculated).map(c => (
                                                         <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
@@ -1039,7 +1175,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                         <SelectValue placeholder="Ref..." />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="baseCost" className="font-bold">Base Cost</SelectItem>
+                                                        <SelectItem value="baseCost" className="font-bold">Base Price</SelectItem>
                                                         <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
                                                         {allColumns?.filter(c => c.id !== formulaLeft && !c.isCalculated).map(c => (
                                                             <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
@@ -1056,7 +1192,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                         </div>
                                     </div>
                                     <p className="text-[9px] font-bold text-primary uppercase italic text-center tracking-tighter">
-                                        Logic: Result = {formulaLeft === 'baseCost' ? 'Base Cost' : formulaLeft === 'masterSell' ? 'Master Sell' : allColumns?.find(c => c.id === formulaLeft)?.name} {formulaOp} {formulaRight || '?'}
+                                        Logic: Result = {formulaLeft === 'baseCost' ? 'Base Price' : formulaLeft === 'masterSell' ? 'Master Sell' : allColumns?.find(c => c.id === formulaLeft)?.name} {formulaOp} {formulaRight || '?'}
                                     </p>
                                 </div>
                             )}
@@ -1091,6 +1227,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     vendorId={vendor.id} 
                     isOpen={isFreightManagerOpen} 
                     onClose={() => setIsFreightManagerOpen(false)} 
+                />
+            )}
+
+            {organisationId && (
+                <AuditLogDialog 
+                    organisationId={organisationId}
+                    vendorId={vendor.id}
+                    isOpen={isAuditLogOpen}
+                    onClose={() => setIsAuditLogOpen(false)}
                 />
             )}
         </div>
@@ -1146,7 +1291,6 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         </div>
                     </div>
                 </TableCell>
-                {/* Spanned Cell for Series Identity across the whole matrix width */}
                 <TableCell colSpan={totalMatrixCols} className="bg-muted/5 border-b p-0">
                     <div className="h-full w-full flex items-center px-6">
                         <div className="h-px flex-1 bg-primary/10" />
@@ -1250,13 +1394,26 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 }
                 if (sec.id === 'sec-vendor') {
                     if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b" />;
-                    const convertedCost = (cost || 0) * (exchangeRate || 1);
+                    
+                    const costOverride = itemValues['base_cost_override'];
+                    const effectiveCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) 
+                        ? parseFloat(costOverride) 
+                        : cost;
+                    const convertedCost = (effectiveCost || 0) * (exchangeRate || 1);
+                    
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r border-b px-4 bg-primary/5">
-                                {formatCurrency(cost, vendor.currency || 'AUD')}
+                            <TableCell className="p-0 border-r border-b bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                                <EditableCell 
+                                    id={id}
+                                    col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }}
+                                    value={costOverride || ''}
+                                    placeholder={cost ? cost.toFixed(2) : "0.00"}
+                                    onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)}
+                                    align="right"
+                                />
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">
+                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5 align-middle">
                                 {formatCurrency(convertedCost, organisation?.tradingCurrency || 'AUD')}
                             </TableCell>
                         </React.Fragment>
@@ -1265,19 +1422,16 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 if (sec.id === 'sec-freight') {
                     if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r border-b" />;
                     return (
-                        <TableCell key={sec.id} className="text-right bg-slate-50 border-r border-b p-0 group-hover:bg-slate-100 transition-colors">
+                        <TableCell key={sec.id} className="p-0 border-r border-b bg-slate-50 group-hover:bg-slate-100 transition-colors">
                             {isBoatVariant ? (
-                                <div className="relative h-full w-full flex items-center">
-                                    <input 
-                                        type="number" 
-                                        step="0.01"
-                                        className="h-10 w-full bg-transparent border-none text-[11px] font-black text-right pr-8 focus:ring-2 focus:ring-primary focus:bg-background transition-all outline-none"
-                                        placeholder="0.00"
-                                        value={itemValues['packed_m3'] || ''}
-                                        onChange={(e) => onUpdateValue(id, 'packed_m3', e.target.value)}
-                                    />
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">m³</span>
-                                </div>
+                                <EditableCell 
+                                    id={id}
+                                    col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }}
+                                    value={itemValues['packed_m3'] || ''}
+                                    onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)}
+                                    suffix="m³"
+                                    align="right"
+                                />
                             ) : (
                                 <div className="h-full w-full bg-slate-100/50" />
                             )}
@@ -1303,7 +1457,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                                 id={id}
                                 col={col}
                                 value={itemValues[col.id] || ''} 
-                                onChange={(val) => onUpdateValue(id, col.id, val)}
+                                onChange={(val: any) => onUpdateValue(id, col.id, val)}
                             />
                         )}
                     </TableCell>
@@ -1346,7 +1500,7 @@ function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols }: { co
     );
 }
 
-function EditableCell({ id, col, value, onChange }: { id: string, col: CustomColumn, value: any, onChange: (val: any) => void }) {
+function EditableCell({ id, col, value, onChange, placeholder, suffix, align = 'center' }: any) {
     const [localValue, setLocalValue] = useState(value);
     const isMissingMandatory = col.isMandatory && (value === undefined || value === null || value === '');
 
@@ -1355,7 +1509,7 @@ function EditableCell({ id, col, value, onChange }: { id: string, col: CustomCol
     }, [value]);
 
     const handleBlur = () => {
-        if (localValue !== value) {
+        if (String(localValue || '') !== String(value || '')) {
             onChange(localValue);
         }
     };
@@ -1365,16 +1519,18 @@ function EditableCell({ id, col, value, onChange }: { id: string, col: CustomCol
             <input 
                 type={col.type === 'text' ? 'text' : 'number'}
                 className={cn(
-                    "h-10 w-full bg-transparent border-none text-[11px] font-bold text-center focus:ring-2 focus:ring-primary focus:bg-background transition-all outline-none",
+                    "h-10 w-full bg-transparent border-none text-[11px] font-bold transition-all outline-none px-3 focus:ring-2 focus:ring-primary focus:bg-background",
+                    align === 'right' ? 'text-right pr-8' : align === 'center' ? 'text-center' : 'text-left',
                     isMissingMandatory ? "bg-destructive/5 placeholder:text-destructive/40" : ""
                 )}
                 value={localValue}
                 onChange={(e) => setLocalValue(e.target.value)}
                 onBlur={handleBlur}
-                placeholder={col.isMandatory ? "REQUIRED" : "-"}
+                placeholder={placeholder || (col.isMandatory ? "REQUIRED" : "-")}
             />
             {col.type === 'percent' && localValue && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-primary/40">%</span>}
             {col.type === 'currency' && localValue && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-primary/40">$</span>}
+            {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-muted-foreground/40">{suffix}</span>}
             
             {isMissingMandatory && (
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none">
