@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -1165,7 +1166,7 @@ export default function ModuleDetailsPage() {
                                  {selectedOrgId && (allOrganisations?.find(o => o.id === selectedOrgId)) ? (
                                     <OrganisationModuleConfig 
                                         organisation={allOrganisations.find(o => o.id === selectedOrgId)!}
-                                        module={moduleData}
+                                        module={module}
                                         allVendors={allVendors || []}
                                         allDealerFitCategories={allDealerFitCategories || []}
                                         onBack={() => setSelectedOrgId(null)}

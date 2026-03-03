@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -178,9 +179,7 @@ const calculateValue = (
     const left = getVal(col.formula.leftId);
     const right = getVal(col.formula.rightId);
 
-    if (left === null || right === null) {
-        return { value: null, error: `Missing source` };
-    }
+    if (left === null || right === null) return { value: null, error: `Missing source` };
 
     let result = 0;
     switch (col.formula.operator) {
@@ -388,15 +387,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         await updateDoc(strategyRef, { sections: sections.map((s, i) => ({ ...s, order: i })) });
     };
 
-    const handleDeleteColumn = async (secId: string, colId: string) => {
-        const sections = [...sortedSections];
-        const idx = sections.findIndex(s => s.id === secId);
-        if (idx !== -1) {
-            sections[idx].columns = sections[idx].columns.filter(c => c.id !== colId);
-            await updateDoc(strategyRef, { sections });
-        }
-    };
-
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
         const currentValues = strategy?.itemValues || {};
         const oldValue = currentValues[itemId]?.[colId];
@@ -478,12 +468,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         </div>
     );
 
-    const PricingTable = ({ isModal = false }: { isModal?: boolean }) => (
+    const PricingTable = () => (
         <div className="relative w-full h-full overflow-auto bg-white">
             <Table className="border-separate border-spacing-0 w-full table-fixed">
                 <TableHeader className="sticky top-0 z-50 bg-white">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[300px] sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                        <TableHead className="w-[300px] sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                             Description & SKU
                         </TableHead>
                         {sortedSections.map((sec, secIdx) => {
@@ -621,7 +611,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             <HeaderActions isFocus />
                         </div>
                         <div className="flex-1 min-h-0">
-                            <PricingTable isModal />
+                            <PricingTable />
                         </div>
                     </div>
                 </DialogContent>
