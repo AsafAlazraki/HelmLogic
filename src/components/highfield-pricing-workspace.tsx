@@ -411,7 +411,7 @@ function FreightManager({
                                                         placeholder="e.g. Ship from China" 
                                                         className="h-10 font-bold bg-background"
                                                         value={description}
-                                                        onChange={e => setDescription(e.target.value)}
+                                                        onChange={e => description(e.target.value)}
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -1246,14 +1246,13 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     return (
         <>
             <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-r sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                <TableCell colSpan={totalMatrixCols + 1} className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
                         {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                         <span>{range.name} Range</span>
                         <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                     </div>
                 </TableCell>
-                <TableCell colSpan={totalMatrixCols} className="bg-muted/10 border-b" />
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -1280,22 +1279,15 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-muted/5 border-l-4 border-l-primary/40 group">
-                <TableCell className="py-3 px-8 border-r border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                <TableCell colSpan={totalMatrixCols + 1} className="py-3 px-8 border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => setIsLocalExpanded(!isLocalExpanded)} className="hover:text-primary transition-colors">
+                        <button onClick={() => setIsLocalExpanded(!isLocalExpanded)} className="hover:text-primary transition-colors shrink-0">
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </button>
-                        <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-3 min-w-0">
                             <span className="font-black text-[11px] uppercase tracking-tight leading-tight truncate">{model.name}</span>
-                            <span className="text-[9px] font-mono text-muted-foreground uppercase opacity-60 tracking-widest">{model.modelCode || 'NO CODE'}</span>
+                            <span className="text-[9px] font-mono text-muted-foreground uppercase opacity-60 tracking-widest shrink-0">{model.modelCode || 'NO CODE'}</span>
                         </div>
-                    </div>
-                </TableCell>
-                <TableCell colSpan={totalMatrixCols} className="bg-muted/5 border-b p-0">
-                    <div className="h-full w-full flex items-center px-6">
-                        <div className="h-px flex-1 bg-primary/10" />
-                        <span className="mx-4 text-[8px] font-black uppercase tracking-[0.3em] text-primary/30">Series Identity Boundary</span>
-                        <div className="h-px flex-1 bg-primary/10" />
                     </div>
                 </TableCell>
             </TableRow>
@@ -1325,13 +1317,12 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="bg-white/50 border-l-4 border-l-primary/40 group">
-                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-r border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                <TableCell colSpan={totalMatrixCols + 1} className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-b sticky left-0 z-30 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                     <div className="flex items-center gap-2">
                                         <Wrench className="h-3.5 w-3.5" />
                                         <span>Factory Options</span>
                                     </div>
                                 </TableCell>
-                                <TableCell colSpan={totalMatrixCols} className="bg-white/50 border-b" />
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 

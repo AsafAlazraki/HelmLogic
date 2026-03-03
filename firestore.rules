@@ -66,6 +66,10 @@ service cloud.firestore {
         match /freightContainers/{containerId} {
           allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
         }
+
+        match /auditLog/{logId} {
+          allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
+        }
       }
 
       match /dealerFitSelections/{selectionId} {

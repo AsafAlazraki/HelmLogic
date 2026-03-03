@@ -167,18 +167,6 @@
       },
       "required": ["code", "rate"]
     },
-    "ExchangeRateLog": {
-      "title": "Exchange Rate Audit Log",
-      "description": "Historical record of currency rate changes with strategic notes.",
-      "type": "object",
-      "properties": {
-        "rate": { "type": "number", "description": "The rate at the time of this log entry." },
-        "note": { "type": "string", "description": "The strategic reason or note for this change." },
-        "timestamp": { "type": "string", "format": "date-time", "description": "When the change occurred." },
-        "userId": { "type": "string", "description": "The user who made the change." }
-      },
-      "required": ["rate", "note", "timestamp"]
-    },
     "FreightContainer": {
       "title": "Freight Container",
       "description": "Strategic freight container configuration for a specific vendor.",
@@ -192,6 +180,21 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["size", "cost", "currency", "cubicMeters"]
+    },
+    "AuditLogEntry": {
+      "title": "Audit Log Entry",
+      "description": "Represents a single entry in the strategy audit log.",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string" },
+        "colId": { "type": "string" },
+        "oldValue": { "type": "any" },
+        "newValue": { "type": "any" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" }
+      },
+      "required": ["itemId", "colId", "newValue", "timestamp", "userId"]
     },
     "Vendor": {
       "title": "Vendor",
@@ -801,11 +804,23 @@
       },
       "description": "Historical audit log of manual currency adjustments."
     },
+    "/organisations/{organisationId}/pricingStrategies/{vendorId}": {
+      "schema": {
+        "type": "object"
+      },
+      "description": "Dynamic pricing strategy matrix configuration for a vendor."
+    },
     "/organisations/{organisationId}/pricingStrategies/{vendorId}/freightContainers/{containerId}": {
       "schema": {
         "$ref": "#/backend/entities/FreightContainer"
       },
       "description": "Strategic freight container settings for a specific vendor."
+    },
+    "/organisations/{organisationId}/pricingStrategies/{vendorId}/auditLog/{logId}": {
+      "schema": {
+        "$ref": "#/backend/entities/AuditLogEntry"
+      },
+      "description": "Tactical change log for pricing strategies."
     },
     "/data-warehouse/{vendorId}": {
       "schema": {
