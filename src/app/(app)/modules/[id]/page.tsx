@@ -220,7 +220,7 @@ function QuoteSelectorDialog({
     );
 }
 
-function ModuleBreadcrumbs({ module, range, model, pendingMotor, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; pendingMotor: any; view: string, onBreadcrumbClick: (level: 'ranges' | 'models' | 'motors') => void }) {
+function ModuleBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: string, onBreadcrumbClick: (level: 'ranges' | 'models' | 'motors') => void }) {
     return (
         <div className="flex items-center text-[10px] font-bold uppercase tracking-widest text-white/60">
             <button type="button" className="hover:text-white transition-colors" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
@@ -250,10 +250,8 @@ export default function ModuleDetailsPage() {
     const [view, setView] = useState<'ranges' | 'models' | 'motors' | 'bmt' | 'quote' | 'operations' | 'pricing'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-    const [pendingMotor, setPendingMotor] = useState<any | null>(null);
     const [isNewQuoteOpen, setIsNewQuoteOpen] = useState(false);
     
-    const [isSavingModule, setIsSavingModule] = useState(false);
     const [viewContextOrgId, setViewContextOrgId] = useState<string | null>(null);
     const [inStockFilter, setInStockFilter] = useState<string>('all');
 
@@ -370,23 +368,14 @@ export default function ModuleDetailsPage() {
         setView('bmt');
     };
 
-    const handleMotorSelect = (motor: any, dataSetId: string) => {
-        setPendingMotor({ motor, dataSetId });
-        setView('motors');
-    };
-
     const handleBreadcrumbClick = (level: 'ranges' | 'models' | 'motors') => {
         if (level === 'ranges') {
             setView('ranges');
             setSelectedRange(null);
             setSelectedModel(null);
-            setPendingMotor(null);
         } else if (level === 'models') {
             setView('models');
             setSelectedModel(null);
-        } else if (level === 'motors') {
-            setView('motors');
-            setPendingMotor(null);
         }
     };
 
@@ -413,7 +402,6 @@ export default function ModuleDetailsPage() {
                                 module={moduleData} 
                                 range={selectedRange} 
                                 model={selectedModel} 
-                                pendingMotor={pendingMotor} 
                                 view={view} 
                                 onBreadcrumbClick={handleBreadcrumbClick} 
                             />
@@ -602,7 +590,7 @@ export default function ModuleDetailsPage() {
                                             )}
                                         </>
                                     ) : isMotorBrand && mainVendor ? (
-                                        <MotorModuleBrowser vendor={mainVendor} onMotorSelect={handleMotorSelect} />
+                                        <MotorModuleBrowser vendor={mainVendor} onMotorSelect={() => {}} />
                                     ) : (
                                         <div className="py-24 text-center opacity-20"><Wrench className="h-16 w-16 mx-auto" /></div>
                                     )}
