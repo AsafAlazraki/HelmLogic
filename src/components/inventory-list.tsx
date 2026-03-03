@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -53,7 +52,7 @@ export function InventoryList({
     filterOrgId,
     isAdmin = false
 }: { 
-    organisation: Organisation; 
+    organisation: Organisation | null; 
     subDealers: Organisation[]; 
     parentOrg: Organisation | null;
     moduleId: string;
@@ -63,6 +62,7 @@ export function InventoryList({
     const firestore = useFirestore();
     
     const targetOrgIds = useMemo(() => {
+        if (!organisation) return [];
         if (filterOrgId === 'local') return [organisation.id];
         if (filterOrgId === 'all') return [organisation.id, ...subDealers.map(sd => sd.id)];
         return [filterOrgId];
@@ -85,6 +85,7 @@ export function InventoryList({
 
     const availableTargets = useMemo(() => {
         const targets = [];
+        if (!organisation) return [];
         if (parentOrg) targets.push({ id: parentOrg.id, name: `Parent: ${parentOrg.name}` });
         if (organisation.id !== selectedItem?.organisationId) targets.push({ id: organisation.id, name: `My Org: ${organisation.name}` });
         subDealers.forEach(sd => {
@@ -116,6 +117,7 @@ export function InventoryList({
     };
 
     const handleAddTestStock = async () => {
+        if (!organisation) return;
         const colRef = collection(firestore, 'inventory');
         const dataToAdd = {
             name: `Stock Unit ${Math.floor(Math.random() * 1000)}`,
@@ -160,7 +162,7 @@ export function InventoryList({
             {(!inventory || inventory.length === 0) ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
                     <Box className="h-8 w-8 text-muted-foreground/20" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Inventory Empty</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Stock Empty</p>
                     <Button variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest" onClick={handleAddTestStock}>
                         Initialize Stock
                     </Button>
