@@ -298,13 +298,12 @@ export default function ModuleDetailsPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {/* Cinematic Module Hero - Tighter Compact Layout */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-8 py-4 text-primary-foreground shadow-2xl z-20 h-32">
-                {/* Enhanced Fluid Mesh Animation */}
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/25 blur-[120px] rounded-full animate-pulse pointer-events-none" />
-                    <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/35 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
-                    <div className="absolute top-[10%] left-[20%] w-[40%] h-[100%] bg-white/5 blur-[100px] rounded-full pointer-events-none" />
+            {/* Cinematic Module Hero - Enhanced Tighter Compact Layout */}
+            <div className="relative shrink-0 overflow-hidden bg-primary px-8 py-4 text-primary-foreground z-20 h-28 border-b border-white/10">
+                {/* Fluid Mesh Animation */}
+                <div className="absolute inset-0 z-0 bg-primary/95">
+                    <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                    <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
                 </div>
                 
                 <div className="relative z-10 flex flex-col h-full justify-between">
@@ -324,22 +323,22 @@ export default function ModuleDetailsPage() {
                         </Button>
                     </div>
                     
-                    <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl mb-1">
+                    <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-none drop-shadow-lg mb-1">
                         {moduleData.name}
                     </h1>
                 </div>
             </div>
 
-            {/* Premium Navigation Ribbon */}
-            <div className="bg-white border-b shrink-0 z-10 shadow-sm px-10">
+            {/* Premium Navigation Ribbon - Refined Transition */}
+            <div className="bg-white border-b shrink-0 z-10 px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid grid-cols-5 w-full h-12 bg-transparent p-0 gap-4">
                         {[
                             { id: 'dashboard', label: 'Dashboard' },
                             { id: 'bmt', label: 'Product Catalog' },
                             { id: 'operations', label: 'Operations' },
-                            { id: 'pricing', label: 'Pricing Strategy' },
-                            { id: 'network', label: 'Market Network' }
+                            { id: 'pricing', label: 'Pricing' },
+                            { id: 'network', label: 'Sub Dealers' }
                         ].map((t) => (
                             <TabsTrigger 
                                 key={t.id} 
