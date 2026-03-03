@@ -27,7 +27,9 @@ import {
     LayoutDashboard,
     Waves,
     Zap,
-    Trash2
+    Trash2,
+    Map as MapIcon,
+    ClipboardList
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -40,10 +42,10 @@ import { cn } from '@/lib/utils';
 import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
-import { MotorModuleBrowser } from '@/components/motor-module-browser';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { VesselMap } from '@/components/map';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
 interface Vendor {
     id: string;
@@ -60,6 +62,9 @@ interface Organisation {
     primaryLogoUrl?: string;
     enabledModuleSubscriptions?: string[];
     permissions?: Record<string, Record<string, boolean>>;
+    subDealersEnabled?: boolean;
+    phoneNumber?: string;
+    address?: string;
 }
 
 interface Range {
@@ -83,7 +88,6 @@ interface Model {
 function BuildTransitionOverlay({ organisation, model }: { organisation?: Organisation | null, model: Model | null }) {
     return (
         <div className="fixed inset-0 z-[100] bg-primary flex flex-col items-center justify-center text-white overflow-hidden animate-in fade-in duration-500">
-            {/* Ambient Background Waves */}
             <div className="absolute inset-0 z-0">
                 <div className="absolute bottom-0 left-0 w-full h-1/2 opacity-20 bg-gradient-to-t from-white/20 to-transparent" />
                 <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] bg-white/5 rounded-full blur-3xl animate-pulse" />
@@ -91,7 +95,6 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
             </div>
 
             <div className="relative z-10 flex flex-col items-center gap-8 max-w-md text-center">
-                {/* Org Logo Context */}
                 <div className="relative h-24 w-24 bg-white/10 backdrop-blur-md rounded-3xl p-4 border border-white/20 shadow-2xl animate-in zoom-in-95 duration-700">
                     {organisation?.primaryLogoUrl ? (
                         <Image 
@@ -116,7 +119,6 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                     </h2>
                 </div>
 
-                {/* Animated Wave Indicator */}
                 <div className="relative w-48 h-1 flex items-center justify-center bg-white/10 rounded-full overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_2s_infinite] w-1/2" />
                 </div>
@@ -126,7 +128,6 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                 </p>
             </div>
 
-            {/* Bottom Screen Wave Decals */}
             <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] translate-y-1">
                 <svg className="relative block w-[calc(100%+1.3px)] h-[120px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
                     <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" className="fill-white/5"></path>
@@ -177,11 +178,8 @@ function QuoteSelectorDialog({
     const handleModelSelect = (model: Model) => {
         setInitializingModel(model);
         setIsInitializing(true);
-        
-        // Artificial delay for the cool cinematic transition
         setTimeout(() => {
             router.push(`/modules/${moduleSlug}/quote/${model.id}?range=${selectedRange?.id}&vendor=${vendor.id}`);
-            // We don't close the dialog immediately to let the transition stay seamless until navigation
         }, 2200);
     };
 
@@ -263,7 +261,7 @@ export default function ModuleDetailsPage() {
     const firestore = useFirestore();
 
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [view, setView] = useState<'ranges' | 'models' | 'motors' | 'bmt'>('ranges');
+    const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [isNewQuoteOpen, setIsNewQuoteOpen] = useState(false);
@@ -288,6 +286,12 @@ export default function ModuleDetailsPage() {
     const currentMemberOrg = useMemo(() => 
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
+
+    const subDealersQuery = useMemoFirebase(() => {
+        if (!currentMemberOrg?.id) return null;
+        return query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', currentMemberOrg.id));
+    }, [firestore, currentMemberOrg?.id]);
+    const { data: subDealers } = useCollection<Organisation>(subDealersQuery);
 
     const handleWipePipeline = async () => {
         if (!currentMemberOrg) return;
@@ -316,19 +320,27 @@ export default function ModuleDetailsPage() {
         toast({ title: "Stock Strategic Wipe Complete" });
     };
 
+    const handleRangeSelect = (range: Range) => { setSelectedRange(range); setView('models'); };
+    const handleModelSelect = (model: Model) => { setSelectedModel(model); setView('bmt'); };
+    const handleBackToCatalog = () => {
+        if (view === 'bmt') {
+            setView('models');
+            setSelectedModel(null);
+        } else if (view === 'models') {
+            setView('ranges');
+            setSelectedRange(null);
+        }
+    };
+
     const loading = slugLoading || idLoading || mainVendorLoading;
 
     if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
 
-    const handleRangeSelect = (range: Range) => { setSelectedRange(range); setView('models'); };
-    const handleModelSelect = (model: Model) => { setSelectedModel(model); setView('bmt'); };
-
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {/* Cinematic Module Hero - Enhanced Tighter Compact Layout */}
+            {/* Cinematic Module Hero */}
             <div className="relative shrink-0 overflow-hidden bg-primary px-8 py-4 text-primary-foreground z-20 h-28 border-b border-white/10">
-                {/* Fluid Mesh Animation */}
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
                     <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
@@ -357,7 +369,7 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
 
-            {/* Premium Navigation Ribbon - Refined Transition */}
+            {/* Premium Navigation Ribbon */}
             <div className="bg-white border-b shrink-0 z-10 px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid grid-cols-5 w-full h-12 bg-transparent p-0 gap-4">
@@ -385,7 +397,6 @@ export default function ModuleDetailsPage() {
                 <Tabs value={activeTab} className="h-full">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div className="grid grid-cols-12 gap-8 h-full">
-                            {/* Lateral Panels */}
                             <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
                                     <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
@@ -394,19 +405,13 @@ export default function ModuleDetailsPage() {
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
                                         </div>
                                         {isAdmin && (
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-7 w-7 rounded-full text-destructive/40 hover:text-destructive hover:bg-destructive/10 transition-all"
-                                                onClick={handleWipeStock}
-                                                title="Wipe Stock"
-                                            >
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-destructive/40 hover:text-destructive transition-all" onClick={handleWipeStock}>
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         )}
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
-                                        <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
+                                        <StockList organisation={currentMemberOrg as any} subDealers={subDealers || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
                                     </CardContent>
                                 </Card>
 
@@ -417,13 +422,7 @@ export default function ModuleDetailsPage() {
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
                                         </div>
                                         {isAdmin && (
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-7 w-7 rounded-full text-destructive/40 hover:text-destructive hover:bg-destructive/10 transition-all"
-                                                onClick={handleWipePipeline}
-                                                title="Wipe Pipeline"
-                                            >
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-destructive/40 hover:text-destructive transition-all" onClick={handleWipePipeline}>
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         )}
@@ -434,7 +433,6 @@ export default function ModuleDetailsPage() {
                                 </Card>
                             </div>
 
-                            {/* Center Action Panel */}
                             <Card className="col-span-8 flex flex-col border-2 rounded-[3rem] shadow-2xl bg-white overflow-hidden">
                                 <CardHeader className="p-10 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
                                     <div className="space-y-1">
@@ -445,7 +443,7 @@ export default function ModuleDetailsPage() {
                                         <h2 className="text-4xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
                                     </div>
                                     <Button 
-                                        className="h-16 px-10 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl hover:scale-[1.03] active:scale-95 transition-all bg-primary text-white"
+                                        className="h-16 px-10 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl hover:scale-[1.03] transition-all bg-primary text-white"
                                         onClick={() => setIsNewQuoteOpen(true)}
                                     >
                                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -456,43 +454,68 @@ export default function ModuleDetailsPage() {
                                     <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
                                         <FileText className="h-12 w-12 text-slate-200" />
                                     </div>
-                                    <div className="space-y-3">
-                                        <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
-                                        <p className="text-[12px] font-medium text-slate-500 max-w-sm mx-auto leading-relaxed">Select a model range to begin building a precision configuration for your client.</p>
-                                    </div>
+                                    <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
                                 </CardContent>
                             </Card>
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <div className="h-full flex flex-col overflow-hidden">
-                            <div className="flex-1 min-h-0 relative">
-                                <ScrollArea className="h-full">
-                                    <div className="pb-10">
-                                        {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} />}
-                                        {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
-                                        {view === 'bmt' && selectedModel && selectedRange && (
-                                            <ModelConfigurationEditor 
-                                                model={selectedModel}
-                                                docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`}
-                                                vendor={mainVendor}
-                                                module={moduleData}
-                                                user={user as any}
-                                                isAdmin={isAdmin}
-                                                organisationId={currentMemberOrg?.id}
-                                                breadcrumbs={
-                                                    <div className="flex items-center text-[10px] font-black uppercase tracking-widest opacity-60">
-                                                        <span>{selectedRange.name}</span>
-                                                        <ChevronRight className="h-3 w-3 mx-1" />
-                                                        <span className="text-primary">{selectedModel.name}</span>
-                                                    </div>
-                                                }
-                                            />
-                                        )}
-                                    </div>
-                                </ScrollArea>
+                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                        {(view === 'models' || view === 'bmt') && (
+                            <div className="mb-6 shrink-0">
+                                <Button variant="ghost" onClick={handleBackToCatalog} className="font-black uppercase text-[10px] tracking-widest text-primary hover:bg-primary/5">
+                                    <ChevronLeft className="mr-2 h-4 w-4" /> Back to {view === 'bmt' ? 'Models' : 'Ranges'}
+                                </Button>
                             </div>
+                        )}
+                        <div className="flex-1 min-h-0 relative">
+                            <ScrollArea className="h-full">
+                                <div className="pb-10">
+                                    {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} />}
+                                    {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
+                                    {view === 'bmt' && selectedModel && selectedRange && (
+                                        <ModelConfigurationEditor 
+                                            model={selectedModel}
+                                            docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`}
+                                            vendor={mainVendor}
+                                            module={moduleData}
+                                            user={user as any}
+                                            isAdmin={isAdmin}
+                                            organisationId={currentMemberOrg?.id}
+                                            breadcrumbs={null}
+                                        />
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="operations" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                        <div className="grid grid-cols-12 gap-8 h-full">
+                            <Card className="col-span-8 border-2 rounded-[2.5rem] overflow-hidden">
+                                <CardHeader className="py-4 px-8 border-b bg-muted/5">
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                        <MapIcon className="h-4 w-4 text-primary" />
+                                        Fleet Live Positions
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0 h-[calc(100%-60px)]">
+                                    <VesselMap />
+                                </CardContent>
+                            </Card>
+                            <Card className="col-span-4 border-2 rounded-[2.5rem] overflow-hidden">
+                                <CardHeader className="py-4 px-8 border-b bg-muted/5">
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                        <ClipboardList className="h-4 w-4 text-primary" />
+                                        Operational Log
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="p-8 text-center text-muted-foreground italic text-xs">
+                                        Log metrics and reporting data synchronized with Fleet tracking.
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     </TabsContent>
 
@@ -500,6 +523,49 @@ export default function ModuleDetailsPage() {
                         {currentMemberOrg && mainVendor && (
                             <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
                         )}
+                    </TabsContent>
+
+                    <TabsContent value="network" className="m-0 h-full animate-in fade-in duration-500">
+                        <Card className="border-2 rounded-[2.5rem] overflow-hidden">
+                            <CardHeader className="p-8 border-b bg-muted/5">
+                                <CardTitle className="text-xl font-black uppercase tracking-tight">Sub Dealer Network</CardTitle>
+                                <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Manage business relationships and regional allocations.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {subDealers && subDealers.length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Location</TableHead>
+                                                <TableHead>Contact</TableHead>
+                                                <TableHead className="text-right">Management</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {subDealers.map(sd => (
+                                                <TableRow key={sd.id}>
+                                                    <TableCell>
+                                                        <div className="font-bold uppercase text-xs">{sd.name}</div>
+                                                        <div className="text-[10px] text-muted-foreground">{sd.address || 'Regional Allocation'}</div>
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] font-mono">{sd.phoneNumber || 'N/A'}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="outline" size="sm" className="h-7 text-[10px] font-black uppercase" asChild>
+                                                            <Link href={`/sub-dealers/${sd.slug || sd.id}`}>Manage</Link>
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                ) : (
+                                    <div className="p-20 text-center text-muted-foreground opacity-20">
+                                        <Building className="h-12 w-12 mx-auto mb-4" />
+                                        <p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </TabsContent>
                 </Tabs>
             </main>
