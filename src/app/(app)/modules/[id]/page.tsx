@@ -4,14 +4,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where, orderBy, doc, updateDoc, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase, useStorage } from '@/firebase/provider';
+import { collection, query, where, orderBy, doc, updateDoc, writeBatch, getDocs, deleteDoc, setDoc } from 'firebase/firestore';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { 
     Loader2, 
     ChevronRight, 
@@ -24,13 +22,17 @@ import {
     Ship,
     LayoutGrid,
     X,
-    LayoutDashboard,
     Waves,
     Zap,
     Trash2,
     Map as MapIcon,
     ClipboardList,
-    Building
+    Building,
+    Pencil,
+    GripVertical,
+    Upload,
+    ImageIcon,
+    Save
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -38,7 +40,9 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
@@ -47,6 +51,24 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { VesselMap } from '@/components/map';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
     id: string;
@@ -143,6 +165,177 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                     100% { transform: translateX(200%); }
                 }
             `}</style>
+        </div>
+    );
+}
+
+function EditItemDialog({ 
+    isOpen, 
+    setIsOpen, 
+    item, 
+    onSave, 
+    type 
+}: { 
+    isOpen: boolean, 
+    setIsOpen: (open: boolean) => void, 
+    item: any, 
+    onSave: (data: any) => Promise<void>, 
+    type: 'range' | 'model' 
+}) {
+    const [name, setName] = useState('');
+    const [image, setImage] = useState<File | null>(null);
+    const [preview, setPreview] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const storage = useStorage();
+
+    useEffect(() => {
+        if (item) {
+            setName(item.name || '');
+            setPreview(item.imageUrl || item.coverImageUrl || null);
+        }
+    }, [item]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const data: any = { name };
+            if (image && storage) {
+                const path = `catalog/${type}s/${item.id}/${Date.now()}-${image.name}`;
+                data[type === 'range' ? 'imageUrl' : 'coverImageUrl'] = await uploadFileToStorage(storage, image, path);
+            }
+            await onSave(data);
+            setIsOpen(false);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="rounded-3xl border-4 shadow-2xl">
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-black uppercase tracking-tight">Edit {type === 'range' ? 'Range' : 'Model'}</DialogTitle>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Master Content Update</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                    <div className="flex justify-center">
+                        <div className="relative h-32 w-48 bg-muted rounded-2xl border-2 border-dashed overflow-hidden group">
+                            {preview ? (
+                                <>
+                                    <Image src={preview} alt="Preview" fill className="object-contain p-2" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <label className="cursor-pointer">
+                                            <Upload className="h-6 w-6 text-white" />
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) { setImage(file); setPreview(URL.createObjectURL(file)); }
+                                            }} />
+                                        </label>
+                                    </div>
+                                </>
+                            ) : (
+                                <label className="flex flex-col items-center justify-center h-full w-full cursor-pointer hover:bg-muted/80">
+                                    <ImageIcon className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                                    <span className="text-[10px] font-black uppercase text-muted-foreground">Upload Render</span>
+                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) { setImage(file); setPreview(URL.createObjectURL(file)); }
+                                    }} />
+                                </label>
+                            )}
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Display Name</Label>
+                        <Input value={name} onChange={e => setName(e.target.value)} className="h-12 font-bold text-lg rounded-xl border-2" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)} className="rounded-xl font-black uppercase text-[10px]">Cancel</Button>
+                    <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-black uppercase text-[10px] shadow-lg">
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Commit Changes
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function SortableItemCard({ 
+    id, 
+    name, 
+    imageUrl, 
+    code, 
+    onClick, 
+    onEdit, 
+    isAdmin 
+}: { 
+    id: string, 
+    name: string, 
+    imageUrl?: string, 
+    code?: string, 
+    onClick: () => void, 
+    onEdit: () => void, 
+    isAdmin: boolean 
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="group relative">
+            <Card 
+                className="cursor-pointer hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
+                onClick={onClick}
+            >
+                <div className="aspect-video relative bg-slate-50 border-b">
+                    {imageUrl ? (
+                        <div className="relative h-full w-full">
+                            <Image src={imageUrl} alt={name} fill className={cn("p-4", code ? "object-cover p-0" : "object-contain")} unoptimized />
+                        </div>
+                    ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
+                </div>
+                <div className="p-5 text-center flex-grow flex flex-col items-center justify-center gap-1">
+                    <p className="text-sm font-black uppercase tracking-tight">{name}</p>
+                    {code && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4">{code}</Badge>}
+                </div>
+            </Card>
+
+            {isAdmin && (
+                <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <Button 
+                        type="button"
+                        variant="secondary" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-full bg-white/90 backdrop-blur-md shadow-md border hover:bg-white"
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                    >
+                        <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <div 
+                        {...attributes} 
+                        {...listeners} 
+                        className="h-8 w-8 rounded-full bg-white/90 backdrop-blur-md shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
+                    >
+                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -502,7 +695,7 @@ export default function ModuleDetailsPage() {
                         <div className="flex-1 min-h-0 relative">
                             <ScrollArea className="h-full">
                                 <div className="pb-10">
-                                    {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} />}
+                                    {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} isAdmin={isAdmin} />}
                                     {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
                                     {view === 'bmt' && selectedModel && selectedRange && (
                                         <ModelConfigurationEditor 
@@ -590,8 +783,8 @@ export default function ModuleDetailsPage() {
                                         </TableBody>
                                     </Table>
                                 ) : (
-                                    <div className="p-20 text-center text-muted-foreground opacity-20 flex flex-col items-center justify-center">
-                                        <Building className="h-12 w-12 mb-4" />
+                                    <div className="p-20 text-center text-muted-foreground opacity-20">
+                                        <Building className="h-12 w-12 mx-auto mb-4" />
                                         <p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p>
                                     </div>
                                 )}
@@ -614,30 +807,71 @@ export default function ModuleDetailsPage() {
     );
 }
 
-function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
+function RangesGrid({ vendor, onRangeSelect, isAdmin }: { vendor: Vendor; onRangeSelect: (range: Range) => void, isAdmin: boolean }) {
     const firestore = useFirestore();
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
     const { data: ranges, loading } = useCollection<Range>(rangesQuery);
 
+    const [editingItem, setEditingItem] = useState<Range | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id && ranges) {
+            const oldIndex = ranges.findIndex(i => i.id === active.id);
+            const newIndex = ranges.findIndex(i => i.id === over.id);
+            const newItems = arrayMove(ranges, oldIndex, newIndex);
+            
+            const batch = writeBatch(firestore);
+            newItems.forEach((item, index) => {
+                batch.update(doc(firestore, `data-warehouse/${vendor.id}/ranges`, item.id), { order: index });
+            });
+            await batch.commit();
+        }
+    };
+
+    const handleUpdateRange = async (data: any) => {
+        if (!editingItem) return;
+        await updateDoc(doc(firestore, `data-warehouse/${vendor.id}/ranges`, editingItem.id), data);
+    };
+
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
-            {ranges?.map(range => (
-                <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 bg-white" onClick={() => onRangeSelect(range)}>
-                    <div className="aspect-video relative bg-slate-50 border-b">
-                        {range.imageUrl ? (
-                            <div className="relative h-full w-full">
-                                <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized />
-                            </div>
-                        ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
+        <>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
+                        {ranges?.map(range => (
+                            <SortableItemCard 
+                                key={range.id}
+                                id={range.id}
+                                name={range.name}
+                                imageUrl={range.imageUrl}
+                                isAdmin={isAdmin}
+                                onClick={() => onRangeSelect(range)}
+                                onEdit={() => { setEditingItem(range); setIsEditDialogOpen(true); }}
+                            />
+                        ))}
                     </div>
-                    <div className="p-5 text-center">
-                        <p className="text-sm font-black uppercase tracking-tight">{range.name}</p>
-                    </div>
-                </Card>
-            ))}
-        </div>
+                </SortableContext>
+            </DndContext>
+
+            <EditItemDialog 
+                isOpen={isEditDialogOpen} 
+                setIsOpen={setIsEditDialogOpen} 
+                item={editingItem} 
+                type="range" 
+                onSave={handleUpdateRange} 
+            />
+        </>
     );
 }
 
@@ -646,25 +880,66 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
     const { data: models, loading } = useCollection<Model>(modelsQuery);
 
+    const [editingItem, setEditingItem] = useState<Model | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id && models) {
+            const oldIndex = models.findIndex(i => i.id === active.id);
+            const newIndex = models.findIndex(i => i.id === over.id);
+            const newItems = arrayMove(models, oldIndex, newIndex);
+            
+            const batch = writeBatch(firestore);
+            newItems.forEach((item, index) => {
+                batch.update(doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, item.id), { order: index });
+            });
+            await batch.commit();
+        }
+    };
+
+    const handleUpdateModel = async (data: any) => {
+        if (!editingItem) return;
+        await updateDoc(doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, editingItem.id), data);
+    };
+
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
-            {models?.map(model => (
-                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white" onClick={() => onModelSelect(model)}>
-                    <div className="aspect-video relative bg-slate-50 border-b">
-                        {model.coverImageUrl ? (
-                            <div className="relative h-full w-full">
-                                <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized />
-                            </div>
-                        ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
+        <>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={models?.map(m => m.id) || []} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
+                        {models?.map(model => (
+                            <SortableItemCard 
+                                key={model.id}
+                                id={model.id}
+                                name={model.name}
+                                code={model.modelCode}
+                                imageUrl={model.coverImageUrl}
+                                isAdmin={isAdmin}
+                                onClick={() => onModelSelect(model)}
+                                onEdit={() => { setEditingItem(model); setIsEditDialogOpen(true); }}
+                            />
+                        ))}
                     </div>
-                    <div className="p-5 text-center space-y-2">
-                        <p className="text-xs font-black uppercase tracking-tight">{model.name}</p>
-                        {model.modelCode && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4">{model.modelCode}</Badge>}
-                    </div>
-                </Card>
-            ))}
-        </div>
+                </SortableContext>
+            </DndContext>
+
+            <EditItemDialog 
+                isOpen={isEditDialogOpen} 
+                setIsOpen={setIsEditDialogOpen} 
+                item={editingItem} 
+                type="model" 
+                onSave={handleUpdateModel} 
+            />
+        </>
     );
 }
