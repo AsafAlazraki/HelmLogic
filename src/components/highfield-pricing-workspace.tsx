@@ -316,7 +316,7 @@ function FreightManager({
                                                     </div>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px) font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
                                                     <div className="relative">
                                                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
                                                         <Input 
@@ -832,11 +832,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <div className="space-y-1">
                             <div className="flex items-center gap-3">
                                 <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
-                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/10">
-                                    <span className="text-[9px] font-black text-primary uppercase tracking-widest">{vendor.currency || 'AUD'}</span>
-                                    <ArrowRightLeft className="h-2.5 w-2.5 text-muted-foreground" />
-                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{organisation?.tradingCurrency || 'AUD'}</span>
-                                </div>
                             </div>
                             <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Advanced Strategic Pricing Engine</CardDescription>
                         </div>
