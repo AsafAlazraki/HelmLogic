@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -177,7 +176,7 @@ const Sidebar = React.forwardRef<
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
         setOpen(true)
-      }, 150)
+      }, 600) // Longer delay for intentional opening
     }
 
     const handleMouseLeave = () => {
@@ -185,7 +184,7 @@ const Sidebar = React.forwardRef<
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
         setOpen(false)
-      }, 250)
+      }, 300) // Smooth gradual exit
     }
 
     if (collapsible === "none") {
@@ -236,7 +235,7 @@ const Sidebar = React.forwardRef<
       >
         <div
           className={cn(
-            "duration-500 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-in-out",
+            "duration-700 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-in-out",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
@@ -246,7 +245,7 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "duration-500 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-in-out md:flex",
+            "duration-700 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-in-out md:flex",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -466,7 +465,7 @@ SidebarGroupLabel.displayName = "SidebarGroupLabel"
 const SidebarGroupAction = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> & { asChild?: boolean }
->(({ className, asChild = false, ...props }, ref) => {
+>(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
 
   return (
@@ -528,7 +527,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center justify-start gap-2 overflow-hidden rounded-md p-3 text-sm outline-none ring-sidebar-ring transition-[width,height,padding,background-color] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-sidebar-foreground/60 data-[active=true]:font-black data-[active=true]:text-primary data-[active=true]:bg-primary/5 group-data-[collapsible=icon]:!size-[4.5rem] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 [&>span:last-child]:truncate [&_svg]:size-6 [&_svg]:shrink-0",
+  "peer/menu-button flex w-full items-center justify-start gap-2 overflow-hidden rounded-md p-3 text-sm outline-none ring-sidebar-ring transition-[width,height,padding,background-color] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-sidebar-foreground/60 data-[active=true]:font-black data-[active=true]:text-primary data-[active=true]:bg-primary/5 group-data-[collapsible=icon]:!size-[4.5rem] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 [&>span:last-child]:truncate [&_svg]:!size-6 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
