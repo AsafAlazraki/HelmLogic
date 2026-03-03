@@ -556,7 +556,7 @@ export default function ModuleDetailsPage() {
             {isTransitioning && <BuildTransitionOverlay organisation={currentMemberOrg as any} model={selectedModel} />}
 
             {/* Cinematic Hero */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-40 border-b-2 border-white/10">
+            <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-32 border-b-2 border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
                     <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
