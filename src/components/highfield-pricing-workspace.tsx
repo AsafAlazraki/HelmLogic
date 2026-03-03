@@ -43,7 +43,10 @@ import {
     History,
     Clock,
     User as UserIcon,
-    Save
+    Save,
+    Expand,
+    Shrink,
+    Layers
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -197,259 +200,15 @@ const calculateValue = (
     return { value: result };
 };
 
-function AuditLogDialog({ 
-    organisationId, 
-    vendorId, 
-    isOpen, 
-    onClose 
-}: { 
-    organisationId: string; 
-    vendorId: string; 
-    isOpen: boolean; 
-    onClose: () => void;
-}) {
-    const firestore = useFirestore();
-    const logQuery = useMemoFirebase(() => 
-        query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/auditLog`), orderBy('timestamp', 'desc')),
-    [firestore, organisationId, vendorId]);
-    const { data: logs, loading } = useCollection<AuditLogEntry>(logQuery);
-
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
-                <DialogHeader className="p-8 border-b bg-muted/5">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
-                            <History className="h-6 w-6" />
-                        </div>
-                        <div className="space-y-1">
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Strategy Audit Log</DialogTitle>
-                            <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Chronological record of tactical modifications</DialogDescription>
-                        </div>
-                    </div>
-                </DialogHeader>
-                <div className="flex-1 min-h-0">
-                    {loading ? (
-                        <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                    ) : logs && logs.length > 0 ? (
-                        <ScrollArea className="h-full">
-                            <Table>
-                                <TableHeader className="bg-muted/50 sticky top-0 z-10 shadow-sm">
-                                    <TableRow>
-                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Timestamp</TableHead>
-                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">User</TableHead>
-                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Metric</TableHead>
-                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Previous</TableHead>
-                                        <TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">New Value</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {logs.map((log) => (
-                                        <TableRow key={log.id} className="hover:bg-muted/10 transition-colors">
-                                            <TableCell className="py-4 px-6 font-medium text-[10px] text-muted-foreground">
-                                                {log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}
-                                            </TableCell>
-                                            <TableCell className="py-4 px-6">
-                                                <div className="flex items-center gap-2">
-                                                    <UserIcon className="h-3 w-3 text-primary opacity-40" />
-                                                    <span className="font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4 px-6">
-                                                <Badge variant="outline" className="font-black text-[8px] uppercase border-primary/20 text-primary">{log.colId}</Badge>
-                                            </TableCell>
-                                            <TableCell className="py-4 px-6 font-mono text-[10px] text-muted-foreground/60">{log.oldValue ?? '-'}</TableCell>
-                                            <TableCell className="py-4 px-6 font-mono text-[10px] font-black text-primary">{log.newValue}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-20">
-                            <Clock className="h-16 w-16 mb-4" />
-                            <p className="text-sm font-black uppercase tracking-widest">No strategic modifications logged yet.</p>
-                        </div>
-                    )}
-                </div>
-                <DialogFooter className="p-6 border-t bg-muted/5">
-                    <DialogClose asChild><Button variant="outline" className="font-bold border-2">Close Log</Button></DialogClose>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function FreightManager({ 
-    organisationId, 
-    vendorId, 
-    isOpen, 
-    onClose 
-}: { 
-    organisationId: string; 
-    vendorId: string; 
-    isOpen: boolean; 
-    onClose: () => void;
-}) {
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    
-    const freightQuery = useMemoFirebase(() => 
-        query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`), orderBy('size')),
-    [firestore, organisationId, vendorId]);
-    const { data: containers, loading } = useCollection<FreightContainer>(freightQuery);
-
-    const [isAdding, setIsAdding] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-
-    const [size, setSize] = useState('');
-    const [description, setDescription] = useState('');
-    const [cost, setCost] = useState('');
-    const [currency, setCurrency] = useState('USD');
-    const [cbm, setCbm] = useState('');
-
-    const handleAdd = async () => {
-        if (!size || !cost || !cbm) return;
-        setIsSaving(true);
-        try {
-            const colRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`);
-            await addDoc(colRef, {
-                size,
-                description,
-                cost: parseFloat(cost),
-                currency,
-                cubicMeters: parseFloat(cbm),
-                updatedAt: serverTimestamp()
-            });
-            toast({ title: "Container Added" });
-            setIsAdding(false);
-            setSize('');
-            setDescription('');
-            setCost('');
-            setCbm('');
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Save Failed" });
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        try {
-            await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id));
-            toast({ title: "Container Removed" });
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Delete Failed" });
-        }
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
-                <DialogHeader className="p-8 border-b bg-muted/5">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
-                                <Truck className="h-6 w-6" />
-                            </div>
-                            <div className="space-y-1">
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle>
-                                <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Shipping Containers & Logistics Cost Matrix</DialogDescription>
-                            </div>
-                        </div>
-                        <Button 
-                            onClick={() => setIsAdding(true)} 
-                            className="font-black uppercase tracking-widest text-[10px] h-9 px-6 rounded-xl shadow-lg transition-transform hover:scale-105"
-                        >
-                            <Plus className="h-4 w-4 mr-1.5" /> Add Container
-                        </Button>
-                    </div>
-                </DialogHeader>
-
-                <div className="flex-1 min-h-0 overflow-hidden">
-                    {loading ? (
-                        <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                    ) : (
-                        <ScrollArea className="h-full">
-                            <div className="p-8">
-                                {isAdding && (
-                                    <Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden">
-                                        <CardHeader className="p-6 border-b bg-background">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="p-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label>
-                                                    <Select value={size} onValueChange={setSize}>
-                                                        <SelectTrigger className="h-10 font-bold bg-background">
-                                                            <SelectValue placeholder="Select Size..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem>
-                                                            <SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem>
-                                                            <SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem>
-                                                            <SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label>
-                                                    <Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
-                                                    <Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" />
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                        <CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3">
-                                            <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
-                                            <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button>
-                                        </CardFooter>
-                                    </Card>
-                                )}
-
-                                <div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm">
-                                    <Table>
-                                        <TableHeader className="bg-muted/50 border-b-2">
-                                            <TableRow>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead>
-                                                <TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {containers?.map((c) => (
-                                                <TableRow key={c.id}>
-                                                    <TableCell className="py-4 px-6 font-black uppercase">{c.size}</TableCell>
-                                                    <TableCell className="py-4 px-6 text-right font-bold">{c.cubicMeters} m³</TableCell>
-                                                    <TableCell className="py-4 px-6 text-right font-black">{formatCurrency(c.cost, c.currency)}</TableCell>
-                                                    <TableCell className="py-4 px-6 text-center"><Badge>{c.currency}</Badge></TableCell>
-                                                    <TableCell className="py-4 px-6 text-right">
-                                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4" /></Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </div>
-                        </ScrollArea>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
     
+    const [isFocusMode, setIsFocusMode] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
+
     const rangesQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')), [firestore, vendor.id]);
     const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
 
@@ -480,9 +239,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [formulaLeft, setFormulaLeft] = useState('baseCost');
     const [formulaOp, setFormulaOp] = useState<CustomColumn['formula']['operator']>('+');
     const [formulaRight, setFormulaRight] = useState('');
-
-    const [searchTerm, setSearchTerm] = useState('');
-    const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
 
     useEffect(() => {
         if (strategyLoading || !strategy) return;
@@ -555,31 +311,44 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (idx === -1) return;
         const newIdx = direction === 'left' ? idx - 1 : idx + 1;
         if (newIdx < 0 || newIdx >= sections.length) return;
+        
         const temp = sections[idx];
         sections[idx] = sections[newIdx];
         sections[newIdx] = temp;
-        updateDoc(strategyRef, { sections: sections.map((s, i) => ({ ...s, order: i })) });
+        
+        await updateDoc(strategyRef, { 
+            sections: sections.map((s, i) => ({ ...s, order: i })) 
+        });
     };
 
     const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
         const sections = [...sortedSections];
         const secIdx = sections.findIndex(s => s.id === secId);
         if (secIdx === -1) return;
+        
         const cols = [...sections[secIdx].columns];
         const idx = cols.findIndex(c => c.id === colId);
         if (idx === -1) return;
+        
         const newIdx = direction === 'left' ? idx - 1 : idx + 1;
         if (newIdx < 0 || newIdx >= cols.length) return;
+        
         const temp = cols[idx];
         cols[idx] = cols[newIdx];
         cols[newIdx] = temp;
+        
         sections[secIdx].columns = cols;
-        updateDoc(strategyRef, { sections });
+        await updateDoc(strategyRef, { sections });
     };
 
     const handleAddSection = async () => {
         if (!newSectionName.trim()) return;
-        const newSection: PricingSection = { id: `sec-${Date.now()}`, name: newSectionName, order: sortedSections.length, columns: [] };
+        const newSection: PricingSection = { 
+            id: `sec-${Date.now()}`, 
+            name: newSectionName, 
+            order: sortedSections.length, 
+            columns: [] 
+        };
         await updateDoc(strategyRef, { sections: [...sortedSections, newSection] });
         setIsAddSectionOpen(false);
         setNewSectionName('');
@@ -593,7 +362,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             type: newColType,
             isMandatory,
             isCalculated,
-            formula: isCalculated ? { leftId: formulaLeft, operator: formulaOp, rightId: isNaN(parseFloat(formulaRight)) ? formulaRight : parseFloat(formulaRight) } : undefined
+            formula: isCalculated ? { 
+                leftId: formulaLeft, 
+                operator: formulaOp, 
+                rightId: isNaN(parseFloat(formulaRight)) ? formulaRight : parseFloat(formulaRight) 
+            } : undefined
         };
         const currentSections = [...sortedSections];
         const sectionIdx = currentSections.findIndex(s => s.id === targetSectionId);
@@ -616,7 +389,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const handleDeleteSection = async (secId: string) => {
         const sections = sortedSections.filter(s => s.id !== secId);
-        updateDoc(strategyRef, { sections: sections.map((s, i) => ({ ...s, order: i })) });
+        await updateDoc(strategyRef, { sections: sections.map((s, i) => ({ ...s, order: i })) });
     };
 
     const handleDeleteColumn = async (secId: string, colId: string) => {
@@ -632,11 +405,17 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         const currentValues = strategy?.itemValues || {};
         const oldValue = currentValues[itemId]?.[colId];
         if (String(oldValue || '') === String(value || '')) return;
-        const updated = { ...currentValues, [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } };
-        updateDoc(strategyRef, { itemValues: updated });
+        
+        const updated = { 
+            ...currentValues, 
+            [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } 
+        };
+        
+        await updateDoc(strategyRef, { itemValues: updated });
+        
         try {
             const auditLogRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}/auditLog`);
-            addDoc(auditLogRef, { 
+            await addDoc(auditLogRef, { 
                 itemId, 
                 colId, 
                 oldValue: oldValue ?? null, 
@@ -645,7 +424,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 userId: user?.uid || 'anonymous', 
                 userName: user?.displayName || user?.email || 'Anonymous Strategist' 
             });
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error("Audit log failed", e); 
+        }
     };
 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -660,12 +441,18 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         );
     }, [ranges, searchTerm, allModels]);
 
+    const totalCalculatedCols = useMemo(() => {
+        return sortedSections.reduce((acc, sec) => acc + getSectionColCount(sec), 0);
+    }, [sortedSections]);
+
     const PricingTable = () => (
-        <div className="min-w-full bg-background overflow-x-auto">
-            <Table className="border-collapse table-fixed w-full">
-                <TableHeader className="sticky top-0 z-40 bg-white">
+        <div className="relative w-full h-full overflow-auto bg-white border-t">
+            <Table className="border-separate border-spacing-0 w-full table-fixed">
+                <TableHeader className="sticky top-0 z-50 bg-white">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[300px] border-r border-b">Description & SKU</TableHead>
+                        <TableHead className="w-[300px] sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                            Description & SKU
+                        </TableHead>
                         {sortedSections.map((sec, secIdx) => {
                             const isCoreSystem = ['sec-exchange', 'sec-vendor', 'sec-freight'].includes(sec.id);
                             const colSpan = getSectionColCount(sec);
@@ -675,7 +462,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                         <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/5 min-h-[40px]">
                                             <div className="flex items-center gap-2 overflow-hidden">
                                                 <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}</Button>
-                                                {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
+                                                {!sec.isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest text-primary truncate">{sec.name}</span>}
                                             </div>
                                             {!sec.isCollapsed && (
                                                 <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
@@ -692,32 +479,47 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         })}
                     </TableRow>
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="py-4 px-6 border-r border-b font-black uppercase text-[10px]">Description & SKU</TableHead>
+                        <TableHead className="sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[2px_0_5px_rgba(0,0,0,0.05)] h-12">
+                            {isFocusMode && (
+                                <div className="relative">
+                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                    <input 
+                                        placeholder="Quick Search..." 
+                                        className="w-full pl-7 bg-muted/20 border rounded h-7 text-[10px] font-bold" 
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            )}
+                        </TableHead>
                         {sortedSections.map(sec => {
-                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b" />;
+                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b bg-muted/10" />;
                             if (sec.id === 'sec-exchange') return (
                                 <React.Fragment key={sec.id}>
-                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[80px]">Vendor ISO</TableHead>
-                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[100px]">Ex. Rate</TableHead>
-                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[80px]">Org ISO</TableHead>
-                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[100px]">Ex. Rate</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[80px]">Vnd ISO</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[100px]">Ex. Rate</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[80px]">Org ISO</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[100px]">Ex. Rate</TableHead>
                                 </React.Fragment>
                             );
                             if (sec.id === 'sec-vendor') return (
                                 <React.Fragment key={sec.id}>
-                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Price ({vendor.currency || 'ISO'}) $</TableHead>
-                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Converted ({organisation?.tradingCurrency || 'AUD'}) $</TableHead>
+                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">Base ({vendor.currency || 'ISO'}) $</TableHead>
+                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">Conv ({organisation?.tradingCurrency || 'AUD'}) $</TableHead>
                                 </React.Fragment>
                             );
-                            if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
-                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
+                            if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">Packed m³</TableHead>;
+                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Empty Group</TableHead>;
                             return sec.columns.map((col, idx) => (
                                 <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-2 group/header border-r border-b">
                                     <div className="flex items-center justify-between gap-1">
                                         <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === 0} onClick={() => handleMoveColumn(sec.id, col.id, 'left')}><ChevronLeft className="h-3 w-3" /></Button>
                                         <div className="flex flex-col items-center flex-1 min-w-0">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">{col.name}</span>
-                                            <Badge variant="outline" className="h-4 text-[8px] uppercase p-0 border-none">{col.type}</Badge>
+                                            <span className="text-[9px] font-black uppercase tracking-tight text-primary truncate">{col.name}</span>
+                                            <div className="flex items-center gap-1.5">
+                                                {col.isCalculated && <Calculator className="h-2.5 w-2.5 text-primary/40" />}
+                                                <Badge variant="outline" className="h-3.5 text-[7px] uppercase p-0 border-none opacity-40">{col.type}</Badge>
+                                            </div>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/header:opacity-100" disabled={idx === sec.columns.length - 1} onClick={() => handleMoveColumn(sec.id, col.id, 'right')}><ChevronRight className="h-3 w-3" /></Button>
                                     </div>
@@ -742,6 +544,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             vendor={vendor} 
                             organisation={organisation} 
                             exchangeRate={activeExchangeRate} 
+                            totalCalculatedCols={totalCalculatedCols}
                         />
                     ))}
                 </TableBody>
@@ -750,28 +553,37 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
-            <CardHeader className="p-6 border-b bg-background shrink-0">
+        <div className="flex flex-col h-full overflow-hidden bg-background">
+            <CardHeader className="p-6 border-b shrink-0 bg-white/50 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2">
+                        <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm">
                             {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-6 w-6 m-auto mt-1" />}
                         </div>
                         <div>
                             <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
-                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Pricing & Profitability Strategy</CardDescription>
+                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Strategic Pricing Workspace</CardDescription>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Button onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><History className="h-4 w-4 mr-2" /> Audit Log</Button>
-                        <Button onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
-                        <Button onClick={() => setIsAddSectionOpen(true)} className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Plus className="h-4 w-4 mr-2" /> Add Section</Button>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            onClick={() => setIsFocusMode(!isFocusMode)} 
+                            variant={isFocusMode ? "default" : "outline"} 
+                            className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"
+                        >
+                            {isFocusMode ? <Shrink className="h-4 w-4 mr-2" /> : <Expand className="h-4 w-4 mr-2" />}
+                            {isFocusMode ? "Exit Focus" : "Focus Mode"}
+                        </Button>
+                        <Button onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><History className="h-4 w-4 mr-2" /> History</Button>
+                        <Button onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Truck className="h-4 w-4 mr-2" /> Logistics</Button>
+                        <Button onClick={() => setIsAddSectionOpen(true)} className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-primary/20"><Plus className="h-4 w-4 mr-2" /> Add Section</Button>
                     </div>
                 </div>
             </CardHeader>
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-hidden min-h-0">
                 <PricingTable />
             </div>
+
             <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             <FreightManager organisationId={organisationId} vendorId={vendor.id} isOpen={isFreightManagerOpen} onClose={() => setIsFreightManagerOpen(false)} />
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}><DialogContent><DialogHeader><DialogTitle>Create Strategy Section</DialogTitle></DialogHeader><div className="py-6"><Label>Section Name</Label><Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2" /></div><DialogFooter><Button onClick={handleAddSection}>Create</Button></DialogFooter></DialogContent></Dialog>
@@ -780,15 +592,17 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 }
 
-function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
-    const totalCols = sections.reduce((acc: number, s: any) => acc + getSectionColCount(s), 0);
+function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalCalculatedCols }: any) {
     return (
         <>
-            <TableRow className="bg-muted/30 cursor-pointer" onClick={onToggle}>
-                <TableCell className="py-3 px-6 font-black uppercase text-xs border-b">
-                    <div className="flex items-center gap-2">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}<span>{range.name} RANGE</span></div>
+            <TableRow className="bg-slate-100/80 cursor-pointer group" onClick={onToggle}>
+                <TableCell className="sticky left-0 z-30 bg-slate-100 py-3 px-6 font-black uppercase text-[11px] border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                    <div className="flex items-center gap-2">
+                        {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
+                        <span>{range.name} RANGE</span>
+                    </div>
                 </TableCell>
-                {Array.from({ length: totalCols }).map((_, i) => <TableCell key={i} className="border-b" />)}
+                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-slate-100/50" />)}
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -802,25 +616,41 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     vendor={vendor} 
                     organisation={organisation} 
                     exchangeRate={exchangeRate} 
+                    totalCalculatedCols={totalCalculatedCols}
                 />
             ))}
         </>
     );
 }
 
-function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
+function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalCalculatedCols }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
-    const totalCols = sections.reduce((acc: number, s: any) => acc + getSectionColCount(s), 0);
     return (
         <>
-            <TableRow className="bg-muted/5 border-l-4 border-l-primary">
-                <TableCell className="py-3 px-8 border-b">
-                    <div className="flex items-center gap-3"><button onClick={() => setIsLocalExpanded(!isLocalExpanded)}>{isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button><span className="font-black text-[11px] uppercase truncate">{model.name}</span><span className="text-[9px] font-mono text-muted-foreground">{model.modelCode || 'NO CODE'}</span></div>
+            <TableRow className="bg-slate-50/50 border-l-4 border-l-primary group">
+                <TableCell className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                    <div className="flex items-center gap-3">
+                        <button onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}>
+                            {isLocalExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
+                        </button>
+                        <span className="font-black text-[11px] uppercase truncate">{model.name}</span>
+                        <span className="text-[9px] font-mono text-muted-foreground/60">{model.modelCode || 'NO CODE'}</span>
+                    </div>
                 </TableCell>
-                {Array.from({ length: totalCols }).map((_, i) => <TableCell key={i} className="border-b" />)}
+                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-slate-50/20" />)}
             </TableRow>
             {isLocalExpanded && (
                 <>
+                    {/* Visual Split: Boat Variants */}
+                    <TableRow className="hover:bg-transparent">
+                        <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                            <div className="flex items-center gap-2">
+                                <Ship className="h-3 w-3 text-primary opacity-40" />
+                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Boat Variants</span>
+                            </div>
+                        </TableCell>
+                        {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-muted/5" />)}
+                    </TableRow>
                     {variants.map((v: any) => (
                         <PricingRow 
                             key={v.id} 
@@ -837,52 +667,71 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                             strategy={strategy} 
                             onUpdateValue={onUpdateValue} 
                             indent 
+                            isBoatVariant
                         />
                     ))}
-                    {model.optionalFeatures && model.optionalFeatures.length > 0 && model.optionalFeatures.map((f: any) => (
-                        <PricingRow 
-                            key={f.id} 
-                            id={f.id} 
-                            name={f.name} 
-                            sku={f.code} 
-                            cost={f.cost} 
-                            sell={f.sellPriceExclGst} 
-                            vendor={vendor} 
-                            organisation={organisation} 
-                            exchangeRate={exchangeRate} 
-                            sections={sections} 
-                            allColumns={allColumns} 
-                            strategy={strategy} 
-                            onUpdateValue={onUpdateValue} 
-                            indent 
-                            isOption 
-                        />
-                    ))}
+
+                    {/* Visual Split: Factory Options */}
+                    {model.optionalFeatures && model.optionalFeatures.length > 0 && (
+                        <>
+                            <TableRow className="hover:bg-transparent">
+                                <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                    <div className="flex items-center gap-2">
+                                        <Layers className="h-3 w-3 text-primary opacity-40" />
+                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Factory Options</span>
+                                    </div>
+                                </TableCell>
+                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-muted/5" />)}
+                            </TableRow>
+                            {model.optionalFeatures.map((f: any) => (
+                                <PricingRow 
+                                    key={f.id} 
+                                    id={f.id} 
+                                    name={f.name} 
+                                    sku={f.code} 
+                                    cost={f.cost} 
+                                    sell={f.sellPriceExclGst} 
+                                    vendor={vendor} 
+                                    organisation={organisation} 
+                                    exchangeRate={exchangeRate} 
+                                    sections={sections} 
+                                    allColumns={allColumns} 
+                                    strategy={strategy} 
+                                    onUpdateValue={onUpdateValue} 
+                                    indent 
+                                    isOption 
+                                />
+                            ))}
+                        </>
+                    )}
                 </>
             )}
         </>
     );
 }
 
-function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate }: any) {
+function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, isBoatVariant }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
     const vendorCurrency = vendor.currency || 'ISO';
 
     return (
-        <TableRow className="hover:bg-muted/30 transition-colors">
-            <TableCell className={cn("py-2.5 border-r border-b", indent ? "pl-16" : "px-6")}>
-                <div className="flex flex-col min-w-0"><span className="font-bold text-[11px] uppercase truncate">{name}</span><span className="text-[9px] font-mono text-muted-foreground uppercase">{sku || 'NO SKU'}</span></div>
+        <TableRow className="hover:bg-muted/30 transition-colors group">
+            <TableCell className={cn("sticky left-0 z-30 bg-white py-2.5 border-r border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)] transition-colors group-hover:bg-slate-50", indent ? "pl-16" : "px-6")}>
+                <div className="flex flex-col min-w-0">
+                    <span className={cn("font-bold text-[11px] uppercase truncate", isOption ? "text-muted-foreground" : "text-slate-900")}>{name}</span>
+                    <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">{sku || 'NO SKU'}</span>
+                </div>
             </TableCell>
             {sections.map((sec: any) => {
                 if (sec.id === 'sec-exchange') {
                     if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[10px]">{vendorCurrency}</Badge></TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono">{exchangeRate.toFixed(4)}</TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[10px]">{orgCurrency}</Badge></TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono">1.0000</TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter">{vendorCurrency}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono text-primary/60">{exchangeRate.toFixed(4)}</TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter">{orgCurrency}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono text-primary/60">1.0000</TableCell>
                         </React.Fragment>
                     );
                 }
@@ -905,7 +754,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                                 />
                             </TableCell>
                             <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">
-                                {formatCurrency(convertedCost, orgCurrency)} {orgCurrency}
+                                {formatCurrency(convertedCost, orgCurrency)}
                             </TableCell>
                         </React.Fragment>
                     );
@@ -914,7 +763,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
                     return (
                         <TableCell key={sec.id} className="p-0 border-r border-b bg-primary/5">
-                            {!isOption ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-muted/10" />}
+                            {isBoatVariant ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-muted/10" />}
                         </TableCell>
                     );
                 }
@@ -967,5 +816,42 @@ function EditableCell({ id, col, value, onChange, placeholder, prefix, suffix, a
             />
             {suffix && <span className="text-[9px] font-black opacity-40 ml-1">{suffix}</span>}
         </div>
+    );
+}
+
+function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: { organisationId: string; vendorId: string; isOpen: boolean; onClose: () => void; }) {
+    const firestore = useFirestore();
+    const logQuery = useMemoFirebase(() => query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/auditLog`), orderBy('timestamp', 'desc')), [firestore, organisationId, vendorId]);
+    const { data: logs, loading } = useCollection<AuditLogEntry>(logQuery);
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+                <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><History className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Strategy Audit Log</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Chronological record of tactical modifications</DialogDescription></div></div></DialogHeader>
+                <div className="flex-1 min-h-0">{loading ? (<div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : logs && logs.length > 0 ? (<ScrollArea className="h-full"><Table><TableHeader className="bg-muted/50 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Timestamp</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">User</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Metric</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Previous</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">New Value</TableHead></TableRow></TableHeader><TableBody>{logs.map((log) => (<TableRow key={log.id} className="hover:bg-muted/10 transition-colors"><TableCell className="py-4 px-6 font-medium text-[10px] text-muted-foreground">{log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}</TableCell><TableCell className="py-4 px-6"><div className="flex items-center gap-2"><UserIcon className="h-3 w-3 text-primary opacity-40" /><span className="font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</span></div></TableCell><TableCell className="py-4 px-6"><Badge variant="outline" className="font-black text-[8px] uppercase border-primary/20 text-primary">{log.colId}</Badge></TableCell><TableCell className="py-4 px-6 font-mono text-[10px] text-muted-foreground/60">{log.oldValue ?? '-'}</TableCell><TableCell className="py-4 px-6 font-mono text-[10px] font-black text-primary">{log.newValue}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-20"><Clock className="h-16 w-16 mb-4" /><p className="text-sm font-black uppercase tracking-widest">No strategic modifications logged yet.</p></div>)}</div>
+                <DialogFooter className="p-6 border-t bg-muted/5"><DialogClose asChild><Button variant="outline" className="font-bold border-2">Close Log</Button></DialogClose></DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function FreightManager({ organisationId, vendorId, isOpen, onClose }: { organisationId: string; vendorId: string; isOpen: boolean; onClose: () => void; }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const freightQuery = useMemoFirebase(() => query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`), orderBy('size')), [firestore, organisationId, vendorId]);
+    const { data: containers, loading } = useCollection<FreightContainer>(freightQuery);
+    const [isAdding, setIsAdding] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [size, setSize] = useState('');
+    const [cost, setCost] = useState('');
+    const [cbm, setCbm] = useState('');
+    const handleAdd = async () => { if (!size || !cost || !cbm) return; setIsSaving(true); try { const colRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`); await addDoc(colRef, { size, cost: parseFloat(cost), currency: 'USD', cubicMeters: parseFloat(cbm), updatedAt: serverTimestamp() }); toast({ title: "Container Added" }); setIsAdding(false); setSize(''); setCost(''); setCbm(''); } catch (e) { toast({ variant: 'destructive', title: "Save Failed" }); } finally { setIsSaving(false); } };
+    const handleDelete = async (id: string) => { try { await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id)); toast({ title: "Container Removed" }); } catch (e) { toast({ variant: 'destructive', title: "Delete Failed" }); } };
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+                <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Truck className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Shipping Containers & Logistics Cost Matrix</DialogDescription></div></div><Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-9 px-6 rounded-xl shadow-lg transition-transform hover:scale-105"><Plus className="h-4 w-4 mr-1.5" /> Add Container</Button></div></DialogHeader>
+                <div className="flex-1 min-h-0 overflow-hidden">{loading ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : (<ScrollArea className="h-full"><div className="p-8">{isAdding && (<Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden"><CardHeader className="p-6 border-b bg-background"><CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle></CardHeader><CardContent className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label><Select value={size} onValueChange={setSize}><SelectTrigger className="h-10 font-bold bg-background"><SelectValue placeholder="Select Size..." /></SelectTrigger><SelectContent><SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem><SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem><SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem><SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label><Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label><Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" /></div></div></CardContent><CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button><Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button></CardFooter></Card>)}<div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm"><Table><TableHeader className="bg-muted/50 border-b-2"><TableRow><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{containers?.map((c) => (<TableRow key={c.id}><TableCell className="py-4 px-6 font-black uppercase">{c.size}</TableCell><TableCell className="py-4 px-6 text-right font-bold">{c.cubicMeters} m³</TableCell><TableCell className="py-4 px-6 text-right font-black">{formatCurrency(c.cost, c.currency)}</TableCell><TableCell className="py-4 px-6 text-center"><Badge>{c.currency}</Badge></TableCell><TableCell className="py-4 px-6 text-right"><Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>))}</TableBody></Table></div></div></ScrollArea>)}</div>
+            </DialogContent>
+        </Dialog>
     );
 }
