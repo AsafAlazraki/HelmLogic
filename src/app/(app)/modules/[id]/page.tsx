@@ -65,6 +65,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 interface Vendor {
     id: string;
@@ -1182,7 +1183,7 @@ export default function ModuleDetailsPage() {
                                     <div className="space-y-4">
                                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                                             {dashboardSubDealers.map(sd => {
-                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(moduleData.id);
+                                                const hasAccess = sd.enabledModuleSubscriptions?.includes(module.id);
                                                 return (
                                                     <Card key={sd.id} className={cn("relative group transition-all duration-500 rounded-[2rem] overflow-hidden", hasAccess ? "border-primary/50 shadow-xl" : "opacity-50 grayscale border-dashed")}>
                                                         <div className="p-6 flex flex-col gap-6">

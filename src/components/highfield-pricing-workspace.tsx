@@ -20,7 +20,6 @@ import {
     ChevronDown, 
     ChevronRight, 
     Ship, 
-    Package, 
     Wrench, 
     DollarSign, 
     Percent, 
@@ -37,7 +36,6 @@ import {
     ShieldCheck,
     Truck,
     CheckCircle2,
-    Box,
     Calculator,
     AlertCircle,
     History,
@@ -62,12 +60,10 @@ import {
     DialogClose,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { SUPPORTED_CURRENCIES, formatCurrency } from '@/lib/currency-utils';
-import { ScrollArea } from './ui/scroll-area';
+import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import NextImage from "next/image";
-import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -596,7 +592,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     return (
         <>
             <TableRow className="bg-slate-100/80 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="sticky left-0 z-30 bg-slate-100 py-3 px-6 font-black uppercase text-[11px] border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableCell className="sticky left-0 z-30 bg-slate-100 py-3 px-6 font-black uppercase text-[11px] border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
                         <span>{range.name} RANGE</span>
@@ -628,7 +624,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-slate-50/50 border-l-4 border-l-primary group">
-                <TableCell className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableCell className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">
                         <button onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}>
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
@@ -641,9 +637,8 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
             </TableRow>
             {isLocalExpanded && (
                 <>
-                    {/* Visual Split: Boat Variants */}
                     <TableRow className="hover:bg-transparent">
-                        <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                        <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                             <div className="flex items-center gap-2">
                                 <Ship className="h-3 w-3 text-primary opacity-40" />
                                 <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Boat Variants</span>
@@ -671,11 +666,10 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         />
                     ))}
 
-                    {/* Visual Split: Factory Options */}
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="hover:bg-transparent">
-                                <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                <TableCell className="sticky left-0 z-30 bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                     <div className="flex items-center gap-2">
                                         <Layers className="h-3 w-3 text-primary opacity-40" />
                                         <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Factory Options</span>
@@ -717,7 +711,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 
     return (
         <TableRow className="hover:bg-muted/30 transition-colors group">
-            <TableCell className={cn("sticky left-0 z-30 bg-white py-2.5 border-r border-b shadow-[2px_0_5px_rgba(0,0,0,0.05)] transition-colors group-hover:bg-slate-50", indent ? "pl-16" : "px-6")}>
+            <TableCell className={cn("sticky left-0 z-30 bg-white py-2.5 border-r border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-slate-50", indent ? "pl-16" : "px-6")}>
                 <div className="flex flex-col min-w-0">
                     <span className={cn("font-bold text-[11px] uppercase truncate", isOption ? "text-muted-foreground" : "text-slate-900")}>{name}</span>
                     <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">{sku || 'NO SKU'}</span>
@@ -827,7 +821,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: { organis
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
                 <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><History className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Strategy Audit Log</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Chronological record of tactical modifications</DialogDescription></div></div></DialogHeader>
-                <div className="flex-1 min-h-0">{loading ? (<div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : logs && logs.length > 0 ? (<ScrollArea className="h-full"><Table><TableHeader className="bg-muted/50 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Timestamp</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">User</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Metric</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Previous</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">New Value</TableHead></TableRow></TableHeader><TableBody>{logs.map((log) => (<TableRow key={log.id} className="hover:bg-muted/10 transition-colors"><TableCell className="py-4 px-6 font-medium text-[10px] text-muted-foreground">{log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}</TableCell><TableCell className="py-4 px-6"><div className="flex items-center gap-2"><UserIcon className="h-3 w-3 text-primary opacity-40" /><span className="font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</span></div></TableCell><TableCell className="py-4 px-6"><Badge variant="outline" className="font-black text-[8px] uppercase border-primary/20 text-primary">{log.colId}</Badge></TableCell><TableCell className="py-4 px-6 font-mono text-[10px] text-muted-foreground/60">{log.oldValue ?? '-'}</TableCell><TableCell className="py-4 px-6 font-mono text-[10px] font-black text-primary">{log.newValue}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-20"><Clock className="h-16 w-16 mb-4" /><p className="text-sm font-black uppercase tracking-widest">No strategic modifications logged yet.</p></div>)}</div>
+                <div className="flex-1 min-h-0">{loading ? (<div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : logs && logs.length > 0 ? (<ScrollArea className="h-full"><Table><TableHeader className="bg-muted/5 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Timestamp</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">User</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Metric</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Previous</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">New Value</TableHead></TableRow></TableHeader><TableBody>{logs.map((log) => (<TableRow key={log.id} className="hover:bg-muted/10 transition-colors"><TableCell className="py-4 px-6 font-medium text-[10px] text-muted-foreground">{log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}</TableCell><TableCell className="py-4 px-6"><div className="flex items-center gap-2"><UserIcon className="h-3 w-3 text-primary opacity-40" /><span className="font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</span></div></TableCell><TableCell className="py-4 px-6"><Badge variant="outline" className="font-black text-[8px] uppercase border-primary/20 text-primary">{log.colId}</Badge></TableCell><TableCell className="py-4 px-6 font-mono text-[10px] text-muted-foreground/60">{log.oldValue ?? '-'}</TableCell><TableCell className="py-4 px-6 font-mono text-[10px] font-black text-primary">{log.newValue}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-20"><Clock className="h-16 w-16 mb-4" /><p className="text-sm font-black uppercase tracking-widest">No strategic modifications logged yet.</p></div>)}</div>
                 <DialogFooter className="p-6 border-t bg-muted/5"><DialogClose asChild><Button variant="outline" className="font-bold border-2">Close Log</Button></DialogClose></DialogFooter>
             </DialogContent>
         </Dialog>
