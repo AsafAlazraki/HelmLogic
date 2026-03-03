@@ -555,7 +555,7 @@ export default function ModuleDetailsPage() {
         <div className="flex flex-col h-screen overflow-hidden bg-background">
             {isTransitioning && <BuildTransitionOverlay organisation={currentMemberOrg as any} model={selectedModel} />}
 
-            {/* Cinematic Hero */}
+            {/* Immersive Cinematic Hero */}
             <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
@@ -684,7 +684,7 @@ export default function ModuleDetailsPage() {
                                 <Button 
                                     variant="outline" 
                                     onClick={handleBackToCatalog} 
-                                    className="relative h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white hover:bg-primary hover:text-white transition-all rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] group overflow-hidden"
+                                    className="relative h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white hover:bg-primary hover:text-white transition-all rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] group overflow-hidden"
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite] transition-transform" />
                                     <ChevronLeft className="mr-3 h-5 w-5 transition-transform group-hover:-translate-x-1.5 relative z-10" /> 

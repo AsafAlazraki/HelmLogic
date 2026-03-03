@@ -534,29 +534,24 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
         reader.onload = (event) => {
             try {
                 const data = event.target?.result;
-                // Use 'array' for better encoding support
                 const workbook = XLSX.read(data, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 
-                // Explicitly read rows as arrays to preserve header mapping for all columns
                 const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
                 if (rows.length === 0) throw new Error("Document is empty.");
 
-                // Row 0 is the header row
                 const headers = rows[0].map(h => String(h || '').trim()).filter(h => h !== '');
                 setColumnOrder(headers);
 
-                // Map data rows to objects using the detected headers
                 const json = rows.slice(1).map((row, rowIndex) => {
                     const obj: any = { id: `row-${rowIndex}` };
                     headers.forEach((header, colIndex) => {
-                        // Ensure keys are strictly aligned with headers even if values are undefined
                         obj[header] = row[colIndex] !== undefined ? row[colIndex] : null;
                     });
                     return obj;
-                }).filter(obj => Object.keys(obj).length > 1); // Filter out truly empty rows
+                }).filter(obj => Object.keys(obj).length > 1);
 
                 setParsedData(json);
                 toast({ title: 'Parsing Complete', description: `Detected ${headers.length} columns and ${json.length} rows.` });

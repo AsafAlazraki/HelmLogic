@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -706,7 +705,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     sections={sections} 
                     allColumns={allColumns} 
                     strategy={strategy} 
-                    onUpdateValue={handleUpdateValue} 
+                    onUpdateValue={onUpdateValue} 
                     vendor={vendor} 
                     organisation={organisation} 
                     exchangeRate={exchangeRate} 
@@ -763,7 +762,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                             sections={sections} 
                             allColumns={allColumns} 
                             strategy={strategy} 
-                            onUpdateValue={handleUpdateValue} 
+                            onUpdateValue={onUpdateValue} 
                             indent 
                             isBoatVariant
                             rowIndex={idx}
@@ -814,7 +813,6 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
     const vendorCurrency = vendor.currency || 'ISO';
     
-    // Zebra striping that respects our group structure
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/30";
 
     return (
