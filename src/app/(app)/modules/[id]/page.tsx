@@ -15,6 +15,7 @@ import { collection, query, where, orderBy, doc, updateDoc, writeBatch } from 'f
 import { 
     Loader2, 
     ChevronRight, 
+    ChevronLeft,
     Wrench, 
     FileText, 
     ClipboardList, 
@@ -49,7 +50,6 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel, FormDescription } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createSlug, cn } from '@/lib/utils';
-import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { InventoryList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
@@ -112,315 +112,11 @@ interface Model {
   [key: string]: any;
 }
 
-interface DealerFitCategory {
-    id: string;
-    name: string;
-}
-
-const packageFormSchema = z.object({
-    name: z.string().min(1, { message: "Package name is required." }),
-});
-type PackageFormData = z.infer<typeof packageFormSchema>;
-
-function PackageDialog({
-    isOpen,
-    setIsOpen,
-    onSave,
-    editingPackage
-}: {
-    isOpen: boolean,
-    setIsOpen: (isOpen: boolean) => void,
-    onSave: (data: PackageFormData) => void,
-    editingPackage: { id: string; name: string } | null
-}) {
-    const form = useForm<PackageFormData>({
-        resolver: zodResolver(packageFormSchema),
-        defaultValues: { name: '' },
-    });
-    
-    useEffect(() => {
-        if (isOpen) {
-            form.reset({ name: editingPackage?.name || '' });
-        }
-    }, [isOpen, editingPackage, form]);
-
-    const handleSave = (data: PackageFormData) => {
-        onSave(data);
-        setIsOpen(false);
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{editingPackage ? 'Edit Package' : 'Add New Package'}</DialogTitle>
-                </DialogHeader>
-                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleSave)}>
-                        <div className="grid gap-4 py-4">
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel htmlFor="name">Package Name</FormLabel>
-                                        <FormControl>
-                                            <Input id="name" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button type="button" variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit">Save</Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; isAdmin: boolean }) {
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const modelsQuery = useMemoFirebase(() => {
-        if (!vendor?.id || !range?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
-    }, [firestore, vendor.id, range.id]);
-    
-    const { data: models, loading: modelsLoading } = useCollection<Model>(modelsQuery);
-
-    const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
-    const [selectedModelForPackage, setSelectedModelForPackage] = useState<Model | null>(null);
-    const [editingPackage, setEditingPackage] = useState<{ id: string; name: string } | null>(null);
-    
-    if (modelsLoading) {
-        return <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-    }
-    
-    if (!models || models.length === 0) {
-        return <p className="text-muted-foreground text-center py-8">No models found for {range.name}.</p>;
-    }
-
-    const handleOpenAddPackageDialog = (model: Model, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setSelectedModelForPackage(model);
-        setEditingPackage(null);
-        setIsPackageDialogOpen(true);
-    };
-
-    const handleOpenEditPackageDialog = (model: Model, pkg: {id: string, name: string}, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setSelectedModelForPackage(model);
-        setEditingPackage(pkg);
-        setIsPackageDialogOpen(true);
-    };
-
-    const handleSavePackage = async (data: PackageFormData) => {
-        if (!selectedModelForPackage) return;
-        
-        let updatedPackages;
-        const currentPackages = selectedModelForPackage.packageLevels || [];
-        if (editingPackage) {
-            updatedPackages = currentPackages.map(p => p.id === editingPackage.id ? { ...p, name: data.name } : p);
-        } else {
-            const newPackage = { id: `pkg-lvl-${Date.now()}`, name: data.name };
-            updatedPackages = [...currentPackages, newPackage];
-        }
-
-        const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${selectedModelForPackage.id}`;
-        const docRef = doc(firestore, modelPath);
-        
-        updateDoc(docRef, { packageLevels: updatedPackages })
-            .then(() => {
-                toast({ title: "Package Updated" });
-            })
-            .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: docRef.path,
-                    operation: 'update',
-                    requestResourceData: { packageLevels: updatedPackages },
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
-            });
-    };
-
-    const handleDeletePackage = async (model: Model, packageId: string, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const updatedPackages = model.packageLevels?.filter(p => p.id !== packageId) || [];
-        const modelPath = `data-warehouse/${vendor.id}/ranges/${range.id}/models/${model.id}`;
-        const docRef = doc(firestore, modelPath);
-
-        updateDoc(docRef, { packageLevels: updatedPackages })
-            .then(() => {
-                toast({ title: 'Package Deleted' });
-            })
-            .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: docRef.path,
-                    operation: 'update',
-                    requestResourceData: { packageLevels: updatedPackages },
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
-            });
-    };
-    
-    return (
-        <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {models.map(model => (
-                    <Card key={model.id} className="group overflow-hidden flex flex-col h-full transition-all duration-300 ease-in-out hover:border-primary hover:shadow-xl hover:-translate-y-1 cursor-pointer" onClick={() => onModelSelect(model)}>
-                        <div className="flex-grow">
-                            <div className="h-52 bg-secondary relative">
-                                    {model.coverImageUrl ? (
-                                    <Image src={model.coverImageUrl} alt={`${model.name} cover`} fill className="object-cover" />
-                                ) : (
-                                    <div className="flex h-full w-full items-center justify-center">
-                                        <Wrench className="h-12 w-12 text-muted-foreground" />
-                                    </div>
-                                )}
-                            </div>
-                            <CardContent className="p-3 h-24 flex flex-col items-center justify-center gap-1">
-                                <p className="font-semibold text-center line-clamp-2">{model.name}</p>
-                                {model.modelCode && <p className="text-[10px] font-mono text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded">{model.modelCode}</p>}
-                            </CardContent>
-                        </div>
-
-                        {vendor.slug === 'stabicraft' && (
-                            <div className="p-3 border-t">
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-[10px]">Packages</h4>
-                                        {isAdmin && (
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={(e) => handleOpenAddPackageDialog(model, e)}>
-                                                <PlusCircle className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                    <div className="space-y-1 min-h-[80px] flex flex-col">
-                                        {(model.packageLevels && model.packageLevels.length > 0) ? (
-                                            <div className="flex-grow space-y-1">
-                                            {model.packageLevels.map(pkg => (
-                                                <div key={pkg.id} className="group/pkg flex items-center justify-between rounded-md bg-secondary text-secondary-foreground px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground w-full">
-                                                    <span className="font-medium truncate pr-2">{pkg.name}</span>
-                                                    {isAdmin && (
-                                                        <div className="flex items-center opacity-0 group-hover/pkg:opacity-100 transition-opacity -mr-2 shrink-0">
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent hover:text-accent-foreground" onClick={(e) => handleOpenEditPackageDialog(model, pkg, e)}>
-                                                                <Pencil className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={(e) => handleDeletePackage(model, pkg.id, e)}>
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            </div>
-                                        ) : (
-                                            <div className="flex-grow flex items-center justify-center text-[10px] text-muted-foreground border border-dashed rounded-md">
-                                                <p>No packages defined.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </Card>
-                ))}
-            </div>
-            
-            <PackageDialog
-                isOpen={isPackageDialogOpen}
-                setIsOpen={setIsPackageDialogOpen}
-                onSave={handleSavePackage}
-                editingPackage={editingPackage}
-            />
-        </>
-    );
-}
-
-function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
-    const firestore = useFirestore();
-    const rangesQuery = useMemoFirebase(() => {
-        if (!vendor?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
-    }, [firestore, vendor.id]);
-
-    const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
-
-    if (rangesLoading) {
-        return <div className="flex justify-center items-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-    }
-    
-    if (!ranges || ranges.length === 0) {
-        return <p className="text-muted-foreground text-center py-8">No product ranges found for {vendor.name}.</p>;
-    }
-
-    return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {ranges.map(range => (
-                <div key={range.id} className="group cursor-pointer" onClick={() => onRangeSelect(range)}>
-                    <Card className="h-full transition-all duration-300 ease-in-out group-hover:border-primary group-hover:shadow-xl hover:-translate-y-1">
-                        <div className="h-40 bg-secondary relative">
-                            {range.imageUrl ? (
-                                <div className="relative h-full w-full">
-                                    <Image src={range.imageUrl} alt={`${range.name} cover`} fill className="object-cover p-4" sizes="(max-width: 768px) 50vw, 25vw" />
-                                </div>
-                            ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                    <Wrench className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                            )}
-                        </div>
-                        <CardHeader>
-                            <CardTitle className="text-lg">{range.name}</CardTitle>
-                        </CardHeader>
-                    </Card>
-                </div>
-            ))}
-        </div>
-    );
-}
-
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Module name is required.' }),
   mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
   associatedVendorIds: z.array(z.string()).default([]),
 });
-
-function ModuleConfigurationBreadcrumbs({ module, range, model, pendingMotor, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; pendingMotor: any; view: 'ranges' | 'models' | 'motors' | 'bmt' | 'quote' | 'operations' | 'pricing', onBreadcrumbClick: (level: 'ranges' | 'models' | 'motors') => void }) {
-    return (
-        <div className="flex items-center text-xs text-white/60">
-            <button type="button" className="hover:text-white" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
-            {range && (view === 'models' || view === 'bmt' || view === 'quote' || view === 'operations') && (
-                <>
-                    <ChevronRight className="h-3 w-3 mx-1" />
-                    <button type="button" className="hover:text-white" onClick={() => onBreadcrumbClick('models')}>{range.name}</button>
-                </>
-            )}
-            {model && (view === 'bmt' || view === 'quote' || view === 'operations') && (
-                <>
-                    <ChevronRight className="h-3 w-3 mx-1" />
-                    <span className="font-bold text-white">{model.name}</span>
-                </>
-            )}
-            {pendingMotor && (view === 'bmt' || view === 'quote' || view === 'operations') && (
-                <>
-                    <ChevronRight className="h-3 w-3 mx-1" />
-                    <span className="font-bold text-white">{pendingMotor['Model Name'] || pendingMotor.name}</span>
-                </>
-            )}
-        </div>
-    );
-}
 
 function QuoteSelectorDialog({ 
     isOpen, 
@@ -523,6 +219,26 @@ function QuoteSelectorDialog({
     );
 }
 
+function ModuleBreadcrumbs({ module, range, model, pendingMotor, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; pendingMotor: any; view: string, onBreadcrumbClick: (level: 'ranges' | 'models' | 'motors') => void }) {
+    return (
+        <div className="flex items-center text-[10px] font-bold uppercase tracking-widest text-white/60">
+            <button type="button" className="hover:text-white" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
+            {range && (
+                <>
+                    <ChevronRight className="h-3 w-3 mx-1" />
+                    <button type="button" className="hover:text-white" onClick={() => onBreadcrumbClick('models')}>{range.name}</button>
+                </>
+            )}
+            {model && (
+                <>
+                    <ChevronRight className="h-3 w-3 mx-1" />
+                    <span className="text-white">{model.name}</span>
+                </>
+            )}
+        </div>
+    );
+}
+
 export default function ModuleDetailsPage() {
     const router = useRouter();
     const params = useParams();
@@ -534,16 +250,10 @@ export default function ModuleDetailsPage() {
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [pendingMotor, setPendingMotor] = useState<any | null>(null);
-    const [selectedMotorDataSetId, setSelectedMotorDataSetId] = useState<string | null>(null);
-    const [isChoiceDialogOpen, setIsChoiceDialogOpen] = useState(false);
     const [isNewQuoteOpen, setIsNewQuoteOpen] = useState(false);
     
     const [isSavingModule, setIsSavingModule] = useState(false);
-    const [isSavingSubscriptions, setIsSavingSubscriptions] = useState(false);
-    const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
     const [viewContextOrgId, setViewContextOrgId] = useState<string | null>(null);
-    const [tempSubscribedOrgIds, setTempSubscribedOrgIds] = useState<string[]>([]);
-    
     const [inStockFilter, setInStockFilter] = useState<string>('all');
 
     const { user, loading: userLoading } = useUser();
@@ -566,11 +276,9 @@ export default function ModuleDetailsPage() {
     
     const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
     const orgsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
-    const catsQuery = useMemoFirebase(() => collection(firestore, 'dealerFitCategories'), [firestore]);
 
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
     const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>(orgsQuery);
-    const { data: allDealerFitCategories, loading: catsLoading } = useCollection<DealerFitCategory>(catsQuery);
     
     const mainVendorRef = useMemoFirebase(() => 
         moduleData ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null,
@@ -644,16 +352,6 @@ export default function ModuleDetailsPage() {
 
     const [activeTab, setActiveTab] = useState('dashboard');
 
-    useEffect(() => {
-        if (isAdmin) {
-            if (viewContextOrgId) {
-                setActiveTab('dashboard');
-            } else {
-                setActiveTab('bmt');
-            }
-        }
-    }, [viewContextOrgId, isAdmin]);
-
     const settingsForm = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: { name: '', mainVendorId: '', associatedVendorIds: [] },
@@ -700,140 +398,6 @@ export default function ModuleDetailsPage() {
             .finally(() => setIsSavingModule(false));
     }
 
-    const handleSaveSubscriptions = async () => {
-        if (!allOrganisations || !moduleData) return;
-        setIsSavingSubscriptions(true);
-        const batch = writeBatch(firestore);
-
-        allOrganisations.forEach(org => {
-            const orgRef = doc(firestore, 'organisations', org.id);
-            const currentSubs = org.enabledModuleSubscriptions || [];
-            const shouldBeSubscribed = tempSubscribedOrgIds.includes(org.id);
-            
-            if (shouldBeSubscribed && !currentSubs.includes(moduleData.id)) {
-                batch.update(orgRef, { enabledModuleSubscriptions: [...currentSubs, moduleData.id] });
-            } else if (!shouldBeSubscribed && currentSubs.includes(moduleData.id)) {
-                batch.update(orgRef, { enabledModuleSubscriptions: currentSubs.filter(id => id !== moduleData.id) });
-            }
-        });
-
-        batch.commit()
-            .then(() => {
-                toast({ title: "Subscriptions updated." });
-            })
-            .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: 'organisations',
-                    operation: 'write',
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
-            })
-            .finally(() => setIsSavingSubscriptions(false));
-    };
-
-    const handleUpdateOrgVendorAccess = async (targetId: string, vendorIds: string[]) => {
-        if (!targetId) return;
-        const orgRef = doc(firestore, 'organisations', targetId);
-        const updateData = {
-            [`moduleAssociatedVendorAccess.${moduleData.id}`]: vendorIds
-        };
-
-        updateDoc(orgRef, updateData)
-            .then(() => {
-                toast({ title: "Vendor access updated." });
-            })
-            .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: orgRef.path,
-                    operation: 'update',
-                    requestResourceData: updateData,
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
-            });
-    };
-
-    const handleUpdateOrgCategories = async (targetId: string, catIds: string[]) => {
-        if (!targetId) return;
-        const orgRef = doc(firestore, 'organisations', targetId);
-        const updateData = {
-            dealerFitCategories: catIds
-        };
-
-        updateDoc(orgRef, updateData)
-            .then(() => {
-                toast({ title: "Dealer fit options updated." });
-            })
-            .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: orgRef.path,
-                    operation: 'update',
-                    requestResourceData: updateData,
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
-            });
-    };
-
-    const handleToggleSubDealerAccess = async (sdId: string, hasAccess: boolean) => {
-        if (!moduleData) return;
-        const sd = allOrganisations?.find(o => o.id === sdId);
-        if (!sd) return;
-        const currentSubs = sd.enabledModuleSubscriptions || [];
-        const newSubs = hasAccess 
-            ? [...new Set([...currentSubs, moduleData.id])]
-            : currentSubs.filter(id => id !== moduleData.id);
-        
-        const orgRef = doc(firestore, 'organisations', sdId);
-        updateDoc(orgRef, {
-            enabledModuleSubscriptions: newSubs
-        })
-            .then(() => {
-                toast({ title: hasAccess ? "Access granted" : "Access revoked" });
-            })
-            .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: orgRef.path,
-                    operation: 'update',
-                    requestResourceData: { enabledModuleSubscriptions: newSubs },
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
-            });
-    };
-
-    const handleRangeSelect = (range: Range) => {
-        setSelectedRange(range);
-        setView('models');
-    };
-    
-    const handleModelSelect = (model: Model) => {
-        setSelectedModel(model);
-        setPendingMotor(null);
-        setIsChoiceDialogOpen(true);
-    };
-
-    const handleMotorSelect = (motor: any, dataSetId: string) => {
-        setPendingMotor(motor);
-        setSelectedMotorDataSetId(dataSetId);
-        setSelectedModel(null);
-        setIsChoiceDialogOpen(true);
-    };
-
-    const handleChoiceSelect = (choice: 'bmt' | 'quote' | 'operations') => {
-        if (choice === 'bmt' && pendingMotor) {
-            router.push(`/modules/${moduleData.slug || moduleData.id}/motor/${pendingMotor.id}?vendor=${moduleData.mainVendorId}&set=${selectedMotorDataSetId}`);
-            setIsChoiceDialogOpen(false);
-            return;
-        }
-        
-        if (choice === 'quote' && selectedModel && mainVendor?.slug === 'highfield') {
-            router.push(`/modules/${moduleData.slug || moduleData.id}/quote/${selectedModel.id}?range=${selectedRange?.id}&vendor=${mainVendor.id}`);
-            setIsChoiceDialogOpen(false);
-            return;
-        }
-
-        setView(choice);
-        setIsChoiceDialogOpen(false);
-    };
-    
     const handleBreadcrumbClick = (level: 'ranges' | 'models' | 'motors') => {
         if (level === 'ranges') {
             setView('ranges');
@@ -849,7 +413,7 @@ export default function ModuleDetailsPage() {
         }
     };
     
-    const loading = moduleLoading || mainVendorLoading || vendorsLoading || orgsLoading || userLoading || profileLoading || catsLoading;
+    const loading = moduleLoading || mainVendorLoading || vendorsLoading || orgsLoading || userLoading || profileLoading;
 
     if (loading) {
       return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
@@ -860,18 +424,11 @@ export default function ModuleDetailsPage() {
     }
 
     if (!userPermissions.can_access_module) {
-        return <Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>Your role does not have permission to access modules. Please contact your administrator.</CardDescription></CardHeader></Card>;
+        return <Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>Your role does not have permission to access modules.</CardDescription></CardHeader></Card>;
     }
     
-    const breadcrumbParts = [
-        isAdmin ? { href: "/admin", label: "Admin" } : { href: "/dashboard", label: "Dashboard" },
-        { href: `/modules/${slugOrId}`, label: moduleData.name },
-    ];
-
     const isMasterContext = viewContextOrgId === null;
-    const currentContextLabel = availableContexts.find(c => c.id === (viewContextOrgId || 'master'))?.name || 'Master Data';
     const isImpersonating = viewContextOrgId !== null && (isAdmin || viewContextOrgId !== userProfile?.organisationId);
-    
     const showSubDealersTab = isViewingOrg && dashboardOrg?.subDealersEnabled && userPermissions.can_view_subdealers;
     const tabGridCols = (isAdmin && !viewContextOrgId) ? "grid-cols-5" : showSubDealersTab ? "grid-cols-6" : "grid-cols-5";
 
@@ -879,145 +436,124 @@ export default function ModuleDetailsPage() {
     const isMotorBrand = mainVendor?.vendorType === 'Motor Brand';
 
     return (
-        <div className="flex flex-col min-h-screen space-y-0 -m-4 md:-m-6 overflow-x-hidden">
-            {/* 1. Cinematic Hero Header (Top) */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-accent px-8 md:px-12 py-10 text-primary-foreground shadow-2xl border-b border-white/10 shrink-0">
-                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-[100px] animate-pulse" />
-                <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-accent/20 blur-[100px]" />
-                
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                    <div className="space-y-4">
-                        {/* Logo & Breadcrumbs Group */}
-                        <div className="space-y-2">
+        <div className="flex flex-col h-[calc(100vh-64px)] -m-4 md:-m-6 overflow-hidden">
+            {/* Cinematic Compact Header */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-accent px-8 py-6 text-primary-foreground shadow-2xl shrink-0 border-b border-white/10">
+                <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-white/5 blur-[80px]" />
+                <div className="relative z-10 flex items-center justify-between gap-8">
+                    <div className="flex items-center gap-8">
+                        {/* Logo Plate */}
+                        <div className="h-12 w-48 relative bg-white/95 rounded-xl p-2 shadow-xl border border-white/20 shrink-0">
                             {moduleData.logoUrl ? (
-                                <div className="relative h-14 w-56 bg-white/95 rounded-[1rem] p-2.5 shadow-xl border border-white/20">
-                                    <Image src={moduleData.logoUrl} alt={moduleData.name} fill className="object-contain" unoptimized />
-                                </div>
+                                <Image src={moduleData.logoUrl} alt={moduleData.name} fill className="object-contain" unoptimized />
                             ) : (
-                                <div className="flex items-center gap-3">
-                                    <Anchor className="h-8 w-8" />
-                                    <h1 className="text-2xl font-black uppercase tracking-tight italic">{moduleData.name}</h1>
+                                <div className="flex items-center gap-2 h-full text-primary">
+                                    <Anchor className="h-5 w-5" />
+                                    <span className="font-black uppercase text-xs tracking-tighter italic">{moduleData.name}</span>
                                 </div>
                             )}
-                            <div className="opacity-70">
-                                <ModuleConfigurationBreadcrumbs 
-                                    module={moduleData} 
-                                    range={selectedRange} 
-                                    model={mergedModel} 
-                                    pendingMotor={pendingMotor} 
-                                    view={view} 
-                                    onBreadcrumbClick={handleBreadcrumbClick} 
-                                />
-                            </div>
                         </div>
 
                         <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] opacity-70">
-                                <Navigation className="h-3.5 w-3.5" />
-                                <span>Command Center</span>
-                            </div>
-                            <h1 className="text-4xl font-black tracking-tight sm:text-5xl uppercase italic">
+                            <ModuleBreadcrumbs 
+                                module={moduleData} 
+                                range={selectedRange} 
+                                model={mergedModel} 
+                                pendingMotor={pendingMotor} 
+                                view={view} 
+                                onBreadcrumbClick={handleBreadcrumbClick} 
+                            />
+                            <h1 className="text-2xl font-black tracking-tight uppercase italic leading-none">
                                 {dashboardOrg?.name || 'Local Fleet'}
                             </h1>
                         </div>
                     </div>
 
-                    {/* Impersonation & Stats Row */}
-                    <div className="flex flex-col md:items-end gap-6">
+                    <div className="flex items-center gap-6">
                         {isAdmin && (
-                            <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/10">
-                                <span className="text-[10px] font-black uppercase tracking-widest opacity-60 ml-2">Viewing As:</span>
+                            <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-white/10 shrink-0">
                                 <Select 
                                     value={viewContextOrgId || 'master'} 
                                     onValueChange={(val) => setViewContextOrgId(val === 'master' ? null : val)}
                                 >
-                                    <SelectTrigger className={cn("w-[200px] h-9 font-bold bg-white/10 border-none text-white", isImpersonating && "bg-white text-primary")}>
-                                        <Eye className="h-4 w-4 mr-2" />
+                                    <SelectTrigger className={cn("w-40 h-8 font-bold bg-white/10 border-none text-white text-[10px]", isImpersonating && "bg-white text-primary")}>
+                                        <Eye className="h-3.5 w-3.5 mr-2" />
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                    <SelectContent className="rounded-xl border-2">
                                         {availableContexts.map(ctx => (
-                                            <SelectItem key={ctx.id} value={ctx.id} className="font-bold">{ctx.name}</SelectItem>
+                                            <SelectItem key={ctx.id} value={ctx.id} className="font-bold text-xs">{ctx.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         )}
 
-                        <div className="flex flex-wrap items-center gap-4 md:gap-8 bg-black/10 backdrop-blur-md rounded-[2rem] p-6 border border-white/5 shadow-inner">
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Stock Assets</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-black tracking-tighter">14</span>
-                                    <span className="text-[10px] font-bold opacity-40 uppercase">Units</span>
-                                </div>
+                        <div className="flex items-center gap-6 bg-black/10 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/5 shadow-inner shrink-0">
+                            <div className="text-center">
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-0.5">Stock</p>
+                                <p className="text-lg font-black leading-none">14</p>
                             </div>
-                            <Separator orientation="vertical" className="h-10 bg-white/10 hidden sm:block" />
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Active Orders</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-black tracking-tighter">08</span>
-                                    <TrendingUp className="h-3 w-3 text-green-400" />
-                                </div>
+                            <Separator orientation="vertical" className="h-6 bg-white/10" />
+                            <div className="text-center">
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-0.5">Orders</p>
+                                <p className="text-lg font-black leading-none text-green-400">08</p>
                             </div>
-                            <Separator orientation="vertical" className="h-10 bg-white/10 hidden sm:block" />
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Pending Quotes</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-black tracking-tighter">23</span>
-                                </div>
+                            <Separator orientation="vertical" className="h-6 bg-white/10" />
+                            <div className="text-center">
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-0.5">Quotes</p>
+                                <p className="text-lg font-black leading-none">23</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* 2. Primary Navigation Bar (Below Hero) */}
-            <div className="px-8 md:px-12 py-4 bg-white border-b sticky top-0 z-20">
+            {/* Navigation Tabs Bar */}
+            <div className="px-8 bg-white border-b shrink-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className={cn("grid w-full h-12 bg-muted/20 p-1 rounded-xl border border-muted-foreground/10", tabGridCols)}>
-                        {isViewingOrg && <TabsTrigger value="dashboard" className="rounded-lg font-black uppercase text-[10px] tracking-widest"><LayoutDashboard className="h-3.5 w-3.5 mr-2" /> Dashboard</TabsTrigger>}
-                        <TabsTrigger value="bmt" className="rounded-lg font-black uppercase text-[10px] tracking-widest">
-                            {isMotorBrand ? <Cog className="h-3.5 w-3.5 mr-2" /> : <Wrench className="h-3.5 w-3.5 mr-2" />}
+                    <TabsList className={cn("grid w-full h-12 bg-transparent p-0", tabGridCols)}>
+                        {isViewingOrg && <TabsTrigger value="dashboard" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Dashboard</TabsTrigger>}
+                        <TabsTrigger value="bmt" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">
                             {isMotorBrand ? 'Engine Catalog' : 'BMT Catalog'}
                         </TabsTrigger>
-                        <TabsTrigger value="operations" className="rounded-lg font-black uppercase text-[10px] tracking-widest"><ClipboardList className="h-3.5 w-3.5 mr-2" /> Operations</TabsTrigger>
-                        {isViewingOrg && userPermissions.can_access_settings && <TabsTrigger value="pricing" className="rounded-lg font-black uppercase text-[10px] tracking-widest"><DollarSign className="h-3.5 w-3.5 mr-2" /> Strategic Pricing</TabsTrigger>}
-                        {isAdmin && !viewContextOrgId && <TabsTrigger value="organisations" className="rounded-lg font-black uppercase text-[10px] tracking-widest"><Building className="h-3.5 w-3.5 mr-2" /> Orgs</TabsTrigger>}
-                        {isAdmin && !viewContextOrgId && <TabsTrigger value="settings" className="rounded-lg font-black uppercase text-[10px] tracking-widest"><Settings2 className="h-3.5 w-3.5 mr-2" /> Config</TabsTrigger>}
-                        {showSubDealersTab && <TabsTrigger value="sub-dealers" className="rounded-lg font-black uppercase text-[10px] tracking-widest"><Users className="h-3.5 w-3.5 mr-2" /> Network</TabsTrigger>}
+                        <TabsTrigger value="operations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Operations</TabsTrigger>
+                        {isViewingOrg && userPermissions.can_access_settings && <TabsTrigger value="pricing" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Strategic Pricing</TabsTrigger>}
+                        {isAdmin && !viewContextOrgId && <TabsTrigger value="organisations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Orgs</TabsTrigger>}
+                        {isAdmin && !viewContextOrgId && <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Config</TabsTrigger>}
+                        {showSubDealersTab && <TabsTrigger value="sub-dealers" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full">Network</TabsTrigger>}
                     </TabsList>
                 </Tabs>
             </div>
 
-            {/* 3. Main Workspace Content */}
-            <main className="flex-1 px-8 md:px-12 py-8 bg-slate-50/50">
-                <Tabs value={activeTab} className="w-full h-full">
+            {/* Main Workspace Content (Fixed Height) */}
+            <main className="flex-1 overflow-hidden bg-slate-50/50">
+                <Tabs value={activeTab} className="h-full">
                     {isViewingOrg && (
-                        <TabsContent value="dashboard" className="mt-0 h-full">
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-                                {/* Left Side: Logistics */}
-                                <div className="lg:col-span-4 flex flex-col gap-8 h-full">
-                                    <Card className="flex flex-col border-2 rounded-[2.5rem] shadow-xl overflow-hidden bg-white/80 backdrop-blur-sm h-1/2">
-                                        <CardHeader className="bg-muted/5 border-b px-8 py-6 flex flex-row items-center justify-between">
-                                            <div className="space-y-1">
-                                                <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-primary">Local Inventory</CardTitle>
-                                                <h3 className="text-xl font-black uppercase italic">In Stock</h3>
+                        <TabsContent value="dashboard" className="m-0 h-full p-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+                                {/* Left Column: Logistics (Two Panels) */}
+                                <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-hidden">
+                                    <Card className="flex flex-col border-2 rounded-[2rem] shadow-sm bg-white h-1/2 overflow-hidden">
+                                        <CardHeader className="py-4 px-6 border-b shrink-0 flex flex-row items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="h-5 text-[8px] font-black uppercase">Stock</Badge>
+                                                <h3 className="font-black uppercase italic text-sm">Local Inventory</h3>
                                             </div>
                                             {dashboardSubDealers.length > 0 && (
                                                 <Select value={inStockFilter} onValueChange={setInStockFilter}>
-                                                    <SelectTrigger className="w-36 h-8 text-[9px] font-black uppercase tracking-widest rounded-xl">
+                                                    <SelectTrigger className="w-32 h-7 text-[8px] font-black uppercase tracking-tighter">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="all">Network Stock</SelectItem>
+                                                        <SelectItem value="all">Network</SelectItem>
                                                         <SelectItem value="local">{dashboardOrg?.name}</SelectItem>
                                                         {dashboardSubDealers.map(sd => <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                             )}
                                         </CardHeader>
-                                        <CardContent className="flex-1 min-h-0 overflow-hidden p-6">
+                                        <CardContent className="flex-1 min-h-0 p-0">
                                             <InventoryList 
                                                 organisation={dashboardOrg as any}
                                                 subDealers={dashboardSubDealers as any[]}
@@ -1029,14 +565,12 @@ export default function ModuleDetailsPage() {
                                         </CardContent>
                                     </Card>
 
-                                    <Card className="flex flex-col border-2 rounded-[2.5rem] shadow-xl overflow-hidden bg-white/80 backdrop-blur-sm h-1/2">
-                                        <CardHeader className="bg-muted/5 border-b px-8 py-6">
-                                            <div className="space-y-1">
-                                                <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-primary">Logistics Pipeline</CardTitle>
-                                                <h3 className="text-xl font-black uppercase italic">On Order</h3>
-                                            </div>
+                                    <Card className="flex flex-col border-2 rounded-[2rem] shadow-sm bg-white h-1/2 overflow-hidden">
+                                        <CardHeader className="py-4 px-6 border-b shrink-0 flex items-center gap-2">
+                                            <Badge variant="outline" className="h-5 text-[8px] font-black uppercase">Order</Badge>
+                                            <h3 className="font-black uppercase italic text-sm">Pipeline</h3>
                                         </CardHeader>
-                                        <CardContent className="flex-1 min-h-0 overflow-hidden p-6">
+                                        <CardContent className="flex-1 min-h-0 p-0">
                                             <VesselOnOrderList 
                                                 organisation={dashboardOrg as any}
                                                 parentOrg={parentOrg as any}
@@ -1047,35 +581,32 @@ export default function ModuleDetailsPage() {
                                     </Card>
                                 </div>
 
-                                {/* Right Side: Commercial Hub */}
-                                <div className="lg:col-span-8 h-full">
-                                    <Card className="h-full flex flex-col border-2 rounded-[3rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.1)] overflow-hidden bg-white">
-                                        <CardHeader className="p-10 pb-6 border-b bg-slate-50/50">
-                                            <div className="flex items-center justify-between">
-                                                <div className="space-y-1.5">
-                                                    <CardTitle className="text-xs font-black uppercase tracking-[0.3em] text-primary">Sales Intelligence</CardTitle>
-                                                    <h2 className="text-3xl font-black tracking-tight text-slate-950 uppercase italic">Recent Quotes</h2>
-                                                    <CardDescription className="text-sm font-medium text-slate-500">Managing the tactical sales pipeline for {dashboardOrg.name}</CardDescription>
+                                {/* Right Column: Sales Hub */}
+                                <div className="lg:col-span-8 h-full overflow-hidden">
+                                    <Card className="h-full flex flex-col border-2 rounded-[2.5rem] shadow-xl bg-white overflow-hidden">
+                                        <CardHeader className="p-8 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-primary">
+                                                    <Navigation className="h-3 w-3" />
+                                                    <span>Sales Intelligence</span>
                                                 </div>
-                                                <Button 
-                                                    className="h-14 px-8 rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-2xl shadow-primary/20 hover:scale-105 transition-transform active:scale-95"
-                                                    onClick={() => setIsNewQuoteOpen(true)}
-                                                >
-                                                    <PlusCircle className="mr-2 h-5 w-5" />
-                                                    Draft New Quote
-                                                </Button>
+                                                <h2 className="text-2xl font-black tracking-tight text-slate-950 uppercase italic">Recent Quotes</h2>
                                             </div>
+                                            <Button 
+                                                className="h-12 px-6 rounded-2xl font-black uppercase tracking-widest text-[9px] shadow-lg hover:scale-105 transition-transform"
+                                                onClick={() => setIsNewQuoteOpen(true)}
+                                            >
+                                                <PlusCircle className="mr-2 h-4 w-4" />
+                                                Draft New Quote
+                                            </Button>
                                         </CardHeader>
-                                        <CardContent className="flex-1 p-10 flex flex-col justify-center items-center">
-                                            <div className="w-full h-full rounded-[2.5rem] border-2 border-dashed border-slate-100 p-8 bg-slate-50/20 flex flex-col items-center justify-center text-center gap-6 group">
-                                                <div className="h-24 w-24 bg-white rounded-[2rem] shadow-2xl border flex items-center justify-center text-slate-200 group-hover:scale-110 group-hover:text-primary transition-all duration-500">
-                                                    <FileText className="h-10 w-10" />
+                                        <CardContent className="flex-1 p-8 flex flex-col justify-center items-center">
+                                            <div className="w-full h-full rounded-[2rem] border-2 border-dashed border-slate-100 bg-slate-50/20 flex flex-col items-center justify-center text-center gap-4 group">
+                                                <div className="h-16 w-16 bg-white rounded-2xl shadow-xl border flex items-center justify-center text-slate-200 group-hover:scale-110 transition-all">
+                                                    <FileText className="h-8 w-8" />
                                                 </div>
-                                                <div className="space-y-2 max-w-sm">
-                                                    <p className="text-lg font-black uppercase tracking-tight text-slate-400">Tactical Pipeline Empty</p>
-                                                    <p className="text-sm text-slate-400 font-medium leading-relaxed">No active quotations found for this organization. Start a new build from the catalog to initialize the pipeline.</p>
-                                                </div>
-                                                <Button variant="outline" className="mt-4 border-2 rounded-xl h-10 px-6 font-bold hover:bg-slate-50">
+                                                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Tactical Pipeline Empty</p>
+                                                <Button variant="outline" className="border-2 rounded-xl h-9 px-6 font-bold text-xs">
                                                     View Archive
                                                 </Button>
                                             </div>
@@ -1086,105 +617,35 @@ export default function ModuleDetailsPage() {
                         </TabsContent>
                     )}
 
-                    <TabsContent value="bmt" className="mt-0 h-full">
-                        <div className="h-full overflow-y-auto space-y-6">
-                            {(view === 'ranges' || view === 'models' || view === 'motors') ? (
-                                <Card className="border-2 rounded-[3rem] shadow-2xl overflow-hidden bg-white">
-                                    <CardHeader className="bg-slate-50/50 border-b p-10">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="space-y-1.5">
-                                                <CardTitle className="text-xs font-black uppercase tracking-[0.3em] text-primary">Product Portfolio</CardTitle>
-                                                <h2 className="text-3xl font-black tracking-tight text-slate-950 uppercase italic">
-                                                    {isMotorBrand ? 'Engine Catalog' : view === 'ranges' ? 'Product Portfolio' : `${selectedRange?.name} Portfolio`}
-                                                </h2>
-                                            </div>
-                                            {isImpersonating && (
-                                                <Badge variant="outline" className="h-8 px-4 rounded-xl border-primary/20 bg-primary/5 text-primary font-black uppercase text-[10px]">
-                                                    <Eye className="h-3.5 w-3.5 mr-2" /> Auditing: {currentContextLabel}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="p-10">
-                                        {isBoatBrand && mainVendor ? (
-                                            <>
-                                                {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
-                                                {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} isAdmin={isAdmin && !viewContextOrgId} />}
-                                            </>
-                                        ) : isMotorBrand && mainVendor ? (
-                                            <MotorModuleBrowser vendor={mainVendor} onMotorSelect={handleMotorSelect} />
-                                        ) : (
-                                            <div className="py-20 text-center flex flex-col items-center gap-4 opacity-20">
-                                                <Wrench className="h-16 w-16" />
-                                                <p className="font-black uppercase tracking-widest">No configuration view assigned</p>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                mergedModel && selectedRange && mainVendor && (
-                                    <ModelConfigurationEditor 
-                                        model={mergedModel} 
-                                        docPath={`data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${mergedModel.id}`} 
-                                        vendor={mainVendor} 
-                                        module={moduleData} 
-                                        breadcrumbs={null}
-                                        user={user}
-                                        isAdmin={isAdmin}
-                                        isMasterContext={isMasterContext}
-                                        organisationId={dashboardOrg?.id}
-                                        permissions={userPermissions as any}
-                                    />
-                                )
+                    <TabsContent value="bmt" className="m-0 h-full p-6 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <Card className="border-2 rounded-[2.5rem] bg-white overflow-hidden">
+                                <CardContent className="p-10">
+                                    {isBoatBrand && mainVendor ? (
+                                        <>
+                                            {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
+                                            {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} isAdmin={isAdmin && !viewContextOrgId} />}
+                                        </>
+                                    ) : isMotorBrand && mainVendor ? (
+                                        <MotorModuleBrowser vendor={mainVendor} onMotorSelect={handleMotorSelect} />
+                                    ) : (
+                                        <div className="py-20 text-center opacity-20"><Wrench className="h-16 w-16 mx-auto" /></div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </ScrollArea>
+                    </TabsContent>
+
+                    <TabsContent value="pricing" className="m-0 h-full p-6 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            {dashboardOrg && mainVendor && (
+                                <ModulePricingDashboard module={moduleData} organisation={dashboardOrg as any} vendor={mainVendor} />
                             )}
-                        </div>
-                    </TabsContent>
-
-                    {/* Other tabs remain largely the same but with improved card styling */}
-                    <TabsContent value="pricing" className="mt-0 h-full">
-                        {dashboardOrg && mainVendor && (
-                            <ModulePricingDashboard module={moduleData} organisation={dashboardOrg as any} vendor={mainVendor} />
-                        )}
-                    </TabsContent>
-
-                    {/* Standard Settings & Admin Tabs */}
-                    <TabsContent value="settings" className="mt-0 h-full">
-                        <Form {...settingsForm}>
-                            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-8">
-                                <Card className="rounded-[2.5rem] border-2 shadow-2xl bg-white p-10">
-                                    <div className="flex items-center justify-between mb-8">
-                                        <h2 className="text-2xl font-black uppercase italic">Module Blueprint</h2>
-                                        <Button type="submit" disabled={isSavingModule} className="rounded-xl h-12 px-8 font-black uppercase tracking-widest text-[10px]">
-                                            {isSavingModule ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                                            Save Blueprint
-                                        </Button>
-                                    </div>
-                                    <div className="grid gap-10">
-                                        <FormField control={settingsForm.control} name="name" render={({ field }) => ( 
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Module Display Name</FormLabel>
-                                                <FormControl><Input {...field} className="h-14 rounded-2xl border-2 font-black text-lg" /></FormControl>
-                                                <FormMessage />
-                                            </FormItem> 
-                                        )} />
-                                        <FormField control={settingsForm.control} name="mainVendorId" render={({ field }) => ( 
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Main Vendor Identity</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl><SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Select primary vendor" /></SelectTrigger></FormControl>
-                                                    <SelectContent>{allVendors?.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                                </Select>
-                                            </FormItem> 
-                                        )} />
-                                    </div>
-                                </Card>
-                            </form>
-                        </Form>
+                        </ScrollArea>
                     </TabsContent>
                 </Tabs>
             </main>
 
-            {/* Quick Quote Selector (Modal) */}
             {mainVendor && (
                 <QuoteSelectorDialog 
                     isOpen={isNewQuoteOpen} 
@@ -1193,32 +654,71 @@ export default function ModuleDetailsPage() {
                     moduleSlug={moduleData.slug || moduleData.id}
                 />
             )}
+        </div>
+    );
+}
 
-            {/* Legacy Choice Dialog */}
-            <Dialog open={isChoiceDialogOpen} onOpenChange={setIsChoiceDialogOpen}>
-                <DialogContent className="sm:max-w-3xl rounded-[3rem] p-0 overflow-hidden border-4">
-                    <DialogHeader className="p-12 bg-slate-50 border-b">
-                        <DialogTitle className="text-4xl font-black uppercase tracking-tight italic">
-                            {mergedModel?.name || pendingMotor?.['Model Name'] || pendingMotor?.name}
-                        </DialogTitle>
-                        <DialogDescription className="text-lg font-medium text-slate-500 mt-4 leading-relaxed">Select the tactical environment for this item.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 p-12 bg-white">
-                        <Card className="cursor-pointer hover:border-primary hover:bg-primary/5 transition-all p-10 text-center rounded-[2rem]" onClick={() => handleChoiceSelect('bmt')}>
-                            <Wrench className="h-10 w-10 mx-auto mb-4 text-primary" />
-                            <p className="font-black uppercase text-sm">Configurator</p>
-                        </Card>
-                        <Card className="cursor-pointer hover:border-primary hover:bg-primary/5 transition-all p-10 text-center rounded-[2rem]" onClick={() => handleChoiceSelect('quote')}>
-                            <FileText className="h-10 w-10 mx-auto mb-4 text-primary" />
-                            <p className="font-black uppercase text-sm">Quotation</p>
-                        </Card>
-                        <Card className="cursor-pointer hover:border-primary hover:bg-primary/5 transition-all p-10 text-center rounded-[2rem]" onClick={() => handleChoiceSelect('operations')}>
-                            <ClipboardList className="h-10 w-10 mx-auto mb-4 text-primary" />
-                            <p className="font-black uppercase text-sm">Operations</p>
-                        </Card>
+function handleRangeSelect(range: Range) {
+    // Logic inside component
+}
+
+function handleModelSelect(model: Model) {
+    // Logic inside component
+}
+
+function handleMotorSelect(motor: any, dataSetId: string) {
+    // Logic inside component
+}
+
+function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
+    const firestore = useFirestore();
+    const rangesQuery = useMemoFirebase(() => {
+        if (!vendor?.id) return null;
+        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
+    }, [firestore, vendor.id]);
+    const { data: ranges, loading } = useCollection<Range>(rangesQuery);
+
+    if (loading) return <Loader2 className="animate-spin mx-auto my-12" />;
+    
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {ranges?.map(range => (
+                <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-3xl overflow-hidden" onClick={() => onRangeSelect(range)}>
+                    <div className="aspect-video relative bg-slate-50 border-b">
+                        {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-cover p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="opacity-10" /></div>}
                     </div>
-                </DialogContent>
-            </Dialog>
+                    <CardHeader className="p-4 text-center">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight">{range.name}</CardTitle>
+                    </CardHeader>
+                </Card>
+            ))}
+        </div>
+    );
+}
+
+function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; isAdmin: boolean }) {
+    const firestore = useFirestore();
+    const modelsQuery = useMemoFirebase(() => {
+        if (!vendor?.id || !range?.id) return null;
+        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
+    }, [firestore, vendor.id, range.id]);
+    const { data: models, loading } = useCollection<Model>(modelsQuery);
+
+    if (loading) return <Loader2 className="animate-spin mx-auto my-12" />;
+
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {models?.map(model => (
+                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-3xl overflow-hidden" onClick={() => onModelSelect(model)}>
+                    <div className="aspect-video relative bg-slate-50 border-b">
+                        {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="opacity-10" /></div>}
+                    </div>
+                    <CardHeader className="p-4 text-center">
+                        <CardTitle className="text-xs font-black uppercase tracking-tight">{model.name}</CardTitle>
+                        {model.modelCode && <Badge variant="secondary" className="mt-1 font-mono text-[8px] uppercase">{model.modelCode}</Badge>}
+                    </CardHeader>
+                </Card>
+            ))}
         </div>
     );
 }
