@@ -32,7 +32,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { StockList } from '@/components/inventory-list';
+import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { MotorModuleBrowser } from '@/components/motor-module-browser';
@@ -121,11 +121,11 @@ function QuoteSelectorDialog({
                         {rangesLoading ? (
                             <div className="flex h-64 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
                         ) : !selectedRange ? (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4">
                                 {ranges?.map(range => (
                                     <Card 
                                         key={range.id} 
-                                        className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2"
+                                        className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1"
                                         onClick={() => setSelectedRange(range)}
                                     >
                                         <div className="aspect-video bg-muted/30 relative border-b p-4">
@@ -145,11 +145,11 @@ function QuoteSelectorDialog({
                                 {modelsLoading ? (
                                     <div className="flex h-64 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4">
                                         {models?.map(model => (
                                             <Card 
                                                 key={model.id} 
-                                                className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2"
+                                                className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1"
                                                 onClick={() => handleModelSelect(model)}
                                             >
                                                 <div className="aspect-video bg-muted/30 relative border-b">
@@ -280,7 +280,7 @@ export default function ModuleDetailsPage() {
                                     <CardHeader className="py-6 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
-                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Live Stock</h3>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
@@ -292,7 +292,7 @@ export default function ModuleDetailsPage() {
                                     <CardHeader className="py-6 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
-                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">On Order</h3>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
@@ -387,7 +387,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pt-4">
             {ranges?.map(range => (
                 <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onRangeSelect(range)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
@@ -410,7 +410,7 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pt-4">
             {models?.map(model => (
                 <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onModelSelect(model)}>
                     <div className="aspect-video relative bg-slate-50 border-b">

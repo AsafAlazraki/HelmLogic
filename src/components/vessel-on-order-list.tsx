@@ -34,7 +34,7 @@ export function VesselOnOrderList({
     moduleId,
     isAdmin = false
 }: { 
-    organisation: Organisation; 
+    organisation: Organisation | null; 
     parentOrg: Organisation | null;
     moduleId: string;
     isAdmin?: boolean;
@@ -43,7 +43,7 @@ export function VesselOnOrderList({
     const { user } = useUser();
     
     const isSubDealer = !!parentOrg;
-    const targetOrgId = isSubDealer ? parentOrg?.id : organisation.id;
+    const targetOrgId = isSubDealer ? parentOrg?.id : organisation?.id;
 
     const vesselsQuery = useMemoFirebase(() => {
         if (!targetOrgId) return null;

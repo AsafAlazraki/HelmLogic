@@ -127,15 +127,15 @@ export function AppSidebar() {
   }, [userProfile, isLoading, organisation]);
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="h-16 flex items-center justify-between px-4 border-b">
+    <Sidebar collapsible="icon" className="border-r-0 shadow-2xl">
+      <SidebarHeader className="h-16 flex items-center justify-between px-4 border-b bg-card">
         <div className="flex items-center gap-2 overflow-hidden">
             <Logo />
         </div>
-        <SidebarTrigger className="shrink-0" />
+        <SidebarTrigger className="shrink-0 hover:bg-primary/10 text-primary transition-colors" />
       </SidebarHeader>
       
-      <SidebarContent>
+      <SidebarContent className="bg-card">
         {isLoading ? (
           <SidebarMenu className="mt-2">
             {[1, 2, 3].map(i => (
@@ -167,10 +167,10 @@ export function AppSidebar() {
                       </CollapsibleTrigger>
                     </div>
                     <CollapsibleContent>
-                      <SidebarMenuSub>
+                      <SidebarMenuSub className="border-primary/10">
                         {link.subLinks.map((sub) => (
                           <SidebarMenuSubItem key={sub.href}>
-                            <SidebarMenuSubButton asChild isActive={checkActive(sub.href)}>
+                            <SidebarMenuSubButton asChild isActive={checkActive(sub.href)} className="data-[active=true]:bg-primary/5 data-[active=true]:text-primary">
                               <Link href={sub.href} className="flex items-center gap-2">
                                 <sub.icon className="size-4" />
                                 <span>{sub.label}</span>
