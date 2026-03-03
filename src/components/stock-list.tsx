@@ -157,7 +157,7 @@ export function StockList({
                                         </div>
                                     </div>
                                     
-                                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
                                         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={() => setSelectedItem(item)} title="Reassign">
                                             <ArrowRightLeft className="h-3.5 w-3.5" />
                                         </Button>
