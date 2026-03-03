@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowRightLeft, Trash2, Box, Anchor, CheckCircle2 } from 'lucide-react';
 import {
@@ -44,7 +44,7 @@ interface Organisation {
     parentOrganisationId?: string;
 }
 
-export function InventoryList({ 
+export function StockList({ 
     organisation, 
     subDealers, 
     parentOrg, 
@@ -116,31 +116,6 @@ export function InventoryList({
             .finally(() => setIsAssigning(false));
     };
 
-    const handleAddTestStock = async () => {
-        if (!organisation) return;
-        const colRef = collection(firestore, 'inventory');
-        const dataToAdd = {
-            name: `Stock Unit ${Math.floor(Math.random() * 1000)}`,
-            stockNumber: `SN-${Math.floor(Math.random() * 10000)}`,
-            organisationId: organisation.id,
-            moduleId: moduleId,
-            status: 'Available',
-            createdAt: serverTimestamp()
-        };
-
-        addDoc(colRef, dataToAdd)
-            .then(() => {
-                toast({ title: "Test Stock Added" });
-            })
-            .catch(async (serverError) => {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: colRef.path,
-                    operation: 'create',
-                    requestResourceData: dataToAdd,
-                } satisfies SecurityRuleContext));
-            });
-    };
-
     const handleDeleteItem = async (itemId: string) => {
         const itemRef = doc(firestore, 'inventory', itemId);
         deleteDoc(itemRef)
@@ -162,10 +137,7 @@ export function InventoryList({
             {(!inventory || inventory.length === 0) ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
                     <Box className="h-8 w-8 text-muted-foreground/20" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Stock Empty</p>
-                    <Button variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest" onClick={handleAddTestStock}>
-                        Initialize Stock
-                    </Button>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">No Units in Stock</p>
                 </div>
             ) : (
                 <div className="flex-1 flex flex-col overflow-hidden">
@@ -199,11 +171,6 @@ export function InventoryList({
                             ))}
                         </div>
                     </ScrollArea>
-                    <div className="p-3 border-t shrink-0 bg-slate-50/50">
-                        <Button variant="ghost" size="sm" className="w-full text-[9px] font-black uppercase tracking-widest h-7" onClick={handleAddTestStock}>
-                            + Append Unit
-                        </Button>
-                    </div>
                 </div>
             )}
 

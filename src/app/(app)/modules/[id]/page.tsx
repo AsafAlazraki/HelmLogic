@@ -32,7 +32,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { InventoryList } from '@/components/inventory-list';
+import { StockList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { MotorModuleBrowser } from '@/components/motor-module-browser';
@@ -275,14 +275,16 @@ export default function ModuleDetailsPage() {
                                         </div>
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
-                                        <InventoryList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
+                                        <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
                                     </CardContent>
                                 </Card>
 
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2rem] shadow-sm bg-white overflow-hidden">
-                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center gap-3 shrink-0">
-                                        <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50">Pipeline</Badge>
-                                        <h3 className="font-black uppercase italic text-sm tracking-tight">On Order</h3>
+                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                        <div className="flex items-center gap-3">
+                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50">Pipeline</Badge>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight">On Order</h3>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
                                         <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />

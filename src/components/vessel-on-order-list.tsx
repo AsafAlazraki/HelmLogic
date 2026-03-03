@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
-import { collection, query, where, doc, updateDoc, addDoc, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Ship, Trash2, Package } from 'lucide-react';
@@ -57,30 +56,6 @@ export function VesselOnOrderList({
 
     const { data: vessels, loading: vesselsLoading } = useCollection<Vessel>(vesselsQuery);
 
-    const handleAddTestOnOrderBoat = async () => {
-        const colRef = collection(firestore, 'vessels');
-        const dataToAdd = {
-            name: `Pipeline Unit ${Math.floor(Math.random() * 1000)}`,
-            serialNumber: `ORD-${Math.floor(Math.random() * 10000)}`,
-            status: 'On Order',
-            organisationId: targetOrgId,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-        };
-
-        addDoc(colRef, dataToAdd)
-            .then(() => {
-                toast({ title: "Order Logged" });
-            })
-            .catch(async (serverError) => {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: colRef.path,
-                    operation: 'create',
-                    requestResourceData: dataToAdd,
-                } satisfies SecurityRuleContext));
-            });
-    };
-
     const handleDeleteVessel = async (vesselId: string) => {
         const vesselRef = doc(firestore, 'vessels', vesselId);
         deleteDoc(vesselRef)
@@ -103,9 +78,6 @@ export function VesselOnOrderList({
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
                     <Package className="h-8 w-8 text-muted-foreground/20" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">No Active Orders</p>
-                    <Button variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest" onClick={handleAddTestOnOrderBoat}>
-                        Log New Order
-                    </Button>
                 </div>
             ) : (
                 <div className="flex-1 flex flex-col overflow-hidden">
@@ -136,11 +108,6 @@ export function VesselOnOrderList({
                             ))}
                         </div>
                     </ScrollArea>
-                    <div className="p-3 border-t shrink-0 bg-slate-50/50">
-                        <Button variant="ghost" size="sm" className="w-full text-[9px] font-black uppercase tracking-widest h-7" onClick={handleAddTestOnOrderBoat}>
-                            + Seed Order
-                        </Button>
-                    </div>
                 </div>
             )}
         </div>
