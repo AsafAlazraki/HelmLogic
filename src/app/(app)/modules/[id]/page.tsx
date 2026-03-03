@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -129,7 +130,7 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
             </div>
 
             <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] translate-y-1">
-                <svg className="relative block w-[calc(100%+1.3px)] h-[120px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                <svg className="relative block w-[calc(10%+1.3px)] h-[120px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
                     <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" className="fill-white/5"></path>
                 </svg>
             </div>
@@ -201,7 +202,7 @@ function QuoteSelectorDialog({
                             {rangesLoading ? (
                                 <div className="flex h-64 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
                             ) : !selectedRange ? (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 pb-10">
                                     {ranges?.map(range => (
                                         <Card 
                                             key={range.id} 
@@ -225,7 +226,7 @@ function QuoteSelectorDialog({
                                     {modelsLoading ? (
                                         <div className="flex h-64 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
                                     ) : (
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 pb-10">
                                             {models?.map(model => (
                                                 <Card 
                                                     key={model.id} 
@@ -339,18 +340,23 @@ export default function ModuleDetailsPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {/* Cinematic Module Hero */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-8 py-4 text-primary-foreground z-20 h-28 border-b border-white/10">
+            {/* Cinematic Compact Hero */}
+            <div className="relative shrink-0 overflow-hidden bg-primary px-8 py-3 text-primary-foreground z-20 h-20 border-b border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
                     <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
                 </div>
                 
-                <div className="relative z-10 flex flex-col h-full justify-between">
+                <div className="relative z-10 flex flex-col h-full justify-center">
                     <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2.5 text-[9px] font-black uppercase tracking-[0.4em] text-white/50">
-                            <Navigation className="h-2.5 w-2.5" />
-                            <span>COMMAND CENTER</span>
+                        <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none mb-1">
+                                <Navigation className="h-2 w-2" />
+                                <span>COMMAND CENTER</span>
+                            </div>
+                            <h1 className="text-3xl font-black tracking-tighter uppercase italic leading-none drop-shadow-lg">
+                                {moduleData.name}
+                            </h1>
                         </div>
                         <Button 
                             variant="ghost" 
@@ -362,10 +368,6 @@ export default function ModuleDetailsPage() {
                             Back to Hub
                         </Button>
                     </div>
-                    
-                    <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-none drop-shadow-lg mb-1">
-                        {moduleData.name}
-                    </h1>
                 </div>
             </div>
 
@@ -383,7 +385,7 @@ export default function ModuleDetailsPage() {
                             <TabsTrigger 
                                 key={t.id} 
                                 value={t.id} 
-                                className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-400 data-[state=active]:text-slate-900 hover:text-slate-600"
+                                className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
                             >
                                 {t.label}
                             </TabsTrigger>
@@ -393,7 +395,7 @@ export default function ModuleDetailsPage() {
             </div>
 
             {/* Operational Workspace */}
-            <main className="flex-1 overflow-hidden relative p-8">
+            <main className="flex-1 overflow-hidden relative p-8 pt-6">
                 <Tabs value={activeTab} className="h-full">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div className="grid grid-cols-12 gap-8 h-full">
@@ -462,8 +464,8 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
                         {(view === 'models' || view === 'bmt') && (
-                            <div className="mb-6 shrink-0">
-                                <Button variant="ghost" onClick={handleBackToCatalog} className="font-black uppercase text-[10px] tracking-widest text-primary hover:bg-primary/5">
+                            <div className="mb-4 shrink-0 px-1">
+                                <Button variant="ghost" onClick={handleBackToCatalog} className="font-black uppercase text-[10px] tracking-widest text-primary hover:bg-primary/5 h-8">
                                     <ChevronLeft className="mr-2 h-4 w-4" /> Back to {view === 'bmt' ? 'Models' : 'Ranges'}
                                 </Button>
                             </div>
@@ -492,8 +494,8 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="operations" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <div className="grid grid-cols-12 gap-8 h-full">
-                            <Card className="col-span-8 border-2 rounded-[2.5rem] overflow-hidden">
-                                <CardHeader className="py-4 px-8 border-b bg-muted/5">
+                            <Card className="col-span-8 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
+                                <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between">
                                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                                         <MapIcon className="h-4 w-4 text-primary" />
                                         Fleet Live Positions
@@ -503,7 +505,7 @@ export default function ModuleDetailsPage() {
                                     <VesselMap />
                                 </CardContent>
                             </Card>
-                            <Card className="col-span-4 border-2 rounded-[2.5rem] overflow-hidden">
+                            <Card className="col-span-4 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
                                 <CardHeader className="py-4 px-8 border-b bg-muted/5">
                                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                                         <ClipboardList className="h-4 w-4 text-primary" />
@@ -511,8 +513,8 @@ export default function ModuleDetailsPage() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0">
-                                    <div className="p-8 text-center text-muted-foreground italic text-xs">
-                                        Log metrics and reporting data synchronized with Fleet tracking.
+                                    <div className="p-12 text-center text-muted-foreground italic text-[10px] uppercase font-black tracking-widest opacity-20">
+                                        Metrics Synchronized with Fleet
                                     </div>
                                 </CardContent>
                             </Card>
@@ -526,7 +528,7 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
 
                     <TabsContent value="network" className="m-0 h-full animate-in fade-in duration-500">
-                        <Card className="border-2 rounded-[2.5rem] overflow-hidden">
+                        <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
                             <CardHeader className="p-8 border-b bg-muted/5">
                                 <CardTitle className="text-xl font-black uppercase tracking-tight">Sub Dealer Network</CardTitle>
                                 <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Manage business relationships and regional allocations.</CardDescription>
@@ -536,21 +538,21 @@ export default function ModuleDetailsPage() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Location</TableHead>
-                                                <TableHead>Contact</TableHead>
-                                                <TableHead className="text-right">Management</TableHead>
+                                                <TableHead className="px-8 font-black uppercase text-[10px]">Location</TableHead>
+                                                <TableHead className="px-8 font-black uppercase text-[10px]">Contact</TableHead>
+                                                <TableHead className="text-right px-8 font-black uppercase text-[10px]">Management</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {subDealers.map(sd => (
-                                                <TableRow key={sd.id}>
-                                                    <TableCell>
-                                                        <div className="font-bold uppercase text-xs">{sd.name}</div>
-                                                        <div className="text-[10px] text-muted-foreground">{sd.address || 'Regional Allocation'}</div>
+                                                <TableRow key={sd.id} className="hover:bg-muted/5 transition-colors">
+                                                    <TableCell className="px-8 py-4">
+                                                        <div className="font-black uppercase text-xs text-slate-900">{sd.name}</div>
+                                                        <div className="text-[10px] text-muted-foreground font-bold uppercase">{sd.address || 'Regional Allocation'}</div>
                                                     </TableCell>
-                                                    <TableCell className="text-[10px] font-mono">{sd.phoneNumber || 'N/A'}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button variant="outline" size="sm" className="h-7 text-[10px] font-black uppercase" asChild>
+                                                    <TableCell className="px-8 py-4 text-[10px] font-mono font-bold text-primary">{sd.phoneNumber || 'N/A'}</TableCell>
+                                                    <TableCell className="text-right px-8 py-4">
+                                                        <Button variant="outline" size="sm" className="h-7 text-[10px] font-black uppercase rounded-lg border-2 shadow-sm" asChild>
                                                             <Link href={`/sub-dealers/${sd.slug || sd.id}`}>Manage</Link>
                                                         </Button>
                                                     </TableCell>
@@ -559,9 +561,9 @@ export default function ModuleDetailsPage() {
                                         </TableBody>
                                     </Table>
                                 ) : (
-                                    <div className="p-20 text-center text-muted-foreground opacity-20">
-                                        <Building className="h-12 w-12 mx-auto mb-4" />
-                                        <p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p>
+                                    <div className="p-20 text-center text-muted-foreground opacity-20 flex flex-col items-center justify-center">
+                                        <Building className="h-12 w-12 mb-4" />
+                                        <p className="font-black uppercase tracking-widest text-[10px]">No Sub Dealers Registered</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -591,9 +593,9 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1 pt-10">
             {ranges?.map(range => (
-                <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onRangeSelect(range)}>
+                <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 bg-white" onClick={() => onRangeSelect(range)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
                         {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
@@ -614,9 +616,9 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1 pt-10">
             {models?.map(model => (
-                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col">
+                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white">
                     <div className="aspect-video relative bg-slate-50 border-b">
                         {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
