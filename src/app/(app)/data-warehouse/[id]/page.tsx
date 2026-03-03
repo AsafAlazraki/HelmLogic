@@ -27,7 +27,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -74,7 +74,6 @@ type VendorFormData = z.infer<typeof formSchema>;
 
 /**
  * Shared component for editing master data records.
- * Handles field updates, Firebase Storage image uploads, and direct URL linking.
  */
 function MasterDataSetEditorDialog({
     isOpen,
@@ -131,7 +130,6 @@ function MasterDataSetEditorDialog({
 
     const itemKeys = useMemo(() => {
         const keys = Object.keys(item || {}).filter(key => key !== 'id');
-        // Ensure at least one image field exists for attachment functionality
         if (!keys.some(k => isImageField(k))) {
             keys.push('imageUrl');
         }
@@ -175,7 +173,6 @@ function MasterDataSetEditorDialog({
             toast({ title: 'Record Deleted' });
             onSave();
             setIsOpen(false);
-            // Refresh the page to ensure the list is updated
             window.location.reload();
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
@@ -378,18 +375,16 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
         reader.onload = async (event) => {
             try {
                 const data = event.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
+                const workbook = XLSX.read(data, { type: 'array' });
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const mappingRows = XLSX.utils.sheet_to_json(sheet) as any[];
 
                 if (mappingRows.length === 0) throw new Error("Mapping file is empty.");
 
-                // Determine target collection path
                 const collectionPath = targetTable === 'master' 
                     ? `data-warehouse/${vendor.id}/masterDataSet`
                     : `data-warehouse/${vendor.id}/dataSets/${targetTable}/rows`;
 
-                // Fetch current rows to match against
                 const currentRowsSnap = await getDocs(collection(firestore, collectionPath));
                 const currentRows = currentRowsSnap.docs.map(d => ({ ...d.data(), _ref: d.ref }));
 
@@ -402,7 +397,6 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
 
                 for (let i = 0; i < mappingRows.length; i++) {
                     const mapRow = mappingRows[i];
-                    // Flexible key matching for "Model Code" and "Image Link"
                     const modelCodeKey = Object.keys(mapRow).find(k => normalizeMatch(k) === 'modelcode');
                     const imageLinkKey = Object.keys(mapRow).find(k => normalizeMatch(k) === 'imagelink');
 
@@ -413,7 +407,6 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
 
                     if (!targetModelCode || !targetImageLink) continue;
 
-                    // Find matches in existing data
                     const rowsToUpdate = currentRows.filter((row: any) => {
                         const rowModelCodeKey = Object.keys(row).find(k => 
                             ['modelcode', 'modelname', 'name', 'model', 'partnumber', 'sku'].includes(normalizeMatch(k))
@@ -423,7 +416,6 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
                     });
 
                     for (const row of rowsToUpdate) {
-                        // Prefer SummaryImage for Yamaha, or imageUrl as fallback
                         const fieldToUpdate = vendor.slug === 'yamaha' ? 'SummaryImage' : 'imageUrl';
                         currentBatch.update(row._ref as any, { [fieldToUpdate]: targetImageLink });
                         operationsInBatch++;
@@ -455,7 +447,7 @@ function BulkImageMapper({ vendor }: { vendor: VendorFormData }) {
                 setProgress(0);
             }
         };
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file!);
     };
 
     return (
@@ -543,18 +535,32 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
         reader.onload = (event) => {
             try {
                 const data = event.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
+                // Use 'array' for better encoding support
+                const workbook = XLSX.read(data, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                // Explicitly read rows as arrays to preserve header mapping for all columns
+                const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                if (json.length > 0) {
-                    const firstRow = json[0] as Record<string, any>;
-                    setColumnOrder(Object.keys(firstRow));
-                }
+                if (rows.length === 0) throw new Error("Document is empty.");
+
+                // Row 0 is the header row
+                const headers = rows[0].map(h => String(h || '').trim()).filter(h => h !== '');
+                setColumnOrder(headers);
+
+                // Map data rows to objects using the detected headers
+                const json = rows.slice(1).map((row, rowIndex) => {
+                    const obj: any = { id: `row-${rowIndex}` };
+                    headers.forEach((header, colIndex) => {
+                        // Ensure keys are strictly aligned with headers even if values are undefined
+                        obj[header] = row[colIndex] !== undefined ? row[colIndex] : null;
+                    });
+                    return obj;
+                }).filter(obj => Object.keys(obj).length > 1); // Filter out truly empty rows
 
                 setParsedData(json);
-                toast({ title: 'Parsing Complete', description: 'The document has been parsed.' });
+                toast({ title: 'Parsing Complete', description: `Detected ${headers.length} columns and ${json.length} rows.` });
             } catch (e: any) {
                 setError(e.message || 'An unexpected error occurred during parsing.');
                 toast({ variant: 'destructive', title: 'Parsing Failed', description: e.message });
@@ -567,7 +573,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
             toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' });
             setIsParsing(false);
         };
-        reader.readAsBinaryString(fileToParse);
+        reader.readAsArrayBuffer(fileToParse);
     };
     
     const handleSaveToMaster = async () => {
@@ -586,7 +592,7 @@ function DocumentExtractor({ vendor }: { vendor: VendorFormData }) {
                 name: dataSetName,
                 rowCount: parsedData.length,
                 uploadedAt: serverTimestamp(),
-                columnOrder: columnOrder, // Save original document column order
+                columnOrder: columnOrder, 
             });
 
             const rowsCollectionRef = collection(firestore, `data-warehouse/${vendor.id}/dataSets/${dataSetDocRef.id}/rows`);
@@ -718,7 +724,6 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         if (!selectedSet?.columnOrder) return undefined;
         let keys = [...selectedSet.columnOrder];
         
-        // Prioritize image columns to be first
         const imageKey = keys.find(k => 
             k.toLowerCase().includes('image') || 
             k.toLowerCase().includes('logo') || 
@@ -748,7 +753,6 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
             const docsToDelete = rowsSnap.docs;
             const batchSize = 400; 
             
-            // Delete all associated rows in batches
             for (let i = 0; i < docsToDelete.length; i += batchSize) {
                 const batch = writeBatch(firestore);
                 const chunk = docsToDelete.slice(i, i + batchSize);
@@ -756,7 +760,6 @@ function MultiDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                 await batch.commit();
             }
             
-            // Finally delete the primary dataset document
             const setRef = doc(firestore, `data-warehouse/${vendor.id}/dataSets`, id);
             await deleteDoc(setRef);
             
@@ -1200,7 +1203,6 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                     ['part_number', 'sku', 'model', 'price', 'cost', 'rrp', 'sellpriceexclgst'].includes(k.toLowerCase())
                 ).slice(0, 3);
 
-                // Generic image detection for card view
                 const imageUrlKey = allKeys.find(k => k.toLowerCase().includes('image') || k.toLowerCase().includes('logo')) || null;
 
                 setDisplayConfig({ titleKey, infoKeys, columnConfig: undefined, imageUrlKey, colorsKey: null });
