@@ -276,6 +276,7 @@ export default function ModuleDetailsPage() {
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [isNewQuoteOpen, setIsNewQuoteOpen] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false);
     
     const { user } = useUser();
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -332,7 +333,16 @@ export default function ModuleDetailsPage() {
     };
 
     const handleRangeSelect = (range: Range) => { setSelectedRange(range); setView('models'); };
-    const handleModelSelect = (model: Model) => { setSelectedModel(model); setView('bmt'); };
+    
+    const handleModelSelect = (model: Model) => { 
+        setSelectedModel(model); 
+        setIsTransitioning(true);
+        setTimeout(() => {
+            setView('bmt');
+            setIsTransitioning(false);
+        }, 2200);
+    };
+
     const handleBackToCatalog = () => {
         if (view === 'bmt') {
             setView('models');
@@ -350,8 +360,10 @@ export default function ModuleDetailsPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {/* Cinematic Compact Hero */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-8 py-3 text-primary-foreground z-20 h-28 border-b border-white/10">
+            {isTransitioning && <BuildTransitionOverlay organisation={currentMemberOrg as any} model={selectedModel} />}
+
+            {/* Cinematic Hero */}
+            <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-32 border-b border-white/10 shadow-2xl">
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     {/* Animated Mesh Blobs */}
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
@@ -366,17 +378,17 @@ export default function ModuleDetailsPage() {
                                 <Navigation className="h-2 w-2" />
                                 <span>COMMAND CENTER</span>
                             </div>
-                            <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                            <h1 className="text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
                                 {moduleData.name}
                             </h1>
                         </div>
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-8 px-5 font-black uppercase tracking-widest text-[9px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 group shadow-xl"
+                            className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 group shadow-xl"
                             onClick={() => router.push('/dashboard')}
                         >
-                            <X className="h-3.5 w-3.5 mr-2 transition-transform group-hover:rotate-90" />
+                            <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
                             Back to Hub
                         </Button>
                     </div>
