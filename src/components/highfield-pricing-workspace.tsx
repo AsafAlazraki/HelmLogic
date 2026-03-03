@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { 
     Table, 
     TableBody, 
@@ -60,13 +60,12 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { SUPPORTED_CURRENCIES, formatCurrency } from '@/lib/currency-utils';
-import { ScrollArea, ScrollBar } from './ui/scroll-area';
+import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import NextImage from "next/image";
 import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
 
 interface CustomColumn {
@@ -470,7 +469,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
     const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
     const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
-    const [isFullScreen, setIsFullScreen] = useState(false);
     const [isFreightManagerOpen, setIsFreightManagerOpen] = useState(false);
     const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
     
@@ -638,7 +636,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         updateDoc(strategyRef, { itemValues: updated });
         try {
             const auditLogRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}/auditLog`);
-            addDoc(auditLogRef, { itemId, colId, oldValue: oldValue ?? null, newValue: value, timestamp: serverTimestamp(), userId: user?.uid || 'anonymous', userName: user?.displayName || user?.email || 'Anonymous Strategist' });
+            addDoc(auditLogRef, { 
+                itemId, 
+                colId, 
+                oldValue: oldValue ?? null, 
+                newValue: value, 
+                timestamp: serverTimestamp(), 
+                userId: user?.uid || 'anonymous', 
+                userName: user?.displayName || user?.email || 'Anonymous Strategist' 
+            });
         } catch (e) { console.error(e); }
     };
 
@@ -648,7 +654,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (!ranges) return [];
         if (!searchTerm) return ranges;
         const lower = searchTerm.toLowerCase();
-        return ranges.filter(range => range.name.toLowerCase().includes(lower) || allModels.filter(m => m.rangeId === range.id).some(m => m.name.toLowerCase().includes(lower) || m.modelCode?.toLowerCase().includes(lower)));
+        return ranges.filter(range => 
+            range.name.toLowerCase().includes(lower) || 
+            allModels.filter(m => m.rangeId === range.id).some(m => m.name.toLowerCase().includes(lower) || m.modelCode?.toLowerCase().includes(lower))
+        );
     }, [ranges, searchTerm, allModels]);
 
     const PricingTable = () => (
@@ -696,8 +705,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             );
                             if (sec.id === 'sec-vendor') return (
                                 <React.Fragment key={sec.id}>
-                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Price ({vendor.currency || 'ISO'})</TableHead>
-                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Converted</TableHead>
+                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Price ({vendor.currency || 'ISO'}) $</TableHead>
+                                    <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Converted ({organisation?.tradingCurrency || 'AUD'}) $</TableHead>
                                 </React.Fragment>
                             );
                             if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>;
@@ -719,7 +728,21 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </TableHeader>
                 <TableBody>
                     {filteredRanges.map(range => (
-                        <RangeSection key={range.id} range={range} models={allModels.filter(m => m.rangeId === range.id)} variants={allVariants} isExpanded={expandedRanges.includes(range.id)} onToggle={() => toggleRange(range.id)} sections={sortedSections} allColumns={allColumns} strategy={strategy} onUpdateValue={handleUpdateValue} vendor={vendor} organisation={organisation} exchangeRate={activeExchangeRate} />
+                        <RangeSection 
+                            key={range.id} 
+                            range={range} 
+                            models={allModels.filter(m => m.rangeId === range.id)} 
+                            variants={allVariants} 
+                            isExpanded={expandedRanges.includes(range.id)} 
+                            onToggle={() => toggleRange(range.id)} 
+                            sections={sortedSections} 
+                            allColumns={allColumns} 
+                            strategy={strategy} 
+                            onUpdateValue={handleUpdateValue} 
+                            vendor={vendor} 
+                            organisation={organisation} 
+                            exchangeRate={activeExchangeRate} 
+                        />
                     ))}
                 </TableBody>
             </Table>
@@ -765,10 +788,21 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                 <TableCell className="py-3 px-6 font-black uppercase text-xs border-b">
                     <div className="flex items-center gap-2">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}<span>{range.name} RANGE</span></div>
                 </TableCell>
-                <TableCell colSpan={totalCols} className="border-b" />
+                {Array.from({ length: totalCols }).map((_, i) => <TableCell key={i} className="border-b" />)}
             </TableRow>
             {isExpanded && models.map((model: any) => (
-                <ModelGroup key={model.id} model={model} variants={variants[model.id] || []} sections={sections} allColumns={allColumns} strategy={strategy} onUpdateValue={onUpdateValue} vendor={vendor} organisation={organisation} exchangeRate={exchangeRate} />
+                <ModelGroup 
+                    key={model.id} 
+                    model={model} 
+                    variants={variants[model.id] || []} 
+                    sections={sections} 
+                    allColumns={allColumns} 
+                    strategy={strategy} 
+                    onUpdateValue={onUpdateValue} 
+                    vendor={vendor} 
+                    organisation={organisation} 
+                    exchangeRate={exchangeRate} 
+                />
             ))}
         </>
     );
@@ -783,15 +817,46 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                 <TableCell className="py-3 px-8 border-b">
                     <div className="flex items-center gap-3"><button onClick={() => setIsLocalExpanded(!isLocalExpanded)}>{isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button><span className="font-black text-[11px] uppercase truncate">{model.name}</span><span className="text-[9px] font-mono text-muted-foreground">{model.modelCode || 'NO CODE'}</span></div>
                 </TableCell>
-                <TableCell colSpan={totalCols} className="border-b" />
+                {Array.from({ length: totalCols }).map((_, i) => <TableCell key={i} className="border-b" />)}
             </TableRow>
             {isLocalExpanded && (
                 <>
                     {variants.map((v: any) => (
-                        <PricingRow key={v.id} id={v.id} name={v.name} sku={v.sku} cost={v.cost} sell={v.sellPriceExclGst} vendor={vendor} organisation={organisation} exchangeRate={exchangeRate} sections={sections} allColumns={allColumns} strategy={strategy} onUpdateValue={onUpdateValue} indent />
+                        <PricingRow 
+                            key={v.id} 
+                            id={v.id} 
+                            name={v.name} 
+                            sku={v.sku} 
+                            cost={v.cost} 
+                            sell={v.sellPriceExclGst} 
+                            vendor={vendor} 
+                            organisation={organisation} 
+                            exchangeRate={exchangeRate} 
+                            sections={sections} 
+                            allColumns={allColumns} 
+                            strategy={strategy} 
+                            onUpdateValue={onUpdateValue} 
+                            indent 
+                        />
                     ))}
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && model.optionalFeatures.map((f: any) => (
-                        <PricingRow key={f.id} id={f.id} name={f.name} sku={f.code} cost={f.cost} sell={f.sellPriceExclGst} vendor={vendor} organisation={organisation} exchangeRate={exchangeRate} sections={sections} allColumns={allColumns} strategy={strategy} onUpdateValue={onUpdateValue} indent isOption />
+                        <PricingRow 
+                            key={f.id} 
+                            id={f.id} 
+                            name={f.name} 
+                            sku={f.code} 
+                            cost={f.cost} 
+                            sell={f.sellPriceExclGst} 
+                            vendor={vendor} 
+                            organisation={organisation} 
+                            exchangeRate={exchangeRate} 
+                            sections={sections} 
+                            allColumns={allColumns} 
+                            strategy={strategy} 
+                            onUpdateValue={onUpdateValue} 
+                            indent 
+                            isOption 
+                        />
                     ))}
                 </>
             )}
@@ -801,6 +866,9 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
 
 function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
+    const orgCurrency = organisation?.tradingCurrency || 'AUD';
+    const vendorCurrency = vendor.currency || 'ISO';
+
     return (
         <TableRow className="hover:bg-muted/30 transition-colors">
             <TableCell className={cn("py-2.5 border-r border-b", indent ? "pl-16" : "px-6")}>
@@ -811,9 +879,9 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[10px]">{vendor.currency || 'AUD'}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[10px]">{vendorCurrency}</Badge></TableCell>
                             <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono">{exchangeRate.toFixed(4)}</TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[10px]">{organisation?.tradingCurrency || 'AUD'}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[10px]">{orgCurrency}</Badge></TableCell>
                             <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono">1.0000</TableCell>
                         </React.Fragment>
                     );
@@ -826,9 +894,19 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     return (
                         <React.Fragment key={sec.id}>
                             <TableCell className="p-0 border-r border-b bg-primary/5">
-                                <EditableCell id={id} col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} value={costOverride || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" />
+                                <EditableCell 
+                                    id={id} 
+                                    col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} 
+                                    value={costOverride || ''} 
+                                    placeholder={cost ? cost.toFixed(2) : "0.00"} 
+                                    onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} 
+                                    align="right" 
+                                    suffix={vendorCurrency}
+                                />
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">{formatCurrency(convertedCost, organisation?.tradingCurrency || 'AUD')}</TableCell>
+                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">
+                                {formatCurrency(convertedCost, orgCurrency)} {orgCurrency}
+                            </TableCell>
                         </React.Fragment>
                     );
                 }
@@ -844,7 +922,11 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 if (sec.columns.length === 0) return <TableCell key={sec.id} className="bg-primary/5 border-r border-b" />;
                 return sec.columns.map((col: any) => (
                     <TableCell key={col.id} className="p-0 border-r border-b bg-primary/5">
-                        {col.isCalculated ? <CalculatedCell col={col} baseCost={cost} masterSell={sell} itemValues={itemValues} allCols={allColumns} /> : <EditableCell id={id} col={col} value={itemValues[col.id] || ''} onChange={(val: any) => onUpdateValue(id, col.id, val)} />}
+                        {col.isCalculated ? (
+                            <CalculatedCell col={col} baseCost={cost} masterSell={sell} itemValues={itemValues} allCols={allColumns} suffix={col.type === 'currency' || col.type === 'cost' ? orgCurrency : undefined} />
+                        ) : (
+                            <EditableCell id={id} col={col} value={itemValues[col.id] || ''} onChange={(val: any) => onUpdateValue(id, col.id, val)} suffix={col.type === 'currency' || col.type === 'cost' ? orgCurrency : col.type === 'percent' ? '%' : undefined} prefix={col.type === 'currency' || col.type === 'cost' ? '$' : undefined} />
+                        )}
                     </TableCell>
                 ));
             })}
@@ -852,23 +934,38 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
     );
 }
 
-function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols }: { col: CustomColumn, baseCost: number, masterSell: number, itemValues: any, allCols: CustomColumn[] }) {
+function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix }: { col: CustomColumn, baseCost: number, masterSell: number, itemValues: any, allCols: CustomColumn[], suffix?: string }) {
     const { value, error } = calculateValue(col, baseCost, masterSell, itemValues, allCols);
     return (
         <div className="flex items-center justify-center h-full px-2">
-            {error ? <AlertCircle className="h-3 w-3 text-destructive" title={error} /> : <span className="text-[11px] font-black text-primary">{col.type === 'percent' ? `${(Number(value) * 100).toFixed(2)}%` : (col.type === 'currency' || col.type === 'cost') ? formatCurrency(Number(value)) : String(value || '-')}</span>}
+            {error ? <AlertCircle className="h-3 w-3 text-destructive" title={error} /> : (
+                <span className="text-[11px] font-black text-primary">
+                    {col.type === 'percent' ? `${(Number(value) * 100).toFixed(2)}%` : (col.type === 'currency' || col.type === 'cost') ? `${formatCurrency(Number(value))} ${suffix || ''}` : String(value || '-')}
+                </span>
+            )}
         </div>
     );
 }
 
-function EditableCell({ id, col, value, onChange, placeholder, suffix, align = 'center' }: any) {
+function EditableCell({ id, col, value, onChange, placeholder, prefix, suffix, align = 'center' }: any) {
     const [localValue, setLocalValue] = useState(value);
     useEffect(() => { setLocalValue(value); }, [value]);
     const handleBlur = () => { if (String(localValue || '') !== String(value || '')) onChange(localValue); };
     return (
-        <div className="relative h-full flex items-center">
-            <input type={col.type === 'text' ? 'text' : 'number'} className={cn("h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none px-3 focus:bg-background", align === 'right' ? 'text-right pr-8' : 'text-center')} value={localValue} onChange={e => setLocalValue(e.target.value)} onBlur={handleBlur} placeholder={placeholder || "-"} />
-            {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black opacity-40">{suffix}</span>}
+        <div className="relative h-full flex items-center bg-background px-2">
+            {prefix && <span className="text-[9px] font-black opacity-40 mr-1">{prefix}</span>}
+            <input 
+                type={col.type === 'text' ? 'text' : 'number'} 
+                className={cn(
+                    "h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none focus:bg-background", 
+                    align === 'right' ? 'text-right' : 'text-center'
+                )} 
+                value={localValue} 
+                onChange={e => setLocalValue(e.target.value)} 
+                onBlur={handleBlur} 
+                placeholder={placeholder || "-"} 
+            />
+            {suffix && <span className="text-[9px] font-black opacity-40 ml-1">{suffix}</span>}
         </div>
     );
 }
