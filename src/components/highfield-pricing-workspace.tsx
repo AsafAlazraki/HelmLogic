@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -737,7 +736,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <RangeSection 
                             key={range.id} 
                             range={range} 
-                            models={allModels.filter(m => m.rangeId === r.id)} 
+                            models={allModels.filter(m => m.rangeId === range.id)} 
                             variants={allVariants} 
                             isExpanded={expandedRanges.includes(range.id)}
                             onToggle={() => toggleRange(range.id)}
