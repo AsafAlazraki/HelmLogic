@@ -134,7 +134,7 @@ interface FreightContainer {
 const getSectionColCount = (sec: PricingSection) => {
     if (sec.isCollapsed) return 1;
     if (sec.id === 'sec-exchange') return 4;
-    if (sec.id === 'sec-master') return 2;
+    if (sec.id === 'sec-vendor') return 2; // Base Price ISO, Base Price Converted
     if (sec.id === 'sec-freight') return 1;
     return Math.max(1, sec.columns.length);
 };
@@ -469,24 +469,26 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (strategyLoading || !strategy) return;
         
         const currentSections = strategy.sections || [];
-        const requiredIds = ['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'];
+        // Removed sec-master as requested. sec-vendor is now a primary system section.
+        const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight'];
         const missingIds = requiredIds.filter(id => !currentSections.some(s => s.id === id));
         
         if (missingIds.length > 0) {
             const defaults: Record<string, PricingSection> = {
                 'sec-exchange': { id: 'sec-exchange', name: 'Exchange', order: 0, columns: [] },
-                'sec-master': { id: 'sec-master', name: 'Master Core', order: 1, columns: [] },
-                'sec-freight': { id: 'sec-freight', name: 'Freight', order: 2, columns: [] },
-                'sec-vendor': { id: 'sec-vendor', name: 'Vendor', order: 3, columns: [] },
+                'sec-vendor': { id: 'sec-vendor', name: 'Vendor Catalog', order: 1, columns: [] },
+                'sec-freight': { id: 'sec-freight', name: 'Freight Logistics', order: 2, columns: [] },
             };
             
             let nextOrder = currentSections.length > 0 
                 ? Math.max(...currentSections.map(s => s.order)) + 1 
                 : 0;
                 
-            const newSections = [...currentSections];
+            const newSections = currentSections.filter(s => s.id !== 'sec-master'); // Ensure sec-master is gone
             missingIds.forEach(id => {
-                newSections.push({ ...defaults[id], order: nextOrder++ });
+                if (!newSections.some(s => s.id === id)) {
+                    newSections.push({ ...defaults[id], order: nextOrder++ });
+                }
             });
             
             const normalized = newSections
@@ -494,6 +496,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 .map((s, i) => ({ ...s, order: i }));
 
             updateDoc(strategyRef, { sections: normalized });
+        } else if (currentSections.some(s => s.id === 'sec-master')) {
+            // Remove sec-master if it exists
+            const filtered = currentSections
+                .filter(s => s.id !== 'sec-master')
+                .map((s, i) => ({ ...s, order: i }));
+            updateDoc(strategyRef, { sections: filtered });
         }
     }, [strategy, strategyLoading, strategyRef]);
 
@@ -683,7 +691,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <TableRow className="hover:bg-transparent">
                         <TableHead className="w-[350px] border-r border-b bg-card sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.05)]"></TableHead>
                         {sortedSections.map((sec, secIdx) => {
-                            const isCoreSystem = ['sec-exchange', 'sec-master', 'sec-freight'].includes(sec.id);
+                            const isCoreSystem = ['sec-exchange', 'sec-vendor', 'sec-freight'].includes(sec.id);
                             const colSpan = getSectionColCount(sec);
 
                             return (
@@ -705,8 +713,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                             </div>
                                             {!sec.isCollapsed && (
                                                 <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity shrink-0">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'left')} disabled={secIdx === 0}><ArrowLeft className="h-3 w-3" /></Button>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'right')} disabled={secIdx === sortedSections.length - 1}><ArrowRight className="h-3 w-3" /></Button>
+                                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6", secIdx === 0 && "opacity-20 pointer-events-none")} onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
+                                                    <Button variant="ghost" size="icon" className={cn("h-6 w-6", secIdx === sortedSections.length - 1 && "opacity-20 pointer-events-none")} onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
                                                     {!isCoreSystem && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
                                                 </div>
@@ -732,11 +740,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </React.Fragment>
                                 );
                             }
-                            if (sec.id === 'sec-master') {
+                            if (sec.id === 'sec-vendor') {
                                 return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
-                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
+                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Price ({vendor.currency || 'ISO'})</TableHead>
+                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[10px] w-[120px]">Base Price ({organisation?.tradingCurrency || 'Conv'})</TableHead>
                                     </React.Fragment>
                                 );
                             }
@@ -845,13 +853,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <div className="space-y-1">
                             <div className="flex items-center gap-3">
                                 <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
-                                {organisation?.tradingCurrency && (
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/10">
-                                        <span className="text-[9px] font-black text-primary uppercase tracking-widest">{vendor.currency || 'AUD'}</span>
-                                        <ArrowRightLeft className="h-2.5 w-2.5 text-muted-foreground" />
-                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{organisation.tradingCurrency}</span>
-                                    </div>
-                                )}
                             </div>
                             <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Pricing &amp; Profitability Strategy</CardDescription>
                         </div>
@@ -1111,7 +1112,6 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                         <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                     </div>
                 </TableCell>
-                
                 <TableCell className="text-center border-r bg-primary/5">
                     <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
                 </TableCell>
@@ -1124,8 +1124,8 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                 <TableCell className="text-center border-r bg-primary/5">
                     <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
                 </TableCell>
-                <TableCell className="border-r" />
-                <TableCell className="border-r" />
+                <TableCell className="border-r bg-primary/5" />
+                <TableCell className="border-r bg-primary/5" />
                 <TableCell className="border-r bg-slate-50" />
                 
                 <TableCell colSpan={strategyColCount} className="pr-6" />
@@ -1259,32 +1259,49 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
             <TableCell className="text-center border-r bg-primary/5">
                 <span className="text-[10px] font-mono font-black text-primary/60">1.0000</span>
             </TableCell>
-            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4">
-                {formatCurrency(cost, vendor.currency || 'AUD')}
-            </TableCell>
-            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4">
-                {formatCurrency(sell, vendor.currency || 'AUD')}
-            </TableCell>
             
-            <TableCell className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
-                {isBoatVariant ? (
-                    <div className="relative h-full w-full flex items-center">
-                        <input 
-                            type="number" 
-                            step="0.01"
-                            className="h-10 w-full bg-transparent border-none text-[11px] font-black text-right pr-8 focus:ring-2 focus:ring-primary focus:bg-background transition-all outline-none"
-                            placeholder="0.00"
-                            value={itemValues['packed_m3'] || ''}
-                            onChange={(e) => onUpdateValue(id, 'packed_m3', e.target.value)}
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">m³</span>
-                    </div>
-                ) : (
-                    <div className="h-full w-full bg-slate-100/50" />
-                )}
-            </TableCell>
-
+            {/* Vendor Catalog Section logic */}
             {sections.map((sec: any) => {
+                if (sec.id === 'sec-vendor') {
+                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r" />;
+                    const convertedCost = (cost || 0) * (exchangeRate || 1);
+                    return (
+                        <React.Fragment key={sec.id}>
+                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4 bg-primary/5">
+                                {formatCurrency(cost, vendor.currency || 'AUD')}
+                            </TableCell>
+                            <TableCell className="text-right text-[11px] font-black text-primary border-r px-4 bg-primary/5">
+                                {formatCurrency(convertedCost, organisation?.tradingCurrency || 'AUD')}
+                            </TableCell>
+                        </React.Fragment>
+                    );
+                }
+                if (sec.id === 'sec-freight') {
+                    if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r" />;
+                    return (
+                        <TableCell key={sec.id} className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
+                            {isBoatVariant ? (
+                                <div className="relative h-full w-full flex items-center">
+                                    <input 
+                                        type="number" 
+                                        step="0.01"
+                                        className="h-10 w-full bg-transparent border-none text-[11px] font-black text-right pr-8 focus:ring-2 focus:ring-primary focus:bg-background transition-all outline-none"
+                                        placeholder="0.00"
+                                        value={itemValues['packed_m3'] || ''}
+                                        onChange={(e) => onUpdateValue(id, 'packed_m3', e.target.value)}
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">m³</span>
+                                </div>
+                            ) : (
+                                <div className="h-full w-full bg-slate-100/50" />
+                            )}
+                        </TableCell>
+                    );
+                }
+                
+                // Exchange handled above separately, or we skip cost/sell from here
+                if (sec.id === 'sec-exchange') return null;
+
                 if (sec.isCollapsed) return <TableCell key={`coll-val-${sec.id}`} className="bg-muted/20 border-r last:border-r-0" />;
                 if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-primary/5 border-r last:border-r-0" />;
 
