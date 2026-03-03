@@ -218,33 +218,33 @@ export default function ModuleDetailsPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {/* Cinematic Module Hero - Compact Height */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-10 py-6 text-primary-foreground shadow-2xl z-20">
+            {/* Cinematic Module Hero - Optimized Compact Height */}
+            <div className="relative shrink-0 overflow-hidden bg-primary px-10 py-5 text-primary-foreground shadow-2xl z-20">
                 {/* Enhanced Fluid Background Animation */}
                 <div className="absolute inset-0 z-0">
-                    <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[140%] bg-blue-400/30 blur-[120px] rounded-full animate-pulse pointer-events-none" />
-                    <div className="absolute bottom-[-30%] right-[-10%] w-[70%] h-[150%] bg-indigo-600/40 blur-[150px] rounded-full animate-pulse duration-[6000ms] pointer-events-none" />
-                    <div className="absolute top-[10%] right-[20%] w-[40%] h-[100%] bg-white/10 blur-[100px] rounded-full pointer-events-none" />
+                    <div className="absolute top-[-30%] left-[-15%] w-[70%] h-[160%] bg-blue-400/20 blur-[140px] rounded-full animate-pulse pointer-events-none" />
+                    <div className="absolute bottom-[-40%] right-[-15%] w-[80%] h-[170%] bg-indigo-600/30 blur-[160px] rounded-full animate-pulse duration-[7000ms] pointer-events-none" />
+                    <div className="absolute top-[20%] right-[30%] w-[50%] h-[110%] bg-white/5 blur-[120px] rounded-full pointer-events-none" />
                 </div>
                 
                 <div className="relative z-10 flex flex-col gap-0.5">
                     <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.4em] text-white/50">
-                            <Navigation className="h-2.5 w-2.5" />
+                        <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.5em] text-white/40">
+                            <Navigation className="h-2 w-2" />
                             <span>Command Center</span>
                         </div>
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-7 px-3 font-black uppercase tracking-widest text-[8px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 group"
+                            className="h-6 px-3 font-black uppercase tracking-widest text-[7px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 group"
                             onClick={() => router.push('/dashboard')}
                         >
-                            <X className="h-3 w-3 mr-1.5 transition-transform group-hover:rotate-90" />
+                            <X className="h-2.5 w-2.5 mr-1.5 transition-transform group-hover:rotate-90" />
                             Back to Hub
                         </Button>
                     </div>
                     
-                    <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-tight drop-shadow-2xl mt-1">
+                    <h1 className="text-3xl font-black tracking-tighter uppercase italic leading-tight drop-shadow-2xl">
                         {moduleData.name}
                     </h1>
                 </div>
@@ -253,7 +253,7 @@ export default function ModuleDetailsPage() {
             {/* Premium Navigation Ribbon */}
             <div className="bg-white border-b shrink-0 z-10 shadow-sm px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid grid-cols-5 w-full h-14 bg-transparent p-0 gap-4">
+                    <TabsList className="grid grid-cols-5 w-full h-12 bg-transparent p-0 gap-4">
                         {[
                             { id: 'dashboard', label: 'Dashboard' },
                             { id: 'bmt', label: 'Product Catalog' },
@@ -281,7 +281,7 @@ export default function ModuleDetailsPage() {
                             {/* Lateral Panels */}
                             <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
@@ -293,7 +293,7 @@ export default function ModuleDetailsPage() {
                                 </Card>
 
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
@@ -337,30 +337,34 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <ScrollArea className="h-full pr-4">
-                            <div className="pb-20">
-                                {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} />}
-                                {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
-                                {view === 'bmt' && selectedModel && selectedRange && (
-                                    <ModelConfigurationEditor 
-                                        model={selectedModel}
-                                        docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`}
-                                        vendor={mainVendor}
-                                        module={moduleData}
-                                        user={user as any}
-                                        isAdmin={isAdmin}
-                                        organisationId={currentMemberOrg?.id}
-                                        breadcrumbs={
-                                            <div className="flex items-center text-[10px] font-black uppercase tracking-widest opacity-60">
-                                                <span>{selectedRange.name}</span>
-                                                <ChevronRight className="h-3 w-3 mx-1" />
-                                                <span className="text-primary">{selectedModel.name}</span>
-                                            </div>
-                                        }
-                                    />
-                                )}
+                        <div className="h-full flex flex-col overflow-hidden">
+                            <div className="flex-1 min-h-0 relative">
+                                <ScrollArea className="h-full pr-4">
+                                    <div className="pb-10">
+                                        {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} />}
+                                        {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
+                                        {view === 'bmt' && selectedModel && selectedRange && (
+                                            <ModelConfigurationEditor 
+                                                model={selectedModel}
+                                                docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`}
+                                                vendor={mainVendor}
+                                                module={moduleData}
+                                                user={user as any}
+                                                isAdmin={isAdmin}
+                                                organisationId={currentMemberOrg?.id}
+                                                breadcrumbs={
+                                                    <div className="flex items-center text-[10px] font-black uppercase tracking-widest opacity-60">
+                                                        <span>{selectedRange.name}</span>
+                                                        <ChevronRight className="h-3 w-3 mx-1" />
+                                                        <span className="text-primary">{selectedModel.name}</span>
+                                                    </div>
+                                                }
+                                            />
+                                        )}
+                                    </div>
+                                </ScrollArea>
                             </div>
-                        </ScrollArea>
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="pricing" className="m-0 h-full">
@@ -391,13 +395,13 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pt-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-6">
             {ranges?.map(range => (
                 <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onRangeSelect(range)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
                         {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
-                    <div className="p-6 text-center">
+                    <div className="p-5 text-center">
                         <p className="text-sm font-black uppercase tracking-tight">{range.name}</p>
                     </div>
                 </Card>
@@ -414,13 +418,13 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pt-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-6">
             {models?.map(model => (
-                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onModelSelect(model)}>
+                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col">
                     <div className="aspect-video relative bg-slate-50 border-b">
                         {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
-                    <div className="p-6 text-center space-y-2">
+                    <div className="p-5 text-center space-y-2">
                         <p className="text-xs font-black uppercase tracking-tight">{model.name}</p>
                         {model.modelCode && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4">{model.modelCode}</Badge>}
                     </div>
