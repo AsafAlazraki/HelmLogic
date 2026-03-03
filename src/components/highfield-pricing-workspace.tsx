@@ -44,7 +44,8 @@ import {
     FolderPlus,
     LayoutGrid,
     ArrowLeft,
-    ArrowRight
+    ArrowRight,
+    Star
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -644,15 +645,19 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 <TableHeader className="bg-muted/50 sticky top-0 z-20">
                     <TableRow className="hover:bg-transparent border-b">
                         <TableHead className="w-[350px] border-r bg-muted/20" colSpan={1}></TableHead>
-                        <TableHead className="w-[80px] border-r" colSpan={1}></TableHead>
-                        <TableHead className="w-[120px] border-r bg-primary/5" colSpan={1}></TableHead>
-                        <TableHead className="w-[120px] border-r" colSpan={1}></TableHead>
-                        <TableHead className="w-[120px] border-r" colSpan={1}></TableHead>
-                        <TableHead className="w-[120px] border-r bg-slate-50" colSpan={1}></TableHead>
+                        <TableHead className="w-[200px] border-r bg-primary/5 text-center" colSpan={2}>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Exchange</span>
+                        </TableHead>
+                        <TableHead className="w-[240px] border-r text-center" colSpan={2}>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Master Core</span>
+                        </TableHead>
+                        <TableHead className="w-[120px] border-r bg-slate-50 text-center" colSpan={1}>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Freight</span>
+                        </TableHead>
                         {sortedSections.map(sec => (
                             <TableHead 
                                 key={sec.id} 
-                                colSpan={sec.isCollapsed ? 1 : sec.columns.length || 1} 
+                                colSpan={sec.isCollapsed ? 1 : Math.max(1, sec.columns.length)} 
                                 className={cn(
                                     "border-r last:border-r-0 px-4 py-2 group/sec transition-colors",
                                     sec.isCollapsed ? "bg-muted/40 w-[60px]" : "bg-primary/5"
@@ -679,11 +684,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </TableRow>
                     <TableRow className="hover:bg-transparent border-b-2">
                         <TableHead className="py-4 px-6 border-r bg-muted/20 font-black uppercase text-[10px]">Description & SKU</TableHead>
-                        <TableHead className="text-center border-r font-black uppercase text-[10px]">ISO</TableHead>
-                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px]">Ex. Rate</TableHead>
-                        <TableHead className="text-right border-r font-black uppercase text-[10px]">Cost</TableHead>
-                        <TableHead className="text-right border-r font-black uppercase text-[10px]">Master Sell</TableHead>
-                        <TableHead className="text-right border-r bg-slate-50 font-black uppercase text-[10px]">Packed m³</TableHead>
+                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[80px]">ISO</TableHead>
+                        <TableHead className="text-center border-r bg-primary/5 font-black uppercase text-[10px] w-[120px]">Ex. Rate</TableHead>
+                        <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Cost</TableHead>
+                        <TableHead className="text-right border-r font-black uppercase text-[10px] w-[120px]">Master Sell</TableHead>
+                        <TableHead className="text-right border-r bg-slate-50 font-black uppercase text-[10px] w-[120px]">Packed m³</TableHead>
                         {sortedSections.map(sec => {
                             if (sec.isCollapsed) return <TableHead key={`coll-${sec.id}`} className="w-[60px] border-r last:border-r-0 bg-muted/20" />;
                             if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r last:border-r-0 bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase">Empty Section</TableHead>;
@@ -831,10 +836,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </div>
             </CardHeader>
 
-            <ScrollArea className="flex-1">
-                <PricingTable />
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            <div className="flex-1 overflow-hidden relative">
+                <ScrollArea className="h-full w-full">
+                    <PricingTable />
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+            </div>
 
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
                 <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl [&>button]:hidden">
@@ -1045,12 +1052,26 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     return (
         <>
             <TableRow className="bg-muted/30 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs flex items-center gap-3">
+                <TableCell className="py-3 px-6 font-black uppercase tracking-[0.1em] text-xs flex items-center gap-3 border-r">
                     {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     <span>{range.name} Range</span>
                     <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                 </TableCell>
-                <TableCell colSpan={5 + sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">Click to audit series and specific configurations</TableCell>
+                {/* Fixed context columns showing global vendor data */}
+                <TableCell className="text-center border-r bg-primary/5">
+                    <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
+                </TableCell>
+                <TableCell className="text-center border-r bg-primary/5">
+                    <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate.toFixed(4)}</span>
+                </TableCell>
+                <TableCell className="border-r" />
+                <TableCell className="border-r" />
+                <TableCell className="border-r bg-slate-50" />
+                
+                {/* Placeholder for dynamic strategy sections */}
+                <TableCell colSpan={sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
+                    Click to audit series and specific configurations
+                </TableCell>
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -1075,7 +1096,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-muted/5 border-l-4 border-l-primary/40">
-                <TableCell className="py-3 px-8 flex items-center justify-between min-w-0">
+                <TableCell className="py-3 px-8 flex items-center justify-between min-w-0 border-r">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setIsLocalExpanded(!isLocalExpanded)} className="hover:text-primary transition-colors">
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -1086,7 +1107,12 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         </div>
                     </div>
                 </TableCell>
-                <TableCell colSpan={5 + sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="bg-muted/5" />
+                <TableCell className="bg-muted/5 border-r" />
+                <TableCell className="bg-muted/5 border-r" />
+                <TableCell className="bg-muted/5 border-r" />
+                <TableCell className="bg-muted/5 border-r" />
+                <TableCell className="bg-muted/5 border-r" />
+                <TableCell colSpan={sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="bg-muted/5" />
             </TableRow>
 
             {isLocalExpanded && (
@@ -1113,12 +1139,13 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="bg-white/50 border-l-4 border-l-primary/40">
-                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60" colSpan={6 + sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)}>
+                                <TableCell className="py-2 px-12 italic text-[10px] font-black uppercase tracking-widest text-primary/60 border-r" colSpan={1}>
                                     <div className="flex items-center gap-2">
                                         <Wrench className="h-3.5 w-3.5" />
                                         <span>Factory Options</span>
                                     </div>
                                 </TableCell>
+                                <TableCell colSpan={5 + sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="bg-white/50" />
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 
@@ -1157,11 +1184,11 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     <span className="text-[9px] font-mono text-muted-foreground uppercase">{sku || 'NO SKU'}</span>
                 </div>
             </TableCell>
-            <TableCell className="text-center border-r">
+            <TableCell className="text-center border-r bg-primary/5">
                 <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
             </TableCell>
             <TableCell className="text-center border-r bg-primary/5">
-                <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate.toFixed(4)}</span>
+                <span className="text-[10px] font-mono font-black text-primary/60">{exchangeRate ? exchangeRate.toFixed(4) : '1.0000'}</span>
             </TableCell>
             <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4">
                 {formatCurrency(cost, vendor.currency || 'AUD')}
