@@ -1,7 +1,7 @@
+
 'use client';
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { Header } from "@/components/header";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import dynamic from "next/dynamic";
 import { SidebarSkeleton } from "@/components/sidebar-skeleton";
@@ -40,9 +40,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset className="overflow-hidden flex flex-col h-screen max-w-full">
-          <Header />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0">
+        <SidebarInset className="overflow-hidden flex flex-col h-screen max-w-full relative">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
             {children}
           </main>
           <ChatBot />

@@ -18,25 +18,11 @@ import {
     ChevronLeft,
     Wrench, 
     FileText, 
-    ClipboardList, 
-    Save, 
-    Building, 
-    Settings2, 
-    Users, 
-    Eye, 
-    X, 
-    LayoutDashboard,
     PlusCircle,
-    Pencil,
-    Trash2,
-    DollarSign,
-    Ship,
-    Cog,
-    TrendingUp,
-    Anchor,
     Navigation,
-    Search,
-    ShieldCheck
+    Anchor,
+    Ship,
+    LayoutGrid
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
@@ -45,27 +31,15 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel, FormDescription } from '@/components/ui/form';
-import { Checkbox } from '@/components/ui/checkbox';
-import { createSlug, cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { InventoryList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { MotorModuleBrowser } from '@/components/motor-module-browser';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { 
-    Select, 
-    SelectContent, 
-    SelectItem, 
-    SelectTrigger, 
-    SelectValue 
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 interface Vendor {
     id: string;
@@ -79,18 +53,8 @@ interface Vendor {
 interface Organisation {
     id: string;
     name: string;
-    primaryLogoUrl?: string;
     enabledModuleSubscriptions?: string[];
-    moduleAssociatedVendorAccess?: Record<string, string[]>;
-    dealerFitCategories?: string[];
-    subDealersEnabled?: boolean;
-    parentOrganisationId?: string;
     permissions?: Record<string, Record<string, boolean>>;
-    tradingCurrency?: string;
-    gstPercentage?: number;
-    brandMargins?: Record<string, number>;
-    rangeMargins?: Record<string, number>;
-    modelMargins?: Record<string, number>;
 }
 
 interface Range {
@@ -109,15 +73,7 @@ interface Model {
   slug?: string;
   coverImageUrl?: string;
   order?: number;
-  packageLevels?: { id: string; name: string }[];
-  [key: string]: any;
 }
-
-const formSchema = z.object({
-  name: z.string().min(1, { message: 'Module name is required.' }),
-  mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
-  associatedVendorIds: z.array(z.string()).default([]),
-});
 
 function QuoteSelectorDialog({ 
     isOpen, 
@@ -152,19 +108,16 @@ function QuoteSelectorDialog({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => {
-            setIsOpen(open);
-            if (!open) setSelectedRange(null);
-        }}>
-            <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-[2.5rem] border-4 shadow-2xl">
-                <DialogHeader className="p-8 border-b bg-slate-50">
-                    <DialogTitle className="text-3xl font-black uppercase tracking-tight italic">Initiate New Build</DialogTitle>
-                    <DialogDescription className="text-base font-medium text-slate-500">
-                        {selectedRange ? `Select a ${selectedRange.name} model to start the configuration.` : 'Select a product range to browse available models.'}
+        <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) setSelectedRange(null); }}>
+            <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-[2rem] border-4 shadow-2xl">
+                <DialogHeader className="p-8 border-b bg-muted/5">
+                    <DialogTitle className="text-3xl font-black uppercase tracking-tight italic text-primary">Initiate Proposal</DialogTitle>
+                    <DialogDescription className="text-sm font-bold uppercase text-muted-foreground/60 tracking-widest mt-1">
+                        {selectedRange ? `Target: ${selectedRange.name}` : 'Select range to begin configuration'}
                     </DialogDescription>
                 </DialogHeader>
                 
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 bg-background">
                     <ScrollArea className="h-full p-8">
                         {rangesLoading ? (
                             <div className="flex h-64 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
@@ -173,21 +126,21 @@ function QuoteSelectorDialog({
                                 {ranges?.map(range => (
                                     <Card 
                                         key={range.id} 
-                                        className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[2rem] overflow-hidden group border-2"
+                                        className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2"
                                         onClick={() => setSelectedRange(range)}
                                     >
-                                        <div className="aspect-video bg-muted relative border-b">
-                                            {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
+                                        <div className="aspect-video bg-muted/30 relative border-b p-4">
+                                            {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-2" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
                                         </div>
-                                        <CardContent className="p-6 text-center">
-                                            <p className="font-black uppercase tracking-tight text-lg leading-tight">{range.name}</p>
-                                        </CardContent>
+                                        <div className="p-4 text-center">
+                                            <p className="font-black uppercase tracking-tighter text-sm">{range.name}</p>
+                                        </div>
                                     </Card>
                                 ))}
                             </div>
                         ) : (
                             <div className="space-y-6">
-                                <Button variant="ghost" onClick={() => setSelectedRange(null)} className="font-bold -ml-2 text-primary">
+                                <Button variant="ghost" onClick={() => setSelectedRange(null)} className="font-black uppercase text-[10px] tracking-widest text-primary hover:bg-primary/5">
                                     <ChevronLeft className="mr-2 h-4 w-4" /> Back to Ranges
                                 </Button>
                                 {modelsLoading ? (
@@ -197,16 +150,16 @@ function QuoteSelectorDialog({
                                         {models?.map(model => (
                                             <Card 
                                                 key={model.id} 
-                                                className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[2rem] overflow-hidden group border-2"
+                                                className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2"
                                                 onClick={() => handleModelSelect(model)}
                                             >
-                                                <div className="aspect-video bg-muted relative border-b">
+                                                <div className="aspect-video bg-muted/30 relative border-b">
                                                     {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="opacity-10" /></div>}
                                                 </div>
-                                                <CardContent className="p-6 text-center space-y-2">
-                                                    <p className="font-black uppercase tracking-tight leading-tight">{model.name}</p>
-                                                    {model.modelCode && <Badge variant="secondary" className="font-mono text-[9px] px-2">{model.modelCode}</Badge>}
-                                                </CardContent>
+                                                <div className="p-4 text-center space-y-1">
+                                                    <p className="font-black uppercase tracking-tighter text-xs">{model.name}</p>
+                                                    {model.modelCode && <Badge variant="secondary" className="font-mono text-[8px] h-4 px-1.5">{model.modelCode}</Badge>}
+                                                </div>
                                             </Card>
                                         ))}
                                     </div>
@@ -220,26 +173,6 @@ function QuoteSelectorDialog({
     );
 }
 
-function ModuleBreadcrumbs({ module, range, model, view, onBreadcrumbClick }: { module: any; range: Range | null; model: Model | null; view: string, onBreadcrumbClick: (level: 'ranges' | 'models' | 'motors') => void }) {
-    return (
-        <div className="flex items-center text-[10px] font-bold uppercase tracking-widest text-white/60">
-            <button type="button" className="hover:text-white transition-colors" onClick={() => onBreadcrumbClick('ranges')}>{module.name}</button>
-            {range && (
-                <>
-                    <ChevronRight className="h-3 w-3 mx-1" />
-                    <button type="button" className="hover:text-white transition-colors" onClick={() => onBreadcrumbClick('models')}>{range.name}</button>
-                </>
-            )}
-            {model && (
-                <>
-                    <ChevronRight className="h-3 w-3 mx-1" />
-                    <span className="text-white">{model.name}</span>
-                </>
-            )}
-        </div>
-    );
-}
-
 export default function ModuleDetailsPage() {
     const router = useRouter();
     const params = useParams();
@@ -247,364 +180,186 @@ export default function ModuleDetailsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
 
-    const [view, setView] = useState<'ranges' | 'models' | 'motors' | 'bmt' | 'quote' | 'operations' | 'pricing'>('ranges');
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [view, setView] = useState<'ranges' | 'models' | 'motors' | 'bmt'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [isNewQuoteOpen, setIsNewQuoteOpen] = useState(false);
     
-    const [viewContextOrgId, setViewContextOrgId] = useState<string | null>(null);
-    const [inStockFilter, setInStockFilter] = useState<string>('all');
-
-    const { user, loading: userLoading } = useUser();
+    const { user } = useUser();
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string, organisationId?: string, organisationRole?: string }>(userProfileRef);
-    
+    const { data: userProfile } = useDoc<any>(userProfileRef);
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
-    const moduleQueryBySlug = useMemoFirebase(() => {
-        if (!slugOrId) return null;
-        return query(collection(firestore, 'modules'), where('slug', '==', slugOrId));
-    }, [firestore, slugOrId]);
-
+    const moduleQueryBySlug = useMemoFirebase(() => slugOrId ? query(collection(firestore, 'modules'), where('slug', '==', slugOrId)) : null, [firestore, slugOrId]);
     const { data: modulesBySlug, loading: slugLoading } = useCollection<any>(moduleQueryBySlug);
     const moduleByIdRef = useMemoFirebase(() => slugOrId ? doc(firestore, 'modules', slugOrId) : null, [firestore, slugOrId]);
     const { data: moduleById, loading: idLoading } = useDoc<any>(moduleByIdRef);
-    
     const moduleData = useMemo(() => moduleById || modulesBySlug?.[0], [modulesBySlug, moduleById]);
-    const moduleLoading = slugLoading || idLoading;
-    
-    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
-    const orgsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
 
-    const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
-    const { data: allOrganisations, loading: orgsLoading } = useCollection<Organisation>(orgsQuery);
-    
-    const mainVendorRef = useMemoFirebase(() => 
-        moduleData ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null,
-    [firestore, moduleData]);
-    
+    const mainVendorRef = useMemoFirebase(() => moduleData ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null, [firestore, moduleData]);
     const { data: mainVendor, loading: mainVendorLoading } = useDoc<Vendor>(mainVendorRef);
-        
+    
+    const organisationsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
+    const { data: allOrganisations } = useCollection<Organisation>(organisationsQuery);
+    
     const currentMemberOrg = useMemo(() => 
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
-    const dashboardOrg = useMemo(() => 
-        viewContextOrgId ? allOrganisations?.find(o => o.id === viewContextOrgId) : currentMemberOrg,
-    [viewContextOrgId, allOrganisations, currentMemberOrg]);
-
-    const isViewingOrg = !!dashboardOrg;
-
     const userPermissions = useMemo(() => {
-        if (isAdmin) return {
-            can_access_module: true,
-            can_create_quotes: true,
-            can_edit_boat_data: true,
-            can_view_subdealers: true,
-            can_see_parent_inventory: true,
-            can_access_settings: true,
-        };
+        if (isAdmin) return { can_access_module: true, can_create_quotes: true, can_edit_boat_data: true, can_access_settings: true };
         const roleId = userProfile?.organisationRole;
         if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return { can_access_module: false };
         return currentMemberOrg.permissions[roleId];
     }, [isAdmin, userProfile, currentMemberOrg]);
 
-    const availableContexts = useMemo(() => {
-        const contexts = [];
-        if (isAdmin) {
-            contexts.push({ id: 'master', name: 'Master Data (Global)' });
-            allOrganisations?.forEach(org => contexts.push({ id: org.id, name: org.name }));
-        } else if (userProfile?.organisationId) {
-            const myOrg = allOrganisations?.find(o => o.id === userProfile.organisationId);
-            if (myOrg) {
-                contexts.push({ id: myOrg.id, name: `My Org: ${myOrg.name}` });
-            }
-            if (userPermissions.can_view_subdealers) {
-                const subDealers = allOrganisations?.filter(org => org.parentOrganisationId === userProfile.organisationId) || [];
-                subDealers.forEach(sd => contexts.push({ id: sd.id, name: `Sub Dealer: ${sd.name}` }));
-            }
-        }
-        return contexts;
-    }, [isAdmin, allOrganisations, userProfile, userPermissions]);
+    const loading = slugLoading || idLoading || mainVendorLoading;
 
-    const [activeTab, setActiveTab] = useState('dashboard');
+    if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>;
+    if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
 
-    const dashboardSubDealers = useMemo(() => {
-        if (!dashboardOrg || !allOrganisations) return [];
-        return allOrganisations.filter(o => o.parentOrganisationId === dashboardOrg.id);
-    }, [dashboardOrg, allOrganisations]);
-
-    const parentOrg = useMemo(() => 
-        dashboardOrg?.parentOrganisationId ? allOrganisations?.find(o => o.id === dashboardOrg.parentOrganisationId) : null,
-    [dashboardOrg, allOrganisations]);
-
-    const loading = moduleLoading || mainVendorLoading || vendorsLoading || orgsLoading || userLoading || profileLoading;
-
-    if (loading) {
-      return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
-    }
-    
-    if (!moduleData) {
-        return <Card><CardHeader><CardTitle>Module Not Found</CardTitle></CardHeader></Card>;
-    }
-
-    if (!userPermissions.can_access_module) {
-        return <Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>Your role does not have permission to access modules.</CardDescription></CardHeader></Card>;
-    }
-    
-    const showSubDealersTab = isViewingOrg && dashboardOrg?.subDealersEnabled && userPermissions.can_view_subdealers;
-    const tabGridCols = (isAdmin && !viewContextOrgId) ? "grid-cols-5" : showSubDealersTab ? "grid-cols-6" : "grid-cols-5";
-
-    const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
-    const isMotorBrand = mainVendor?.vendorType === 'Motor Brand';
-
-    const handleRangeSelect = (range: Range) => {
-        setSelectedRange(range);
-        setView('models');
-    };
-
-    const handleModelSelect = (model: Model) => {
-        setSelectedModel(model);
-        setView('bmt');
-    };
-
-    const handleBreadcrumbClick = (level: 'ranges' | 'models' | 'motors') => {
-        if (level === 'ranges') {
-            setView('ranges');
-            setSelectedRange(null);
-            setSelectedModel(null);
-        } else if (level === 'models') {
-            setView('models');
-            setSelectedModel(null);
-        }
-    };
+    const handleRangeSelect = (range: Range) => { setSelectedRange(range); setView('models'); };
+    const handleModelSelect = (model: Model) => { setSelectedModel(model); setView('bmt'); };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-64px)] -m-4 md:-m-6 overflow-hidden bg-slate-50/30">
-            {/* Top-Pinned Hero Navigation */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-accent px-8 py-6 text-primary-foreground shadow-2xl shrink-0 border-b border-white/10 z-20">
-                <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-white/5 blur-[80px]" />
-                <div className="relative z-10 flex items-center justify-between gap-8">
-                    <div className="flex items-center gap-8">
-                        <div className="h-12 w-48 relative bg-white/95 rounded-xl p-2 shadow-xl border border-white/20 shrink-0">
-                            {moduleData.logoUrl ? (
-                                <Image src={moduleData.logoUrl} alt={moduleData.name} fill className="object-contain" unoptimized />
-                            ) : (
-                                <div className="flex items-center gap-2 h-full text-primary">
-                                    <Anchor className="h-5 w-5" />
-                                    <span className="font-black uppercase text-xs tracking-tighter italic">{moduleData.name}</span>
-                                </div>
-                            )}
-                        </div>
-
+        <div className="flex flex-col h-[calc(100vh)] overflow-hidden bg-background">
+            {/* Absolute Top Hero Section */}
+            <div className="relative shrink-0 overflow-hidden bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary via-primary/95 to-indigo-900 px-10 py-10 text-primary-foreground shadow-2xl z-20 border-b border-white/5">
+                <div className="absolute inset-0 bg-black/10 opacity-50" />
+                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-[100px] animate-pulse" />
+                
+                <div className="relative z-10 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <ModuleBreadcrumbs 
-                                module={moduleData} 
-                                range={selectedRange} 
-                                model={selectedModel} 
-                                view={view} 
-                                onBreadcrumbClick={handleBreadcrumbClick} 
-                            />
-                            <h1 className="text-2xl font-black tracking-tight uppercase italic leading-none">
-                                {dashboardOrg?.name || 'Local Workspace'}
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-2">
+                                <Navigation className="h-3 w-3" />
+                                <span>Command Center</span>
+                            </div>
+                            <h1 className="text-5xl font-black tracking-tighter uppercase italic leading-none text-white drop-shadow-2xl">
+                                {moduleData.name}
                             </h1>
                         </div>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                        {isAdmin && (
-                            <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-white/10 shrink-0">
-                                <Select 
-                                    value={viewContextOrgId || 'master'} 
-                                    onValueChange={(val) => setViewContextOrgId(val === 'master' ? null : val)}
-                                >
-                                    <SelectTrigger className="w-40 h-8 font-bold bg-white/10 border-none text-white text-[10px]">
-                                        <Eye className="h-3.5 w-3.5 mr-2" />
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2">
-                                        {availableContexts.map(ctx => (
-                                            <SelectItem key={ctx.id} value={ctx.id} className="font-bold text-xs">{ctx.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        <div className="flex items-center gap-6 bg-black/10 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/5 shadow-inner shrink-0">
-                            <div className="text-center">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-0.5">Stock</p>
-                                <p className="text-lg font-black leading-none">14</p>
-                            </div>
-                            <Separator orientation="vertical" className="h-6 bg-white/10" />
-                            <div className="text-center">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-0.5">Orders</p>
-                                <p className="text-lg font-black leading-none text-green-400">08</p>
-                            </div>
-                            <Separator orientation="vertical" className="h-6 bg-white/10" />
-                            <div className="text-center">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-0.5">Quotes</p>
-                                <p className="text-lg font-black leading-none">23</p>
-                            </div>
+                        
+                        <div className="flex items-center gap-10">
+                            <BreadcrumbNav parts={[
+                                { href: "/dashboard", label: "Hub" },
+                                { href: "#", label: moduleData.name }
+                            ]} />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Tactical Menu Bar */}
-            <div className="px-8 bg-white border-b shrink-0 z-10 shadow-sm">
+            {/* Segmented Navigation Line */}
+            <div className="bg-white border-b shrink-0 z-10 shadow-sm px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className={cn("grid w-full h-12 bg-transparent p-0", tabGridCols)}>
-                        {isViewingOrg && <TabsTrigger value="dashboard" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Dashboard</TabsTrigger>}
-                        <TabsTrigger value="bmt" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">
-                            {isMotorBrand ? 'Engine Catalog' : 'BMT Catalog'}
-                        </TabsTrigger>
-                        <TabsTrigger value="operations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Operations</TabsTrigger>
-                        {isViewingOrg && userPermissions.can_access_settings && <TabsTrigger value="pricing" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Strategic Pricing</TabsTrigger>}
-                        {isAdmin && !viewContextOrgId && <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Config</TabsTrigger>}
-                        {showSubDealersTab && <TabsTrigger value="sub-dealers" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-widest h-full transition-all">Network</TabsTrigger>}
+                    <TabsList className="grid grid-cols-5 w-full h-14 bg-transparent p-0 gap-8">
+                        {['dashboard', 'bmt', 'operations', 'pricing', 'network'].map((t) => (
+                            <TabsTrigger 
+                                key={t} 
+                                value={t} 
+                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[11px] tracking-[0.2em] h-full transition-all duration-300"
+                            >
+                                {t === 'bmt' ? 'Product Catalog' : t}
+                            </TabsTrigger>
+                        ))}
                     </TabsList>
                 </Tabs>
             </div>
 
-            {/* Main Single-Screen Workspace */}
-            <main className="flex-1 overflow-hidden relative">
+            {/* Main Screen Workspace */}
+            <main className="flex-1 overflow-hidden relative p-8">
                 <Tabs value={activeTab} className="h-full">
-                    {isViewingOrg && (
-                        <TabsContent value="dashboard" className="m-0 h-full p-6 animate-in fade-in duration-500">
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-                                {/* Lateral Panels */}
-                                <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-hidden">
-                                    <Card className="flex flex-col border-2 rounded-[2rem] shadow-sm bg-white h-1/2 overflow-hidden">
-                                        <CardHeader className="py-4 px-6 border-b shrink-0 flex flex-row items-center justify-between bg-muted/5">
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-primary/20 text-primary">Stock</Badge>
-                                                <h3 className="font-black uppercase italic text-sm">Local Inventory</h3>
-                                            </div>
-                                            {dashboardSubDealers.length > 0 && (
-                                                <Select value={inStockFilter} onValueChange={setInStockFilter}>
-                                                    <SelectTrigger className="w-32 h-7 text-[8px] font-black uppercase tracking-tighter">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="all">Network</SelectItem>
-                                                        <SelectItem value="local">{dashboardOrg?.name}</SelectItem>
-                                                        {dashboardSubDealers.map(sd => <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
-                                        </CardHeader>
-                                        <CardContent className="flex-1 min-h-0 p-0">
-                                            <InventoryList 
-                                                organisation={dashboardOrg as any}
-                                                subDealers={dashboardSubDealers as any[]}
-                                                parentOrg={parentOrg as any}
-                                                moduleId={moduleData.id}
-                                                filterOrgId={inStockFilter}
-                                                isAdmin={isAdmin}
-                                            />
-                                        </CardContent>
-                                    </Card>
+                    <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="grid grid-cols-12 gap-8 h-full">
+                            {/* Lateral Intelligence */}
+                            <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
+                                <Card className="flex-1 flex flex-col border-2 rounded-[2rem] shadow-sm bg-white overflow-hidden">
+                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                        <div className="flex items-center gap-3">
+                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5">Asset</Badge>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight">Inventory</h3>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="flex-1 min-h-0 p-0">
+                                        <InventoryList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
+                                    </CardContent>
+                                </Card>
 
-                                    <Card className="flex flex-col border-2 rounded-[2rem] shadow-sm bg-white h-1/2 overflow-hidden">
-                                        <CardHeader className="py-4 px-6 border-b shrink-0 flex items-center gap-2 bg-muted/5">
-                                            <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-green-500/20 text-green-600">Order</Badge>
-                                            <h3 className="font-black uppercase italic text-sm">On-Water Pipeline</h3>
-                                        </CardHeader>
-                                        <CardContent className="flex-1 min-h-0 p-0">
-                                            <VesselOnOrderList 
-                                                organisation={dashboardOrg as any}
-                                                parentOrg={parentOrg as any}
-                                                moduleId={moduleData.id}
-                                                isAdmin={isAdmin}
-                                            />
-                                        </CardContent>
-                                    </Card>
-                                </div>
-
-                                {/* Central Focus Panel */}
-                                <div className="lg:col-span-8 h-full overflow-hidden">
-                                    <Card className="h-full flex flex-col border-2 rounded-[2.5rem] shadow-xl bg-white overflow-hidden">
-                                        <CardHeader className="p-8 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-primary">
-                                                    <Navigation className="h-3 w-3" />
-                                                    <span>Sales Intelligence</span>
-                                                </div>
-                                                <h2 className="text-2xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
-                                            </div>
-                                            <Button 
-                                                className="h-12 px-6 rounded-2xl font-black uppercase tracking-widest text-[9px] shadow-lg hover:scale-105 transition-transform"
-                                                onClick={() => setIsNewQuoteOpen(true)}
-                                            >
-                                                <PlusCircle className="mr-2 h-4 w-4" />
-                                                Draft New Quote
-                                            </Button>
-                                        </CardHeader>
-                                        <CardContent className="flex-1 p-8 flex flex-col justify-center items-center">
-                                            <div className="w-full h-full rounded-[2rem] border-2 border-dashed border-slate-100 bg-slate-50/20 flex flex-col items-center justify-center text-center gap-4 group">
-                                                <div className="h-16 w-16 bg-white rounded-2xl shadow-xl border flex items-center justify-center text-slate-200 group-hover:scale-110 transition-all">
-                                                    <FileText className="h-8 w-8" />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Proposals Pipeline Empty</p>
-                                                    <p className="text-[10px] text-slate-400 font-medium max-w-[200px] leading-relaxed mx-auto">Initiate a new build to generate a high-precision quotation.</p>
-                                                </div>
-                                                <Button variant="outline" className="border-2 rounded-xl h-9 px-6 font-bold text-xs mt-2">
-                                                    Archive Explorer
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
+                                <Card className="flex-1 flex flex-col border-2 rounded-[2rem] shadow-sm bg-white overflow-hidden">
+                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex items-center gap-3 shrink-0">
+                                        <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50">Pipeline</Badge>
+                                        <h3 className="font-black uppercase italic text-sm tracking-tight">On Order</h3>
+                                    </CardHeader>
+                                    <CardContent className="flex-1 min-h-0 p-0">
+                                        <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
+                                    </CardContent>
+                                </Card>
                             </div>
-                        </TabsContent>
-                    )}
 
-                    <TabsContent value="bmt" className="m-0 h-full p-6 overflow-hidden animate-in slide-in-from-bottom-2 duration-500">
-                        <ScrollArea className="h-full">
-                            <Card className="border-2 rounded-[2.5rem] bg-white overflow-hidden shadow-sm">
-                                <CardContent className="p-10">
-                                    {isBoatBrand && mainVendor ? (
-                                        <>
-                                            {view === 'ranges' && <RangesGrid vendor={mainVendor} onRangeSelect={handleRangeSelect} />}
-                                            {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor} onModelSelect={handleModelSelect} isAdmin={isAdmin && !viewContextOrgId} />}
-                                            {view === 'bmt' && selectedModel && selectedRange && (
-                                                <ModelConfigurationEditor 
-                                                    model={selectedModel}
-                                                    docPath={`data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`}
-                                                    vendor={mainVendor}
-                                                    module={moduleData}
-                                                    user={user}
-                                                    isAdmin={isAdmin}
-                                                    organisationId={dashboardOrg?.id}
-                                                    permissions={userPermissions}
-                                                    breadcrumbs={
-                                                        <div className="flex items-center text-[10px] font-bold uppercase tracking-widest opacity-60">
-                                                            <span>{selectedRange.name}</span>
-                                                            <ChevronRight className="h-3 w-3 mx-1" />
-                                                            <span className="text-primary">{selectedModel.name}</span>
-                                                        </div>
-                                                    }
-                                                />
-                                            )}
-                                        </>
-                                    ) : isMotorBrand && mainVendor ? (
-                                        <MotorModuleBrowser vendor={mainVendor} onMotorSelect={() => {}} />
-                                    ) : (
-                                        <div className="py-24 text-center opacity-20"><Wrench className="h-16 w-16 mx-auto" /></div>
-                                    )}
+                            {/* Focus Intelligence */}
+                            <Card className="col-span-8 flex flex-col border-2 rounded-[2.5rem] shadow-xl bg-white overflow-hidden">
+                                <CardHeader className="p-8 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary">
+                                            <Anchor className="h-3.5 w-3.5" />
+                                            <span>Sales Strategy</span>
+                                        </div>
+                                        <h2 className="text-3xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
+                                    </div>
+                                    <Button 
+                                        className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl hover:scale-[1.02] transition-all bg-primary"
+                                        onClick={() => setIsNewQuoteOpen(true)}
+                                    >
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Draft New Quote
+                                    </Button>
+                                </CardHeader>
+                                <CardContent className="flex-1 p-8 flex flex-col items-center justify-center text-center gap-6">
+                                    <div className="h-24 w-24 bg-muted/30 rounded-[2rem] flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
+                                        <FileText className="h-10 w-10 text-muted-foreground/20" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="font-black uppercase tracking-[0.2em] text-sm text-slate-400">Proposal Queue Empty</p>
+                                        <p className="text-[11px] text-muted-foreground max-w-xs mx-auto leading-relaxed">Initiate a new build to start generating precision quotations.</p>
+                                    </div>
                                 </CardContent>
                             </Card>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                        <ScrollArea className="h-full pr-4">
+                            <div className="pb-20">
+                                {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} />}
+                                {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
+                                {view === 'bmt' && selectedModel && selectedRange && (
+                                    <ModelConfigurationEditor 
+                                        model={selectedModel}
+                                        docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`}
+                                        vendor={mainVendor}
+                                        module={moduleData}
+                                        user={user as any}
+                                        isAdmin={isAdmin}
+                                        organisationId={currentMemberOrg?.id}
+                                        breadcrumbs={
+                                            <div className="flex items-center text-[10px] font-bold uppercase tracking-widest opacity-60">
+                                                <span>{selectedRange.name}</span>
+                                                <ChevronRight className="h-3 w-3 mx-1" />
+                                                <span className="text-primary">{selectedModel.name}</span>
+                                            </div>
+                                        }
+                                    />
+                                )}
+                            </div>
                         </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="pricing" className="m-0 h-full p-6 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            {dashboardOrg && mainVendor && (
-                                <ModulePricingDashboard module={moduleData} organisation={dashboardOrg as any} vendor={mainVendor} />
-                            )}
-                        </ScrollArea>
+                    <TabsContent value="pricing" className="m-0 h-full">
+                        {currentMemberOrg && mainVendor && (
+                            <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
+                        )}
                     </TabsContent>
                 </Tabs>
             </main>
@@ -621,53 +376,47 @@ export default function ModuleDetailsPage() {
     );
 }
 
-function RangesGrid({ vendor, onRangeSelect }: { vendor: any; onRangeSelect: (range: Range) => void }) {
+function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: (range: Range) => void }) {
     const firestore = useFirestore();
-    const rangesQuery = useMemoFirebase(() => {
-        if (!vendor?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
-    }, [firestore, vendor.id]);
+    const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
     const { data: ranges, loading } = useCollection<Range>(rangesQuery);
 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
             {ranges?.map(range => (
-                <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:scale-105" onClick={() => onRangeSelect(range)}>
+                <Card key={range.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onRangeSelect(range)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
                         {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
-                    <CardHeader className="p-4 text-center">
-                        <CardTitle className="text-sm font-black uppercase tracking-tight leading-tight">{range.name}</CardTitle>
-                    </CardHeader>
+                    <div className="p-6 text-center">
+                        <p className="text-sm font-black uppercase tracking-tight">{range.name}</p>
+                    </div>
                 </Card>
             ))}
         </div>
     );
 }
 
-function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; vendor: any; onModelSelect: (model: Model) => void; isAdmin: boolean }) {
+function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; isAdmin: boolean }) {
     const firestore = useFirestore();
-    const modelsQuery = useMemoFirebase(() => {
-        if (!vendor?.id || !range?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
-    }, [firestore, vendor.id, range.id]);
+    const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
     const { data: models, loading } = useCollection<Model>(modelsQuery);
 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
             {models?.map(model => (
-                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:scale-105" onClick={() => onModelSelect(model)}>
+                <Card key={model.id} className="cursor-pointer group hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1" onClick={() => onModelSelect(model)}>
                     <div className="aspect-video relative bg-slate-50 border-b">
                         {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
-                    <CardHeader className="p-4 text-center space-y-1">
-                        <CardTitle className="text-xs font-black uppercase tracking-tight leading-tight">{model.name}</CardTitle>
+                    <div className="p-6 text-center space-y-2">
+                        <p className="text-xs font-black uppercase tracking-tight">{model.name}</p>
                         {model.modelCode && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4">{model.modelCode}</Badge>}
-                    </CardHeader>
+                    </div>
                 </Card>
             ))}
         </div>

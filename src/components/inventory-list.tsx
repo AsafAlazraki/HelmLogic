@@ -79,8 +79,8 @@ export function InventoryList({
 
     const { data: inventory, loading } = useCollection<InventoryItem>(inventoryQuery);
 
-    const [isAssigning, setIsAssigning] = useState(false);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+    const [isAssigning, setIsAssigning] = useState(false);
     const [targetId, setTargetId] = useState<string>('');
 
     const availableTargets = useMemo(() => {
@@ -99,20 +99,18 @@ export function InventoryList({
         if (!selectedItem || !targetId) return;
         setIsAssigning(true);
         const itemRef = doc(firestore, 'inventory', selectedItem.id);
-        const updateData = { organisationId: targetId };
-
-        updateDoc(itemRef, updateData)
+        
+        updateDoc(itemRef, { organisationId: targetId })
             .then(() => {
-                toast({ title: "Stock Assigned", description: `Successfully moved to ${availableTargets.find(t => t.id === targetId)?.name}` });
+                toast({ title: "Stock Assigned" });
                 setSelectedItem(null);
             })
             .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: itemRef.path,
                     operation: 'update',
-                    requestResourceData: updateData,
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
+                    requestResourceData: { organisationId: targetId },
+                } satisfies SecurityRuleContext));
             })
             .finally(() => setIsAssigning(false));
     };
@@ -133,12 +131,11 @@ export function InventoryList({
                 toast({ title: "Test Stock Added" });
             })
             .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: colRef.path,
                     operation: 'create',
                     requestResourceData: dataToAdd,
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
+                } satisfies SecurityRuleContext));
             });
     };
 
@@ -149,11 +146,10 @@ export function InventoryList({
                 toast({ title: "Item deleted." });
             })
             .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: itemRef.path,
                     operation: 'delete',
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
+                } satisfies SecurityRuleContext));
             });
     };
 
@@ -174,20 +170,20 @@ export function InventoryList({
                     <ScrollArea className="flex-1">
                         <div className="p-4 space-y-2">
                             {inventory.map(item => (
-                                <div key={item.id} className="group flex items-center justify-between p-3 rounded-xl border bg-white hover:border-primary/40 transition-all shadow-sm">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="h-8 w-8 bg-slate-50 border rounded-lg flex items-center justify-center text-primary shrink-0">
-                                            <Anchor className="h-4 w-4" />
+                                <div key={item.id} className="group flex items-center justify-between p-4 rounded-xl border bg-white hover:border-primary/40 transition-all shadow-sm">
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <div className="h-10 w-10 bg-slate-50 border rounded-lg flex items-center justify-center text-primary shrink-0">
+                                            <Anchor className="h-5 w-5" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="font-black text-[11px] uppercase tracking-tight truncate leading-none mb-1">{item.name}</p>
+                                            <p className="font-black text-[12px] uppercase tracking-tight text-slate-900 truncate leading-none mb-1.5">{item.name}</p>
                                             <Badge variant="outline" className="font-mono text-[8px] font-bold py-0 h-4 border-primary/20 text-primary">
                                                 {item.stockNumber}
                                             </Badge>
                                         </div>
                                     </div>
                                     
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={() => setSelectedItem(item)} title="Reassign">
                                             <ArrowRightLeft className="h-3.5 w-3.5" />
                                         </Button>
@@ -211,31 +207,31 @@ export function InventoryList({
 
             <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
                 <DialogContent className="rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 bg-muted/5 border-b">
-                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Assign Asset</DialogTitle>
-                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">
+                    <DialogHeader className="p-8 bg-muted/5 border-b">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Assign Asset</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">
                             Strategic relocation of unit <strong>{selectedItem?.stockNumber}</strong>
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="p-6 space-y-4">
-                        <div className="space-y-2">
+                    <div className="p-8 space-y-6">
+                        <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Destination Organization</Label>
                             <Select value={targetId} onValueChange={setTargetId}>
-                                <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-background">
+                                <SelectTrigger className="h-14 rounded-xl border-2 font-black text-sm bg-background px-6">
                                     <SelectValue placeholder="Select target..." />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl">
+                                <SelectContent className="rounded-xl border-2">
                                     {availableTargets.map(target => (
-                                        <SelectItem key={target.id} value={target.id} className="font-bold text-[10px] uppercase">{target.name}</SelectItem>
+                                        <SelectItem key={target.id} value={target.id} className="font-bold text-[10px] uppercase py-3">{target.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
-                    <DialogFooter className="p-6 border-t bg-muted/5 gap-2">
-                        <DialogClose asChild><Button variant="outline" className="h-10 px-6 rounded-xl font-black uppercase text-[10px]">Cancel</Button></DialogClose>
-                        <Button onClick={handleAssign} disabled={isAssigning || !targetId} className="h-10 px-8 rounded-xl font-black uppercase text-[10px]">
-                            {isAssigning ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="mr-2 h-3.5 w-3.5" />}
+                    <DialogFooter className="p-8 border-t bg-muted/5 gap-3">
+                        <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button></DialogClose>
+                        <Button onClick={handleAssign} disabled={isAssigning || !targetId} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl">
+                            {isAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                             Execute
                         </Button>
                     </DialogFooter>
