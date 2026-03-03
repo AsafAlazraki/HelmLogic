@@ -224,7 +224,7 @@ function EditItemDialog({
                         <div className="relative h-32 w-48 bg-muted rounded-2xl border-2 border-dashed overflow-hidden group">
                             {preview ? (
                                 <>
-                                    <Image src={preview} alt="Preview" fill className="object-contain p-2" />
+                                    <Image src={preview} alt="Preview" fill className="object-contain p-2" unoptimized />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                         <label className="cursor-pointer">
                                             <Upload className="h-6 w-6 text-white" />
@@ -255,7 +255,7 @@ function EditItemDialog({
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)} className="rounded-xl font-black uppercase text-[10px]">Cancel</Button>
                     <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-black uppercase text-[10px] shadow-lg">
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="mr-2 h-4 w-4 mr-2" />}
                         Commit Changes
                     </Button>
                 </DialogFooter>
@@ -556,7 +556,7 @@ export default function ModuleDetailsPage() {
             {isTransitioning && <BuildTransitionOverlay organisation={currentMemberOrg as any} model={selectedModel} />}
 
             {/* Cinematic Hero */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-36 border-b-2 border-white/10">
+            <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
                     <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
@@ -684,11 +684,11 @@ export default function ModuleDetailsPage() {
                                 <Button 
                                     variant="outline" 
                                     onClick={handleBackToCatalog} 
-                                    className="h-10 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-primary border-primary border-2 bg-primary/5 hover:bg-primary hover:text-white transition-all rounded-xl shadow-lg group overflow-hidden"
+                                    className="relative h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white hover:bg-primary hover:text-white transition-all rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] group overflow-hidden"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] transition-transform" />
-                                    <ChevronLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1 relative z-10" /> 
-                                    <span className="relative z-10">Back to {view === 'bmt' ? 'Series Selection' : 'Product Ranges'}</span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite] transition-transform" />
+                                    <ChevronLeft className="mr-3 h-5 w-5 transition-transform group-hover:-translate-x-1.5 relative z-10" /> 
+                                    <span className="relative z-10">Return to Catalog Explorer</span>
                                 </Button>
                             </div>
                         )}
