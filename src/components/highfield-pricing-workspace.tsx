@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -33,6 +34,10 @@ import {
     Save,
     Layers,
     ArrowRightLeft,
+    CheckCircle2,
+    LayoutList,
+    FoldVertical,
+    UnfoldVertical
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -88,6 +93,7 @@ interface PricingStrategy {
     baseCurrency?: string;
     sections?: PricingSection[];
     itemValues?: Record<string, Record<string, any>>;
+    lastUpdateAt?: any;
 }
 
 interface Range {
@@ -279,7 +285,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             ...currentValues, 
             [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } 
         };
-        await updateDoc(strategyRef, { itemValues: updated });
+        await updateDoc(strategyRef, { 
+            itemValues: updated,
+            lastUpdateAt: serverTimestamp()
+        });
     };
 
     const handleToggleSectionCollapse = async (sectionId: string) => {
@@ -330,6 +339,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     };
 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    
+    const expandAllRanges = () => {
+        if (ranges) setExpandedRanges(ranges.map(r => r.id));
+    };
+    
+    const collapseAllRanges = () => {
+        setExpandedRanges([]);
+    };
 
     const filteredRanges = useMemo(() => {
         if (!ranges) return [];
@@ -347,39 +364,59 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
         <div className="flex items-center justify-between gap-4 py-4 px-1 shrink-0">
-            <div className="flex items-center gap-3">
-                <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary shadow-sm">
-                    <Calculator className="h-4 w-4" />
+            <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm">
+                    <Calculator className="h-5 w-5" />
                 </div>
                 <div>
-                    <h2 className="text-sm font-black uppercase tracking-widest text-foreground leading-none">
-                        {isFocus ? "Strategic Matrix Focus" : "Highfield Strategy"}
-                    </h2>
-                    <p className="text-[10px] font-black uppercase tracking-tighter text-primary mt-1">Strategic Pricing Workspace</p>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-base font-black uppercase tracking-widest text-foreground leading-none">
+                            {isFocus ? "Strategic Matrix Focus" : "Highfield Strategic Workspace"}
+                        </h2>
+                        {strategy?.lastUpdateAt && (
+                            <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 text-[8px] font-black uppercase tracking-tighter">
+                                <CheckCircle2 className="h-2 w-2" />
+                                Live Sync: {formatDistanceToNow(new Date(strategy.lastUpdateAt.seconds * 1000), { addSuffix: true })}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-primary/10">Precision Mode Enabled</Badge>
+                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-muted/50 text-muted-foreground">{vendor.currency || 'AUD'} Base</Badge>
+                    </div>
                 </div>
             </div>
 
             <div className="flex items-center gap-3">
+                <div className="flex items-center bg-muted/50 rounded-xl p-1 border-2 border-dashed mr-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={expandAllRanges} title="Expand All Groups">
+                        <UnfoldVertical className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10" onClick={collapseAllRanges} title="Collapse All Groups">
+                        <FoldVertical className="h-4 w-4" />
+                    </Button>
+                </div>
+
                 {isFocus ? (
                     <>
-                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
-                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
+                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary/5 transition-all"><Truck className="h-4 w-4 mr-2" /> Freight Logic</Button>
+                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 hover:bg-primary/5 transition-all"><History className="h-4 w-4 mr-2" /> Audit Log</Button>
                         <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2"><Minimize2 className="h-4 w-4 mr-2" /> Exit Focus</Button>
                     </>
                 ) : (
                     <>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button size="sm" className="h-9 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl">
-                                    <Plus className="h-4 w-4 mr-2" /> Add
+                                <Button size="sm" className="h-9 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl active:scale-95 transition-transform">
+                                    <Plus className="h-4 w-4 mr-2" /> Add Logic
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 rounded-xl border-2 shadow-2xl">
-                                <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => setIsAddSectionOpen(true)}>
-                                    <Layers className="h-4 w-4 mr-2 text-primary" /> New Section
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 shadow-2xl p-1">
+                                <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter cursor-pointer focus:bg-primary/5 focus:text-primary rounded-lg" onClick={() => setIsAddSectionOpen(true)}>
+                                    <Layers className="h-4 w-4 mr-3" /> New Strategy Section
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => { setTargetSectionId(sortedSections[0]?.id || null); setIsAddColumnOpen(true); }}>
-                                    <Calculator className="h-4 w-4 mr-2 text-primary" /> New Metric
+                                <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter cursor-pointer focus:bg-primary/5 focus:text-primary rounded-lg" onClick={() => { setTargetSectionId(sortedSections[0]?.id || null); setIsAddColumnOpen(true); }}>
+                                    <Calculator className="h-4 w-4 mr-3" /> New Financial Metric
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -389,7 +426,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             onClick={() => setIsFocusMode(true)} 
                             variant="outline" 
                             size="sm"
-                            className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"
+                            className="h-9 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 bg-white hover:bg-slate-50 shadow-sm"
                         >
                             <Maximize2 className="h-4 w-4 mr-2" />
                             Focus Mode
@@ -401,42 +438,58 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     const PricingTable = () => (
-        <div className="relative w-full h-full overflow-auto bg-white rounded-xl border shadow-inner">
+        <div className="relative w-full h-full overflow-auto bg-white rounded-2xl border-2 shadow-inner">
             <Table className="border-separate border-spacing-0 w-full table-fixed">
                 <TableHeader className="sticky top-0 z-50 bg-white">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[300px] sticky left-0 z-[60] bg-white border-r-2 border-b-2 font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] py-4 px-6">
-                            Description & SKU
+                        <TableHead className="w-[340px] sticky left-0 z-[60] bg-white border-r-2 border-b-2 font-black uppercase text-[10px] shadow-[4px_0_15px_-4px_rgba(0,0,0,0.1)] py-5 px-8">
+                            Series Description & SKU
                         </TableHead>
                         {sortedSections.map((sec) => {
                             const colSpan = getSectionColCount(sec);
                             return (
-                                <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b-2 p-0 bg-primary/5", sec.isCollapsed ? "w-[60px]" : "")}>
-                                    <div className="flex items-center justify-between gap-2 p-2 min-h-[40px]">
-                                        <div className="flex items-center gap-2">
-                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}</Button>
-                                            {!sec.isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest text-primary">{sec.name}</span>}
+                                <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r-2 border-b-2 p-0 bg-slate-50 transition-colors", sec.isCollapsed ? "w-[60px]" : "")}>
+                                    <div className="flex items-center justify-between gap-2 p-3 min-h-[48px]">
+                                        <div className="flex items-center gap-3">
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-7 w-7 rounded-lg hover:bg-primary/10 text-primary transition-all" 
+                                                onClick={() => handleToggleSectionCollapse(sec.id)}
+                                            >
+                                                {sec.isCollapsed ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+                                            </Button>
+                                            {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
                                         </div>
+                                        {!sec.isCollapsed && (
+                                            <Badge variant="outline" className="text-[8px] font-black h-4 px-1.5 opacity-40">Section Context</Badge>
+                                        )}
                                     </div>
                                 </TableHead>
                             );
                         })}
                     </TableRow>
-                    <TableRow className="hover:bg-transparent">
-                        <TableHead className="sticky left-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12 py-0 px-4">
+                    <TableRow className="hover:bg-transparent bg-white">
+                        <TableHead className="sticky left-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_0_15px_-4px_rgba(0,0,0,0.1)] h-14 py-0 px-6">
                             <div className="relative">
-                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                                <input placeholder="Quick Search..." className="w-full pl-7 bg-muted/20 border rounded h-8 text-[10px] font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                                <input 
+                                    placeholder="Filter Workspace..." 
+                                    className="w-full pl-9 h-10 bg-muted/20 border-2 rounded-xl text-[11px] font-bold focus:outline-none focus:border-primary/30 transition-all" 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                />
                             </div>
                         </TableHead>
                         {sortedSections.map(sec => {
-                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b bg-muted/10" />;
+                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b bg-muted/5 transition-all" />;
                             if (sec.id === 'sec-exchange') return (
                                 <React.Fragment key={sec.id}>
-                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[80px]">Vnd ISO</TableHead>
-                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[100px]">Ex. Rate</TableHead>
-                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[80px]">Org ISO</TableHead>
-                                    <TableHead className="text-center border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[100px]">Ex. Rate</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-slate-50/50 font-black uppercase text-[9px] tracking-tight w-[80px]">Vnd ISO</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-slate-50/50 font-black uppercase text-[9px] tracking-tight w-[100px]">Ex. Rate</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-slate-50/50 font-black uppercase text-[9px] tracking-tight w-[80px]">Org ISO</TableHead>
+                                    <TableHead className="text-center border-r border-b bg-slate-50/50 font-black uppercase text-[9px] tracking-tight w-[100px]">Ex. Rate</TableHead>
                                 </React.Fragment>
                             );
                             if (sec.id === 'sec-vendor') {
@@ -444,21 +497,21 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 const orgIso = organisation?.tradingCurrency || 'AUD';
                                 return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">BASE PRICE ({vndIso}) $</TableHead>
-                                        <TableHead className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">BASE PRICE ({orgIso}) $</TableHead>
+                                        <TableHead className="text-right border-r border-b bg-slate-50/50 font-black uppercase text-[9px] tracking-tight w-[120px]">BASE ({vndIso}) $</TableHead>
+                                        <TableHead className="text-right border-r border-b bg-slate-50/50 font-black uppercase text-[9px] tracking-tight w-[120px]">BASE ({orgIso}) $</TableHead>
                                     </React.Fragment>
                                 );
                             }
-                            if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-primary/5 font-black uppercase text-[9px] w-[120px]">Packed m³</TableHead>;
-                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-primary/5 text-center text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Empty Group</TableHead>;
+                            if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-slate-50/50 font-black uppercase text-[9px] tracking-tight w-[120px]">Packed m³</TableHead>;
+                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-slate-50/50 text-center text-[8px] font-bold text-muted-foreground/40 uppercase tracking-tighter italic">Empty Segment</TableHead>;
                             return sec.columns.map((col) => (
-                                <TableHead key={col.id} className="min-w-[180px] bg-primary/5 text-center px-4 border-r border-b font-black uppercase text-[9px] text-primary">{col.name}</TableHead>
+                                <TableHead key={col.id} className="min-w-[180px] bg-slate-50/50 text-center px-4 border-r border-b font-black uppercase text-[9px] tracking-tight text-primary/70">{col.name}</TableHead>
                             ));
                         })}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {filteredRanges.map(range => (
+                    {filteredRanges.length > 0 ? filteredRanges.map(range => (
                         <RangeSection 
                             key={range.id} 
                             range={range} 
@@ -475,7 +528,16 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             exchangeRate={activeExchangeRate} 
                             totalCalculatedCols={totalCalculatedCols}
                         />
-                    ))}
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={totalCalculatedCols + 1} className="h-64 text-center">
+                                <div className="flex flex-col items-center justify-center opacity-20">
+                                    <Search className="h-12 w-12 mb-4" />
+                                    <p className="font-black uppercase tracking-widest text-xs">No records matching search</p>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
             </Table>
         </div>
@@ -489,26 +551,27 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-                <DialogContent className="max-w-[95vw] w-[1400px] h-[90vh] rounded-[2rem] p-0 overflow-hidden border-4 shadow-2xl flex flex-col [&>button]:hidden">
+                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[3rem] p-0 overflow-hidden border-4 shadow-2xl flex flex-col [&>button]:hidden">
                     <DialogHeader className="sr-only"><DialogTitle>Financial Matrix Focus Mode</DialogTitle></DialogHeader>
                     <div className="flex flex-col h-full bg-background">
-                        <div className="p-6 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 relative bg-white rounded-xl border-2 p-1.5 shadow-sm">
-                                    {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-5 w-5 m-auto mt-1" />}
+                        <div className="p-8 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
+                            <div className="flex items-center gap-5">
+                                <div className="h-12 w-12 relative bg-white rounded-2xl border-2 p-2 shadow-sm shrink-0">
+                                    {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-6 w-6 m-auto mt-1" />}
                                 </div>
-                                <div className="space-y-0.5">
-                                    <span className="font-black uppercase text-[12px] tracking-widest">{vendor.name} STRATEGIC MATRIX</span>
-                                    <p className="text-[9px] font-bold text-primary uppercase tracking-widest">Enhanced Precision Mode</p>
+                                <div>
+                                    <span className="font-black uppercase text-[14px] tracking-[0.2em]">{vendor.name} MASTER STRATEGIC MATRIX</span>
+                                    <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">High-Precision Executive Mode</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-5 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 shadow-sm"><Truck className="h-4 w-4 mr-2" /> Freight</Button>
-                                <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-5 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 shadow-sm"><History className="h-4 w-4 mr-2" /> History</Button>
-                                <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" className="h-10 px-5 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 shadow-sm"><Minimize2 className="h-4 w-4 mr-2" /> Exit Focus</Button>
+                            <div className="flex items-center gap-4">
+                                <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 bg-slate-50"><Truck className="h-5 w-5 mr-2.5 text-primary" /> Freight Analytics</Button>
+                                <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 bg-slate-50"><History className="h-5 w-5 mr-2.5 text-primary" /> Tactical Audit</Button>
+                                <Separator orientation="vertical" className="h-8 mx-2" />
+                                <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" className="h-12 px-6 font-black uppercase tracking-widest text-[11px] rounded-2xl border-2 active:scale-95 transition-all"><Minimize2 className="h-5 w-5 mr-2.5" /> Exit Focus</Button>
                             </div>
                         </div>
-                        <div className="flex-1 min-h-0 bg-white">
+                        <div className="flex-1 min-h-0 bg-white p-4">
                             <PricingTable />
                         </div>
                     </div>
@@ -519,40 +582,94 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
-                <DialogContent className="rounded-2xl border-4 shadow-2xl">
-                    <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle></DialogHeader>
-                    <div className="py-6">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Section Name</Label>
-                        <Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2 h-12 font-bold text-lg rounded-xl border-2" placeholder="e.g. Regional Margins" />
+                <DialogContent className="rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 bg-muted/5 border-b">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-widest mt-1">Define an operational group for specific metrics.</DialogDescription>
+                    </DialogHeader>
+                    <div className="p-8">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Section Label</Label>
+                        <Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-3 h-14 font-black text-xl rounded-2xl border-2 shadow-inner px-6" placeholder="e.g. REGIONAL TARIFFS" />
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddSectionOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddSection}>Create</Button>
+                    <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                        <Button variant="outline" onClick={() => setIsAddSectionOpen(false)} className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button>
+                        <Button onClick={handleAddSection} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl">Initialize Section</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
-                <DialogContent className="sm:max-w-xl rounded-2xl border-4 shadow-2xl">
-                    <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Metric Configuration</DialogTitle></DialogHeader>
-                    <div className="space-y-6 py-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest">Label</Label><Input value={newColName} onChange={e => setNewColName(e.target.value)} className="font-bold border-2" /></div>
-                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest">Unit Type</Label><Select value={newColType} onValueChange={(v: any) => setNewColType(v)}><SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="percent">Percentage %</SelectItem><SelectItem value="currency">Currency $</SelectItem><SelectItem value="cost">Cost Point</SelectItem><SelectItem value="text">Textual Data</SelectItem></SelectContent></Select></div>
+                <DialogContent className="sm:max-w-xl rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 bg-muted/5 border-b">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Metric Configuration</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-widest mt-1">Configure automated calculations or manual data points.</DialogDescription>
+                    </DialogHeader>
+                    <div className="p-8 space-y-8">
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 ml-1">Metric Label</Label>
+                                <Input value={newColName} onChange={e => setNewColName(e.target.value)} className="h-12 font-bold text-sm border-2 rounded-xl bg-background shadow-inner" placeholder="e.g. Duty Modifier" />
+                            </div>
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 ml-1">Unit of Measure</Label>
+                                <Select value={newColType} onValueChange={(v: any) => setNewColType(v)}>
+                                    <SelectTrigger className="h-12 font-bold text-sm border-2 rounded-xl">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2">
+                                        <SelectItem value="percent" className="font-bold py-2.5">Percentage %</SelectItem>
+                                        <SelectItem value="currency" className="font-bold py-2.5">Currency $</SelectItem>
+                                        <SelectItem value="cost" className="font-bold py-2.5">Direct Cost Point</SelectItem>
+                                        <SelectItem value="text" className="font-bold py-2.5">Textual Reference</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border-2 border-dashed">
-                            <div><Label className="text-xs font-black uppercase tracking-tight">Enable Formula Engine</Label></div>
+                        <div className="flex items-center justify-between p-5 bg-primary/5 rounded-[1.5rem] border-2 border-dashed border-primary/20">
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-black uppercase tracking-tight text-primary">Enable Formula Engine</Label>
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase">Automate values based on other metrics</p>
+                            </div>
                             <Switch checked={isCalculated} onCheckedChange={setIsCalculated} />
                         </div>
                         {isCalculated && (
-                            <div className="grid grid-cols-3 gap-2 animate-in slide-in-from-top-2">
-                                <Select value={formulaLeft} onValueChange={setFormulaLeft}><SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="baseCost">Base Cost</SelectItem><SelectItem value="masterSell">Master Sell</SelectItem>{allColumns.filter(c => c.id !== targetSectionId).map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select>
-                                <Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}><SelectTrigger className="font-black text-lg border-2"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="+">+</SelectItem><SelectItem value="-">-</SelectItem><SelectItem value="*">×</SelectItem><SelectItem value="/">÷</SelectItem></SelectContent></Select>
-                                <Input placeholder="Modifier..." value={formulaRight} onChange={e => setFormulaRight(e.target.value)} className="font-bold border-2" />
+                            <div className="grid grid-cols-3 gap-3 animate-in slide-in-from-top-2 p-1">
+                                <Select value={formulaLeft} onValueChange={setFormulaLeft}>
+                                    <SelectTrigger className="h-12 font-bold border-2 rounded-xl shadow-sm">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2">
+                                        <SelectItem value="baseCost" className="font-bold">Base Cost</SelectItem>
+                                        <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
+                                        {allColumns.filter(c => c.id !== targetSectionId).map(c => (
+                                            <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}>
+                                    <SelectTrigger className="h-12 font-black text-xl border-2 rounded-xl shadow-sm text-primary">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2">
+                                        <SelectItem value="+" className="font-black text-lg">+</SelectItem>
+                                        <SelectItem value="-" className="font-black text-lg">-</SelectItem>
+                                        <SelectItem value="*" className="font-black text-lg">×</SelectItem>
+                                        <SelectItem value="/" className="font-black text-lg">÷</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input 
+                                    placeholder="Modifier..." 
+                                    value={formulaRight} 
+                                    onChange={e => setFormulaRight(e.target.value)} 
+                                    className="h-12 font-bold border-2 rounded-xl shadow-inner text-center" 
+                                />
                             </div>
                         )}
                     </div>
-                    <DialogFooter><Button variant="outline" onClick={() => setIsAddColumnOpen(false)}>Cancel</Button><Button onClick={handleAddColumn}>Commit Metric</Button></DialogFooter>
+                    <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                        <Button variant="outline" onClick={() => setIsAddColumnOpen(false)} className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button>
+                        <Button onClick={handleAddColumn} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl">Commit Metric</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
@@ -562,14 +679,21 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalCalculatedCols }: any) {
     return (
         <>
-            <TableRow className="bg-slate-100/80 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="sticky left-0 z-[40] bg-slate-100 py-3 px-6 font-black uppercase text-[11px] border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                    <div className="flex items-center gap-2">
-                        {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
-                        <span>{range.name} RANGE</span>
+            <TableRow className="bg-slate-900 border-b-2 border-primary/20 cursor-pointer group transition-colors" onClick={onToggle}>
+                <TableCell className="sticky left-0 z-[40] bg-slate-900 py-4 px-8 font-black uppercase text-[12px] tracking-[0.1em] text-white shadow-[4px_0_15px_-4px_rgba(0,0,0,0.3)]">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className={cn("h-6 w-6 rounded-lg bg-white/10 flex items-center justify-center transition-transform duration-300", isExpanded && "rotate-90")}>
+                                <ChevronRight className="h-4 w-4" />
+                            </div>
+                            <span>{range.name} RANGE</span>
+                        </div>
+                        <Badge variant="outline" className="bg-primary/20 text-primary border-none text-[9px] font-black h-5 px-2 uppercase tracking-tighter">
+                            {models.length} Series Cataloged
+                        </Badge>
                     </div>
                 </TableCell>
-                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-slate-100/50" />)}
+                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="bg-slate-900/95" />)}
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -594,30 +718,35 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
     return (
         <>
-            <TableRow className="bg-slate-50 border-l-4 border-l-primary group">
-                <TableCell className="sticky left-0 z-[40] bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                    <div className="flex items-center gap-3">
-                        <button onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}>
-                            {isLocalExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
+            <TableRow className="bg-slate-100 border-l-8 border-l-primary group/model">
+                <TableCell className="sticky left-0 z-[40] bg-slate-100 py-3.5 px-10 border-b-2 border-white shadow-[4px_0_15px_-4px_rgba(0,0,0,0.1)]">
+                    <div className="flex items-center gap-4">
+                        <button 
+                            className="h-7 w-7 rounded-lg hover:bg-primary/10 flex items-center justify-center transition-all text-primary"
+                            onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}
+                        >
+                            {isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </button>
-                        <span className="font-black text-[11px] uppercase truncate">{model.name}</span>
-                        <span className="text-[9px] font-mono text-muted-foreground/60">{model.modelCode || 'NO CODE'}</span>
+                        <div className="flex flex-col min-w-0">
+                            <span className="font-black text-[12px] uppercase tracking-tight truncate leading-none mb-1 text-slate-900">{model.name}</span>
+                            <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] opacity-60">Series Code: {model.modelCode || 'NO-SKU'}</span>
+                        </div>
                     </div>
                 </TableCell>
-                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-slate-50/50" />)}
+                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b-2 border-white bg-slate-100/50" />)}
             </TableRow>
             {isLocalExpanded && (
                 <>
                     <TableRow className="hover:bg-transparent">
-                        <TableCell className="sticky left-0 z-[40] bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                            <div className="flex items-center gap-2">
-                                <Ship className="h-3 w-3 text-primary opacity-40" />
-                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Boat Variants</span>
+                        <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-b border-dashed shadow-[4px_0_15px_-4px_rgba(0,0,0,0.1)]">
+                            <div className="flex items-center gap-2.5">
+                                <Badge className="h-1.5 w-1.5 rounded-full bg-primary/40 p-0" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">Registered Variations</span>
                             </div>
                         </TableCell>
-                        {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-muted/5" />)}
+                        {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b border-dashed bg-muted/5" />)}
                     </TableRow>
-                    {variants.map((v: any) => (
+                    {variants.map((v: any, idx: number) => (
                         <PricingRow 
                             key={v.id} 
                             id={v.id} 
@@ -634,21 +763,22 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                             onUpdateValue={onUpdateValue} 
                             indent 
                             isBoatVariant
+                            rowIndex={idx}
                         />
                     ))}
 
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="hover:bg-transparent">
-                                <TableCell className="sticky left-0 z-[40] bg-white py-1.5 px-12 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                                    <div className="flex items-center gap-2">
-                                        <Layers className="h-3 w-3 text-primary opacity-40" />
-                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">Factory Options</span>
+                                <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-b border-dashed shadow-[4px_0_15px_-4px_rgba(0,0,0,0.1)]">
+                                    <div className="flex items-center gap-2.5">
+                                        <Badge className="h-1.5 w-1.5 rounded-full bg-orange-500/40 p-0" />
+                                        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/40">Strategic Options</span>
                                     </div>
                                 </TableCell>
-                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-muted/5" />)}
+                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b border-dashed bg-muted/5" />)}
                             </TableRow>
-                            {model.optionalFeatures.map((f: any) => (
+                            {model.optionalFeatures.map((f: any, idx: number) => (
                                 <PricingRow 
                                     key={f.id} 
                                     id={f.id} 
@@ -665,6 +795,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                     onUpdateValue={onUpdateValue} 
                                     indent 
                                     isOption 
+                                    rowIndex={idx}
                                 />
                             ))}
                         </>
@@ -675,59 +806,76 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     );
 }
 
-function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, isBoatVariant }: any) {
+function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, isBoatVariant, rowIndex }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
     const vendorCurrency = vendor.currency || 'ISO';
+    
+    // Zebra striping that respects our group structure
+    const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/30";
 
     return (
-        <TableRow className="hover:bg-muted/30 transition-colors group">
-            <TableCell className={cn("sticky left-0 z-[40] bg-white py-2.5 border-r border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-slate-50", indent ? "pl-16" : "px-6")}>
+        <TableRow className={cn("transition-colors group", rowBgClass)}>
+            <TableCell className={cn("sticky left-0 z-[40] border-r border-b shadow-[4px_0_15px_-4px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/5", rowBgClass, indent ? "pl-20" : "px-8")}>
                 <div className="flex flex-col min-w-0">
-                    <span className={cn("font-bold text-[11px] uppercase truncate", isOption ? "text-muted-foreground" : "text-slate-900")}>{name}</span>
-                    <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">{sku || 'NO SKU'}</span>
+                    <span className={cn("font-bold text-[11px] uppercase truncate tracking-tight mb-0.5", isOption ? "text-muted-foreground/80" : "text-slate-900")}>
+                        {name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-mono font-bold text-muted-foreground/40 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
+                        {isOption && <Badge className="text-[7px] font-black h-3 px-1 bg-muted text-muted-foreground border-none">OPT</Badge>}
+                    </div>
                 </div>
             </TableCell>
             {sections.map((sec: any) => {
                 if (sec.id === 'sec-exchange') {
-                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/10 border-r border-b" />;
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter">{vendorCurrency}</Badge></TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono text-primary/60">{exchangeRate.toFixed(4)}</TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter">{orgCurrency}</Badge></TableCell>
-                            <TableCell className="text-center border-r border-b bg-primary/5 text-[10px] font-mono text-primary/60">1.0000</TableCell>
+                            <TableCell className="text-center border-r border-b bg-slate-50/20"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter opacity-40">{vendorCurrency}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b bg-slate-50/20 text-[10px] font-mono text-primary/40">{exchangeRate.toFixed(4)}</TableCell>
+                            <TableCell className="text-center border-r border-b bg-slate-50/20"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter opacity-40">{orgCurrency}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b bg-slate-50/20 text-[10px] font-mono text-primary/40">1.0000</TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-vendor') {
-                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/10 border-r border-b" />;
                     const costOverride = itemValues['base_cost_override'];
                     const effectiveCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : cost;
                     const convertedCost = (effectiveCost || 0) * (exchangeRate || 1);
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="p-0 border-r border-b bg-primary/5">
-                                <EditableCell id={id} col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} value={costOverride || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" suffix={vendorCurrency} prefix="$" />
+                            <TableCell className="p-0 border-r border-b">
+                                <EditableCell 
+                                    id={id} 
+                                    col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} 
+                                    value={costOverride || ''} 
+                                    placeholder={cost ? cost.toFixed(2) : "0.00"} 
+                                    onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} 
+                                    align="right" 
+                                    suffix={vendorCurrency} 
+                                    prefix="$" 
+                                />
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-4 bg-primary/5">
+                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-5 bg-primary/[0.02]">
                                 {formatCurrency(convertedCost, orgCurrency)}
                             </TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-freight') {
-                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
+                    if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/10 border-r border-b" />;
                     return (
-                        <TableCell key={sec.id} className="p-0 border-r border-b bg-primary/5">
-                            {isBoatVariant ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-muted/10" />}
+                        <TableCell key={sec.id} className="p-0 border-r border-b">
+                            {isBoatVariant ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-muted/5" />}
                         </TableCell>
                     );
                 }
-                if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/20 border-r border-b" />;
-                if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-primary/5 border-r border-b" />;
+                if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-muted/10 border-r border-b" />;
+                if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-muted/5 border-r border-b" />;
                 return sec.columns.map((col: any) => (
-                    <TableCell key={col.id} className="p-0 border-r border-b bg-primary/5">
+                    <TableCell key={col.id} className="p-0 border-r border-b">
                         {col.isCalculated ? (
                             <CalculatedCell col={col} baseCost={cost} masterSell={sell} itemValues={itemValues} allCols={allColumns} suffix={col.type === 'currency' || col.type === 'cost' ? orgCurrency : undefined} />
                         ) : (
@@ -743,11 +891,21 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix }: any) {
     const { value, error } = calculateValue(col, baseCost, masterSell, itemValues, allCols);
     return (
-        <div className="flex items-center justify-center h-full px-2">
-            {error ? <AlertCircle className="h-3 w-3 text-destructive" title={error} /> : (
-                <span className="text-[11px] font-black text-primary">
-                    {col.type === 'percent' ? `${(Number(value) * 100).toFixed(2)}%` : (col.type === 'currency' || col.type === 'cost') ? `${formatCurrency(Number(value))} ${suffix || ''}` : String(value || '-')}
-                </span>
+        <div className="flex items-center justify-center h-full px-2 bg-primary/[0.03] group/calc">
+            {error ? (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger><AlertCircle className="h-3.5 w-3.5 text-destructive/40" /></TooltipTrigger>
+                        <TooltipContent className="bg-destructive text-white border-none font-bold text-[10px] uppercase">{error}</TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            ) : (
+                <div className="flex items-center gap-1.5">
+                    <div className="h-1 w-1 rounded-full bg-primary/20 shrink-0" />
+                    <span className="text-[11px] font-black text-primary tracking-tight">
+                        {col.type === 'percent' ? `${(Number(value) * 100).toFixed(2)}%` : (col.type === 'currency' || col.type === 'cost') ? `${formatCurrency(Number(value))} ${suffix || ''}` : String(value || '-')}
+                    </span>
+                </div>
             )}
         </div>
     );
@@ -755,23 +913,32 @@ function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix
 
 function EditableCell({ id, col, value, onChange, placeholder, prefix, suffix, align = 'center' }: any) {
     const [localValue, setLocalValue] = useState(value);
-    useEffect(() => { setLocalValue(value); }, [value]);
+    const [isChanged, setIsChanged] = useState(false);
+    
+    useEffect(() => { 
+        setLocalValue(value); 
+        setIsChanged(value !== undefined && value !== '' && value !== null);
+    }, [value]);
+
     const handleBlur = () => { if (String(localValue || '') !== String(value || '')) onChange(localValue); };
+    
     return (
-        <div className="relative h-full flex items-center bg-background px-2">
-            {prefix && <span className="text-[9px] font-black opacity-40 mr-1">{prefix}</span>}
+        <div className={cn("relative h-full flex items-center px-2 group/edit transition-colors", isChanged ? "bg-amber-500/[0.03]" : "bg-transparent")}>
+            {prefix && <span className="text-[9px] font-black text-muted-foreground/30 mr-1.5 select-none">{prefix}</span>}
             <input 
                 type={col.type === 'text' ? 'text' : 'number'} 
                 className={cn(
-                    "h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none transition-all focus:bg-white focus:ring-1 focus:ring-primary/20 rounded",
-                    align === 'right' ? "text-right" : "text-center"
+                    "h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none transition-all placeholder:text-muted-foreground/20 rounded focus:bg-white focus:ring-2 focus:ring-primary/20 focus:px-3 focus:shadow-lg focus:z-10",
+                    align === 'right' ? "text-right" : "text-center",
+                    isChanged ? "text-primary" : "text-foreground"
                 )} 
                 value={localValue} 
                 onChange={e => setLocalValue(e.target.value)} 
                 onBlur={handleBlur} 
                 placeholder={placeholder || "-"} 
             />
-            {suffix && <span className="text-[9px] font-black opacity-40 ml-1">{suffix}</span>}
+            {suffix && <span className="text-[9px] font-black text-muted-foreground/30 ml-1.5 select-none">{suffix}</span>}
+            {isChanged && <div className="absolute top-1 right-1 h-1 w-1 rounded-full bg-primary/40" />}
         </div>
     );
 }
@@ -782,10 +949,74 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
     const { data: logs, loading } = useCollection<any>(logQuery);
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl z-[150]">
-                <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight">Audit Log</DialogTitle></DialogHeader>
-                <div className="flex-1 min-h-0">{loading ? (<div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : logs && logs.length > 0 ? (<ScrollArea className="h-full"><Table><TableHeader className="bg-muted/5 sticky top-0 z-10"><TableRow><TableHead className="py-4 px-6 text-[10px] font-black uppercase">Timestamp</TableHead><TableHead className="py-4 px-6 text-[10px] font-black uppercase">User</TableHead><TableHead className="py-4 px-6 text-[10px] font-black uppercase">Metric</TableHead><TableHead className="py-4 px-6 text-[10px] font-black uppercase">Old</TableHead><TableHead className="py-4 px-6 text-[10px] font-black uppercase">New</TableHead></TableRow></TableHeader><TableBody>{logs.map((log: any) => (<TableRow key={log.id}><TableCell className="py-4 px-6 text-[10px] font-medium text-muted-foreground">{log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}</TableCell><TableCell className="py-4 px-6 font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</TableCell><TableCell className="py-4 px-6 font-black text-primary text-[10px]">{log.colId}</TableCell><TableCell className="py-4 px-6 font-mono text-[10px]">{String(log.oldValue ?? '-')}</TableCell><TableCell className="py-4 px-6 font-mono font-black text-primary text-[10px]">{String(log.newValue)}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<div className="flex items-center justify-center h-full opacity-20"><Clock className="h-16 w-16" /></div>)}</div>
-                <DialogFooter className="p-6 border-t bg-muted/5"><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
+            <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 shadow-2xl z-[150]">
+                <DialogHeader className="p-10 border-b bg-muted/5 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner">
+                            <History className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Tactical Audit Matrix</DialogTitle>
+                            <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Strategic Price Change Verification History</DialogDescription>
+                        </div>
+                    </div>
+                </DialogHeader>
+                <div className="flex-1 min-h-0 bg-white">
+                    {loading ? (
+                        <div className="flex h-full items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
+                    ) : logs && logs.length > 0 ? (
+                        <ScrollArea className="h-full">
+                            <Table className="border-separate border-spacing-0">
+                                <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="py-5 px-10 border-b-2 font-black uppercase text-[10px] tracking-widest w-[220px]">Timestamp</TableHead>
+                                        <TableHead className="py-5 px-6 border-b-2 font-black uppercase text-[10px] tracking-widest w-[180px]">Operational User</TableHead>
+                                        <TableHead className="py-5 px-6 border-b-2 font-black uppercase text-[10px] tracking-widest">Financial Metric</TableHead>
+                                        <TableHead className="py-5 px-6 border-b-2 font-black uppercase text-[10px] tracking-widest text-right">Previous</TableHead>
+                                        <TableHead className="py-5 px-10 border-b-2 font-black uppercase text-[10px] tracking-widest text-right">Amended</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {logs.map((log: any) => (
+                                        <TableRow key={log.id} className="hover:bg-slate-50 transition-colors">
+                                            <TableCell className="py-5 px-10 border-b border-dashed">
+                                                <div className="flex items-center gap-3 text-muted-foreground">
+                                                    <Clock className="h-3.5 w-3.5 opacity-40" />
+                                                    <span className="text-[11px] font-black uppercase tracking-tighter">
+                                                        {log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-5 px-6 border-b border-dashed">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-7 w-7 rounded-full bg-slate-100 border flex items-center justify-center text-slate-400 font-black text-[10px] uppercase">
+                                                        {log.userName?.[0] || 'S'}
+                                                    </div>
+                                                    <span className="font-bold text-[11px] uppercase tracking-tight truncate">{log.userName || 'System Auto'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-5 px-6 border-b border-dashed">
+                                                <Badge variant="outline" className="h-6 px-3 bg-primary/5 text-primary border-primary/10 font-black uppercase text-[9px] tracking-widest">{log.colId}</Badge>
+                                            </TableCell>
+                                            <TableCell className="py-5 px-6 border-b border-dashed text-right font-mono text-[11px] opacity-40 italic">{String(log.oldValue ?? '-')}</TableCell>
+                                            <TableCell className="py-5 px-10 border-b border-dashed text-right">
+                                                <span className="font-mono font-black text-[12px] text-primary">{String(log.newValue)}</span>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full opacity-10 grayscale scale-150">
+                            <Clock className="h-24 w-24 mb-4" />
+                            <p className="font-black uppercase tracking-[0.4em] text-sm">Audit Void</p>
+                        </div>
+                    )}
+                </div>
+                <DialogFooter className="p-8 border-t bg-muted/5">
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 font-black uppercase text-[10px] tracking-widest rounded-2xl border-2">Close Matrix Audit</Button></DialogClose>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
@@ -805,9 +1036,125 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
     const handleDelete = async (id: string) => { try { await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id)); toast({ title: "Container Removed" }); } catch (e) { toast({ variant: 'destructive', title: "Delete Failed" }); } };
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
-                <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Truck className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Shipping Containers & Logistics Cost Matrix</DialogDescription></div></div><Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-9 px-6 rounded-xl shadow-lg transition-transform hover:scale-105"><Plus className="h-4 w-4 mr-1.5" /> Add Container</Button></div></DialogHeader>
-                <div className="flex-1 min-h-0 overflow-hidden">{loading ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : (<ScrollArea className="h-full"><div className="p-8">{isAdding && (<Card className="mb-8 border-2 border-primary/20 bg-primary/5 rounded-2xl overflow-hidden"><CardHeader className="p-6 border-b bg-background"><CardTitle className="text-sm font-black uppercase tracking-widest">Configure New Container</CardTitle></CardHeader><CardContent className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Size</Label><Select value={size} onValueChange={setSize}><SelectTrigger className="h-10 font-bold bg-background"><SelectValue placeholder="Select Size..." /></SelectTrigger><SelectContent><SelectItem value="20ft Standard" className="font-bold">20ft Standard</SelectItem><SelectItem value="40ft Standard" className="font-bold">40ft Standard</SelectItem><SelectItem value="40ft High Cube" className="font-bold">40ft High Cube</SelectItem><SelectItem value="45ft High Cube" className="font-bold">45ft High Cube</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cubic Capacity (CBM)</Label><Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-10 font-bold" /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label><Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-10 font-bold" /></div></div></CardContent><CardFooter className="p-6 bg-muted/10 border-t flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button><Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm}>Add Container</Button></CardFooter></Card>)}<div className="rounded-3xl border-2 overflow-hidden bg-card shadow-sm"><Table><TableHeader className="bg-muted/50 border-b-2"><TableRow><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest">Container Size</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Capacity (CBM)</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Total Cost</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-center">ISO</TableHead><TableHead className="py-5 px-6 font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{containers?.map((c: any) => (<TableRow key={c.id}><TableCell className="py-4 px-6 font-black uppercase">{c.size}</TableCell><TableCell className="py-4 px-6 text-right font-bold">{c.cubicMeters} m³</TableCell><TableCell className="py-4 px-6 text-right font-black">{formatCurrency(c.cost, c.currency)}</TableCell><TableCell className="py-4 px-6 text-center"><Badge>{c.currency}</Badge></TableCell><TableCell className="py-4 px-6 text-right"><Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>))}</TableBody></Table></div></div></ScrollArea>)}</div>
+            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 shadow-2xl">
+                <DialogHeader className="p-10 border-b bg-muted/5">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
+                                <Truck className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight & Logistics Matrix</DialogTitle>
+                                <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Shipping Containers & Global Transportation Cost Controls</DialogDescription>
+                            </div>
+                        </div>
+                        <Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-2xl shadow-2xl transition-transform hover:scale-105 active:scale-95">
+                            <Plus className="h-4 w-4 mr-2" /> Add Container SKU
+                        </Button>
+                    </div>
+                </DialogHeader>
+                <div className="flex-1 min-h-0 bg-white p-10 overflow-hidden">
+                    {loading ? (
+                        <div className="flex h-full items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
+                    ) : (
+                        <ScrollArea className="h-full pr-4">
+                            <div className="space-y-10">
+                                {isAdding && (
+                                    <Card className="border-4 border-primary/20 bg-primary/5 rounded-3xl overflow-hidden animate-in slide-in-from-top-4 duration-500">
+                                        <CardHeader className="p-8 border-b bg-white/50">
+                                            <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                                                <Layers className="h-4 w-4" />
+                                                Configure New Logistics Asset
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-10">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground/60 ml-1 tracking-widest">1. Container Standard</Label>
+                                                    <Select value={size} onValueChange={setSize}>
+                                                        <SelectTrigger className="h-14 font-black text-sm border-2 rounded-2xl bg-white shadow-sm">
+                                                            <SelectValue placeholder="Select Dimension..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="rounded-2xl border-2">
+                                                            <SelectItem value="20ft Standard" className="font-bold py-3">20ft Standard Utility</SelectItem>
+                                                            <SelectItem value="40ft Standard" className="font-bold py-3">40ft Standard Carrier</SelectItem>
+                                                            <SelectItem value="40ft High Cube" className="font-bold py-3">40ft High Cube (HC)</SelectItem>
+                                                            <SelectItem value="45ft High Cube" className="font-bold py-3">45ft High Cube (E-HC)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground/60 ml-1 tracking-widest">2. Cubic Capacity (CBM)</Label>
+                                                    <div className="relative">
+                                                        <Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-14 font-black text-xl border-2 rounded-2xl bg-white px-6" />
+                                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-muted-foreground/30 text-xs">m³</span>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground/60 ml-1 tracking-widest">3. Strategic Unit Cost (USD)</Label>
+                                                    <div className="relative">
+                                                        <DollarSign className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40" />
+                                                        <Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-14 font-black text-xl border-2 rounded-2xl bg-white pl-14" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="p-8 bg-muted/10 border-t flex justify-end gap-4">
+                                            <Button variant="ghost" onClick={() => setIsAdding(false)} className="h-12 px-8 font-black uppercase text-[10px] rounded-xl border-2">Cancel</Button>
+                                            <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-2xl">Deploy Asset</Button>
+                                        </CardFooter>
+                                    </Card>
+                                )}
+                                
+                                <div className="rounded-[2rem] border-2 overflow-hidden bg-white shadow-xl">
+                                    <Table>
+                                        <TableHeader className="bg-slate-50 border-b-2">
+                                            <TableRow className="hover:bg-transparent">
+                                                <TableHead className="py-6 px-10 font-black uppercase text-[10px] tracking-[0.2em]">Standard Dimension</TableHead>
+                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-right">Volume Capacity</TableHead>
+                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-right">Landed Unit Cost</TableHead>
+                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-center">ISO</TableHead>
+                                                <TableHead className="py-6 px-10 font-black uppercase text-[10px] tracking-[0.2em] text-right w-[120px]">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {containers?.length > 0 ? containers.map((c: any) => (
+                                                <TableRow key={c.id} className="hover:bg-primary/[0.02] transition-colors group">
+                                                    <TableCell className="py-6 px-10 font-black uppercase text-slate-900">{c.size}</TableCell>
+                                                    <TableCell className="py-6 px-6 text-right font-black text-slate-600">{c.cubicMeters} m³</TableCell>
+                                                    <TableCell className="py-6 px-6 text-right font-black text-primary text-lg">{formatCurrency(c.cost, c.currency)}</TableCell>
+                                                    <TableCell className="py-6 px-6 text-center"><Badge className="h-6 px-3 bg-muted text-muted-foreground border-none font-black">{c.currency}</Badge></TableCell>
+                                                    <TableCell className="py-6 px-10 text-right">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-10 w-10 text-destructive opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10 rounded-xl"
+                                                            onClick={() => handleDelete(c.id)}
+                                                        >
+                                                            <Trash2 className="h-5 w-5" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={5} className="h-48 text-center">
+                                                        <div className="flex flex-col items-center justify-center opacity-10 grayscale">
+                                                            <Truck className="h-16 w-16 mb-4" />
+                                                            <p className="font-black uppercase tracking-[0.3em] text-xs">Logistic Registry Empty</p>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    )}
+                </div>
+                <DialogFooter className="p-10 border-t bg-muted/5">
+                    <DialogClose asChild><Button variant="outline" className="h-14 px-10 font-black uppercase text-[11px] tracking-widest rounded-2xl border-2 shadow-sm">Exit Logistics Console</Button></DialogClose>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
