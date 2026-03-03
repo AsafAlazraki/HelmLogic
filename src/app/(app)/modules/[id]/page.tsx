@@ -207,13 +207,6 @@ export default function ModuleDetailsPage() {
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
-    const userPermissions = useMemo(() => {
-        if (isAdmin) return { can_access_module: true, can_create_quotes: true, can_edit_boat_data: true, can_access_settings: true };
-        const roleId = userProfile?.organisationRole;
-        if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return { can_access_module: false };
-        return currentMemberOrg.permissions[roleId];
-    }, [isAdmin, userProfile, currentMemberOrg]);
-
     const loading = slugLoading || idLoading || mainVendorLoading;
 
     if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>;

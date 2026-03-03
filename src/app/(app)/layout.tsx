@@ -1,7 +1,7 @@
 
 'use client';
 
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import dynamic from "next/dynamic";
 import { SidebarSkeleton } from "@/components/sidebar-skeleton";
@@ -10,8 +10,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { ChatBot } from "@/components/chat-bot";
-import { Separator } from "@/components/ui/separator";
-import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { cn } from "@/lib/utils";
 
 const AppSidebar = dynamic(
@@ -44,27 +42,14 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const isModulePage = pathname?.includes('/modules/');
   
   return (
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={false}>
         <AppSidebar />
         <SidebarInset className="overflow-hidden flex flex-col h-screen max-w-full relative bg-background">
-          {/* Tactical Header - Replaces the removed Top Bar for essential navigation */}
-          {!isModulePage && (
-            <header className="flex h-14 shrink-0 items-center gap-2 px-6 border-b bg-background/50 backdrop-blur-md z-40">
-              <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="mr-2 h-4" />
-              <BreadcrumbNav />
-            </header>
-          )}
-          
+          {/* Top Bar removed as requested. Sidebar is now hover-controlled. */}
           <main className={cn(
             "flex-1 overflow-y-auto overflow-x-hidden min-w-0",
-            !isModulePage && "p-8"
+            !isModulePage && "p-10 pt-12"
           )}>
-            {isModulePage && (
-                <div className="absolute top-10 left-10 z-[50]">
-                    <SidebarTrigger className="h-10 w-10 bg-white/10 hover:bg-white/20 border-white/20 text-white shadow-2xl backdrop-blur-md" />
-                </div>
-            )}
             {children}
           </main>
           <ChatBot />
