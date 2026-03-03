@@ -683,7 +683,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <TableRow className="hover:bg-transparent border-b">
                         <TableHead className="w-[350px] border-r bg-muted/20" colSpan={1}></TableHead>
                         {sortedSections.map((sec, secIdx) => {
-                            const isSystem = ['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'].includes(sec.id);
+                            const isCoreSystem = ['sec-exchange', 'sec-master', 'sec-freight'].includes(sec.id);
                             const colSpan = getSectionColCount(sec);
 
                             return (
@@ -720,7 +720,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                 >
                                                     <ArrowRight className="h-3 w-3" />
                                                 </Button>
-                                                {!isSystem && (
+                                                {!isCoreSystem && (
                                                     <>
                                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>
@@ -861,8 +861,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <div className="space-y-1">
                             <div className="flex items-center gap-3">
                                 <CardTitle className="text-xl font-black uppercase tracking-tight">{vendor.name} Strategy</CardTitle>
+                                {organisation?.tradingCurrency && (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/10">
+                                        <span className="text-[9px] font-black text-primary uppercase tracking-widest">{vendor.currency || 'AUD'}</span>
+                                        <ArrowRightLeft className="h-2.5 w-2.5 text-muted-foreground" />
+                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{organisation.tradingCurrency}</span>
+                                    </div>
+                                )}
                             </div>
-                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Advanced Strategic Pricing Engine</CardDescription>
+                            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Pricing & Profitability Strategy</CardDescription>
                         </div>
                     </div>
 
@@ -1120,6 +1127,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                 </TableCell>
                 
                 {sections.map((sec: any) => {
+                    const colSpan = getSectionColCount(sec);
                     if (sec.isCollapsed) return <TableCell key={`range-coll-${sec.id}`} className="bg-muted/40 border-r" />;
                     
                     if (sec.id === 'sec-exchange') {
@@ -1155,7 +1163,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     return (
                         <TableCell 
                             key={sec.id} 
-                            colSpan={Math.max(1, sec.columns.length)} 
+                            colSpan={colSpan} 
                             className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest border-r last:border-r-0"
                         >
                             Audit required

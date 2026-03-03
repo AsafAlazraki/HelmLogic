@@ -322,7 +322,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -645,6 +645,9 @@ function OptionalFeatureItem({
     );
 }
 
+/**
+ * Standard Rule Item component to resolve Rules of Hooks order violation.
+ */
 function RuleItem({ 
     index, 
     remove, 
