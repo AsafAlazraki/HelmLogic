@@ -43,7 +43,9 @@ import {
     Save,
     Expand,
     Shrink,
-    Layers
+    Layers,
+    MoreHorizontal,
+    Settings2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -58,6 +60,12 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
@@ -441,16 +449,52 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return sortedSections.reduce((acc, sec) => acc + getSectionColCount(sec), 0);
     }, [sortedSections]);
 
+    const HeaderActions = ({ isFocus = false }: { isFocus?: boolean }) => (
+        <div className="flex items-center gap-3">
+            {isFocus && (
+                <>
+                    <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><Truck className="h-4 w-4 mr-2" /> Logistics</Button>
+                    <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"><History className="h-4 w-4 mr-2" /> History</Button>
+                </>
+            )}
+            
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button className="h-10 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl shadow-primary/20">
+                        <Plus className="h-4 w-4 mr-2" /> Add
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-xl border-2 shadow-2xl">
+                    <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => setIsAddSectionOpen(true)}>
+                        <Layers className="h-4 w-4 mr-2 text-primary" /> New Section
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter" onClick={() => { setTargetSectionId(sortedSections[0]?.id || null); setIsAddColumnOpen(true); }}>
+                        <Calculator className="h-4 w-4 mr-2 text-primary" /> New Metric
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button 
+                type="button"
+                onClick={() => setIsFocusMode(!isFocus)} 
+                variant="outline" 
+                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2"
+            >
+                {isFocus ? <Shrink className="h-4 w-4 mr-2" /> : <Expand className="h-4 w-4 mr-2" />}
+                {isFocus ? 'Exit Focus' : 'Focus Mode'}
+            </Button>
+        </div>
+    );
+
     const PricingTable = ({ isModal = false }: { isModal?: boolean }) => (
-        <div className={cn("relative w-full h-full overflow-auto bg-white", !isModal && "border-t")}>
+        <div className="relative w-full h-full overflow-auto bg-white">
             <Table className="border-separate border-spacing-0 w-full table-fixed">
                 <TableHeader className="sticky top-0 z-50 bg-white">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[300px] sticky left-0 z-50 bg-card border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                        <TableHead className="w-[300px] sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors">
                             Description & SKU
                         </TableHead>
                         {sortedSections.map((sec, secIdx) => {
-                            const isCoreSystem = ['sec-exchange', 'sec-vendor', 'sec-freight'].includes(sec.id);
                             const colSpan = getSectionColCount(sec);
                             return (
                                 <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b p-0 group/sec", sec.isCollapsed ? "w-[60px]" : "bg-primary/5")}>
@@ -465,7 +509,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === 0} onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
                                                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={secIdx === sortedSections.length - 1} onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
                                                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
-                                                    {!isCoreSystem && <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
+                                                    {!['sec-exchange', 'sec-vendor', 'sec-freight'].includes(sec.id) && <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>}
                                                 </div>
                                             )}
                                         </div>
@@ -475,7 +519,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         })}
                     </TableRow>
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="sticky left-0 z-50 bg-card border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12">
+                        <TableHead className="sticky left-0 z-50 bg-white border-r border-b font-black uppercase text-[10px] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12">
                             <div className="relative">
                                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                 <input 
@@ -552,7 +596,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-background">
-            <CardHeader className="p-6 border-b shrink-0 bg-white/50 backdrop-blur-sm">
+            <CardHeader className="p-6 border-b shrink-0 bg-white shadow-sm z-50">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 relative bg-white rounded-xl border-2 p-2 shadow-sm">
@@ -563,19 +607,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             <CardDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Strategic Pricing Workspace</CardDescription>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button 
-                            type="button"
-                            onClick={() => setIsFocusMode(true)} 
-                            variant="outline" 
-                            className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"
-                        >
-                            <Expand className="h-4 w-4 mr-2" /> Focus Mode
-                        </Button>
-                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><History className="h-4 w-4 mr-2" /> History</Button>
-                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl"><Truck className="h-4 w-4 mr-2" /> Logistics</Button>
-                        <Button type="button" onClick={() => setIsAddSectionOpen(true)} className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-primary/20"><Plus className="h-4 w-4 mr-2" /> Add Section</Button>
-                    </div>
+                    <HeaderActions />
                 </div>
             </CardHeader>
             <div className="flex-1 overflow-hidden min-h-0">
@@ -583,21 +615,17 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-                <DialogContent className="max-w-full w-screen h-screen rounded-none p-0 overflow-hidden border-none [&>button]:hidden">
-                    <DialogHeader className="sr-only">
-                        <DialogTitle>Focus Mode Workspace</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col h-full">
-                        <div className="p-4 border-b bg-background flex items-center justify-between shrink-0">
+                <DialogContent className="max-w-full w-screen h-screen rounded-none p-0 overflow-hidden border-none [&>button]:hidden z-[100]">
+                    <DialogTitle className="sr-only">Focus Mode Strategic Workspace</DialogTitle>
+                    <div className="flex flex-col h-full bg-background">
+                        <div className="p-4 border-b bg-white flex items-center justify-between shrink-0 shadow-sm z-50">
                             <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 relative bg-white rounded-lg border p-1 shadow-sm">
                                     {vendor.logoUrl ? <NextImage src={vendor.logoUrl} alt={vendor.name} fill className="object-contain p-1" unoptimized /> : <Building className="h-4 w-4 m-auto mt-1" />}
                                 </div>
                                 <span className="font-black uppercase text-[11px] tracking-widest">{vendor.name} Strategic Matrix</span>
                             </div>
-                            <Button variant="ghost" className="font-black uppercase text-[10px] tracking-widest" onClick={() => setIsFocusMode(false)}>
-                                <Shrink className="h-4 w-4 mr-2" /> Exit Focus
-                            </Button>
+                            <HeaderActions isFocus />
                         </div>
                         <div className="flex-1 min-h-0">
                             <PricingTable isModal />
@@ -608,8 +636,87 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
             <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             <FreightManager organisationId={organisationId} vendorId={vendor.id} isOpen={isFreightManagerOpen} onClose={() => setIsFreightManagerOpen(false)} />
-            <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}><DialogHeader className="sr-only"><DialogTitle>Add Section</DialogTitle></DialogHeader><DialogContent><DialogHeader><DialogTitle>Create Strategy Section</DialogTitle></DialogHeader><div className="py-6"><Label>Section Name</Label><Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2" /></div><DialogFooter><Button onClick={handleAddSection}>Create</Button></DialogFooter></DialogContent></Dialog>
-            <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}><DialogHeader className="sr-only"><DialogTitle>Add Metric</DialogTitle></DialogHeader><DialogContent><DialogHeader><DialogTitle>Metric Configuration</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div className="grid grid-cols-2 gap-4"><div><Label>Name</Label><Input value={newColName} onChange={e => setNewColName(e.target.value)} /></div><div><Label>Type</Label><Select value={newColType} onValueChange={(v: any) => setNewColType(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="percent">Percentage</SelectItem><SelectItem value="currency">Currency</SelectItem><SelectItem value="cost">Cost</SelectItem><SelectItem value="text">Text</SelectItem></SelectContent></Select></div></div><div className="flex items-center justify-between p-4 bg-muted/20 rounded-xl"><div><Label>Calculated</Label></div><Switch checked={isCalculated} onCheckedChange={setIsCalculated} /></div>{isCalculated && <div className="grid grid-cols-3 gap-2"><Select value={formulaLeft} onValueChange={setFormulaLeft}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="baseCost">Base Cost</SelectItem><SelectItem value="masterSell">Master Sell</SelectItem></SelectContent></Select><Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="+">+</SelectItem><SelectItem value="-">-</SelectItem><SelectItem value="*">*</SelectItem><SelectItem value="/">/</SelectItem></SelectContent></Select><Input placeholder="Value" value={formulaRight} onChange={e => setFormulaRight(e.target.value)} /></div>}</div><DialogFooter><Button onClick={handleAddColumn}>Initialize Metric</Button></DialogFooter></DialogContent></Dialog>
+            
+            <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
+                <DialogContent className="rounded-2xl border-4 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle>
+                        <DialogDescription className="text-xs font-bold uppercase tracking-widest text-primary">New Tactical Grouping</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-6">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Section Name</Label>
+                        <Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-2 h-12 font-bold text-lg rounded-xl border-2" placeholder="e.g. Regional Margins" />
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <DialogClose asChild><Button variant="outline" className="font-bold border-2">Cancel</Button></DialogClose>
+                        <Button onClick={handleAddSection} className="font-black uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg">Initialize Section</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
+                <DialogContent className="sm:max-w-xl rounded-2xl border-4 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Metric Configuration</DialogTitle>
+                        <DialogDescription className="text-xs font-bold uppercase tracking-widest text-primary">Define Strategic Calculation</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
+                                <Input value={newColName} onChange={e => setNewColName(e.target.value)} className="font-bold border-2" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Unit Type</Label>
+                                <Select value={newColType} onValueChange={(v: any) => setNewColType(v)}>
+                                    <SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                        <SelectItem value="percent">Percentage %</SelectItem>
+                                        <SelectItem value="currency">Currency $</SelectItem>
+                                        <SelectItem value="cost">Cost Point</SelectItem>
+                                        <SelectItem value="text">Textual Data</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border-2 border-dashed">
+                            <div>
+                                <Label className="text-xs font-black uppercase tracking-tight">Enable Formula Engine</Label>
+                                <p className="text-[10px] text-muted-foreground font-medium">Automatic calculated logic</p>
+                            </div>
+                            <Switch checked={isCalculated} onCheckedChange={setIsCalculated} />
+                        </div>
+                        {isCalculated && (
+                            <div className="grid grid-cols-3 gap-2 animate-in slide-in-from-top-2">
+                                <Select value={formulaLeft} onValueChange={setFormulaLeft}>
+                                    <SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                        <SelectItem value="baseCost">Base Cost</SelectItem>
+                                        <SelectItem value="masterSell">Master Sell</SelectItem>
+                                        {allColumns.filter(c => c.id !== targetSectionId).map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}>
+                                    <SelectTrigger className="font-black text-lg border-2"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                        <SelectItem value="+">+</SelectItem>
+                                        <SelectItem value="-">-</SelectItem>
+                                        <SelectItem value="*">×</SelectItem>
+                                        <SelectItem value="/">÷</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input placeholder="Modifier..." value={formulaRight} onChange={e => setFormulaRight(e.target.value)} className="font-bold border-2" />
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <DialogClose asChild><Button variant="outline" className="font-bold border-2">Cancel</Button></DialogClose>
+                        <Button onClick={handleAddColumn} className="font-black uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg">Commit Metric</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -618,7 +725,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     return (
         <>
             <TableRow className="bg-slate-100/80 cursor-pointer group" onClick={onToggle}>
-                <TableCell className="sticky left-0 z-30 bg-slate-100 py-3 px-6 font-black uppercase text-[11px] border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                <TableCell className="sticky left-0 z-30 bg-slate-100 py-3 px-6 font-black uppercase text-[11px] border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-slate-200">
                     <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
                         <span>{range.name} RANGE</span>
@@ -650,7 +757,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-slate-50 border-l-4 border-l-primary group">
-                <TableCell className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                <TableCell className="sticky left-0 z-30 bg-slate-50 py-3 px-8 border-b shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-slate-100">
                     <div className="flex items-center gap-3">
                         <button onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}>
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
@@ -846,7 +953,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: { organis
     const { data: logs, loading } = useCollection<AuditLogEntry>(logQuery);
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl z-[150]">
                 <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><History className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Strategy Audit Log</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Chronological record of tactical modifications</DialogDescription></div></div></DialogHeader>
                 <div className="flex-1 min-h-0">{loading ? (<div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : logs && logs.length > 0 ? (<ScrollArea className="h-full"><Table><TableHeader className="bg-muted/5 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Timestamp</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">User</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Metric</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">Previous</TableHead><TableHead className="py-4 px-6 font-black uppercase text-[9px] tracking-widest">New Value</TableHead></TableRow></TableHeader><TableBody>{logs.map((log) => (<TableRow key={log.id} className="hover:bg-muted/10 transition-colors"><TableCell className="py-4 px-6 font-medium text-[10px] text-muted-foreground">{log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}</TableCell><TableCell className="py-4 px-6"><div className="flex items-center gap-2"><UserIcon className="h-3 w-3 text-primary opacity-40" /><span className="font-bold text-[11px] uppercase truncate">{log.userName || 'System'}</span></div></TableCell><TableCell className="py-4 px-6"><Badge variant="outline" className="font-black text-[8px] uppercase border-primary/20 text-primary">{log.colId}</Badge></TableCell><TableCell className="py-4 px-6 font-mono text-[10px] text-muted-foreground/60">{log.oldValue ?? '-'}</TableCell><TableCell className="py-4 px-6 font-mono text-[10px] font-black text-primary">{log.newValue}</TableCell></TableRow>))}</TableBody></Table></ScrollArea>) : (<div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-20"><Clock className="h-16 w-16 mb-4" /><p className="text-sm font-black uppercase tracking-widest">No strategic modifications logged yet.</p></div>)}</div>
                 <DialogFooter className="p-6 border-t bg-muted/5"><DialogClose asChild><Button variant="outline" className="font-bold border-2">Close Log</Button></DialogClose></DialogFooter>
@@ -869,7 +976,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: { organis
     const handleDelete = async (id: string) => { try { await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id)); toast({ title: "Container Removed" }); } catch (e) { toast({ variant: 'destructive', title: "Delete Failed" }); } };
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl">
+            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-3xl border-4 shadow-2xl z-[150]">
                 <DialogHeader className="p-8 border-b bg-muted/5"><div className="flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Truck className="h-6 w-6" /></div><div className="space-y-1"><DialogTitle className="text-2xl font-black uppercase tracking-tight">Freight Management</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Shipping Containers & Logistics Cost Matrix</DialogDescription></div></div><Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-9 px-6 rounded-xl shadow-lg transition-transform hover:scale-105"><Plus className="h-4 w-4 mr-1.5" /> Add Container</Button></div></DialogHeader>
                 <div className="flex-1 min-h-0 overflow-hidden">{loading ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : (
                     <ScrollArea className="h-full">
