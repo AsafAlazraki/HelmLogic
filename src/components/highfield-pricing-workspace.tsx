@@ -316,7 +316,7 @@ function FreightManager({
                                                     </div>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
+                                                    <Label className="text-[10px) font-black uppercase text-muted-foreground ml-1">Container Cost</Label>
                                                     <div className="relative">
                                                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
                                                         <Input 
@@ -510,6 +510,55 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return strategy.sections.flatMap(s => s.columns);
     }, [strategy?.sections]);
 
+    const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
+        if (!strategy?.sections) return;
+        const sections = [...strategy.sections].sort((a, b) => a.order - b.order);
+        const idx = sections.findIndex(s => s.id === secId);
+        if (idx === -1) return;
+
+        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
+        if (newIdx < 0 || newIdx >= sections.length) return;
+
+        // Swap
+        const temp = sections[idx];
+        sections[idx] = sections[newIdx];
+        sections[newIdx] = temp;
+
+        // Re-normalize sequential orders
+        const normalized = sections.map((s, i) => ({ ...s, order: i }));
+
+        await updateDoc(strategyRef, { sections: normalized }).catch(async (e) => {
+            console.error("Error updating section order:", e);
+            toast({ title: "Failed to Update Section Position", variant: "destructive" });
+        });
+        toast({ title: "Section Position Updated" });
+    };
+
+    const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
+        if (!strategy?.sections) return;
+        const sections = [...strategy.sections].sort((a, b) => a.order - b.order);
+        const secIdx = sections.findIndex(s => s.id === secId);
+        if (secIdx === -1) return;
+
+        const cols = [...sections[secIdx].columns];
+        const idx = cols.findIndex(c => c.id === colId);
+        if (idx === -1) return;
+
+        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
+        if (newIdx < 0 || newIdx >= cols.length) return;
+
+        const temp = cols[idx];
+        cols[idx] = cols[newIdx];
+        cols[newIdx] = temp;
+
+        sections[secIdx].columns = cols;
+        await updateDoc(strategyRef, { sections }).catch(async (e) => {
+            console.error("Error updating column order:", e);
+            toast({ title: "Failed to Update Metric Position", variant: "destructive" });
+        });
+        toast({ title: "Metric Position Updated" });
+    };
+
     const handleAddSection = async () => {
         if (!newSectionName.trim()) return;
         const newSection: PricingSection = {
@@ -553,59 +602,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         setIsCalculated(false);
         setIsMandatory(false);
         toast({ title: "Metric Initialized" });
-    };
-
-    const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
-        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
-        const idx = sections.findIndex(s => s.id === secId);
-        if (idx === -1) return;
-
-        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
-        if (newIdx < 0 || newIdx >= sections.length) return;
-
-        // Swap
-        const temp = sections[idx];
-        sections[idx] = sections[newIdx];
-        sections[newIdx] = temp;
-
-        // Re-normalize sequential orders
-        const normalized = sections.map((s, i) => ({ ...s, order: i }));
-
-        await updateDoc(strategyRef, { sections: normalized }).catch(async (e) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: strategyRef.path,
-                operation: 'update',
-                requestResourceData: { sections: normalized }
-            }));
-        });
-        toast({ title: "Section Position Updated" });
-    };
-
-    const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
-        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
-        const secIdx = sections.findIndex(s => s.id === secId);
-        if (secIdx === -1) return;
-
-        const cols = [...sections[secIdx].columns];
-        const idx = cols.findIndex(c => c.id === colId);
-        if (idx === -1) return;
-
-        const newIdx = direction === 'left' ? idx - 1 : idx + 1;
-        if (newIdx < 0 || newIdx >= cols.length) return;
-
-        const temp = cols[idx];
-        cols[idx] = cols[newIdx];
-        cols[newIdx] = temp;
-
-        sections[secIdx].columns = cols;
-        await updateDoc(strategyRef, { sections }).catch(async (e) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: strategyRef.path,
-                operation: 'update',
-                requestResourceData: { sections }
-            }));
-        });
-        toast({ title: "Metric Position Updated" });
     };
 
     const handleToggleSectionCollapse = async (secId: string) => {
