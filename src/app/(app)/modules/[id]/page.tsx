@@ -218,33 +218,33 @@ export default function ModuleDetailsPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {/* Cinematic Module Hero */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-10 py-12 text-primary-foreground shadow-2xl z-20">
-                {/* Fluid Background Animation */}
+            {/* Cinematic Module Hero - Compact Height */}
+            <div className="relative shrink-0 overflow-hidden bg-primary px-10 py-6 text-primary-foreground shadow-2xl z-20">
+                {/* Enhanced Fluid Background Animation */}
                 <div className="absolute inset-0 z-0">
-                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse" />
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/30 blur-[150px] rounded-full animate-pulse duration-[4000ms]" />
-                    <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-white/5 blur-[100px] rounded-full" />
+                    <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[140%] bg-blue-400/30 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                    <div className="absolute bottom-[-30%] right-[-10%] w-[70%] h-[150%] bg-indigo-600/40 blur-[150px] rounded-full animate-pulse duration-[6000ms] pointer-events-none" />
+                    <div className="absolute top-[10%] right-[20%] w-[40%] h-[100%] bg-white/10 blur-[100px] rounded-full pointer-events-none" />
                 </div>
                 
-                <div className="relative z-10 flex flex-col gap-1">
+                <div className="relative z-10 flex flex-col gap-0.5">
                     <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
-                            <Navigation className="h-3 w-3" />
+                        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.4em] text-white/50">
+                            <Navigation className="h-2.5 w-2.5" />
                             <span>Command Center</span>
                         </div>
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-8 px-4 font-black uppercase tracking-widest text-[9px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10"
+                            className="h-7 px-3 font-black uppercase tracking-widest text-[8px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 group"
                             onClick={() => router.push('/dashboard')}
                         >
-                            <X className="h-3.5 w-3.5 mr-1.5" />
+                            <X className="h-3 w-3 mr-1.5 transition-transform group-hover:rotate-90" />
                             Back to Hub
                         </Button>
                     </div>
                     
-                    <h1 className="text-6xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl mt-4">
+                    <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-tight drop-shadow-2xl mt-1">
                         {moduleData.name}
                     </h1>
                 </div>
@@ -253,7 +253,7 @@ export default function ModuleDetailsPage() {
             {/* Premium Navigation Ribbon */}
             <div className="bg-white border-b shrink-0 z-10 shadow-sm px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid grid-cols-5 w-full h-16 bg-transparent p-0 gap-8">
+                    <TabsList className="grid grid-cols-5 w-full h-14 bg-transparent p-0 gap-4">
                         {[
                             { id: 'dashboard', label: 'Dashboard' },
                             { id: 'bmt', label: 'Product Catalog' },
@@ -264,7 +264,7 @@ export default function ModuleDetailsPage() {
                             <TabsTrigger 
                                 key={t.id} 
                                 value={t.id} 
-                                className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[11px] tracking-[0.2em] h-full transition-all duration-300 text-slate-400 data-[state=active]:text-slate-900 hover:text-slate-600"
+                                className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-400 data-[state=active]:text-slate-900 hover:text-slate-600"
                             >
                                 {t.label}
                             </TabsTrigger>
@@ -281,7 +281,7 @@ export default function ModuleDetailsPage() {
                             {/* Lateral Panels */}
                             <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                    <CardHeader className="py-6 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
@@ -293,7 +293,7 @@ export default function ModuleDetailsPage() {
                                 </Card>
 
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                    <CardHeader className="py-6 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                    <CardHeader className="py-5 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
