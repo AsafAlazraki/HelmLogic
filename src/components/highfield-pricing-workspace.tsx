@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -1120,6 +1120,8 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                 </TableCell>
                 
                 {sections.map((sec: any) => {
+                    if (sec.isCollapsed) return <TableCell key={`range-coll-${sec.id}`} className="bg-muted/40 border-r" />;
+                    
                     if (sec.id === 'sec-exchange') {
                         return (
                             <React.Fragment key={sec.id}>
@@ -1141,23 +1143,25 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     if (sec.id === 'sec-master') {
                         return (
                             <React.Fragment key={sec.id}>
-                                <TableCell className="border-r bg-primary/5" />
-                                <TableCell className="border-r bg-primary/5" />
+                                <TableCell className="border-r" />
+                                <TableCell className="border-r" />
                             </React.Fragment>
                         );
                     }
                     if (sec.id === 'sec-freight') {
-                        return <TableCell key={sec.id} className="border-r bg-primary/5" />;
+                        return <TableCell key={sec.id} className="border-r bg-slate-50" />;
                     }
-                    if (sec.id === 'sec-vendor') {
-                        return <TableCell key={sec.id} colSpan={sec.isCollapsed ? 1 : Math.max(1, sec.columns.length)} className="bg-primary/5 border-r" />;
-                    }
-                    return null;
+                    
+                    return (
+                        <TableCell 
+                            key={sec.id} 
+                            colSpan={Math.max(1, sec.columns.length)} 
+                            className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest border-r last:border-r-0"
+                        >
+                            Audit required
+                        </TableCell>
+                    );
                 })}
-
-                <TableCell colSpan={sections.filter((s: any) => !['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'].includes(s.id)).reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0)} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
-                    Click to audit series and specific configurations
-                </TableCell>
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -1179,7 +1183,6 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
 
 function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate }: any) {
     const [isLocalExpanded, setIsLocalExpanded] = useState(true);
-    const strategyColCount = sections.reduce((acc: number, s: any) => acc + (s.isCollapsed ? 1 : Math.max(1, s.columns.length)), 0);
 
     return (
         <>
@@ -1196,9 +1199,10 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     </div>
                 </TableCell>
                 
-                {sections.map((sec: any) => (
-                    <TableCell key={`group-sec-${sec.id}`} colSpan={getSectionColCount(sec)} className={cn("bg-muted/5 border-r", ['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'].includes(sec.id) && "bg-primary/5")} />
-                ))}
+                {sections.map((sec: any) => {
+                    const colSpan = getSectionColCount(sec);
+                    return <TableCell key={`group-sec-${sec.id}`} colSpan={colSpan} className="bg-muted/5 border-r" />;
+                })}
             </TableRow>
 
             {isLocalExpanded && (
@@ -1232,9 +1236,10 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                                         <span>Factory Options</span>
                                     </div>
                                 </TableCell>
-                                {sections.map((sec: any) => (
-                                    <TableCell key={`opt-group-sec-${sec.id}`} colSpan={getSectionColCount(sec)} className={cn("bg-white/50 border-r", ['sec-exchange', 'sec-master', 'sec-freight', 'sec-vendor'].includes(sec.id) && "bg-primary/5")} />
-                                ))}
+                                {sections.map((sec: any) => {
+                                    const colSpan = getSectionColCount(sec);
+                                    return <TableCell key={`opt-group-sec-${sec.id}`} colSpan={colSpan} className="bg-white/50 border-r" />;
+                                })}
                             </TableRow>
                             {model.optionalFeatures.map((f: any) => (
                                 <PricingRow 
@@ -1300,10 +1305,10 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 if (sec.id === 'sec-master') {
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4 bg-primary/5">
+                            <TableCell className="text-right text-[11px] font-medium text-muted-foreground border-r px-4">
                                 {formatCurrency(cost, vendor.currency || 'AUD')}
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4 bg-primary/5">
+                            <TableCell className="text-right text-[11px] font-black text-muted-foreground border-r px-4">
                                 {formatCurrency(sell, vendor.currency || 'AUD')}
                             </TableCell>
                         </React.Fragment>
@@ -1312,7 +1317,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 
                 if (sec.id === 'sec-freight') {
                     return (
-                        <TableCell key={sec.id} className="text-right bg-primary/5 border-r p-0 group-hover:bg-primary/10 transition-colors">
+                        <TableCell key={sec.id} className="text-right bg-slate-50 border-r p-0 group-hover:bg-slate-100 transition-colors">
                             {isBoatVariant ? (
                                 <div className="relative h-full w-full flex items-center">
                                     <input 
@@ -1326,17 +1331,16 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">m³</span>
                                 </div>
                             ) : (
-                                <div className="h-full w-full bg-primary/5 opacity-50" />
+                                <div className="h-full w-full bg-slate-100/50" />
                             )}
                         </TableCell>
                     );
                 }
 
-                const isStrategySection = sec.id === 'sec-vendor';
-                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className={cn("bg-muted/5 border-r last:border-r-0", isStrategySection && "bg-primary/5")} />;
+                if (sec.columns.length === 0) return <TableCell key={`empty-val-${sec.id}`} className="bg-muted/5 border-r last:border-r-0" />;
 
                 return sec.columns.map((col: any) => (
-                    <TableCell key={col.id} className={cn("p-0 border-r last:border-r-0 bg-muted/5 group-hover:bg-muted/10 transition-colors", isStrategySection && "bg-primary/5 group-hover:bg-primary/10")}>
+                    <TableCell key={col.id} className="p-0 border-r last:border-r-0 bg-muted/5 group-hover:bg-muted/10 transition-colors">
                         {col.isCalculated ? (
                             <CalculatedCell 
                                 col={col} 
