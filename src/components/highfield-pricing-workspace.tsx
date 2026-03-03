@@ -70,6 +70,8 @@ import NextImage from "next/image";
 import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface CustomColumn {
     id: string;
@@ -554,52 +556,33 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     };
 
     const handleMoveSection = async (secId: string, direction: 'left' | 'right') => {
-        let sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
+        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
         const idx = sections.findIndex(s => s.id === secId);
         if (idx === -1) return;
 
         const newIdx = direction === 'left' ? idx - 1 : idx + 1;
         if (newIdx < 0 || newIdx >= sections.length) return;
 
-        // Perform swap
+        // Swap
         const temp = sections[idx];
         sections[idx] = sections[newIdx];
         sections[newIdx] = temp;
 
-        // Normalize orders to sequence
-        sections = sections.map((s, i) => ({ ...s, order: i }));
+        // Re-normalize sequential orders
+        const normalized = sections.map((s, i) => ({ ...s, order: i }));
 
-        await updateDoc(strategyRef, { sections });
+        await updateDoc(strategyRef, { sections: normalized }).catch(async (e) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: strategyRef.path,
+                operation: 'update',
+                requestResourceData: { sections: normalized }
+            }));
+        });
         toast({ title: "Section Position Updated" });
     };
 
-    const handleToggleSectionCollapse = async (secId: string) => {
-        const sections = [...(strategy?.sections || [])];
-        const idx = sections.findIndex(s => s.id === secId);
-        if (idx !== -1) {
-            sections[idx].isCollapsed = !sections[idx].isCollapsed;
-            await setDoc(strategyRef, { sections }, { merge: true });
-        }
-    };
-
-    const handleDeleteSection = async (secId: string) => {
-        const sections = strategy?.sections?.filter(s => s.id !== secId) || [];
-        await setDoc(strategyRef, { sections }, { merge: true });
-        toast({ title: "Section Removed" });
-    };
-
-    const handleDeleteColumn = async (secId: string, colId: string) => {
-        const sections = [...(strategy?.sections || [])];
-        const idx = sections.findIndex(s => s.id === secId);
-        if (idx !== -1) {
-            sections[idx].columns = sections[idx].columns.filter(c => c.id !== colId);
-            await setDoc(strategyRef, { sections }, { merge: true });
-            toast({ title: "Metric Removed" });
-        }
-    };
-
     const handleMoveColumn = async (secId: string, colId: string, direction: 'left' | 'right') => {
-        const sections = [...(strategy?.sections || [])];
+        const sections = [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
         const secIdx = sections.findIndex(s => s.id === secId);
         if (secIdx === -1) return;
 
@@ -615,8 +598,42 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         cols[newIdx] = temp;
 
         sections[secIdx].columns = cols;
-        await updateDoc(strategyRef, { sections });
+        await updateDoc(strategyRef, { sections }).catch(async (e) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: strategyRef.path,
+                operation: 'update',
+                requestResourceData: { sections }
+            }));
+        });
         toast({ title: "Metric Position Updated" });
+    };
+
+    const handleToggleSectionCollapse = async (secId: string) => {
+        const sections = [...(strategy?.sections || [])];
+        const idx = sections.findIndex(s => s.id === secId);
+        if (idx !== -1) {
+            sections[idx].isCollapsed = !sections[idx].isCollapsed;
+            await setDoc(strategyRef, { sections }, { merge: true });
+        }
+    };
+
+    const handleDeleteSection = async (secId: string) => {
+        const sections = strategy?.sections?.filter(s => s.id !== secId) || [];
+        const normalized = sections
+            .sort((a, b) => a.order - b.order)
+            .map((s, i) => ({ ...s, order: i }));
+        await updateDoc(strategyRef, { sections: normalized });
+        toast({ title: "Section Removed" });
+    };
+
+    const handleDeleteColumn = async (secId: string, colId: string) => {
+        const sections = [...(strategy?.sections || [])];
+        const idx = sections.findIndex(s => s.id === secId);
+        if (idx !== -1) {
+            sections[idx].columns = sections[idx].columns.filter(c => c.id !== colId);
+            await setDoc(strategyRef, { sections }, { merge: true });
+            toast({ title: "Metric Removed" });
+        }
     };
 
     const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
@@ -665,7 +682,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <TableHead className="w-[120px] border-r bg-slate-50 text-center" colSpan={1}>
                             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Freight</span>
                         </TableHead>
-                        {sortedSections.map(sec => (
+                        {sortedSections.map((sec, secIdx) => (
                             <TableHead 
                                 key={sec.id} 
                                 colSpan={sec.isCollapsed ? 1 : Math.max(1, sec.columns.length)} 
@@ -683,8 +700,22 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </div>
                                     {!sec.isCollapsed && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover/sec:opacity-100 transition-opacity">
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'left')}><ArrowLeft className="h-3 w-3" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveSection(sec.id, 'right')}><ArrowRight className="h-3 w-3" /></Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className={cn("h-6 w-6", secIdx === 0 && "opacity-20 pointer-events-none")} 
+                                                onClick={() => handleMoveSection(sec.id, 'left')}
+                                            >
+                                                <ArrowLeft className="h-3 w-3" />
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className={cn("h-6 w-6", secIdx === sortedSections.length - 1 && "opacity-20 pointer-events-none")} 
+                                                onClick={() => handleMoveSection(sec.id, 'right')}
+                                            >
+                                                <ArrowRight className="h-3 w-3" />
+                                            </Button>
                                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setTargetSectionId(sec.id); setIsAddColumnOpen(true); }}><Plus className="h-3 w-3" /></Button>
                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteSection(sec.id)}><Trash2 className="h-3 w-3" /></Button>
                                         </div>
@@ -952,7 +983,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     <Label className="text-[10px] font-black uppercase tracking-widest">Calculated Logic</Label>
                                     <p className="text-[10px] text-muted-foreground uppercase font-bold">Derive value from other metrics</p>
                                 </div>
-                                <Switch checked={isCalculated} onCheckedChange={setIsCalculated} />
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground">Is Calculated</span>
+                                    <Switch checked={isCalculated} onCheckedChange={setIsCalculated} />
+                                </div>
                             </div>
 
                             {isCalculated && (
@@ -1064,7 +1098,6 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     <span>{range.name} Range</span>
                     <Badge variant="outline" className="h-5 text-[9px] border-primary/20 text-primary uppercase font-black">{models.length} Series</Badge>
                 </TableCell>
-                {/* Fixed context columns showing global vendor data */}
                 <TableCell className="text-center border-r bg-primary/5">
                     <Badge variant="ghost" className="font-black text-[10px] uppercase opacity-60">{vendor.currency || 'AUD'}</Badge>
                 </TableCell>
@@ -1081,7 +1114,6 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                 <TableCell className="border-r" />
                 <TableCell className="border-r bg-slate-50" />
                 
-                {/* Placeholder for dynamic strategy sections */}
                 <TableCell colSpan={strategyColCount} className="text-right italic text-[10px] text-muted-foreground pr-6 opacity-40 group-hover:opacity-100 uppercase font-black tracking-widest">
                     Click to audit series and specific configurations
                 </TableCell>
