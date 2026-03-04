@@ -29,6 +29,18 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId;
     }
 
+    function canEditBoatData() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             (
+               isHelmLogicAdmin() ||
+               (
+                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId != null &&
+                 get(/databases/$(database)/documents/organisations/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId)).data.permissions[get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationRole].can_edit_boat_data == true
+               )
+             );
+    }
+
     // --- User Profiles ---
     match /users/{userId} {
       allow get: if isOwner(userId) || isHelmLogicAdmin();
@@ -92,35 +104,36 @@ service cloud.firestore {
     // --- Data Warehouse ---
     match /data-warehouse/{vendorId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isHelmLogicAdmin();
+      allow create, delete: if isHelmLogicAdmin();
+      allow update: if canEditBoatData();
 
       match /masterDataSet/{rowId} {
         allow get, list: if isSignedIn();
-        allow write: if isHelmLogicAdmin();
+        allow write: if canEditBoatData();
       }
 
       match /ranges/{rangeId} {
         allow get, list: if isSignedIn();
-        allow write: if isHelmLogicAdmin();
+        allow write: if canEditBoatData();
 
         match /models/{modelId} {
           allow get, list: if isSignedIn();
-          allow write: if isHelmLogicAdmin();
+          allow write: if canEditBoatData();
 
           match /variants/{variantId} {
             allow get, list: if isSignedIn();
-            allow write: if isHelmLogicAdmin();
+            allow write: if canEditBoatData();
           }
         }
       }
 
       match /dataSets/{dataSetId} {
         allow get, list: if isSignedIn();
-        allow write: if isHelmLogicAdmin();
+        allow write: if canEditBoatData();
 
         match /rows/{rowId} {
           allow get, list: if isSignedIn();
-          allow write: if isHelmLogicAdmin();
+          allow write: if canEditBoatData();
         }
       }
     }

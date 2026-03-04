@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -365,9 +366,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [sortedSections]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b border-slate-300 shadow-sm relative z-[70]">
+        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative z-[70]">
             <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border border-primary/20">
+                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
                     <Calculator className="h-5 w-5" />
                 </div>
                 <div>
@@ -383,8 +384,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         )}
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
-                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-primary/20 px-2">PRECISION MODE ENABLED</Badge>
-                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
+                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-2 border-primary/20 px-2">PRECISION MODE ENABLED</Badge>
+                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
                     </div>
                 </div>
             </div>
@@ -499,10 +500,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                 );
                                 if (sec.id === 'sec-exchange') return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-center border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">VND ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
-                                        <TableHead className="text-center border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">ORG ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">VND ISO</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">ORG ISO</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
                                     </React.Fragment>
                                 );
                                 if (sec.id === 'sec-vendor') {
@@ -510,15 +511,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     const orgIso = organisation?.tradingCurrency || 'AUD';
                                     return (
                                         <React.Fragment key={sec.id}>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vndIso}) $</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({orgIso}) $</TableHead>
+                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vndIso}) $</TableHead>
+                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({orgIso}) $</TableHead>
                                         </React.Fragment>
                                     );
                                 }
-                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[160px] text-slate-700 px-5">PACKED M³</TableHead>;
-                                if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b-2 border-slate-200 bg-slate-50 text-center text-[8px] font-bold text-slate-400 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
+                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[160px] text-slate-700 px-5">PACKED M³</TableHead>;
+                                if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b-2 border-slate-300 bg-slate-50 text-center text-[8px] font-bold text-slate-400 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
                                 return sec.columns.map((col) => (
-                                    <TableHead key={col.id} className="min-w-[180px] bg-slate-50 text-center px-4 border-r border-b-2 border-slate-200 font-black uppercase text-[9px] tracking-tight text-primary/80">{col.name}</TableHead>
+                                    <TableHead key={col.id} className="min-w-[180px] bg-slate-50 text-center px-4 border-r border-b-2 border-slate-300 font-black uppercase text-[9px] tracking-tight text-primary/80">{col.name}</TableHead>
                                 ));
                             })}
                         </TableRow>
@@ -710,7 +711,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     onUpdateValue={onUpdateValue} 
                     vendor={vendor} 
                     organisation={organisation} 
-                    exchangeRate={activeExchangeRate} 
+                    exchangeRate={exchangeRate} 
                     totalCalculatedCols={totalCalculatedCols}
                 />
             ))}
@@ -825,7 +826,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
             {sections.map((sec: any) => {
                 if (sec.id === 'sec-exchange') {
                     if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-200 p-0 transition-all text-center">
+                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
                             <div className="flex flex-col items-center justify-center h-full">
                                 <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
                             </div>
@@ -833,16 +834,16 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     );
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-center border-r border-b border-slate-200 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{vendorCurrency}</Badge></TableCell>
-                            <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary">{exchangeRate.toFixed(4)}</TableCell>
-                            <TableCell className="text-center border-r border-b border-slate-200 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{orgCurrency}</Badge></TableCell>
-                            <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary">1.0000</TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-300 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{vendorCurrency}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-300 bg-white text-[10px] font-black text-primary">{exchangeRate.toFixed(4)}</TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-300 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{orgCurrency}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-300 bg-white text-[10px] font-black text-primary">1.0000</TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-vendor') {
                     if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-200 p-0 transition-all text-center">
+                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
                             <div className="flex flex-col items-center justify-center h-full">
                                 <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
                             </div>
@@ -853,7 +854,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     const convertedCost = (effectiveCost || 0) * (exchangeRate || 1);
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="p-0 border-r border-b border-slate-200">
+                            <TableCell className="p-0 border-r border-b border-slate-300">
                                 <EditableCell 
                                     id={id} 
                                     col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} 
@@ -865,7 +866,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                                     prefix="$" 
                                 />
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-200 px-5 bg-primary/[0.04]">
+                            <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-primary/[0.04]">
                                 {formatCurrency(convertedCost, orgCurrency)}
                             </TableCell>
                         </React.Fragment>
@@ -873,28 +874,28 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 }
                 if (sec.id === 'sec-freight') {
                     if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-200 p-0 transition-all text-center">
+                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
                             <div className="flex flex-col items-center justify-center h-full">
                                 <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
                             </div>
                         </TableCell>
                     );
                     return (
-                        <TableCell key={sec.id} className="p-0 border-r border-b border-slate-200">
+                        <TableCell key={sec.id} className="p-0 border-r border-b border-slate-300">
                             {isBoatVariant ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-slate-50/50" />}
                         </TableCell>
                     );
                 }
                 if (sec.isCollapsed) return (
-                    <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-200 p-0 transition-all text-center">
+                    <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
                         <div className="flex flex-col items-center justify-center h-full">
                             <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
                         </div>
                     </TableCell>
                 );
-                if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-slate-50/50 border-r border-b border-slate-200" />;
+                if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-slate-50/50 border-r border-b border-slate-300" />;
                 return sec.columns.map((col: any) => (
-                    <TableCell key={col.id} className="p-0 border-r border-b border-slate-200">
+                    <TableCell key={col.id} className="p-0 border-r border-b border-slate-300">
                         {col.isCalculated ? (
                             <CalculatedCell col={col} baseCost={cost} masterSell={sell} itemValues={itemValues} allCols={allColumns} suffix={col.type === 'currency' || col.type === 'cost' ? orgCurrency : undefined} />
                         ) : (
@@ -969,9 +970,9 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl z-[150]">
-                <DialogHeader className="p-10 border-b border-slate-200 bg-slate-50 flex flex-row items-center justify-between">
+                <DialogHeader className="p-10 border-b border-slate-300 bg-slate-50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner border border-primary/20">
+                        <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner border-2 border-primary/20">
                             <History className="h-6 w-6" />
                         </div>
                         <div>
@@ -997,7 +998,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                                 </TableHeader>
                                 <TableBody>
                                     {logs.map((log: any) => (
-                                        <TableRow key={log.id} className="hover:bg-slate-50 transition-colors border-b border-slate-200">
+                                        <TableRow key={log.id} className="hover:bg-slate-50 transition-colors border-b border-slate-300">
                                             <TableCell className="py-5 px-10">
                                                 <div className="flex items-center gap-3 text-slate-600">
                                                     <Clock className="h-3.5 w-3.5" />
@@ -1008,14 +1009,14 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                                             </TableCell>
                                             <TableCell className="py-5 px-6">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-7 w-7 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-600 font-black text-[10px] uppercase">
+                                                    <div className="h-7 w-7 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-slate-600 font-black text-[10px] uppercase">
                                                         {log.userName?.[0] || 'S'}
                                                     </div>
                                                     <span className="font-black text-[11px] uppercase tracking-tight truncate text-slate-900">{log.userName || 'System Auto'}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-5 px-6">
-                                                <Badge variant="outline" className="h-6 px-3 bg-primary/5 text-primary border-primary/30 font-black uppercase text-[9px] tracking-widest shadow-sm">{log.colId}</Badge>
+                                                <Badge variant="outline" className="h-6 px-3 bg-primary/5 text-primary border-2 border-primary/30 font-black uppercase text-[9px] tracking-widest shadow-sm">{log.colId}</Badge>
                                             </TableCell>
                                             <TableCell className="py-5 px-6 text-right font-mono text-[11px] text-slate-400 italic">{String(log.oldValue ?? '-')}</TableCell>
                                             <TableCell className="py-5 px-10 text-right">
@@ -1033,7 +1034,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                         </div>
                     )}
                 </div>
-                <DialogFooter className="p-8 border-t border-slate-200 bg-slate-50">
+                <DialogFooter className="p-8 border-t border-slate-300 bg-slate-50">
                     <DialogClose asChild><Button variant="outline" className="h-12 px-8 font-black uppercase text-[10px] tracking-widest rounded-2xl border-2 border-slate-300 shadow-sm bg-white">Close</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
@@ -1056,10 +1057,10 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl">
-                <DialogHeader className="p-10 border-b border-slate-200 bg-slate-50">
+                <DialogHeader className="p-10 border-b border-slate-300 bg-slate-50">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
-                            <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner border border-primary/20">
+                            <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner border-2 border-primary/20">
                                 <Truck className="h-6 w-6" />
                             </div>
                             <div>
@@ -1138,7 +1139,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                                         </TableHeader>
                                         <TableBody>
                                             {containers?.length > 0 ? containers.map((c: any) => (
-                                                <TableRow key={c.id} className="hover:bg-primary/[0.04] transition-colors group border-b border-slate-200 last:border-0">
+                                                <TableRow key={c.id} className="hover:bg-primary/[0.04] transition-colors group border-b border-slate-300 last:border-0">
                                                     <TableCell className="py-6 px-10 font-black uppercase text-slate-950">{c.size}</TableCell>
                                                     <TableCell className="py-6 px-6 text-right font-black text-slate-700">{c.cubicMeters} m³</TableCell>
                                                     <TableCell className="py-6 px-6 text-right font-black text-primary text-lg">{formatCurrency(c.cost, c.currency)}</TableCell>
@@ -1171,7 +1172,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                         </ScrollArea>
                     )}
                 </div>
-                <DialogFooter className="p-10 border-t border-slate-200 bg-slate-50">
+                <DialogFooter className="p-10 border-t border-slate-300 bg-slate-50">
                     <DialogClose asChild><Button variant="outline" className="h-14 px-10 font-black uppercase text-[11px] tracking-widest rounded-2xl border-2 border-slate-300 shadow-sm bg-white">Exit Workspace</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
