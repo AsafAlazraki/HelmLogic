@@ -282,15 +282,33 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return [...(strategy?.sections || [])].sort((a, b) => a.order - b.order);
     }, [strategy?.sections]);
 
-    const handleUpdateValue = async (itemId: string, colId: string, value: any) => {
-        const currentValues = strategy?.itemValues || {};
+    const onUpdateValue = async (itemId: string, colId: string, value: any) => {
+        if (!strategy) return;
+        
+        const currentValues = strategy.itemValues || {};
+        const oldValue = currentValues[itemId]?.[colId];
+        
         const updated = { 
             ...currentValues, 
             [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } 
         };
+
+        // Update strategy
         await updateDoc(strategyRef, { 
             itemValues: updated,
             lastUpdateAt: serverTimestamp()
+        });
+
+        // Audit Log
+        const logRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}/auditLog`);
+        await addDoc(logRef, {
+            itemId,
+            colId,
+            oldValue: oldValue ?? null,
+            newValue: value,
+            timestamp: serverTimestamp(),
+            userId: user?.uid,
+            userName: user?.displayName || user?.email || 'System'
         });
     };
 
@@ -342,14 +360,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     };
 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    
-    const expandAllRanges = () => {
-        if (ranges) setExpandedRanges(ranges.map(r => r.id));
-    };
-    
-    const collapseAllRanges = () => {
-        setExpandedRanges([]);
-    };
+    const expandAllRanges = () => { if (ranges) setExpandedRanges(ranges.map(r => r.id)); };
+    const collapseAllRanges = () => setExpandedRanges([]);
 
     const filteredRanges = useMemo(() => {
         if (!ranges) return [];
@@ -366,10 +378,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [sortedSections]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className={cn(
-            "flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative",
-            isFocus ? "z-10" : "z-10"
-        )}>
+        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative z-10">
             <div className="flex items-center gap-4">
                 <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
                     <Calculator className="h-5 w-5" />
@@ -531,7 +540,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <RangeSection 
                             key={range.id} 
                             range={range} 
-                            models={allModels.filter(m => m.rangeId === range.id)} 
+                            models={allModels.filter((m: any) => m.rangeId === range.id)} 
                             variants={allVariants} 
                             isExpanded={expandedRanges.includes(range.id)} 
                             onToggle={() => toggleRange(range.id)} 
@@ -561,7 +570,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-slate-50">
-            {/* Layering Guard: Remove background header in Focus Mode */}
             {!isFocusMode && <WorkspaceHeader />}
             
             <div className="flex-1 min-h-0 min-w-0 bg-white flex flex-col overflow-hidden">
@@ -647,7 +655,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     <SelectContent className="rounded-xl border-2 border-slate-300">
                                         <SelectItem value="baseCost" className="font-bold">Base Cost</SelectItem>
                                         <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
-                                        {allColumns.filter(c => c.id !== targetSectionId).map(c => (
+                                        {allColumns.filter((c: any) => c.id !== targetSectionId).map((c: any) => (
                                             <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
                                         ))}
                                     </SelectContent>
