@@ -301,15 +301,15 @@ function SortableItemCard({
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="group relative">
+        <div ref={setNodeRef} style={style} className="group relative h-full">
             <Card 
-                className="cursor-pointer hover:border-primary shadow-sm rounded-2xl overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
+                className="cursor-pointer hover:border-primary shadow-sm rounded-3xl overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
                 onClick={onClick}
             >
-                <div className="aspect-video relative bg-slate-50 border-b flex items-center justify-center p-4">
+                <div className="aspect-[4/3] relative bg-muted/30 border-b flex items-center justify-center p-4 overflow-hidden">
                     {imageUrl ? (
                         <div className="relative h-full w-full">
-                            <Image src={imageUrl} alt={name} fill className={cn("p-4", code ? "object-cover p-0" : "object-contain")} unoptimized />
+                            <Image src={imageUrl} alt={name} fill className={cn("p-4 transition-transform group-hover:scale-105", code ? "object-cover p-0" : "object-contain")} unoptimized />
                         </div>
                     ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-12 w-12 opacity-10" /></div>}
                 </div>
@@ -321,7 +321,7 @@ function SortableItemCard({
                             {code && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4 shrink-0 ml-2">{code}</Badge>}
                         </div>
                         <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-                            Professional catalog entry for {name}. Strategic asset synchronized with Data Warehouse.
+                            Precision cataloged strategic asset. Synchronized with Highfield factory data warehouse.
                         </p>
                     </div>
                     
@@ -333,12 +333,12 @@ function SortableItemCard({
             </Card>
 
             {isAdmin && (
-                <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                     <Button 
                         type="button"
                         variant="secondary" 
                         size="icon" 
-                        className="h-8 w-8 rounded-md bg-white/90 backdrop-blur-md shadow-md border hover:bg-white"
+                        className="h-8 w-8 rounded-xl bg-white/90 backdrop-blur-md shadow-md border hover:bg-white"
                         onClick={(e) => { e.stopPropagation(); onEdit(); }}
                     >
                         <Pencil className="h-3.5 w-3.5" />
@@ -346,7 +346,7 @@ function SortableItemCard({
                     <div 
                         {...attributes} 
                         {...listeners} 
-                        className="h-8 w-8 rounded-md bg-white/90 backdrop-blur-md shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
+                        className="h-8 w-8 rounded-xl bg-white/90 backdrop-blur-md shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
                     >
                         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
@@ -627,9 +627,9 @@ export default function ModuleDetailsPage() {
             </div>
 
             {/* Operational Workspace */}
-            <main className="flex-1 overflow-hidden relative p-8 pt-6">
+            <main className="flex-1 overflow-hidden relative">
                 <Tabs value={activeTab} className="h-full">
-                    <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in slide-in-from-bottom-2 duration-500 p-8">
                         <div className="grid grid-cols-12 gap-8 h-full">
                             <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
                                 <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
@@ -694,28 +694,29 @@ export default function ModuleDetailsPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
-                        <div className="mb-6 shrink-0 px-1">
-                            {view === 'ranges' ? (
-                                <div className="inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)]">
-                                    <Ship className="mr-3 h-5 w-5 text-primary" />
-                                    <span>{mainVendor?.name || 'Highfield'} Catalogue</span>
+                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-10 space-y-8 pb-32">
+                                <div className="shrink-0 px-1">
+                                    {view === 'ranges' ? (
+                                        <div className="inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)]">
+                                            <Ship className="mr-3 h-5 w-5 text-primary" />
+                                            <span>{mainVendor?.name || 'Highfield'} Catalogue</span>
+                                        </div>
+                                    ) : (
+                                        <Button 
+                                            variant="outline" 
+                                            onClick={handleBackToCatalog} 
+                                            className="relative h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white hover:bg-primary hover:text-white transition-all rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] group overflow-hidden"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite] transition-transform" />
+                                            <ChevronLeft className="mr-3 h-5 w-5 transition-transform group-hover:-translate-x-1.5 relative z-10" /> 
+                                            <span className="relative z-10">Return to Catalog Explorer</span>
+                                        </Button>
+                                    )}
                                 </div>
-                            ) : (
-                                <Button 
-                                    variant="outline" 
-                                    onClick={handleBackToCatalog} 
-                                    className="relative h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white hover:bg-primary hover:text-white transition-all rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] group overflow-hidden"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite] transition-transform" />
-                                    <ChevronLeft className="mr-3 h-5 w-5 transition-transform group-hover:-translate-x-1.5 relative z-10" /> 
-                                    <span className="relative z-10">Return to Catalog Explorer</span>
-                                </Button>
-                            )}
-                        </div>
-                        <div className="flex-1 min-h-0 relative">
-                            <ScrollArea className="h-full">
-                                <div className="pb-10 pt-10">
+
+                                <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
                                     {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} isAdmin={isAdmin} />}
                                     {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
                                     {view === 'bmt' && selectedModel && selectedRange && (
@@ -731,11 +732,11 @@ export default function ModuleDetailsPage() {
                                         />
                                     )}
                                 </div>
-                            </ScrollArea>
-                        </div>
+                            </div>
+                        </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="operations" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                    <TabsContent value="operations" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden p-8">
                         <div className="grid grid-cols-12 gap-8 h-full">
                             <Card className="col-span-8 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
                                 <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between">
@@ -764,13 +765,13 @@ export default function ModuleDetailsPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="pricing" className="m-0 h-full">
+                    <TabsContent value="pricing" className="m-0 h-full p-8">
                         {currentMemberOrg && mainVendor && (
                             <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
                         )}
                     </TabsContent>
 
-                    <TabsContent value="network" className="m-0 h-full animate-in fade-in duration-500">
+                    <TabsContent value="network" className="m-0 h-full animate-in fade-in duration-500 p-8">
                         <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
                             <CardHeader className="p-8 border-b bg-muted/5">
                                 <CardTitle className="text-xl font-black uppercase tracking-tight">Sub Dealer Network</CardTitle>
@@ -869,7 +870,7 @@ function RangesGrid({ vendor, onRangeSelect, isAdmin }: { vendor: Vendor; onRang
         <>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
                         {ranges?.map(range => (
                             <SortableItemCard 
                                 key={range.id}
@@ -938,7 +939,7 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
         <>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={models?.map(m => m.id) || []} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-10 px-1">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
                         {models?.map(model => (
                             <SortableItemCard 
                                 key={model.id}
