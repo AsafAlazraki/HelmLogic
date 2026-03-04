@@ -52,6 +52,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { VesselMap } from '@/components/map';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 import {
   DndContext,
@@ -272,7 +274,7 @@ function SortableItemCard({
     code, 
     onClick, 
     onEdit, 
-    isAdmin,
+    canEdit,
     viewLabel = "VIEW RANGE"
 }: { 
     id: string, 
@@ -281,7 +283,7 @@ function SortableItemCard({
     code?: string, 
     onClick: () => void, 
     onEdit: () => void, 
-    isAdmin: boolean,
+    canEdit: boolean,
     viewLabel?: string
 }) {
     const {
@@ -329,7 +331,7 @@ function SortableItemCard({
                 </CardContent>
             </Card>
 
-            {isAdmin && (
+            {canEdit && (
                 <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                     <Button 
                         type="button"
@@ -510,6 +512,14 @@ export default function ModuleDetailsPage() {
         return query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', currentMemberOrg.id));
     }, [firestore, currentMemberOrg?.id]);
     const { data: subDealers } = useCollection<Organisation>(subDealersQuery);
+
+    const userPermissions = useMemo(() => {
+        const roleId = userProfile?.organisationRole;
+        if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return {};
+        return currentMemberOrg.permissions[roleId];
+    }, [userProfile, currentMemberOrg]);
+
+    const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
 
     const handleWipePipeline = async () => {
         if (!currentMemberOrg) return;
@@ -693,8 +703,8 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
-                            <div className="p-8 md:p-10 flex flex-col gap-4 pb-32">
-                                <div className="shrink-0 px-1">
+                            <div className="p-8 md:p-10 flex flex-col gap-2 pb-32">
+                                <div className="shrink-0 px-1 mb-2">
                                     {view === 'ranges' ? (
                                         <div className="relative inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] overflow-hidden group">
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full group-hover:animate-[shimmer_3s_infinite] transition-transform" />
@@ -707,7 +717,7 @@ export default function ModuleDetailsPage() {
                                             onClick={handleBackToCatalog} 
                                             className="relative h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white hover:bg-primary hover:text-white transition-all rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] group overflow-hidden"
                                         >
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite] transition-transform" />
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_3s_infinite] transition-transform" />
                                             <ChevronLeft className="mr-3 h-5 w-5 transition-transform group-hover:-translate-x-1.5 relative z-10" /> 
                                             <span className="relative z-10">Return to Catalog Explorer</span>
                                         </Button>
@@ -715,8 +725,8 @@ export default function ModuleDetailsPage() {
                                 </div>
 
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-                                    {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} isAdmin={isAdmin} />}
-                                    {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} isAdmin={isAdmin} />}
+                                    {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} canEdit={canEdit} />}
+                                    {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} canEdit={canEdit} />}
                                     {view === 'bmt' && selectedModel && selectedRange && (
                                         <ModelConfigurationEditor 
                                             model={selectedModel}
@@ -727,6 +737,7 @@ export default function ModuleDetailsPage() {
                                             isAdmin={isAdmin}
                                             organisationId={currentMemberOrg?.id}
                                             breadcrumbs={null}
+                                            permissions={userPermissions as any}
                                         />
                                     )}
                                 </div>
@@ -827,7 +838,7 @@ export default function ModuleDetailsPage() {
     );
 }
 
-function RangesGrid({ vendor, onRangeSelect, isAdmin }: { vendor: Vendor; onRangeSelect: (range: Range) => void, isAdmin: boolean }) {
+function RangesGrid({ vendor, onRangeSelect, canEdit }: { vendor: Vendor; onRangeSelect: (range: Range) => void, canEdit: boolean }) {
     const firestore = useFirestore();
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
     const { data: ranges, loading } = useCollection<Range>(rangesQuery);
@@ -859,7 +870,14 @@ function RangesGrid({ vendor, onRangeSelect, isAdmin }: { vendor: Vendor; onRang
 
     const handleUpdateRange = async (data: any) => {
         if (!editingItem) return;
-        await updateDoc(doc(firestore, `data-warehouse/${vendor.id}/ranges`, editingItem.id), data);
+        const docRef = doc(firestore, `data-warehouse/${vendor.id}/ranges`, editingItem.id);
+        updateDoc(docRef, data).catch(async (serverError) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: data
+            } satisfies SecurityRuleContext));
+        });
     };
 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -875,7 +893,7 @@ function RangesGrid({ vendor, onRangeSelect, isAdmin }: { vendor: Vendor; onRang
                                 id={range.id}
                                 name={range.name}
                                 imageUrl={range.imageUrl}
-                                isAdmin={isAdmin}
+                                canEdit={canEdit}
                                 onClick={() => onRangeSelect(range)}
                                 onEdit={() => { setEditingItem(range); setIsEditDialogOpen(true); }}
                                 viewLabel="VIEW RANGE"
@@ -896,7 +914,7 @@ function RangesGrid({ vendor, onRangeSelect, isAdmin }: { vendor: Vendor; onRang
     );
 }
 
-function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; isAdmin: boolean }) {
+function ModelsGrid({ range, vendor, onModelSelect, canEdit }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; canEdit: boolean }) {
     const firestore = useFirestore();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
     const { data: models, loading } = useCollection<Model>(modelsQuery);
@@ -928,7 +946,14 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
 
     const handleUpdateModel = async (data: any) => {
         if (!editingItem) return;
-        await updateDoc(doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, editingItem.id), data);
+        const docRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, editingItem.id);
+        updateDoc(docRef, data).catch(async (serverError) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: data
+            } satisfies SecurityRuleContext));
+        });
     };
 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -945,7 +970,7 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
                                 name={model.name}
                                 code={model.modelCode}
                                 imageUrl={model.coverImageUrl}
-                                isAdmin={isAdmin}
+                                canEdit={canEdit}
                                 onClick={() => onModelSelect(model)}
                                 onEdit={() => { setEditingItem(model); setIsEditDialogOpen(true); }}
                                 viewLabel="VIEW MODEL"
