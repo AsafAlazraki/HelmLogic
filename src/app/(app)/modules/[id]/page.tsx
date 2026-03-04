@@ -693,12 +693,13 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
-                            <div className="p-10 space-y-4 pb-32">
+                            <div className="p-8 md:p-10 flex flex-col gap-4 pb-32">
                                 <div className="shrink-0 px-1">
                                     {view === 'ranges' ? (
-                                        <div className="inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)]">
-                                            <Ship className="mr-3 h-5 w-5 text-primary" />
-                                            <span>{mainVendor?.name || 'Highfield'} Catalogue</span>
+                                        <div className="relative inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] overflow-hidden group">
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full group-hover:animate-[shimmer_3s_infinite] transition-transform" />
+                                            <Ship className="mr-3 h-5 w-5 text-primary relative z-10" />
+                                            <span className="relative z-10">{mainVendor?.name || 'Highfield'} Catalogue</span>
                                         </div>
                                     ) : (
                                         <Button 
