@@ -37,7 +37,12 @@ import {
     CheckCircle2,
     LayoutList,
     FoldVertical,
-    UnfoldVertical
+    UnfoldVertical,
+    Wrench,
+    Percent,
+    Anchor,
+    Fuel,
+    Tag
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -73,7 +78,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 interface CustomColumn {
     id: string;
     name: string;
-    type: 'percent' | 'text' | 'currency' | 'cost';
+    type: 'percent' | 'text' | 'currency' | 'cost' | 'label' | 'number';
     isMandatory?: boolean;
     isCalculated?: boolean;
     formula?: {
@@ -119,11 +124,45 @@ interface Variant {
     sellPriceExclGst?: number;
 }
 
+// Logic for internal calculated fields that aren't user-defined
+const calculateLandedCost = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
+    const costOverride = itemValues['base_cost_override'];
+    const usdBase = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : baseCostUsd;
+    
+    const discountUsd = parseFloat(itemValues['vendor_factory_discount_usd'] || '0');
+    const oceanFreightUsd = parseFloat(itemValues['freight_ocean_usd'] || '0');
+    const baseFreightUsd = parseFloat(itemValues['freight_base_usd'] || '0');
+    const boatPrepUsd = parseFloat(itemValues['handling_boat_prep_usd'] || '0');
+
+    // Total USD pool
+    const totalUsd = usdBase - discountUsd + oceanFreightUsd + baseFreightUsd + boatPrepUsd;
+    
+    // Convert to AUD
+    const baseAud = totalUsd * exchangeRate;
+    
+    // Add 10% GST
+    const withGst = baseAud * 1.10;
+
+    // Add local AUD costs
+    const roadFreightAud = parseFloat(itemValues['freight_road_aud'] || '0');
+    const otherChargesAud = parseFloat(itemValues['handling_other_charges_aud'] || '0');
+    const detailingAud = parseFloat(itemValues['handling_boat_detailing_aud'] || '0');
+    
+    // Pre-delivery calc
+    const pdHours = parseFloat(itemValues['handling_pre_delivery_hours'] || '0');
+    const pdRate = parseFloat(itemValues['handling_labor_rate'] || '0');
+    const pdCost = pdHours * pdRate;
+
+    return withGst + roadFreightAud + otherChargesAud + detailingAud + pdCost;
+};
+
 const getSectionColCount = (sec: PricingSection) => {
     if (sec.isCollapsed) return 1;
-    if (sec.id === 'sec-exchange') return 4;
-    if (sec.id === 'sec-vendor') return 2;
-    if (sec.id === 'sec-freight') return 1;
+    if (sec.id === 'sec-exchange') return 5; // duty added
+    if (sec.id === 'sec-vendor') return 4; // base usd, base aud, discount usd, discount aud, landed cost aud
+    if (sec.id === 'sec-freight') return 3; // ocean usd, base usd, road aud
+    if (sec.id === 'sec-handling') return 8; // prep usd, other aud, gst label, code, hours, rate, pd cost, detail aud, fuel
+    if (sec.id === 'sec-markup') return 2; // hull mark, bmt mark
     return Math.max(1, sec.columns.length);
 };
 
@@ -132,25 +171,35 @@ const calculateValue = (
     baseCost: number, 
     masterSell: number, 
     itemValues: Record<string, any>, 
-    allCols: CustomColumn[]
+    allCols: CustomColumn[],
+    exchangeRate: number
 ): { value: number | string | null, error?: string } => {
-    const costOverride = itemValues['base_cost_override'];
-    const effectiveBaseCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) 
-        ? parseFloat(costOverride) 
-        : baseCost;
+    // Specific hardcoded logic for the new financial model
+    if (col.id === 'vendor_factory_discount_aud') {
+        const usd = parseFloat(itemValues['vendor_factory_discount_usd'] || '0');
+        return { value: usd * exchangeRate };
+    }
+    if (col.id === 'vendor_landed_cost_aud') {
+        return { value: calculateLandedCost(itemValues, baseCost, exchangeRate) };
+    }
+    if (col.id === 'handling_pre_delivery_cost_aud') {
+        const hours = parseFloat(itemValues['handling_pre_delivery_hours'] || '0');
+        const rate = parseFloat(itemValues['handling_labor_rate'] || '0');
+        return { value: hours * rate };
+    }
 
     if (!col.isCalculated || !col.formula) return { value: itemValues[col.id] ?? null };
 
     const getVal = (id: string | number): number | null => {
         if (typeof id === 'number') return id;
-        if (id === 'baseCost') return effectiveBaseCost;
+        if (id === 'baseCost') return baseCost;
         if (id === 'masterSell') return masterSell;
         
         const sourceCol = allCols.find(c => c.id === id);
         if (!sourceCol) return null;
 
         if (sourceCol.isCalculated) {
-            const res = calculateValue(sourceCol, baseCost, masterSell, itemValues, allCols);
+            const res = calculateValue(sourceCol, baseCost, masterSell, itemValues, allCols, exchangeRate);
             return typeof res.value === 'number' ? res.value : null;
         }
 
@@ -205,7 +254,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
     const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
     const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
-    const [isFreightManagerOpen, setIsFreightManagerOpen] = useState(false);
     const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
     
     const [newSectionName, setNewSectionName] = useState('');
@@ -219,7 +267,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     useEffect(() => {
         if (strategyLoading || !strategy) return;
         const currentSections = strategy.sections || [];
-        const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight'];
+        const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight', 'sec-handling', 'sec-markup'];
         const missingIds = requiredIds.filter(id => !currentSections.some(s => s.id === id));
         
         if (missingIds.length > 0) {
@@ -227,6 +275,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 'sec-exchange': { id: 'sec-exchange', name: 'EXCHANGE', order: 0, columns: [] },
                 'sec-vendor': { id: 'sec-vendor', name: 'VENDOR', order: 1, columns: [] },
                 'sec-freight': { id: 'sec-freight', name: 'FREIGHT', order: 2, columns: [] },
+                'sec-handling': { id: 'sec-handling', name: 'HANDLING', order: 3, columns: [] },
+                'sec-markup': { id: 'sec-markup', name: 'MARKUP', order: 4, columns: [] },
             };
             let nextOrder = currentSections.length > 0 ? Math.max(...currentSections.map(s => s.order)) + 1 : 0;
             const newSections = [...currentSections];
@@ -293,13 +343,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } 
         };
 
-        // Update strategy
         await updateDoc(strategyRef, { 
             itemValues: updated,
             lastUpdateAt: serverTimestamp()
         });
 
-        // Audit Log
         const logRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}/auditLog`);
         await addDoc(logRef, {
             itemId,
@@ -416,9 +464,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
                 {isFocus ? (
                     <>
-                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 hover:bg-primary hover:text-white hover:border-primary transition-all group shadow-sm bg-white">
-                            <Truck className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> FREIGHT MANAGEMENT
-                        </Button>
                         <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 hover:bg-primary hover:text-white hover:border-primary transition-all group shadow-sm bg-white">
                             <History className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> CHANGE LOG
                         </Button>
@@ -509,25 +554,63 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </div>
                                 </TableHead>
                             );
-                            if (sec.id === 'sec-exchange') return (
-                                <React.Fragment key={sec.id}>
-                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">VND ISO</TableHead>
-                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
-                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">ORG ISO</TableHead>
-                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
-                                </React.Fragment>
-                            );
+                            if (sec.id === 'sec-exchange') {
+                                const vndIso = vendor.currency || 'USD';
+                                const orgIso = organisation?.tradingCurrency || 'AUD';
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">{vndIso}</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">RATE</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">{orgIso}</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">RATE</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">DUTY %</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
                             if (sec.id === 'sec-vendor') {
                                 const vndIso = vendor.currency || 'USD';
                                 const orgIso = organisation?.tradingCurrency || 'AUD';
                                 return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vndIso}) $</TableHead>
-                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({orgIso}) $</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vndIso})</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({orgIso})</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">DISC ({vndIso})</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">LANDED ({orgIso})</TableHead>
                                     </React.Fragment>
                                 );
                             }
-                            if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[160px] text-slate-700 px-5">PACKED M³</TableHead>;
+                            if (sec.id === 'sec-freight') {
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">OCEAN (USD)</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE (USD)</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">ROAD (AUD)</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
+                            if (sec.id === 'sec-handling') {
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">PREP (USD)</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">OTHER (AUD)</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700 px-5">GST</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700 px-5">PD CODE</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700 px-5">PD HRS</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700 px-5">LABOR $</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">PD COST</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">DETAIL $</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700 px-5">FUEL (L)</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
+                            if (sec.id === 'sec-markup') {
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">HULL MU %</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BMT MU %</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
                             if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b-2 border-slate-300 bg-slate-50 text-center text-[8px] font-bold text-slate-400 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
                             return sec.columns.map((col) => (
                                 <TableHead key={col.id} className="min-w-[180px] bg-slate-50 text-center px-4 border-r border-b-2 border-slate-300 font-black uppercase text-[9px] tracking-tight text-primary/80">{col.name}</TableHead>
@@ -588,7 +671,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </DialogContent>
             </Dialog>
 
-            <FreightManager organisationId={organisationId} vendorId={vendor.id} isOpen={isFreightManagerOpen} onClose={() => setIsFreightManagerOpen(false)} />
             <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
@@ -746,7 +828,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                         </button>
                         <div className="flex flex-col min-w-0">
                             <span className="font-black text-[11px] uppercase tracking-tight truncate leading-none mb-1 text-slate-950">{model.name}</span>
-                            <span className="text-[8px] font-black text-primary/90 uppercase tracking-[0.2em]">SKU: {model.modelCode || 'NO-SKU'}</span>
+                            <span className="text-[8px] font-black text-primary/90 uppercase tracking-[0.2em]">SERIES CODE: {model.modelCode || 'NO-CODE'}</span>
                         </div>
                     </div>
                 </TableCell>
@@ -836,79 +918,112 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
             </TableCell>
             {sections.map((sec: any) => {
                 if (sec.id === 'sec-exchange') {
-                    if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
-                            <div className="flex flex-col items-center justify-center h-full">
-                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
-                            </div>
-                        </TableCell>
-                    );
+                    if (sec.isCollapsed) return <CollapsedCell key={sec.id} name={sec.name} />;
                     return (
                         <React.Fragment key={sec.id}>
                             <TableCell className="text-center border-r border-b border-slate-300 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{vendorCurrency}</Badge></TableCell>
                             <TableCell className="text-center border-r border-b border-slate-300 bg-white text-[10px] font-black text-primary">{exchangeRate.toFixed(4)}</TableCell>
                             <TableCell className="text-center border-r border-b border-slate-300 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{orgCurrency}</Badge></TableCell>
                             <TableCell className="text-center border-r border-b border-slate-300 bg-white text-[10px] font-black text-primary">1.0000</TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'exchange_duty_percent', type: 'percent' }} value={itemValues['exchange_duty_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'exchange_duty_percent', val)} suffix="%" />
+                            </TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-vendor') {
-                    if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
-                            <div className="flex flex-col items-center justify-center h-full">
-                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
-                            </div>
-                        </TableCell>
-                    );
+                    if (sec.isCollapsed) return <CollapsedCell key={sec.id} name={sec.name} />;
                     const costOverride = itemValues['base_cost_override'];
-                    const effectiveCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : cost;
-                    const convertedCost = (effectiveCost || 0) * (exchangeRate || 1);
+                    const effectiveUsdCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : cost;
+                    const convertedAudCost = (effectiveUsdCost || 0) * (exchangeRate || 1);
+                    
+                    const discountUsd = parseFloat(itemValues['vendor_factory_discount_usd'] || '0');
+                    const discountAud = discountUsd * exchangeRate;
+
                     return (
                         <React.Fragment key={sec.id}>
                             <TableCell className="p-0 border-r border-b border-slate-300">
-                                <EditableCell 
-                                    id={id} 
-                                    col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} 
-                                    value={costOverride || ''} 
-                                    placeholder={cost ? cost.toFixed(2) : "0.00"} 
-                                    onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} 
-                                    align="right" 
-                                    suffix={vendorCurrency} 
-                                    prefix="$" 
-                                />
+                                <EditableCell id={id} col={{ id: 'base_cost_override', type: 'currency' }} value={costOverride || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" suffix={vendorCurrency} />
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-primary/[0.04]">
-                                {formatCurrency(convertedCost, orgCurrency)}
+                            <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">
+                                {formatCurrency(convertedAudCost, orgCurrency)}
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'vendor_factory_discount_usd', type: 'currency' }} value={itemValues['vendor_factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'vendor_factory_discount_usd', val)} align="right" suffix={vendorCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <CalculatedCell col={{ id: 'vendor_landed_cost_aud', type: 'cost' }} baseCost={cost} itemValues={itemValues} exchangeRate={exchangeRate} suffix={orgCurrency} />
                             </TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-freight') {
-                    if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
-                            <div className="flex flex-col items-center justify-center h-full">
-                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
-                            </div>
-                        </TableCell>
-                    );
+                    if (sec.isCollapsed) return <CollapsedCell key={sec.id} name={sec.name} />;
                     return (
-                        <TableCell key={sec.id} className="p-0 border-r border-b border-slate-300">
-                            {isBoatVariant ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-slate-50/50" />}
-                        </TableCell>
+                        <React.Fragment key={sec.id}>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'freight_ocean_usd', type: 'currency' }} value={itemValues['freight_ocean_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'freight_ocean_usd', val)} align="right" suffix={vendorCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'freight_base_usd', type: 'currency' }} value={itemValues['freight_base_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'freight_base_usd', val)} align="right" suffix={vendorCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'freight_road_aud', type: 'currency' }} value={itemValues['freight_road_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'freight_road_aud', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                        </React.Fragment>
                     );
                 }
-                if (sec.isCollapsed) return (
-                    <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
-                        <div className="flex flex-col items-center justify-center h-full">
-                            <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
-                        </div>
-                    </TableCell>
-                );
+                if (sec.id === 'sec-handling') {
+                    if (sec.isCollapsed) return <CollapsedCell key={sec.id} name={sec.name} />;
+                    return (
+                        <React.Fragment key={sec.id}>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'handling_boat_prep_usd', type: 'currency' }} value={itemValues['handling_boat_prep_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'handling_boat_prep_usd', val)} align="right" suffix={vendorCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'handling_other_charges_aud', type: 'currency' }} value={itemValues['handling_other_charges_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'handling_other_charges_aud', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-300 bg-white font-black text-[10px] text-primary">10%</TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'handling_pre_delivery_code', type: 'text' }} value={itemValues['handling_pre_delivery_code'] || ''} onChange={(val: any) => onUpdateValue(id, 'handling_pre_delivery_code', val)} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'handling_pre_delivery_hours', type: 'number' }} value={itemValues['handling_pre_delivery_hours'] || ''} onChange={(val: any) => onUpdateValue(id, 'handling_pre_delivery_hours', val)} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'handling_labor_rate', type: 'currency' }} value={itemValues['handling_labor_rate'] || ''} onChange={(val: any) => onUpdateValue(id, 'handling_labor_rate', val)} align="right" prefix="$" />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <CalculatedCell col={{ id: 'handling_pre_delivery_cost_aud', type: 'currency' }} itemValues={itemValues} suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'handling_boat_detailing_aud', type: 'currency' }} value={itemValues['handling_boat_detailing_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'handling_boat_detailing_aud', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'handling_fuel_litres', type: 'number' }} value={itemValues['handling_fuel_litres'] || ''} onChange={(val: any) => onUpdateValue(id, 'handling_fuel_litres', val)} suffix="L" />
+                            </TableCell>
+                        </React.Fragment>
+                    );
+                }
+                if (sec.id === 'sec-markup') {
+                    if (sec.isCollapsed) return <CollapsedCell key={sec.id} name={sec.name} />;
+                    return (
+                        <React.Fragment key={sec.id}>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'markup_hull_percent', type: 'percent' }} value={itemValues['markup_hull_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'markup_hull_percent', val)} suffix="%" />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'markup_bmt_percent', type: 'percent' }} value={itemValues['markup_bmt_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'markup_bmt_percent', val)} suffix="%" />
+                            </TableCell>
+                        </React.Fragment>
+                    );
+                }
+                if (sec.isCollapsed) return <CollapsedCell key={sec.id} name={sec.name} />;
                 if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-slate-50/50 border-r border-b border-slate-300" />;
                 return sec.columns.map((col: any) => (
                     <TableCell key={col.id} className="p-0 border-r border-b border-slate-300">
                         {col.isCalculated ? (
-                            <CalculatedCell col={col} baseCost={cost} masterSell={sell} itemValues={itemValues} allCols={allColumns} suffix={col.type === 'currency' || col.type === 'cost' ? orgCurrency : undefined} />
+                            <CalculatedCell col={col} baseCost={cost} masterSell={sell} itemValues={itemValues} allCols={allColumns} exchangeRate={exchangeRate} suffix={col.type === 'currency' || col.type === 'cost' ? orgCurrency : undefined} />
                         ) : (
                             <EditableCell id={id} col={col} value={itemValues[col.id] || ''} onChange={(val: any) => onUpdateValue(id, col.id, val)} suffix={col.type === 'currency' || col.type === 'cost' ? orgCurrency : col.type === 'percent' ? '%' : undefined} prefix={col.type === 'currency' || col.type === 'cost' ? '$' : undefined} />
                         )}
@@ -919,10 +1034,20 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
     );
 }
 
-function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix }: any) {
-    const { value, error } = calculateValue(col, baseCost, masterSell, itemValues, allCols);
+function CollapsedCell({ name }: { name: string }) {
     return (
-        <div className="flex items-center justify-center h-full px-2 bg-primary/[0.04] group/calc">
+        <TableCell className="bg-slate-50 border-r border-b border-slate-300 p-0 transition-all text-center">
+            <div className="flex flex-col items-center justify-center h-full">
+                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{name}</span>
+            </div>
+        </TableCell>
+    );
+}
+
+function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, exchangeRate, suffix }: any) {
+    const { value, error } = calculateValue(col, baseCost, masterSell, itemValues, allCols, exchangeRate);
+    return (
+        <div className="flex items-center justify-center h-full px-2 bg-primary/[0.04] group/calc min-h-[40px]">
             {error ? (
                 <TooltipProvider>
                     <Tooltip>
@@ -934,7 +1059,7 @@ function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix
                 <div className="flex items-center gap-1.5">
                     <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                     <span className="text-[11px] font-black text-primary tracking-tight">
-                        {col.type === 'percent' ? `${(Number(value) * 100).toFixed(2)}%` : (col.type === 'currency' || col.type === 'cost') ? `${formatCurrency(Number(value))} ${suffix || ''}` : String(value || '-')}
+                        {col.type === 'percent' ? `${(Number(value || 0) * 100).toFixed(2)}%` : (col.type === 'currency' || col.type === 'cost') ? `${formatCurrency(Number(value || 0), suffix)}` : String(value ?? '-')}
                     </span>
                 </div>
             )}
@@ -954,10 +1079,10 @@ function EditableCell({ id, col, value, onChange, placeholder, prefix, suffix, a
     const handleBlur = () => { if (String(localValue || '') !== String(value || '')) onChange(localValue); };
     
     return (
-        <div className={cn("relative h-full flex items-center px-2 group/edit transition-colors border-2 border-transparent focus-within:border-primary/30", isChanged ? "bg-amber-500/[0.08]" : "bg-transparent")}>
+        <div className={cn("relative h-full flex items-center px-2 group/edit transition-colors border-2 border-transparent focus-within:border-primary/30 min-h-[40px]", isChanged ? "bg-amber-500/[0.08]" : "bg-transparent")}>
             {prefix && <span className="text-[9px] font-black text-slate-400 mr-1.5 select-none">{prefix}</span>}
             <input 
-                type={col.type === 'text' ? 'text' : 'number'} 
+                type={col.id.includes('code') ? 'text' : 'number'} 
                 className={cn(
                     "h-10 w-full bg-transparent border-none text-[11px] font-black outline-none transition-all placeholder:text-slate-500 rounded focus:bg-white focus:ring-4 focus:ring-primary/10 focus:px-3 focus:shadow-xl focus:z-10",
                     align === 'right' ? "text-right" : "text-center",
@@ -1047,144 +1172,6 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                 </div>
                 <DialogFooter className="p-8 border-t border-slate-300 bg-slate-50">
                     <DialogClose asChild><Button variant="outline" className="h-12 px-8 font-black uppercase text-[10px] tracking-widest rounded-2xl border-2 border-slate-300 shadow-sm bg-white">Close</Button></DialogClose>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const freightQuery = useMemoFirebase(() => query(collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`), orderBy('size')), [firestore, organisationId, vendorId]);
-    const { data: containers, loading } = useCollection<any>(freightQuery);
-    const [isAdding, setIsAdding] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [size, setSize] = useState('');
-    const [cost, setCost] = useState('');
-    const [cbm, setCbm] = useState('');
-    const handleAdd = async () => { if (!size || !cost || !cbm) return; setIsSaving(true); try { const colRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`); await addDoc(colRef, { size, cost: parseFloat(cost), currency: 'USD', cubicMeters: parseFloat(cbm), updatedAt: serverTimestamp() }); toast({ title: "Container Added" }); setIsAdding(false); setSize(''); setCost(''); setCbm(''); } catch (e) { toast({ variant: 'destructive', title: "Save Failed" }); } finally { setIsSaving(false); } };
-    const handleDelete = async (id: string) => { try { await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id)); toast({ title: "Container Removed" }); } catch (e) { toast({ variant: 'destructive', title: "Delete Failed" }); } };
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl z-[150] bg-white">
-                <DialogHeader className="p-10 border-b border-slate-300 bg-slate-50">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-5">
-                            <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner border-2 border-primary/20">
-                                <Truck className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">FREIGHT MANAGEMENT</DialogTitle>
-                                <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Shipping Containers & Global Transportation Cost Controls</DialogDescription>
-                            </div>
-                        </div>
-                        <Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-2xl shadow-2xl transition-transform hover:scale-105 bg-primary text-white">
-                            <Plus className="h-4 w-4 mr-2" /> Add Container
-                        </Button>
-                    </div>
-                </DialogHeader>
-                <div className="flex-1 min-h-0 bg-white p-10 overflow-hidden">
-                    {loading ? (
-                        <div className="flex h-full items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
-                    ) : (
-                        <ScrollArea className="h-full pr-4">
-                            <div className="space-y-10">
-                                {isAdding && (
-                                    <Card className="border-4 border-primary/20 bg-primary/5 rounded-3xl overflow-hidden animate-in slide-in-from-top-4 duration-500">
-                                        <CardHeader className="p-8 border-b border-primary/10 bg-white/50">
-                                            <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                                                <Layers className="h-4 w-4" />
-                                                Configure New Container
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="p-10">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                                                <div className="space-y-3">
-                                                    <Label className="text-[10px] font-black uppercase text-slate-600 ml-1 tracking-widest">Container Standard</Label>
-                                                    <Select value={size} onValueChange={setSize}>
-                                                        <SelectTrigger className="h-14 font-black text-sm border-2 border-slate-300 rounded-2xl bg-white shadow-sm">
-                                                            <SelectValue placeholder="Select Dimension..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="rounded-2xl border-2 border-slate-300">
-                                                            <SelectItem value="20ft Standard" className="font-bold py-3">20ft Standard</SelectItem>
-                                                            <SelectItem value="40ft Standard" className="font-bold py-3">40ft Standard</SelectItem>
-                                                            <SelectItem value="40ft High Cube" className="font-bold py-3">40ft High Cube</SelectItem>
-                                                            <SelectItem value="45ft High Cube" className="font-bold py-3">45ft High Cube</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <Label className="text-[10px] font-black uppercase text-slate-600 ml-1 tracking-widest">Cubic Capacity (CBM)</Label>
-                                                    <div className="relative">
-                                                        <Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-14 font-black text-xl border-2 border-slate-300 rounded-2xl bg-white px-6 shadow-inner" />
-                                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-slate-400 text-xs">m³</span>
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <Label className="text-[10px] font-black uppercase text-slate-600 ml-1 tracking-widest">Strategic Unit Cost (USD)</Label>
-                                                    <div className="relative">
-                                                        <ArrowRightLeft className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
-                                                        <Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-14 font-black text-xl border-2 border-slate-300 rounded-2xl bg-white pl-14 shadow-inner" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                        <CardFooter className="p-8 bg-white/50 border-t border-primary/10 flex justify-end gap-4">
-                                            <Button variant="ghost" onClick={() => setIsAdding(false)} className="h-12 px-8 font-black uppercase text-[10px] rounded-xl border-2 border-slate-300 bg-white">Cancel</Button>
-                                            <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-2xl bg-primary text-white">Add Container</Button>
-                                        </CardFooter>
-                                    </Card>
-                                )}
-                                
-                                <div className="rounded-[2rem] border-2 border-slate-300 overflow-hidden bg-white shadow-xl">
-                                    <Table>
-                                        <TableHeader className="bg-slate-100 border-b-2 border-slate-300">
-                                            <TableRow className="hover:bg-transparent">
-                                                <TableHead className="py-6 px-10 font-black uppercase text-[10px] tracking-[0.2em] text-slate-900">Container Size</TableHead>
-                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-right text-slate-900">Capacity (CBM)</TableHead>
-                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-right text-slate-900">Total Cost</TableHead>
-                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-center text-slate-900">ISO</TableHead>
-                                                <TableHead className="py-6 px-10 font-black uppercase text-[10px] tracking-[0.2em] text-right w-[120px] text-slate-900">Actions</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {containers?.length > 0 ? containers.map((c: any) => (
-                                                <TableRow key={c.id} className="hover:bg-primary/[0.04] transition-colors group border-b border-slate-300 last:border-0">
-                                                    <TableCell className="py-6 px-10 font-black uppercase text-slate-950">{c.size}</TableCell>
-                                                    <TableCell className="py-6 px-6 text-right font-black text-slate-700">{c.cubicMeters} m³</TableCell>
-                                                    <TableCell className="py-6 px-6 text-right font-black text-primary text-lg">{formatCurrency(c.cost, c.currency)}</TableCell>
-                                                    <TableCell className="py-6 px-6 text-center"><Badge className="h-6 px-3 bg-slate-200 text-slate-700 border-none font-black shadow-sm">{c.currency}</Badge></TableCell>
-                                                    <TableCell className="py-6 px-10 text-right">
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="h-10 w-10 text-destructive opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10 rounded-xl"
-                                                            onClick={() => handleDelete(c.id)}
-                                                        >
-                                                            <Trash2 className="h-5 w-5" />
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={5} className="h-48 text-center">
-                                                        <div className="flex flex-col items-center justify-center opacity-20">
-                                                            <Truck className="h-16 w-16 mb-4" />
-                                                            <p className="font-black uppercase tracking-[0.4em] text-sm">Registry Empty</p>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </div>
-                        </ScrollArea>
-                    )}
-                </div>
-                <DialogFooter className="p-10 border-t border-slate-300 bg-slate-50">
-                    <DialogClose asChild><Button variant="outline" className="h-14 px-10 font-black uppercase text-[11px] tracking-widest rounded-2xl border-2 border-slate-300 shadow-sm bg-white">Exit Workspace</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
