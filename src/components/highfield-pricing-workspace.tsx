@@ -449,7 +449,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const PricingTable = () => (
         <div className="relative w-full h-full overflow-hidden bg-white flex flex-col">
             <div className="flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-slate-200">
-                <Table className="border-separate border-spacing-0 w-max table-fixed min-w-full">
+                <Table className="border-separate border-spacing-0 w-max min-w-full">
                     <TableHeader className="sticky top-0 z-50 bg-white">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[340px] sticky left-0 z-[60] bg-white border-r border-b-2 font-black uppercase text-[10px] shadow-[2px_0_10px_-2px_rgba(0,0,0,0.05)] py-5 px-8">
