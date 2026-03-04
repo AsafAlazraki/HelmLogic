@@ -236,7 +236,7 @@ function EditItemDialog({
                                     </div>
                                 </>
                             ) : (
-                                <label className="flex flex-col items-center justify-center h-full w-full cursor-pointer hover:bg-muted/80">
+                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-muted/80">
                                     <ImageIcon className="h-8 w-8 text-muted-foreground/40 mb-2" />
                                     <span className="text-[10px] font-black uppercase text-muted-foreground">Upload Render</span>
                                     <input type="file" className="hidden" accept="image/*" onChange={(e) => {
@@ -679,8 +679,13 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
-                        {(view === 'models' || view === 'bmt') && (
-                            <div className="mb-6 shrink-0 px-1">
+                        <div className="mb-6 shrink-0 px-1">
+                            {view === 'ranges' ? (
+                                <div className="inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)]">
+                                    <Ship className="mr-3 h-5 w-5 text-primary" />
+                                    <span>{mainVendor?.name || 'Highfield'} Catalogue</span>
+                                </div>
+                            ) : (
                                 <Button 
                                     variant="outline" 
                                     onClick={handleBackToCatalog} 
@@ -690,8 +695,8 @@ export default function ModuleDetailsPage() {
                                     <ChevronLeft className="mr-3 h-5 w-5 transition-transform group-hover:-translate-x-1.5 relative z-10" /> 
                                     <span className="relative z-10">Return to Catalog Explorer</span>
                                 </Button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                         <div className="flex-1 min-h-0 relative">
                             <ScrollArea className="h-full">
                                 <div className="pb-10 pt-10">
