@@ -521,6 +521,7 @@ export default function ModuleDetailsPage() {
     }, [userProfile, currentMemberOrg]);
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
+    const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
 
     const handleWipePipeline = async () => {
         if (!currentMemberOrg) return;
@@ -580,18 +581,43 @@ export default function ModuleDetailsPage() {
             {isTransitioning && <BuildTransitionOverlay organisation={currentMemberOrg as any} model={selectedModel} />}
 
             {/* Immersive Cinematic Hero */}
-            <div className="relative shrink-0 overflow-hidden bg-primary px-8 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
+            <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
                     <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
-                    <div className="absolute top-[10%] right-[20%] w-[40%] h-[100%] bg-sky-300/10 blur-[100px] rounded-full animate-pulse duration-[6000ms] pointer-events-none" />
+                    
+                    {/* Maritime Animation Layer */}
+                    {isBoatBrand && (
+                        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-20">
+                            {/* Drifting Waves */}
+                            <div className="absolute bottom-0 left-0 w-[200%] h-full animate-wave-move">
+                                <svg className="absolute bottom-0 w-full h-24 text-white/10" preserveAspectRatio="none" viewBox="0 0 1200 120">
+                                    <path d="M0,64 C150,96 300,32 450,64 C600,96 750,32 900,64 C1050,96 1200,32 1350,64 L1200,120 L0,120 Z" fill="currentColor" />
+                                    <path d="M1200,64 C1350,96 1500,32 1650,64 C1800,96 1950,32 2100,64 C2250,96 2400,32 2550,64 L2400,120 L1200,120 Z" fill="currentColor" />
+                                </svg>
+                            </div>
+                            <div className="absolute bottom-0 left-0 w-[200%] h-full animate-wave-move [animation-duration:12s] opacity-40">
+                                <svg className="absolute bottom-0 w-full h-16 text-white/5" preserveAspectRatio="none" viewBox="0 0 1200 120">
+                                    <path d="M0,80 C150,60 300,100 450,80 C600,60 750,100 900,80 C1050,60 1200,100 1350,80 L1200,120 L0,120 Z" fill="currentColor" />
+                                    <path d="M1200,80 C1350,60 1500,100 1650,80 C1800,60 1950,100 2100,80 C2250,60 2400,100 2550,80 L2400,120 L1200,120 Z" fill="currentColor" />
+                                </svg>
+                            </div>
+                            {/* Animated Fleet */}
+                            <div className="absolute bottom-12 left-[20%] animate-boat-bob">
+                                <Ship className="h-8 w-8 text-white/30" />
+                            </div>
+                            <div className="absolute bottom-20 left-[70%] animate-boat-bob [animation-delay:1.5s] opacity-40">
+                                <Ship className="h-5 w-5 text-white/20" />
+                            </div>
+                        </div>
+                    )}
                 </div>
                 
                 <div className="relative z-10 flex flex-col h-full justify-center">
-                    <div className="flex items-center justify-between w-full">
-                        <div className="space-y-0.5">
-                            <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none mb-1">
-                                <Navigation className="h-2 w-2" />
+                    <div className="flex items-center justify-between w-full gap-12">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
+                                <Navigation className="h-2.5 w-2.5" />
                                 <span>COMMAND CENTER</span>
                             </div>
                             <h1 className="text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
