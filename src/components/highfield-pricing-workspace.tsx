@@ -158,11 +158,11 @@ const calculateLandedCost = (itemValues: Record<string, any>, baseCostUsd: numbe
 
 const getSectionColCount = (sec: PricingSection) => {
     if (sec.isCollapsed) return 1;
-    if (sec.id === 'sec-exchange') return 5; // duty added
-    if (sec.id === 'sec-vendor') return 4; // base usd, base aud, discount usd, discount aud, landed cost aud
-    if (sec.id === 'sec-freight') return 3; // ocean usd, base usd, road aud
-    if (sec.id === 'sec-handling') return 8; // prep usd, other aud, gst label, code, hours, rate, pd cost, detail aud, fuel
-    if (sec.id === 'sec-markup') return 2; // hull mark, bmt mark
+    if (sec.id === 'sec-exchange') return 5;
+    if (sec.id === 'sec-vendor') return 4;
+    if (sec.id === 'sec-freight') return 3;
+    if (sec.id === 'sec-handling') return 9; // Prep, Other, GST, Code, Hours, Rate, PD Cost, Detail, Fuel
+    if (sec.id === 'sec-markup') return 2;
     return Math.max(1, sec.columns.length);
 };
 
