@@ -320,9 +320,6 @@ function SortableItemCard({
                             <CardTitle className="text-sm font-black uppercase tracking-tight leading-tight">{name}</CardTitle>
                             {code && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4 shrink-0 ml-2">{code}</Badge>}
                         </div>
-                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-                            Precision cataloged strategic asset. Synchronized with Highfield factory data warehouse.
-                        </p>
                     </div>
                     
                     <div className="flex items-center justify-between pt-4 border-t border-dashed">
@@ -696,7 +693,7 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
-                            <div className="p-10 space-y-8 pb-32">
+                            <div className="p-10 space-y-4 pb-32">
                                 <div className="shrink-0 px-1">
                                     {view === 'ranges' ? (
                                         <div className="inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)]">
