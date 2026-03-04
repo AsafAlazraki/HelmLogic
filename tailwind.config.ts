@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -88,14 +89,6 @@ export default {
             height: '0',
           },
         },
-        'wave-move': {
-          '0%': { transform: 'translateX(0)' },
-          '100%': { transform: 'translateX(-50%)' },
-        },
-        'boat-bob': {
-          '0%, 100%': { transform: 'translateY(0) rotate(-3deg)' },
-          '50%': { transform: 'translateY(-12px) rotate(4deg)' },
-        },
         shimmer: {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(100%)' },
@@ -104,8 +97,6 @@ export default {
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'wave-move': 'wave-move 20s linear infinite',
-        'boat-bob': 'boat-bob 4s ease-in-out infinite',
         shimmer: 'shimmer 2s infinite',
       },
     },

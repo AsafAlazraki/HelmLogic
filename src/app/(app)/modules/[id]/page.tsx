@@ -61,7 +61,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
-  useSensor,
+  useSidebar,
   useSensors,
   DragEndEvent,
 } from '@dnd-kit/core';
@@ -589,7 +589,7 @@ export default function ModuleDetailsPage() {
                 
                 <div className="relative z-10 flex flex-col h-full justify-center">
                     <div className="flex items-center justify-between w-full gap-12">
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
                                 <Navigation className="h-2.5 w-2.5" />
                                 <span>COMMAND CENTER</span>
@@ -605,8 +605,7 @@ export default function ModuleDetailsPage() {
                             onClick={() => router.push('/dashboard')}
                         >
                             <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 transition-transform group-hover:rotate-90" />
-                            <span className="hidden xs:inline">Back to Hub</span>
-                            <span className="xs:hidden">Hub</span>
+                            <span>Back to Hub</span>
                         </Button>
                     </div>
                 </div>
