@@ -366,7 +366,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [sortedSections]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative z-[70]">
+        <div className={cn(
+            "flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative",
+            isFocus ? "z-[70]" : "z-10"
+        )}>
             <div className="flex items-center gap-4">
                 <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
                     <Calculator className="h-5 w-5" />
@@ -448,113 +451,111 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     const PricingTable = () => (
-        <div className="relative w-full h-full overflow-hidden bg-white flex flex-col">
-            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-                <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
-                    <TableHeader className="sticky top-0 z-50 bg-white">
-                        <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[340px] sticky left-0 z-[60] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">
-                                SERIES DESCRIPTION & SKU
-                            </TableHead>
-                            {sortedSections.map((sec) => {
-                                const colSpan = getSectionColCount(sec);
+        <div className="w-full h-full overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent bg-white">
+            <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
+                <TableHeader className="sticky top-0 z-[45] bg-white">
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-[340px] sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">
+                            SERIES DESCRIPTION & SKU
+                        </TableHead>
+                        {sortedSections.map((sec) => {
+                            const colSpan = getSectionColCount(sec);
+                            return (
+                                <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b-2 border-slate-300 p-0 bg-slate-100 transition-colors", sec.isCollapsed ? "w-[64px]" : "")}>
+                                    <div className="flex items-center justify-between gap-2 p-3 min-h-[48px]">
+                                        <div className="flex items-center gap-3">
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-7 w-7 rounded-lg hover:bg-primary/10 text-primary transition-all border border-primary/10" 
+                                                onClick={() => handleToggleSectionCollapse(sec.id)}
+                                            >
+                                                {sec.isCollapsed ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+                                            </Button>
+                                            {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
+                                        </div>
+                                    </div>
+                                </TableHead>
+                            );
+                        })}
+                    </TableRow>
+                    <TableRow className="hover:bg-transparent bg-white">
+                        <TableHead className="sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] h-14 py-0 px-6">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                <input 
+                                    placeholder="Filter Workspace..." 
+                                    className="w-full pl-9 h-10 bg-slate-50 border-2 border-slate-200 rounded-xl text-[11px] font-bold focus:outline-none focus:border-primary/40 transition-all placeholder:text-slate-400" 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                />
+                            </div>
+                        </TableHead>
+                        {sortedSections.map(sec => {
+                            if (sec.isCollapsed) return (
+                                <TableHead key={`sub-coll-${sec.id}`} className="w-[64px] border-r border-b-2 border-slate-300 bg-slate-50 transition-all text-center p-0">
+                                    <div className="flex flex-col items-center justify-center h-full">
+                                        <span className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black tracking-widest text-slate-900 uppercase">{sec.name}</span>
+                                    </div>
+                                </TableHead>
+                            );
+                            if (sec.id === 'sec-exchange') return (
+                                <React.Fragment key={sec.id}>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">VND ISO</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">ORG ISO</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
+                                </React.Fragment>
+                            );
+                            if (sec.id === 'sec-vendor') {
+                                const vndIso = vendor.currency || 'USD';
+                                const orgIso = organisation?.tradingCurrency || 'AUD';
                                 return (
-                                    <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b-2 border-slate-300 p-0 bg-slate-100 transition-colors", sec.isCollapsed ? "w-[64px]" : "")}>
-                                        <div className="flex items-center justify-between gap-2 p-3 min-h-[48px]">
-                                            <div className="flex items-center gap-3">
-                                                <Button 
-                                                    type="button" 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-7 w-7 rounded-lg hover:bg-primary/10 text-primary transition-all border border-primary/10" 
-                                                    onClick={() => handleToggleSectionCollapse(sec.id)}
-                                                >
-                                                    {sec.isCollapsed ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
-                                                </Button>
-                                                {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
-                                            </div>
-                                        </div>
-                                    </TableHead>
-                                );
-                            })}
-                        </TableRow>
-                        <TableRow className="hover:bg-transparent bg-white">
-                            <TableHead className="sticky left-0 z-[60] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] h-14 py-0 px-6">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                                    <input 
-                                        placeholder="Filter Workspace..." 
-                                        className="w-full pl-9 h-10 bg-slate-50 border-2 border-slate-200 rounded-xl text-[11px] font-bold focus:outline-none focus:border-primary/40 transition-all placeholder:text-slate-400" 
-                                        value={searchTerm} 
-                                        onChange={e => setSearchTerm(e.target.value)} 
-                                    />
-                                </div>
-                            </TableHead>
-                            {sortedSections.map(sec => {
-                                if (sec.isCollapsed) return (
-                                    <TableHead key={`sub-coll-${sec.id}`} className="w-[64px] border-r border-b-2 border-slate-300 bg-slate-50 transition-all text-center p-0">
-                                        <div className="flex flex-col items-center justify-center h-full">
-                                            <span className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black tracking-widest text-slate-900 uppercase">{sec.name}</span>
-                                        </div>
-                                    </TableHead>
-                                );
-                                if (sec.id === 'sec-exchange') return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">VND ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
-                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">ORG ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vndIso}) $</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({orgIso}) $</TableHead>
                                     </React.Fragment>
                                 );
-                                if (sec.id === 'sec-vendor') {
-                                    const vndIso = vendor.currency || 'USD';
-                                    const orgIso = organisation?.tradingCurrency || 'AUD';
-                                    return (
-                                        <React.Fragment key={sec.id}>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vndIso}) $</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({orgIso}) $</TableHead>
-                                        </React.Fragment>
-                                    );
-                                }
-                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[160px] text-slate-700 px-5">PACKED M³</TableHead>;
-                                if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b-2 border-slate-300 bg-slate-50 text-center text-[8px] font-bold text-slate-400 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
-                                return sec.columns.map((col) => (
-                                    <TableHead key={col.id} className="min-w-[180px] bg-slate-50 text-center px-4 border-r border-b-2 border-slate-300 font-black uppercase text-[9px] tracking-tight text-primary/80">{col.name}</TableHead>
-                                ));
-                            })}
+                            }
+                            if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[160px] text-slate-700 px-5">PACKED M³</TableHead>;
+                            if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b-2 border-slate-300 bg-slate-50 text-center text-[8px] font-bold text-slate-400 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
+                            return sec.columns.map((col) => (
+                                <TableHead key={col.id} className="min-w-[180px] bg-slate-50 text-center px-4 border-r border-b-2 border-slate-300 font-black uppercase text-[9px] tracking-tight text-primary/80">{col.name}</TableHead>
+                            ));
+                        })}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredRanges.length > 0 ? filteredRanges.map(range => (
+                        <RangeSection 
+                            key={range.id} 
+                            range={range} 
+                            models={allModels.filter(m => m.rangeId === range.id)} 
+                            variants={allVariants} 
+                            isExpanded={expandedRanges.includes(range.id)} 
+                            onToggle={() => toggleRange(range.id)} 
+                            sections={sortedSections} 
+                            allColumns={allColumns} 
+                            strategy={strategy} 
+                            onUpdateValue={handleUpdateValue} 
+                            vendor={vendor} 
+                            organisation={organisation} 
+                            exchangeRate={activeExchangeRate} 
+                            totalCalculatedCols={totalCalculatedCols}
+                        />
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={totalCalculatedCols + 1} className="h-64 text-center">
+                                <div className="flex flex-col items-center justify-center opacity-20">
+                                    <Search className="h-12 w-12 mb-4" />
+                                    <p className="font-black uppercase tracking-widest text-xs">NO RECORDS MATCHING SEARCH</p>
+                                </div>
+                            </TableCell>
                         </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredRanges.length > 0 ? filteredRanges.map(range => (
-                            <RangeSection 
-                                key={range.id} 
-                                range={range} 
-                                models={allModels.filter(m => m.rangeId === range.id)} 
-                                variants={allVariants} 
-                                isExpanded={expandedRanges.includes(range.id)} 
-                                onToggle={() => toggleRange(range.id)} 
-                                sections={sortedSections} 
-                                allColumns={allColumns} 
-                                strategy={strategy} 
-                                onUpdateValue={handleUpdateValue} 
-                                vendor={vendor} 
-                                organisation={organisation} 
-                                exchangeRate={activeExchangeRate} 
-                                totalCalculatedCols={totalCalculatedCols}
-                            />
-                        )) : (
-                            <TableRow>
-                                <TableCell colSpan={totalCalculatedCols + 1} className="h-64 text-center">
-                                    <div className="flex flex-col items-center justify-center opacity-20">
-                                        <Search className="h-12 w-12 mb-4" />
-                                        <p className="font-black uppercase tracking-widest text-xs">NO RECORDS MATCHING SEARCH</p>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+                    )}
+                </TableBody>
+            </Table>
         </div>
     );
 
@@ -566,7 +567,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden">
+                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[100]">
                     <DialogHeader className="sr-only"><DialogTitle>Financial Matrix Focus Mode</DialogTitle></DialogHeader>
                     <div className="flex flex-col h-full bg-background">
                         <WorkspaceHeader isFocus />
@@ -581,7 +582,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
-                <DialogContent className="rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden z-[110]">
                     <DialogHeader className="p-8 bg-slate-50 border-b">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">Create Strategy Section</DialogTitle>
                         <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-widest mt-1">Define an operational group for specific metrics.</DialogDescription>
@@ -598,7 +599,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             </Dialog>
 
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
-                <DialogContent className="sm:max-w-xl rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="sm:max-w-xl rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden z-[110]">
                     <DialogHeader className="p-8 bg-slate-50 border-b">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">Metric Configuration</DialogTitle>
                         <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-widest mt-1">Configure automated calculations or manual data points.</DialogDescription>
@@ -683,7 +684,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
     return (
         <>
             <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer group transition-colors hover:bg-slate-200" onClick={onToggle}>
-                <TableCell className="sticky left-0 z-[40] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
+                <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className={cn("h-6 w-6 rounded-lg bg-white border-2 border-slate-300 flex items-center justify-center transition-transform duration-300 shadow-sm", isExpanded && "rotate-90")}>
@@ -724,7 +725,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-slate-50 border-l-8 border-l-primary group/model">
-                <TableCell className="sticky left-0 z-[40] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
+                <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                     <div className="flex items-center gap-4">
                         <button 
                             type="button"
@@ -767,7 +768,7 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="hover:bg-transparent">
-                                <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-r-2 border-b border-dashed border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.15)]">
+                                <TableCell className="sticky left-0 z-[30] bg-white py-2 px-14 border-r-2 border-b border-dashed border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.15)]">
                                     <div className="flex items-center gap-2.5">
                                         <Badge className="h-1.5 w-1.5 rounded-full bg-primary p-0" />
                                         <span className="text-[9px] font-black uppercase tracking-[0.25em] text-primary">FACTORY OPTIONS</span>
@@ -812,7 +813,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 
     return (
         <TableRow className={cn("transition-colors group", rowBgClass)}>
-            <TableCell className={cn("sticky left-0 z-[40] border-r-2 border-b border-slate-200 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] transition-colors group-hover:bg-primary/[0.03]", rowBgClass, indent ? "pl-20" : "px-8")}>
+            <TableCell className={cn("sticky left-0 z-[30] border-r-2 border-b border-slate-200 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] transition-colors group-hover:bg-primary/[0.03]", rowBgClass, indent ? "pl-20" : "px-8")}>
                 <div className="flex flex-col min-w-0">
                     <span className={cn("font-black text-[11px] uppercase truncate tracking-tight mb-0.5", isOption ? "text-slate-700" : "text-slate-950")}>
                         {name}
@@ -1056,7 +1057,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
     const handleDelete = async (id: string) => { try { await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id)); toast({ title: "Container Removed" }); } catch (e) { toast({ variant: 'destructive', title: "Delete Failed" }); } };
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl">
+            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl z-[150]">
                 <DialogHeader className="p-10 border-b border-slate-300 bg-slate-50">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
