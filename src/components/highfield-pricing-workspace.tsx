@@ -368,7 +368,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
         <div className={cn(
             "flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative",
-            isFocus ? "z-[70]" : "z-10"
+            isFocus ? "z-10" : "z-10"
         )}>
             <div className="flex items-center gap-4">
                 <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
@@ -451,7 +451,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     const PricingTable = () => (
-        <div className="w-full h-full overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent bg-white">
+        <div className="flex-1 min-w-0 w-full overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent bg-white">
             <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
                 <TableHeader className="sticky top-0 z-[45] bg-white">
                     <TableRow className="hover:bg-transparent">
@@ -538,7 +538,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             sections={sortedSections} 
                             allColumns={allColumns} 
                             strategy={strategy} 
-                            onUpdateValue={handleUpdateValue} 
+                            onUpdateValue={onUpdateValue} 
                             vendor={vendor} 
                             organisation={organisation} 
                             exchangeRate={activeExchangeRate} 
@@ -561,17 +561,19 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-slate-50">
-            <WorkspaceHeader />
-            <div className="flex-1 min-h-0 bg-white">
+            {/* Layering Guard: Remove background header in Focus Mode */}
+            {!isFocusMode && <WorkspaceHeader />}
+            
+            <div className="flex-1 min-h-0 min-w-0 bg-white flex flex-col overflow-hidden">
                 <PricingTable />
             </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[100]">
+                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[100] bg-white">
                     <DialogHeader className="sr-only"><DialogTitle>Financial Matrix Focus Mode</DialogTitle></DialogHeader>
-                    <div className="flex flex-col h-full bg-background">
+                    <div className="flex flex-col h-full min-h-0 bg-background overflow-hidden">
                         <WorkspaceHeader isFocus />
-                        <div className="flex-1 min-h-0 bg-white p-0">
+                        <div className="flex-1 min-h-0 min-w-0 bg-white flex flex-col overflow-hidden">
                             <PricingTable />
                         </div>
                     </div>
@@ -582,7 +584,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
-                <DialogContent className="rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden z-[110]">
+                <DialogContent className="rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden z-[110] bg-white">
                     <DialogHeader className="p-8 bg-slate-50 border-b">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">Create Strategy Section</DialogTitle>
                         <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-widest mt-1">Define an operational group for specific metrics.</DialogDescription>
@@ -599,7 +601,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             </Dialog>
 
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
-                <DialogContent className="sm:max-w-xl rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden z-[110]">
+                <DialogContent className="sm:max-w-xl rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden z-[110] bg-white">
                     <DialogHeader className="p-8 bg-slate-50 border-b">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">Metric Configuration</DialogTitle>
                         <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-widest mt-1">Configure automated calculations or manual data points.</DialogDescription>
@@ -970,7 +972,7 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
     const { data: logs, loading } = useCollection<any>(logQuery);
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl z-[150]">
+            <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl z-[150] bg-white">
                 <DialogHeader className="p-10 border-b border-slate-300 bg-slate-50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner border-2 border-primary/20">
@@ -1057,7 +1059,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
     const handleDelete = async (id: string) => { try { await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id)); toast({ title: "Container Removed" }); } catch (e) { toast({ variant: 'destructive', title: "Delete Failed" }); } };
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl z-[150]">
+            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl z-[150] bg-white">
                 <DialogHeader className="p-10 border-b border-slate-300 bg-slate-50">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
