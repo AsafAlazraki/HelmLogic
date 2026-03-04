@@ -365,37 +365,37 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [sortedSections]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b">
+        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b border-slate-300 shadow-sm relative z-[70]">
             <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm">
+                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border border-primary/20">
                     <Calculator className="h-5 w-5" />
                 </div>
                 <div>
                     <div className="flex items-center gap-2">
-                        <h2 className="text-base font-black uppercase tracking-widest text-foreground leading-none">
+                        <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">
                             HIGHFIELD STRATEGIC WORKSPACE
                         </h2>
                         {strategy?.lastUpdateAt && (
-                            <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 text-[8px] font-black uppercase tracking-tighter">
+                            <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-500/10 text-green-700 text-[8px] font-black uppercase tracking-tighter border border-green-500/20 shadow-sm">
                                 <CheckCircle2 className="h-2.5 w-2.5" />
                                 STRATEGIC SYNC: {formatDistanceToNow(new Date(strategy.lastUpdateAt.seconds * 1000), { addSuffix: true })}
                             </div>
                         )}
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
-                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-primary/10">PRECISION MODE ENABLED</Badge>
-                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-muted/50 text-muted-foreground">{vendor.currency || 'USD'} BASE</Badge>
+                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-primary/20 px-2">PRECISION MODE ENABLED</Badge>
+                        <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
                     </div>
                 </div>
             </div>
 
             <div className="flex items-center gap-3">
                 {isFocus && (
-                    <div className="flex items-center bg-muted/50 rounded-xl p-1 border-2 border-dashed mr-2">
+                    <div className="flex items-center bg-slate-50 rounded-xl p-1 border-2 border-slate-200 mr-2 shadow-inner">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={expandAllRanges} title="Expand All Groups">
                             <UnfoldVertical className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10" onClick={collapseAllRanges} title="Collapse All Groups">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:bg-primary/10" onClick={collapseAllRanges} title="Collapse All Groups">
                             <FoldVertical className="h-4 w-4" />
                         </Button>
                     </div>
@@ -403,24 +403,24 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
                 {isFocus ? (
                     <>
-                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
+                        <Button type="button" onClick={() => setIsFreightManagerOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 hover:bg-primary hover:text-white hover:border-primary transition-all group shadow-sm bg-white">
                             <Truck className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> FREIGHT MANAGEMENT
                         </Button>
-                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-primary hover:text-white transition-all group">
+                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 hover:bg-primary hover:text-white hover:border-primary transition-all group shadow-sm bg-white">
                             <History className="h-4 w-4 mr-2 text-primary group-hover:text-white transition-colors" /> CHANGE LOG
                         </Button>
-                        <Separator orientation="vertical" className="h-8 mx-2" />
-                        <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 hover:bg-slate-100"><Minimize2 className="h-4 w-4 mr-2" /> EXIT FOCUS</Button>
+                        <Separator orientation="vertical" className="h-8 mx-2 bg-slate-300" />
+                        <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 hover:bg-slate-100 shadow-sm bg-white"><Minimize2 className="h-4 w-4 mr-2" /> EXIT FOCUS</Button>
                     </>
                 ) : (
                     <>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button size="sm" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl active:scale-95 transition-transform">
+                                <Button size="sm" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] shadow-lg rounded-xl active:scale-95 transition-transform bg-primary hover:bg-primary/90 text-white">
                                     <Plus className="h-4 w-4 mr-2" /> ADD
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 shadow-2xl p-1">
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 border-slate-300 shadow-2xl p-1 bg-white">
                                 <DropdownMenuItem className="font-bold py-3 text-xs uppercase tracking-tighter cursor-pointer focus:bg-primary/5 focus:text-primary rounded-lg" onClick={() => setIsAddSectionOpen(true)}>
                                     <Layers className="h-4 w-4 mr-3" /> Section
                                 </DropdownMenuItem>
@@ -435,7 +435,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             onClick={() => setIsFocusMode(true)} 
                             variant="outline" 
                             size="sm"
-                            className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 bg-white hover:bg-slate-50 shadow-sm"
+                            className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 shadow-sm text-slate-900"
                         >
                             <Maximize2 className="h-4 w-4 mr-2" />
                             FOCUS
@@ -448,24 +448,24 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const PricingTable = () => (
         <div className="relative w-full h-full overflow-hidden bg-white flex flex-col">
-            <div className="flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-slate-200">
-                <Table className="border-separate border-spacing-0 w-max min-w-full">
+            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+                <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
                     <TableHeader className="sticky top-0 z-50 bg-white">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[340px] sticky left-0 z-[60] bg-white border-r-2 border-b-2 font-black uppercase text-[10px] shadow-[2px_0_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-foreground">
+                            <TableHead className="w-[340px] sticky left-0 z-[60] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">
                                 SERIES DESCRIPTION & SKU
                             </TableHead>
                             {sortedSections.map((sec) => {
                                 const colSpan = getSectionColCount(sec);
                                 return (
-                                    <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b-2 p-0 bg-slate-100/50 transition-colors", sec.isCollapsed ? "w-[60px]" : "")}>
+                                    <TableHead key={sec.id} colSpan={colSpan} className={cn("border-r border-b-2 border-slate-300 p-0 bg-slate-100 transition-colors", sec.isCollapsed ? "w-[64px]" : "")}>
                                         <div className="flex items-center justify-between gap-2 p-3 min-h-[48px]">
                                             <div className="flex items-center gap-3">
                                                 <Button 
                                                     type="button" 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-7 w-7 rounded-lg hover:bg-primary/10 text-primary transition-all" 
+                                                    className="h-7 w-7 rounded-lg hover:bg-primary/10 text-primary transition-all border border-primary/10" 
                                                     onClick={() => handleToggleSectionCollapse(sec.id)}
                                                 >
                                                     {sec.isCollapsed ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
@@ -478,12 +478,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             })}
                         </TableRow>
                         <TableRow className="hover:bg-transparent bg-white">
-                            <TableHead className="sticky left-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[2px_0_10px_-2px_rgba(0,0,0,0.1)] h-14 py-0 px-6">
+                            <TableHead className="sticky left-0 z-[60] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] h-14 py-0 px-6">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                                     <input 
                                         placeholder="Filter Workspace..." 
-                                        className="w-full pl-9 h-10 bg-muted/20 border rounded-xl text-[11px] font-bold focus:outline-none focus:border-primary/30 transition-all placeholder:text-muted-foreground/40" 
+                                        className="w-full pl-9 h-10 bg-slate-50 border-2 border-slate-200 rounded-xl text-[11px] font-bold focus:outline-none focus:border-primary/40 transition-all placeholder:text-slate-400" 
                                         value={searchTerm} 
                                         onChange={e => setSearchTerm(e.target.value)} 
                                     />
@@ -491,18 +491,18 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             </TableHead>
                             {sortedSections.map(sec => {
                                 if (sec.isCollapsed) return (
-                                    <TableHead key={`sub-coll-${sec.id}`} className="w-[60px] border-r border-b bg-muted/10 transition-all text-center p-0">
+                                    <TableHead key={`sub-coll-${sec.id}`} className="w-[64px] border-r border-b-2 border-slate-300 bg-slate-50 transition-all text-center p-0">
                                         <div className="flex flex-col items-center justify-center h-full">
-                                            <span className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black tracking-widest text-muted-foreground/60">{sec.name}</span>
+                                            <span className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black tracking-widest text-slate-900 uppercase">{sec.name}</span>
                                         </div>
                                     </TableHead>
                                 );
                                 if (sec.id === 'sec-exchange') return (
                                     <React.Fragment key={sec.id}>
-                                        <TableHead className="text-center border-r border-b bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-muted-foreground">VND ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-muted-foreground">EX. RATE</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-muted-foreground">ORG ISO</TableHead>
-                                        <TableHead className="text-center border-r border-b bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-muted-foreground">EX. RATE</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">VND ISO</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">ORG ISO</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">EX. RATE</TableHead>
                                     </React.Fragment>
                                 );
                                 if (sec.id === 'sec-vendor') {
@@ -510,15 +510,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     const orgIso = organisation?.tradingCurrency || 'AUD';
                                     return (
                                         <React.Fragment key={sec.id}>
-                                            <TableHead className="text-right border-r border-b bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-muted-foreground px-5">BASE ({vndIso}) $</TableHead>
-                                            <TableHead className="text-right border-r border-b bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-muted-foreground px-5">BASE ({orgIso}) $</TableHead>
+                                            <TableHead className="text-right border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vndIso}) $</TableHead>
+                                            <TableHead className="text-right border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({orgIso}) $</TableHead>
                                         </React.Fragment>
                                     );
                                 }
-                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[160px] text-muted-foreground px-5">PACKED M³</TableHead>;
-                                if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b bg-slate-50 text-center text-[8px] font-bold text-muted-foreground/40 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
+                                if (sec.id === 'sec-freight') return <TableHead key={sec.id} className="text-right border-r border-b-2 border-slate-200 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[160px] text-slate-700 px-5">PACKED M³</TableHead>;
+                                if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b-2 border-slate-200 bg-slate-50 text-center text-[8px] font-bold text-slate-400 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
                                 return sec.columns.map((col) => (
-                                    <TableHead key={col.id} className="min-w-[180px] bg-slate-50 text-center px-4 border-r border-b font-black uppercase text-[9px] tracking-tight text-primary/70">{col.name}</TableHead>
+                                    <TableHead key={col.id} className="min-w-[180px] bg-slate-50 text-center px-4 border-r border-b-2 border-slate-200 font-black uppercase text-[9px] tracking-tight text-primary/80">{col.name}</TableHead>
                                 ));
                             })}
                         </TableRow>
@@ -558,14 +558,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     );
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden bg-slate-50">
             <WorkspaceHeader />
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 bg-white">
                 <PricingTable />
             </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 shadow-2xl flex flex-col [&>button]:hidden">
+                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden">
                     <DialogHeader className="sr-only"><DialogTitle>Financial Matrix Focus Mode</DialogTitle></DialogHeader>
                     <div className="flex flex-col h-full bg-background">
                         <WorkspaceHeader isFocus />
@@ -580,41 +580,41 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <AuditLogDialog organisationId={organisationId} vendorId={vendor.id} isOpen={isAuditLogOpen} onClose={() => setIsAuditLogOpen(false)} />
             
             <Dialog open={isAddSectionOpen} onOpenChange={setIsAddSectionOpen}>
-                <DialogContent className="rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-8 bg-muted/5 border-b">
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Create Strategy Section</DialogTitle>
+                <DialogContent className="rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 bg-slate-50 border-b">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">Create Strategy Section</DialogTitle>
                         <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-widest mt-1">Define an operational group for specific metrics.</DialogDescription>
                     </DialogHeader>
                     <div className="p-8">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Section Label</Label>
-                        <Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-3 h-14 font-black text-xl rounded-2xl border-2 shadow-inner px-6" placeholder="e.g. REGIONAL TARIFFS" />
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Section Label</Label>
+                        <Input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} className="mt-3 h-14 font-black text-xl rounded-2xl border-2 border-slate-300 shadow-inner px-6" placeholder="e.g. REGIONAL TARIFFS" />
                     </div>
-                    <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
-                        <Button variant="outline" onClick={() => setIsAddSectionOpen(false)} className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button>
-                        <Button onClick={handleAddSection} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl">Initialize Section</Button>
+                    <DialogFooter className="p-8 bg-slate-50 border-t gap-3">
+                        <Button variant="outline" onClick={() => setIsAddSectionOpen(false)} className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-slate-300">Cancel</Button>
+                        <Button onClick={handleAddSection} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white hover:bg-primary/90">Initialize Section</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
-                <DialogContent className="sm:max-w-xl rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-8 bg-muted/5 border-b">
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Metric Configuration</DialogTitle>
+                <DialogContent className="sm:max-w-xl rounded-[2.5rem] border-4 border-slate-300 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 bg-slate-50 border-b">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">Metric Configuration</DialogTitle>
                         <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-widest mt-1">Configure automated calculations or manual data points.</DialogDescription>
                     </DialogHeader>
                     <div className="p-8 space-y-8">
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 ml-1">Metric Label</Label>
-                                <Input value={newColName} onChange={e => setNewColName(e.target.value)} className="h-12 font-bold text-sm border-2 rounded-xl bg-background shadow-inner" placeholder="e.g. Duty Modifier" />
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-1">Metric Label</Label>
+                                <Input value={newColName} onChange={e => setNewColName(e.target.value)} className="h-12 font-bold text-sm border-2 border-slate-300 rounded-xl bg-background shadow-inner" placeholder="e.g. Duty Modifier" />
                             </div>
                             <div className="space-y-2.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 ml-1">Unit of Measure</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-1">Unit of Measure</Label>
                                 <Select value={newColType} onValueChange={(v: any) => setNewColType(v)}>
-                                    <SelectTrigger className="h-12 font-bold text-sm border-2 rounded-xl">
+                                    <SelectTrigger className="h-12 font-bold text-sm border-2 border-slate-300 rounded-xl">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2">
+                                    <SelectContent className="rounded-xl border-2 border-slate-300">
                                         <SelectItem value="percent" className="font-bold py-2.5">Percentage %</SelectItem>
                                         <SelectItem value="currency" className="font-bold py-2.5">Currency $</SelectItem>
                                         <SelectItem value="cost" className="font-bold py-2.5">Direct Cost Point</SelectItem>
@@ -637,10 +637,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         {isCalculated && (
                             <div className="grid grid-cols-3 gap-3 animate-in slide-in-from-top-2 p-1">
                                 <Select value={formulaLeft} onValueChange={setFormulaLeft}>
-                                    <SelectTrigger className="h-12 font-bold border-2 rounded-xl shadow-sm">
+                                    <SelectTrigger className="h-12 font-bold border-2 border-slate-300 rounded-xl shadow-sm">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2">
+                                    <SelectContent className="rounded-xl border-2 border-slate-300">
                                         <SelectItem value="baseCost" className="font-bold">Base Cost</SelectItem>
                                         <SelectItem value="masterSell" className="font-bold">Master Sell</SelectItem>
                                         {allColumns.filter(c => c.id !== targetSectionId).map(c => (
@@ -649,10 +649,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </SelectContent>
                                 </Select>
                                 <Select value={formulaOp} onValueChange={(v: any) => setFormulaOp(v)}>
-                                    <SelectTrigger className="h-12 font-black text-xl border-2 rounded-xl shadow-sm text-primary">
+                                    <SelectTrigger className="h-12 font-black text-xl border-2 border-slate-300 rounded-xl shadow-sm text-primary">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2">
+                                    <SelectContent className="rounded-xl border-2 border-slate-300">
                                         <SelectItem value="+" className="font-black text-lg">+</SelectItem>
                                         <SelectItem value="-" className="font-black text-lg">-</SelectItem>
                                         <SelectItem value="*" className="font-black text-lg">×</SelectItem>
@@ -663,14 +663,14 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     placeholder="Modifier..." 
                                     value={formulaRight} 
                                     onChange={e => setFormulaRight(e.target.value)} 
-                                    className="h-12 font-bold border-2 rounded-xl shadow-inner text-center" 
+                                    className="h-12 font-bold border-2 border-slate-300 rounded-xl shadow-inner text-center" 
                                 />
                             </div>
                         )}
                     </div>
-                    <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
-                        <Button variant="outline" onClick={() => setIsAddColumnOpen(false)} className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button>
-                        <Button onClick={handleAddColumn} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl">Commit Metric</Button>
+                    <DialogFooter className="p-8 bg-slate-50 border-t gap-3">
+                        <Button variant="outline" onClick={() => setIsAddColumnOpen(false)} className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-slate-300">Cancel</Button>
+                        <Button onClick={handleAddColumn} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white hover:bg-primary/90">Commit Metric</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -681,21 +681,23 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 function RangeSection({ range, models, variants, isExpanded, onToggle, sections, allColumns, strategy, onUpdateValue, vendor, organisation, exchangeRate, totalCalculatedCols }: any) {
     return (
         <>
-            <TableRow className="bg-slate-100 border-b border-slate-300 cursor-pointer group transition-colors hover:bg-slate-200" onClick={onToggle}>
-                <TableCell className="sticky left-0 z-[40] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-900 border-r-2 border-b shadow-[2px_0_10px_-2px_rgba(0,0,0,0.15)]">
+            <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer group transition-colors hover:bg-slate-200" onClick={onToggle}>
+                <TableCell className="sticky left-0 z-[40] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className={cn("h-6 w-6 rounded-lg bg-white border-2 flex items-center justify-center transition-transform duration-300 shadow-sm", isExpanded && "rotate-90")}>
+                            <div className={cn("h-6 w-6 rounded-lg bg-white border-2 border-slate-300 flex items-center justify-center transition-transform duration-300 shadow-sm", isExpanded && "rotate-90")}>
                                 <ChevronRight className="h-4 w-4 text-primary" />
                             </div>
                             <span>{range.name} RANGE</span>
                         </div>
-                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-black h-6 px-2.5 uppercase tracking-tighter">
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] font-black h-6 px-2.5 uppercase tracking-tighter">
                             {models.length} SERIES
                         </Badge>
                     </div>
                 </TableCell>
-                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b bg-slate-100/60" />)}
+                {Array.from({ length: totalCalculatedCols }).map((_, i) => (
+                    <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-100/60" />
+                ))}
             </TableRow>
             {isExpanded && models.map((model: any) => (
                 <ModelGroup 
@@ -721,22 +723,22 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
     return (
         <>
             <TableRow className="bg-slate-50 border-l-8 border-l-primary group/model">
-                <TableCell className="sticky left-0 z-[40] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 shadow-[2px_0_10px_-2px_rgba(0,0,0,0.15)]">
+                <TableCell className="sticky left-0 z-[40] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                     <div className="flex items-center gap-4">
                         <button 
                             type="button"
-                            className="h-7 w-7 rounded-lg hover:bg-primary/10 flex items-center justify-center transition-all text-primary border-2 bg-white shadow-sm"
+                            className="h-7 w-7 rounded-lg hover:bg-primary/10 flex items-center justify-center transition-all text-primary border-2 border-slate-300 bg-white shadow-sm"
                             onClick={(e) => { e.stopPropagation(); setIsLocalExpanded(!isLocalExpanded); }}
                         >
                             {isLocalExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </button>
                         <div className="flex flex-col min-w-0">
-                            <span className="font-black text-[11px] uppercase tracking-tight truncate leading-none mb-1 text-slate-900">{model.name}</span>
-                            <span className="text-[8px] font-black text-primary/80 uppercase tracking-[0.2em]">SKU: {model.modelCode || 'NO-SKU'}</span>
+                            <span className="font-black text-[11px] uppercase tracking-tight truncate leading-none mb-1 text-slate-950">{model.name}</span>
+                            <span className="text-[8px] font-black text-primary/90 uppercase tracking-[0.2em]">SKU: {model.modelCode || 'NO-SKU'}</span>
                         </div>
                     </div>
                 </TableCell>
-                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-200 bg-slate-50/50" />)}
+                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
             </TableRow>
             {isLocalExpanded && (
                 <>
@@ -764,13 +766,13 @@ function ModelGroup({ model, variants, sections, allColumns, strategy, onUpdateV
                     {model.optionalFeatures && model.optionalFeatures.length > 0 && (
                         <>
                             <TableRow className="hover:bg-transparent">
-                                <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-r-2 border-b border-dashed shadow-[2px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                <TableCell className="sticky left-0 z-[40] bg-white py-2 px-14 border-r-2 border-b border-dashed border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.15)]">
                                     <div className="flex items-center gap-2.5">
-                                        <Badge className="h-1.5 w-1.5 rounded-full bg-orange-500/60 p-0" />
-                                        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/60">OPTIONS</span>
+                                        <Badge className="h-1.5 w-1.5 rounded-full bg-primary p-0" />
+                                        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-primary">FACTORY OPTIONS</span>
                                     </div>
                                 </TableCell>
-                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b border-dashed bg-muted/5" />)}
+                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b border-dashed border-slate-200 bg-slate-50/20" />)}
                             </TableRow>
                             {model.optionalFeatures.map((f: any, idx: number) => (
                                 <PricingRow 
@@ -805,44 +807,44 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
     const vendorCurrency = vendor.currency || 'USD';
     
-    const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/40";
+    const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50";
 
     return (
         <TableRow className={cn("transition-colors group", rowBgClass)}>
-            <TableCell className={cn("sticky left-0 z-[40] border-r-2 border-b shadow-[2px_0_10px_-2px_rgba(0,0,0,0.15)] transition-colors group-hover:bg-primary/[0.03]", rowBgClass, indent ? "pl-20" : "px-8")}>
+            <TableCell className={cn("sticky left-0 z-[40] border-r-2 border-b border-slate-200 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] transition-colors group-hover:bg-primary/[0.03]", rowBgClass, indent ? "pl-20" : "px-8")}>
                 <div className="flex flex-col min-w-0">
-                    <span className={cn("font-bold text-[11px] uppercase truncate tracking-tight mb-0.5", isOption ? "text-muted-foreground" : "text-slate-950")}>
+                    <span className={cn("font-black text-[11px] uppercase truncate tracking-tight mb-0.5", isOption ? "text-slate-700" : "text-slate-950")}>
                         {name}
                     </span>
                     <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-mono font-bold text-muted-foreground/60 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
-                        {isOption && <Badge className="text-[7px] font-black h-3.5 px-1.5 bg-muted text-muted-foreground border-none">OPT</Badge>}
+                        <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
+                        {isOption && <Badge className="text-[7px] font-black h-3.5 px-1.5 bg-slate-200 text-slate-700 border-none">OPT</Badge>}
                     </div>
                 </div>
             </TableCell>
             {sections.map((sec: any) => {
                 if (sec.id === 'sec-exchange') {
                     if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-muted/10 border-r border-b p-0 transition-all text-center">
+                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-200 p-0 transition-all text-center">
                             <div className="flex flex-col items-center justify-center h-full">
-                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary/40 uppercase">{sec.name}</span>
+                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
                             </div>
                         </TableCell>
                     );
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="text-center border-r border-b bg-slate-50/20"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter opacity-40">{vendorCurrency}</Badge></TableCell>
-                            <TableCell className="text-center border-r border-b bg-slate-50/20 text-[10px] font-mono text-primary/40">{exchangeRate.toFixed(4)}</TableCell>
-                            <TableCell className="text-center border-r border-b bg-slate-50/20"><Badge variant="ghost" className="font-black text-[9px] tracking-tighter opacity-40">{orgCurrency}</Badge></TableCell>
-                            <TableCell className="text-center border-r border-b bg-slate-50/20 text-[10px] font-mono text-primary/40">1.0000</TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-200 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{vendorCurrency}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary">{exchangeRate.toFixed(4)}</TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-200 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{orgCurrency}</Badge></TableCell>
+                            <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary">1.0000</TableCell>
                         </React.Fragment>
                     );
                 }
                 if (sec.id === 'sec-vendor') {
                     if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-muted/10 border-r border-b p-0 transition-all text-center">
+                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-200 p-0 transition-all text-center">
                             <div className="flex flex-col items-center justify-center h-full">
-                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary/40 uppercase">{sec.name}</span>
+                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
                             </div>
                         </TableCell>
                     );
@@ -851,7 +853,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     const convertedCost = (effectiveCost || 0) * (exchangeRate || 1);
                     return (
                         <React.Fragment key={sec.id}>
-                            <TableCell className="p-0 border-r border-b">
+                            <TableCell className="p-0 border-r border-b border-slate-200">
                                 <EditableCell 
                                     id={id} 
                                     col={{ id: 'base_cost_override', name: 'Base Price', type: 'currency' }} 
@@ -863,7 +865,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                                     prefix="$" 
                                 />
                             </TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b px-5 bg-primary/[0.02]">
+                            <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-200 px-5 bg-primary/[0.04]">
                                 {formatCurrency(convertedCost, orgCurrency)}
                             </TableCell>
                         </React.Fragment>
@@ -871,28 +873,28 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                 }
                 if (sec.id === 'sec-freight') {
                     if (sec.isCollapsed) return (
-                        <TableCell key={sec.id} className="bg-muted/10 border-r border-b p-0 transition-all text-center">
+                        <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-200 p-0 transition-all text-center">
                             <div className="flex flex-col items-center justify-center h-full">
-                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary/40 uppercase">{sec.name}</span>
+                                <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
                             </div>
                         </TableCell>
                     );
                     return (
-                        <TableCell key={sec.id} className="p-0 border-r border-b">
-                            {isBoatVariant ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-muted/5" />}
+                        <TableCell key={sec.id} className="p-0 border-r border-b border-slate-200">
+                            {isBoatVariant ? <EditableCell id={id} col={{ id: 'packed_m3', name: 'Packed m³', type: 'text' }} value={itemValues['packed_m3'] || ''} onChange={(val: any) => onUpdateValue(id, 'packed_m3', val)} suffix="m³" align="right" /> : <div className="h-full bg-slate-50/50" />}
                         </TableCell>
                     );
                 }
                 if (sec.isCollapsed) return (
-                    <TableCell key={sec.id} className="bg-muted/10 border-r border-b p-0 transition-all text-center">
+                    <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-200 p-0 transition-all text-center">
                         <div className="flex flex-col items-center justify-center h-full">
-                            <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary/40 uppercase">{sec.name}</span>
+                            <span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span>
                         </div>
                     </TableCell>
                 );
-                if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-muted/5 border-r border-b" />;
+                if (sec.columns.length === 0) return <TableCell key={`empty-cell-${sec.id}`} className="bg-slate-50/50 border-r border-b border-slate-200" />;
                 return sec.columns.map((col: any) => (
-                    <TableCell key={col.id} className="p-0 border-r border-b">
+                    <TableCell key={col.id} className="p-0 border-r border-b border-slate-200">
                         {col.isCalculated ? (
                             <CalculatedCell col={col} baseCost={cost} masterSell={sell} itemValues={itemValues} allCols={allColumns} suffix={col.type === 'currency' || col.type === 'cost' ? orgCurrency : undefined} />
                         ) : (
@@ -908,17 +910,17 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
 function CalculatedCell({ col, baseCost, masterSell, itemValues, allCols, suffix }: any) {
     const { value, error } = calculateValue(col, baseCost, masterSell, itemValues, allCols);
     return (
-        <div className="flex items-center justify-center h-full px-2 bg-primary/[0.02] group/calc">
+        <div className="flex items-center justify-center h-full px-2 bg-primary/[0.04] group/calc">
             {error ? (
                 <TooltipProvider>
                     <Tooltip>
-                        <TooltipTrigger type="button"><AlertCircle className="h-3.5 w-3.5 text-destructive/40" /></TooltipTrigger>
+                        <TooltipTrigger type="button"><AlertCircle className="h-3.5 w-3.5 text-destructive" /></TooltipTrigger>
                         <TooltipContent className="bg-destructive text-white border-none font-bold text-[10px] uppercase shadow-2xl">{error}</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
             ) : (
                 <div className="flex items-center gap-1.5">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                     <span className="text-[11px] font-black text-primary tracking-tight">
                         {col.type === 'percent' ? `${(Number(value) * 100).toFixed(2)}%` : (col.type === 'currency' || col.type === 'cost') ? `${formatCurrency(Number(value))} ${suffix || ''}` : String(value || '-')}
                     </span>
@@ -940,12 +942,12 @@ function EditableCell({ id, col, value, onChange, placeholder, prefix, suffix, a
     const handleBlur = () => { if (String(localValue || '') !== String(value || '')) onChange(localValue); };
     
     return (
-        <div className={cn("relative h-full flex items-center px-2 group/edit transition-colors", isChanged ? "bg-amber-500/[0.04]" : "bg-transparent")}>
-            {prefix && <span className="text-[9px] font-black text-muted-foreground/40 mr-1.5 select-none">{prefix}</span>}
+        <div className={cn("relative h-full flex items-center px-2 group/edit transition-colors border-2 border-transparent focus-within:border-primary/30", isChanged ? "bg-amber-500/[0.08]" : "bg-transparent")}>
+            {prefix && <span className="text-[9px] font-black text-slate-400 mr-1.5 select-none">{prefix}</span>}
             <input 
                 type={col.type === 'text' ? 'text' : 'number'} 
                 className={cn(
-                    "h-10 w-full bg-transparent border-none text-[11px] font-bold outline-none transition-all placeholder:text-muted-foreground/40 rounded focus:bg-white focus:ring-2 focus:ring-primary/20 focus:px-3 focus:shadow-md focus:z-10",
+                    "h-10 w-full bg-transparent border-none text-[11px] font-black outline-none transition-all placeholder:text-slate-500 rounded focus:bg-white focus:ring-4 focus:ring-primary/10 focus:px-3 focus:shadow-xl focus:z-10",
                     align === 'right' ? "text-right" : "text-center",
                     isChanged ? "text-primary" : "text-slate-900"
                 )} 
@@ -954,8 +956,8 @@ function EditableCell({ id, col, value, onChange, placeholder, prefix, suffix, a
                 onBlur={handleBlur} 
                 placeholder={placeholder || "-"} 
             />
-            {suffix && <span className="text-[9px] font-black text-muted-foreground/40 ml-1.5 select-none">{suffix}</span>}
-            {isChanged && <div className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary/40" />}
+            {suffix && <span className="text-[9px] font-black text-slate-400 ml-1.5 select-none">{suffix}</span>}
+            {isChanged && <div className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />}
         </div>
     );
 }
@@ -966,14 +968,14 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
     const { data: logs, loading } = useCollection<any>(logQuery);
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 shadow-2xl z-[150]">
-                <DialogHeader className="p-10 border-b bg-muted/5 flex flex-row items-center justify-between">
+            <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl z-[150]">
+                <DialogHeader className="p-10 border-b border-slate-200 bg-slate-50 flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner">
+                        <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner border border-primary/20">
                             <History className="h-6 w-6" />
                         </div>
                         <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">CHANGE LOG</DialogTitle>
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">CHANGE LOG</DialogTitle>
                             <DialogDescription className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mt-1">Strategic Price Change Verification History</DialogDescription>
                         </div>
                     </div>
@@ -984,39 +986,39 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                     ) : logs && logs.length > 0 ? (
                         <ScrollArea className="h-full">
                             <Table className="border-separate border-spacing-0">
-                                <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                                <TableHeader className="bg-slate-100 sticky top-0 z-10">
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="py-5 px-10 border-b-2 font-black uppercase text-[10px] tracking-widest w-[220px]">Timestamp</TableHead>
-                                        <TableHead className="py-5 px-6 border-b-2 font-black uppercase text-[10px] tracking-widest w-[180px]">Operational User</TableHead>
-                                        <TableHead className="py-5 px-6 border-b-2 font-black uppercase text-[10px] tracking-widest">Financial Metric</TableHead>
-                                        <TableHead className="py-5 px-6 border-b-2 font-black uppercase text-[10px] tracking-widest text-right">Previous</TableHead>
-                                        <TableHead className="py-5 px-10 border-b-2 font-black uppercase text-[10px] tracking-widest text-right">Amended</TableHead>
+                                        <TableHead className="py-5 px-10 border-b-2 border-slate-300 font-black uppercase text-[10px] tracking-widest w-[220px] text-slate-900">Timestamp</TableHead>
+                                        <TableHead className="py-5 px-6 border-b-2 border-slate-300 font-black uppercase text-[10px] tracking-widest w-[180px] text-slate-900">Operational User</TableHead>
+                                        <TableHead className="py-5 px-6 border-b-2 border-slate-300 font-black uppercase text-[10px] tracking-widest text-slate-900">Financial Metric</TableHead>
+                                        <TableHead className="py-5 px-6 border-b-2 border-slate-300 font-black uppercase text-[10px] tracking-widest text-right text-slate-900">Previous</TableHead>
+                                        <TableHead className="py-5 px-10 border-b-2 border-slate-300 font-black uppercase text-[10px] tracking-widest text-right text-slate-900">Amended</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {logs.map((log: any) => (
-                                        <TableRow key={log.id} className="hover:bg-slate-50 transition-colors">
-                                            <TableCell className="py-5 px-10 border-b border-dashed">
-                                                <div className="flex items-center gap-3 text-muted-foreground">
-                                                    <Clock className="h-3.5 w-3.5 opacity-40" />
+                                        <TableRow key={log.id} className="hover:bg-slate-50 transition-colors border-b border-slate-200">
+                                            <TableCell className="py-5 px-10">
+                                                <div className="flex items-center gap-3 text-slate-600">
+                                                    <Clock className="h-3.5 w-3.5" />
                                                     <span className="text-[11px] font-black uppercase tracking-tighter">
                                                         {log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}
                                                     </span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-5 px-6 border-b border-dashed">
+                                            <TableCell className="py-5 px-6">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-7 w-7 rounded-full bg-slate-100 border flex items-center justify-center text-slate-400 font-black text-[10px] uppercase">
+                                                    <div className="h-7 w-7 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-600 font-black text-[10px] uppercase">
                                                         {log.userName?.[0] || 'S'}
                                                     </div>
-                                                    <span className="font-bold text-[11px] uppercase tracking-tight truncate">{log.userName || 'System Auto'}</span>
+                                                    <span className="font-black text-[11px] uppercase tracking-tight truncate text-slate-900">{log.userName || 'System Auto'}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-5 px-6 border-b border-dashed">
-                                                <Badge variant="outline" className="h-6 px-3 bg-primary/5 text-primary border-primary/10 font-black uppercase text-[9px] tracking-widest">{log.colId}</Badge>
+                                            <TableCell className="py-5 px-6">
+                                                <Badge variant="outline" className="h-6 px-3 bg-primary/5 text-primary border-primary/30 font-black uppercase text-[9px] tracking-widest shadow-sm">{log.colId}</Badge>
                                             </TableCell>
-                                            <TableCell className="py-5 px-6 border-b border-dashed text-right font-mono text-[11px] opacity-40 italic">{String(log.oldValue ?? '-')}</TableCell>
-                                            <TableCell className="py-5 px-10 border-b border-dashed text-right">
+                                            <TableCell className="py-5 px-6 text-right font-mono text-[11px] text-slate-400 italic">{String(log.oldValue ?? '-')}</TableCell>
+                                            <TableCell className="py-5 px-10 text-right">
                                                 <span className="font-mono font-black text-[12px] text-primary">{String(log.newValue)}</span>
                                             </TableCell>
                                         </TableRow>
@@ -1025,14 +1027,14 @@ function AuditLogDialog({ organisationId, vendorId, isOpen, onClose }: any) {
                             </Table>
                         </ScrollArea>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full opacity-10 grayscale scale-150">
+                        <div className="flex flex-col items-center justify-center h-full opacity-20">
                             <Clock className="h-24 w-24 mb-4" />
-                            <p className="font-black uppercase tracking-[0.4em] text-sm">Audit Void</p>
+                            <p className="font-black uppercase tracking-[0.4em] text-sm">Audit Log Empty</p>
                         </div>
                     )}
                 </div>
-                <DialogFooter className="p-8 border-t bg-muted/5">
-                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 font-black uppercase text-[10px] tracking-widest rounded-2xl border-2 shadow-sm">Close</Button></DialogClose>
+                <DialogFooter className="p-8 border-t border-slate-200 bg-slate-50">
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 font-black uppercase text-[10px] tracking-widest rounded-2xl border-2 border-slate-300 shadow-sm bg-white">Close</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -1053,19 +1055,19 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
     const handleDelete = async (id: string) => { try { await deleteDoc(doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendorId}/freightContainers`, id)); toast({ title: "Container Removed" }); } catch (e) { toast({ variant: 'destructive', title: "Delete Failed" }); } };
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 shadow-2xl">
-                <DialogHeader className="p-10 border-b bg-muted/5">
+            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[3rem] border-4 border-slate-300 shadow-2xl">
+                <DialogHeader className="p-10 border-b border-slate-200 bg-slate-50">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
-                            <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
+                            <div className="h-12 w-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner border border-primary/20">
                                 <Truck className="h-6 w-6" />
                             </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">FREIGHT MANAGEMENT</DialogTitle>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-950">FREIGHT MANAGEMENT</DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Shipping Containers & Global Transportation Cost Controls</DialogDescription>
                             </div>
                         </div>
-                        <Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-2xl shadow-2xl transition-transform hover:scale-105">
+                        <Button onClick={() => setIsAdding(true)} className="font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-2xl shadow-2xl transition-transform hover:scale-105 bg-primary text-white">
                             <Plus className="h-4 w-4 mr-2" /> Add Container
                         </Button>
                     </div>
@@ -1078,7 +1080,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                             <div className="space-y-10">
                                 {isAdding && (
                                     <Card className="border-4 border-primary/20 bg-primary/5 rounded-3xl overflow-hidden animate-in slide-in-from-top-4 duration-500">
-                                        <CardHeader className="p-8 border-b bg-white/50">
+                                        <CardHeader className="p-8 border-b border-primary/10 bg-white/50">
                                             <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                                                 <Layers className="h-4 w-4" />
                                                 Configure New Container
@@ -1087,12 +1089,12 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                                         <CardContent className="p-10">
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                                                 <div className="space-y-3">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Container Standard</Label>
+                                                    <Label className="text-[10px] font-black uppercase text-slate-600 ml-1 tracking-widest">Container Standard</Label>
                                                     <Select value={size} onValueChange={setSize}>
-                                                        <SelectTrigger className="h-14 font-black text-sm border-2 rounded-2xl bg-white shadow-sm">
+                                                        <SelectTrigger className="h-14 font-black text-sm border-2 border-slate-300 rounded-2xl bg-white shadow-sm">
                                                             <SelectValue placeholder="Select Dimension..." />
                                                         </SelectTrigger>
-                                                        <SelectContent className="rounded-2xl border-2">
+                                                        <SelectContent className="rounded-2xl border-2 border-slate-300">
                                                             <SelectItem value="20ft Standard" className="font-bold py-3">20ft Standard</SelectItem>
                                                             <SelectItem value="40ft Standard" className="font-bold py-3">40ft Standard</SelectItem>
                                                             <SelectItem value="40ft High Cube" className="font-bold py-3">40ft High Cube</SelectItem>
@@ -1101,46 +1103,46 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                                                     </Select>
                                                 </div>
                                                 <div className="space-y-3">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Cubic Capacity (CBM)</Label>
+                                                    <Label className="text-[10px] font-black uppercase text-slate-600 ml-1 tracking-widest">Cubic Capacity (CBM)</Label>
                                                     <div className="relative">
-                                                        <Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-14 font-black text-xl border-2 rounded-2xl bg-white px-6" />
-                                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-muted-foreground/30 text-xs">m³</span>
+                                                        <Input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className="h-14 font-black text-xl border-2 border-slate-300 rounded-2xl bg-white px-6 shadow-inner" />
+                                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-slate-400 text-xs">m³</span>
                                                     </div>
                                                 </div>
                                                 <div className="space-y-3">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Strategic Unit Cost (USD)</Label>
+                                                    <Label className="text-[10px] font-black uppercase text-slate-600 ml-1 tracking-widest">Strategic Unit Cost (USD)</Label>
                                                     <div className="relative">
-                                                        <ArrowRightLeft className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40" />
-                                                        <Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-14 font-black text-xl border-2 rounded-2xl bg-white pl-14" />
+                                                        <ArrowRightLeft className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+                                                        <Input type="number" value={cost} onChange={e => setCost(e.target.value)} className="h-14 font-black text-xl border-2 border-slate-300 rounded-2xl bg-white pl-14 shadow-inner" />
                                                     </div>
                                                 </div>
                                             </div>
                                         </CardContent>
-                                        <CardFooter className="p-8 bg-muted/10 border-t flex justify-end gap-4">
-                                            <Button variant="ghost" onClick={() => setIsAdding(false)} className="h-12 px-8 font-black uppercase text-[10px] rounded-xl border-2">Cancel</Button>
-                                            <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-2xl">Add Container</Button>
+                                        <CardFooter className="p-8 bg-white/50 border-t border-primary/10 flex justify-end gap-4">
+                                            <Button variant="ghost" onClick={() => setIsAdding(false)} className="h-12 px-8 font-black uppercase text-[10px] rounded-xl border-2 border-slate-300 bg-white">Cancel</Button>
+                                            <Button onClick={handleAdd} disabled={isSaving || !size || !cost || !cbm} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-2xl bg-primary text-white">Add Container</Button>
                                         </CardFooter>
                                     </Card>
                                 )}
                                 
-                                <div className="rounded-[2rem] border-2 overflow-hidden bg-white shadow-xl">
+                                <div className="rounded-[2rem] border-2 border-slate-300 overflow-hidden bg-white shadow-xl">
                                     <Table>
-                                        <TableHeader className="bg-slate-50 border-b-2">
+                                        <TableHeader className="bg-slate-100 border-b-2 border-slate-300">
                                             <TableRow className="hover:bg-transparent">
-                                                <TableHead className="py-6 px-10 font-black uppercase text-[10px] tracking-[0.2em]">Container Size</TableHead>
-                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-right">Capacity (CBM)</TableHead>
-                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-right">Total Cost</TableHead>
-                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-center">ISO</TableHead>
-                                                <TableHead className="py-6 px-10 font-black uppercase text-[10px] tracking-[0.2em] text-right w-[120px]">Actions</TableHead>
+                                                <TableHead className="py-6 px-10 font-black uppercase text-[10px] tracking-[0.2em] text-slate-900">Container Size</TableHead>
+                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-right text-slate-900">Capacity (CBM)</TableHead>
+                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-right text-slate-900">Total Cost</TableHead>
+                                                <TableHead className="py-6 px-6 font-black uppercase text-[10px] tracking-[0.2em] text-center text-slate-900">ISO</TableHead>
+                                                <TableHead className="py-6 px-10 font-black uppercase text-[10px] tracking-[0.2em] text-right w-[120px] text-slate-900">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {containers?.length > 0 ? containers.map((c: any) => (
-                                                <TableRow key={c.id} className="hover:bg-primary/[0.02] transition-colors group">
-                                                    <TableCell className="py-6 px-10 font-black uppercase text-slate-900">{c.size}</TableCell>
-                                                    <TableCell className="py-6 px-6 text-right font-black text-slate-600">{c.cubicMeters} m³</TableCell>
+                                                <TableRow key={c.id} className="hover:bg-primary/[0.04] transition-colors group border-b border-slate-200 last:border-0">
+                                                    <TableCell className="py-6 px-10 font-black uppercase text-slate-950">{c.size}</TableCell>
+                                                    <TableCell className="py-6 px-6 text-right font-black text-slate-700">{c.cubicMeters} m³</TableCell>
                                                     <TableCell className="py-6 px-6 text-right font-black text-primary text-lg">{formatCurrency(c.cost, c.currency)}</TableCell>
-                                                    <TableCell className="py-6 px-6 text-center"><Badge className="h-6 px-3 bg-muted text-muted-foreground border-none font-black">{c.currency}</Badge></TableCell>
+                                                    <TableCell className="py-6 px-6 text-center"><Badge className="h-6 px-3 bg-slate-200 text-slate-700 border-none font-black shadow-sm">{c.currency}</Badge></TableCell>
                                                     <TableCell className="py-6 px-10 text-right">
                                                         <Button 
                                                             variant="ghost" 
@@ -1155,7 +1157,7 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                                             )) : (
                                                 <TableRow>
                                                     <TableCell colSpan={5} className="h-48 text-center">
-                                                        <div className="flex flex-col items-center justify-center opacity-10 grayscale">
+                                                        <div className="flex flex-col items-center justify-center opacity-20">
                                                             <Truck className="h-16 w-16 mb-4" />
                                                             <p className="font-black uppercase tracking-[0.4em] text-sm">Registry Empty</p>
                                                         </div>
@@ -1169,8 +1171,8 @@ function FreightManager({ organisationId, vendorId, isOpen, onClose }: any) {
                         </ScrollArea>
                     )}
                 </div>
-                <DialogFooter className="p-10 border-t bg-muted/5">
-                    <DialogClose asChild><Button variant="outline" className="h-14 px-10 font-black uppercase text-[11px] tracking-widest rounded-2xl border-2 shadow-sm">Exit</Button></DialogClose>
+                <DialogFooter className="p-10 border-t border-slate-200 bg-slate-50">
+                    <DialogClose asChild><Button variant="outline" className="h-14 px-10 font-black uppercase text-[11px] tracking-widest rounded-2xl border-2 border-slate-300 shadow-sm bg-white">Exit Workspace</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
