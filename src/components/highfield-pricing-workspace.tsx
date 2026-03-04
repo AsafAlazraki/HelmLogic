@@ -710,7 +710,7 @@ function RangeSection({ range, models, variants, isExpanded, onToggle, sections,
                     onUpdateValue={onUpdateValue} 
                     vendor={vendor} 
                     organisation={organisation} 
-                    exchangeRate={exchangeRate} 
+                    exchangeRate={activeExchangeRate} 
                     totalCalculatedCols={totalCalculatedCols}
                 />
             ))}

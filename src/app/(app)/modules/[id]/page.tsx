@@ -32,7 +32,8 @@ import {
     GripVertical,
     Upload,
     ImageIcon,
-    Save
+    Save,
+    ArrowRight
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -236,7 +237,7 @@ function EditItemDialog({
                                     </div>
                                 </>
                             ) : (
-                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-muted/80">
+                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-muted/80 transition-all">
                                     <ImageIcon className="h-8 w-8 text-muted-foreground/40 mb-2" />
                                     <span className="text-[10px] font-black uppercase text-muted-foreground">Upload Render</span>
                                     <input type="file" className="hidden" accept="image/*" onChange={(e) => {
@@ -271,7 +272,8 @@ function SortableItemCard({
     code, 
     onClick, 
     onEdit, 
-    isAdmin 
+    isAdmin,
+    viewLabel = "VIEW RANGE"
 }: { 
     id: string, 
     name: string, 
@@ -279,7 +281,8 @@ function SortableItemCard({
     code?: string, 
     onClick: () => void, 
     onEdit: () => void, 
-    isAdmin: boolean 
+    isAdmin: boolean,
+    viewLabel?: string
 }) {
     const {
         attributes,
@@ -300,20 +303,33 @@ function SortableItemCard({
     return (
         <div ref={setNodeRef} style={style} className="group relative">
             <Card 
-                className="cursor-pointer hover:border-primary shadow-sm rounded-[2rem] overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
+                className="cursor-pointer hover:border-primary shadow-sm rounded-2xl overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
                 onClick={onClick}
             >
-                <div className="aspect-video relative bg-slate-50 border-b">
+                <div className="aspect-video relative bg-slate-50 border-b flex items-center justify-center p-4">
                     {imageUrl ? (
                         <div className="relative h-full w-full">
                             <Image src={imageUrl} alt={name} fill className={cn("p-4", code ? "object-cover p-0" : "object-contain")} unoptimized />
                         </div>
-                    ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-8 w-8 opacity-10" /></div>}
+                    ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-12 w-12 opacity-10" /></div>}
                 </div>
-                <div className="p-5 text-center flex-grow flex flex-col items-center justify-center gap-1">
-                    <p className="text-sm font-black uppercase tracking-tight">{name}</p>
-                    {code && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4">{code}</Badge>}
-                </div>
+                
+                <CardContent className="p-5 flex-grow flex flex-col justify-between gap-4">
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-black uppercase tracking-tight leading-tight">{name}</CardTitle>
+                            {code && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4 shrink-0 ml-2">{code}</Badge>}
+                        </div>
+                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
+                            Professional catalog entry for {name}. Strategic asset synchronized with Data Warehouse.
+                        </p>
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-dashed">
+                        <span className="text-[10px] font-black uppercase tracking-tighter text-primary">{viewLabel}</span>
+                        <ArrowRight className="h-4 w-4 text-primary transform -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
+                    </div>
+                </CardContent>
             </Card>
 
             {isAdmin && (
@@ -322,7 +338,7 @@ function SortableItemCard({
                         type="button"
                         variant="secondary" 
                         size="icon" 
-                        className="h-8 w-8 rounded-full bg-white/90 backdrop-blur-md shadow-md border hover:bg-white"
+                        className="h-8 w-8 rounded-md bg-white/90 backdrop-blur-md shadow-md border hover:bg-white"
                         onClick={(e) => { e.stopPropagation(); onEdit(); }}
                     >
                         <Pencil className="h-3.5 w-3.5" />
@@ -330,7 +346,7 @@ function SortableItemCard({
                     <div 
                         {...attributes} 
                         {...listeners} 
-                        className="h-8 w-8 rounded-full bg-white/90 backdrop-blur-md shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
+                        className="h-8 w-8 rounded-md bg-white/90 backdrop-blur-md shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
                     >
                         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
@@ -863,6 +879,7 @@ function RangesGrid({ vendor, onRangeSelect, isAdmin }: { vendor: Vendor; onRang
                                 isAdmin={isAdmin}
                                 onClick={() => onRangeSelect(range)}
                                 onEdit={() => { setEditingItem(range); setIsEditDialogOpen(true); }}
+                                viewLabel="VIEW RANGE"
                             />
                         ))}
                     </div>
@@ -932,6 +949,7 @@ function ModelsGrid({ range, vendor, onModelSelect, isAdmin }: { range: Range; v
                                 isAdmin={isAdmin}
                                 onClick={() => onModelSelect(model)}
                                 onEdit={() => { setEditingItem(model); setIsEditDialogOpen(true); }}
+                                viewLabel="VIEW MODEL"
                             />
                         ))}
                     </div>
