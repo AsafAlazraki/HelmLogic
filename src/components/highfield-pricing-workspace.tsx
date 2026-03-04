@@ -42,7 +42,9 @@ import {
     Percent,
     Anchor,
     Fuel,
-    Tag
+    Tag,
+    DollarSign,
+    Target
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -124,7 +126,7 @@ interface Variant {
     sellPriceExclGst?: number;
 }
 
-// Logic for internal calculated fields that aren't user-defined
+// Logic for internal calculated fields
 const calculateLandedCost = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
     const costOverride = itemValues['base_cost_override'];
     const usdBase = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : baseCostUsd;
@@ -161,8 +163,9 @@ const getSectionColCount = (sec: PricingSection) => {
     if (sec.id === 'sec-exchange') return 5;
     if (sec.id === 'sec-vendor') return 4;
     if (sec.id === 'sec-freight') return 3;
-    if (sec.id === 'sec-handling') return 9; // Prep, Other, GST, Code, Hours, Rate, PD Cost, Detail, Fuel
+    if (sec.id === 'sec-handling') return 9;
     if (sec.id === 'sec-markup') return 2;
+    if (sec.id === 'sec-price-levels') return 12; // Cash, GP, Trade, TGP, SD, SDGP, SDE, SDEGP, AS, ASGP, SD-SRP, SDE-SRP
     return Math.max(1, sec.columns.length);
 };
 
@@ -174,7 +177,6 @@ const calculateValue = (
     allCols: CustomColumn[],
     exchangeRate: number
 ): { value: number | string | null, error?: string } => {
-    // Specific hardcoded logic for the new financial model
     if (col.id === 'vendor_factory_discount_aud') {
         const usd = parseFloat(itemValues['vendor_factory_discount_usd'] || '0');
         return { value: usd * exchangeRate };
@@ -267,7 +269,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     useEffect(() => {
         if (strategyLoading || !strategy) return;
         const currentSections = strategy.sections || [];
-        const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight', 'sec-handling', 'sec-markup'];
+        const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight', 'sec-handling', 'sec-markup', 'sec-price-levels'];
         const missingIds = requiredIds.filter(id => !currentSections.some(s => s.id === id));
         
         if (missingIds.length > 0) {
@@ -277,6 +279,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 'sec-freight': { id: 'sec-freight', name: 'FREIGHT', order: 2, columns: [] },
                 'sec-handling': { id: 'sec-handling', name: 'HANDLING', order: 3, columns: [] },
                 'sec-markup': { id: 'sec-markup', name: 'MARKUP', order: 4, columns: [] },
+                'sec-price-levels': { id: 'sec-price-levels', name: 'PRICE LEVELS (HULL ONLY)', order: 5, columns: [] },
             };
             let nextOrder = currentSections.length > 0 ? Math.max(...currentSections.map(s => s.order)) + 1 : 0;
             const newSections = [...currentSections];
@@ -611,6 +614,24 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                                     </React.Fragment>
                                 );
                             }
+                            if (sec.id === 'sec-price-levels') {
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[110px] text-slate-700 px-4">CASH $</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GP %</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[110px] text-slate-700 px-4">TRADE $</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GP %</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[110px] text-slate-700 px-4">SUB $</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GP %</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[110px] text-slate-700 px-4">EXCL $</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GP %</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[110px] text-slate-700 px-4">SAILING $</TableHead>
+                                        <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GP %</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-4">SUB SRP</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-4">EXCL SRP</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
                             if (sec.columns.length === 0) return <TableHead key={`empty-${sec.id}`} className="w-[180px] border-r border-b-2 border-slate-300 bg-slate-50 text-center text-[8px] font-bold text-slate-400 uppercase tracking-tighter italic">EMPTY SEGMENT</TableHead>;
                             return sec.columns.map((col) => (
                                 <TableHead key={col.id} className="min-w-[180px] bg-slate-50 text-center px-4 border-r border-b-2 border-slate-300 font-black uppercase text-[9px] tracking-tight text-primary/80">{col.name}</TableHead>
@@ -937,9 +958,6 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                     const effectiveUsdCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : cost;
                     const convertedAudCost = (effectiveUsdCost || 0) * (exchangeRate || 1);
                     
-                    const discountUsd = parseFloat(itemValues['vendor_factory_discount_usd'] || '0');
-                    const discountAud = discountUsd * exchangeRate;
-
                     return (
                         <React.Fragment key={sec.id}>
                             <TableCell className="p-0 border-r border-b border-slate-300">
@@ -1014,6 +1032,49 @@ function PricingRow({ id, name, sku, cost, sell, sections, allColumns, strategy,
                             </TableCell>
                             <TableCell className="p-0 border-r border-b border-slate-300">
                                 <EditableCell id={id} col={{ id: 'markup_bmt_percent', type: 'percent' }} value={itemValues['markup_bmt_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'markup_bmt_percent', val)} suffix="%" />
+                            </TableCell>
+                        </React.Fragment>
+                    );
+                }
+                if (sec.id === 'sec-price-levels') {
+                    if (sec.isCollapsed) return <CollapsedCell key={sec.id} name={sec.name} />;
+                    return (
+                        <React.Fragment key={sec.id}>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_cash_price', type: 'currency' }} value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_cash_gp', type: 'percent' }} value={itemValues['hull_cash_gp'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_gp', val)} suffix="%" />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_trade_price', type: 'currency' }} value={itemValues['hull_trade_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_trade_price', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_trade_gp', type: 'percent' }} value={itemValues['hull_trade_gp'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_trade_gp', val)} suffix="%" />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_subdealer_price', type: 'currency' }} value={itemValues['hull_subdealer_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_subdealer_price', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_subdealer_gp', type: 'percent' }} value={itemValues['hull_subdealer_gp'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_subdealer_gp', val)} suffix="%" />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_subdealer_excl_price', type: 'currency' }} value={itemValues['hull_subdealer_excl_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_subdealer_excl_price', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_subdealer_excl_gp', type: 'percent' }} value={itemValues['hull_subdealer_excl_gp'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_subdealer_excl_gp', val)} suffix="%" />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_aus_sailing_price', type: 'currency' }} value={itemValues['hull_aus_sailing_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_aus_sailing_price', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_aus_sailing_gp', type: 'percent' }} value={itemValues['hull_aus_sailing_gp'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_aus_sailing_gp', val)} suffix="%" />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_subdealer_srp', type: 'currency' }} value={itemValues['hull_subdealer_srp'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_subdealer_srp', val)} align="right" suffix={orgCurrency} />
+                            </TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-300">
+                                <EditableCell id={id} col={{ id: 'hull_subdealer_excl_srp', type: 'currency' }} value={itemValues['hull_subdealer_excl_srp'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_subdealer_excl_srp', val)} align="right" suffix={orgCurrency} />
                             </TableCell>
                         </React.Fragment>
                     );
