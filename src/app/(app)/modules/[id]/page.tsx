@@ -585,32 +585,6 @@ export default function ModuleDetailsPage() {
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
                     <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
-                    
-                    {/* Maritime Animation Layer */}
-                    {isBoatBrand && (
-                        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-20">
-                            {/* Drifting Waves */}
-                            <div className="absolute bottom-0 left-0 w-[200%] h-full animate-wave-move">
-                                <svg className="absolute bottom-0 w-full h-24 text-white/10" preserveAspectRatio="none" viewBox="0 0 1200 120">
-                                    <path d="M0,64 C150,96 300,32 450,64 C600,96 750,32 900,64 C1050,96 1200,32 1350,64 L1200,120 L0,120 Z" fill="currentColor" />
-                                    <path d="M1200,64 C1350,96 1500,32 1650,64 C1800,96 1950,32 2100,64 C2250,96 2400,32 2550,64 L2400,120 L1200,120 Z" fill="currentColor" />
-                                </svg>
-                            </div>
-                            <div className="absolute bottom-0 left-0 w-[200%] h-full animate-wave-move [animation-duration:12s] opacity-40">
-                                <svg className="absolute bottom-0 w-full h-16 text-white/5" preserveAspectRatio="none" viewBox="0 0 1200 120">
-                                    <path d="M0,80 C150,60 300,100 450,80 C600,60 750,100 900,80 C1050,60 1200,100 1350,80 L1200,120 L0,120 Z" fill="currentColor" />
-                                    <path d="M1200,80 C1350,60 1500,100 1650,80 C1800,60 1950,100 2100,80 C2250,60 2400,100 2550,80 L2400,120 L1200,120 Z" fill="currentColor" />
-                                </svg>
-                            </div>
-                            {/* Animated Fleet */}
-                            <div className="absolute bottom-12 left-[20%] animate-boat-bob">
-                                <Ship className="h-8 w-8 text-white/30" />
-                            </div>
-                            <div className="absolute bottom-20 left-[70%] animate-boat-bob [animation-delay:1.5s] opacity-40">
-                                <Ship className="h-5 w-5 text-white/20" />
-                            </div>
-                        </div>
-                    )}
                 </div>
                 
                 <div className="relative z-10 flex flex-col h-full justify-center">
@@ -620,18 +594,19 @@ export default function ModuleDetailsPage() {
                                 <Navigation className="h-2.5 w-2.5" />
                                 <span>COMMAND CENTER</span>
                             </div>
-                            <h1 className="text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                            <h1 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
                                 {moduleData.name}
                             </h1>
                         </div>
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 group shadow-xl"
+                            className="h-8 sm:h-10 px-4 sm:px-6 font-black uppercase tracking-widest text-[9px] sm:text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl"
                             onClick={() => router.push('/dashboard')}
                         >
-                            <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
-                            Back to Hub
+                            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 transition-transform group-hover:rotate-90" />
+                            <span className="hidden xs:inline">Back to Hub</span>
+                            <span className="xs:hidden">Hub</span>
                         </Button>
                     </div>
                 </div>
@@ -731,7 +706,7 @@ export default function ModuleDetailsPage() {
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
                             <div className="p-6 md:p-8 flex flex-col gap-4 pb-32">
-                                <div className="shrink-0 px-1 mb-1">
+                                <div className="shrink-0 px-1 mb-0">
                                     {view === 'ranges' ? (
                                         <div className="relative inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] overflow-hidden group">
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full group-hover:animate-[shimmer_3s_infinite] transition-transform" />
