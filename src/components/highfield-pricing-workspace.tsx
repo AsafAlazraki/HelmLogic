@@ -35,7 +35,8 @@ import {
     Zap,
     Globe,
     Save,
-    GripVertical
+    GripVertical,
+    Receipt
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -183,7 +184,7 @@ function BulkActionToolbar({ onApply }: { onApply: (field: string, value: string
     );
 }
 
-function GlobalStrategicDialog({ isOpen, onOpenChange, onApply }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onApply: (field: string, value: string) => void }) {
+function GlobalUpdateDialog({ isOpen, onOpenChange, onApply }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onApply: (field: string, value: string) => void }) {
     const [field, setField] = useState<string>('exchange_duty_percent');
     const [value, setValue] = useState('');
 
@@ -199,8 +200,8 @@ function GlobalStrategicDialog({ isOpen, onOpenChange, onApply }: { isOpen: bool
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
                 <DialogHeader className="p-8 border-b bg-muted/5">
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic">Global Strategic Update</DialogTitle>
-                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Universal Inventory Adjustment</DialogDescription>
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Global Update</DialogTitle>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Inventory Adjustment</DialogDescription>
                 </DialogHeader>
                 <div className="p-8 space-y-6">
                     <div className="space-y-2">
@@ -239,7 +240,7 @@ function GlobalStrategicDialog({ isOpen, onOpenChange, onApply }: { isOpen: bool
                     <Button 
                         onClick={() => { onApply(field, value); onOpenChange(false); setValue(''); }} 
                         disabled={!value}
-                        className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl shadow-primary/20 transition-all hover:scale-[1.02]"
+                        className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl transition-all hover:scale-[1.02]"
                     >
                         <Zap className="h-4 w-4 mr-2" />
                         Execute Global Sync
@@ -256,10 +257,12 @@ function PricingRow({
     const itemValues = strategy?.itemValues?.[id] || {};
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
     const vendorCurrency = vendor.currency || 'USD';
-    const gstMultiplier = 1 + ((organisation?.gstPercentage || 10) / 100);
+    const gstRate = (organisation?.gstPercentage || 10) / 100;
+    const gstMultiplier = 1 + gstRate;
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50";
 
     const baseCostAudEx = calculateBaseCostAudEx(itemValues, cost || 0, exchangeRate);
+    const baseCostAudIn = baseCostAudEx * gstMultiplier;
 
     // Logistics Calculations (Ex-GST)
     const freightUsd = parseFloat(itemValues['op_freight_cost_usd'] || '0');
@@ -285,6 +288,33 @@ function PricingRow({
     const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
 
     const isOptions = activeView === 'options';
+    const isTax = activeView === 'tax';
+
+    if (isTax) {
+        return (
+            <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
+                <TableCell className={cn("sticky left-0 z-[30] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] min-h-[40px]", rowBgClass, indent ? "pl-16" : "px-8")}>
+                    <div className="flex flex-col min-w-[240px]">
+                        <span className="font-black text-[11px] uppercase truncate tracking-tight">{name}</span>
+                        <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
+                    </div>
+                </TableCell>
+                {/* Tax Breakdown View: Show only dollar amount of GST */}
+                {['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
+                    const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
+                    const gstDollar = sellEx * gstRate;
+                    return (
+                        <TableCell key={l} className="text-right text-[10px] font-black text-amber-600 border-r border-b border-slate-200 px-6 bg-amber-50/20">
+                            {gstDollar > 0 ? formatCurrency(gstDollar, orgCurrency) : '-'}
+                        </TableCell>
+                    );
+                })}
+                <TableCell className="text-right text-[10px] font-black text-amber-700 border-r border-b border-slate-300 px-6 bg-amber-100/20">
+                    {formatCurrency(totalPackageSell * gstRate, orgCurrency)}
+                </TableCell>
+            </TableRow>
+        );
+    }
 
     return (
         <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
@@ -308,6 +338,7 @@ function PricingRow({
             <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'factory_discount_usd', val)} align="right" /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30">{formatCurrency((parseFloat(itemValues['factory_discount_usd'] || '0')) / (exchangeRate || 1), orgCurrency)}</TableCell>
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/[0.02]">{formatCurrency(baseCostAudEx, orgCurrency)}</TableCell>
+            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5">{formatCurrency(baseCostAudIn, orgCurrency)}</TableCell>
 
             {!isOptions && (
                 <>
@@ -393,6 +424,7 @@ function PricingTable({
     filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, onBulkUpdate 
 }: any) {
     const isOptions = activeView === 'options';
+    const isTax = activeView === 'tax';
     const shortCode = (organisation?.shortCode || 'NSM').toUpperCase();
     const inclLabel = `(INCL. GST)`;
 
@@ -404,10 +436,51 @@ function PricingTable({
         { id: 'aus', label: 'AUS PRICE (EXCL.)' }
     ];
 
-    const boatSrpLevels = [
-        { id: 'srp1', label: 'SUB-D SRP (EXCL.)' },
-        { id: 'srp2', label: 'SUB-EX SRP (EXCL.)' }
-    ];
+    if (isTax) {
+        return (
+            <div className="flex-1 w-full overflow-hidden flex flex-col bg-white border-t relative">
+                <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
+                    <Table className="border-separate border-spacing-0 w-full table-fixed">
+                        <TableHeader className="sticky top-0 z-[50]">
+                            <TableRow className="hover:bg-transparent bg-white">
+                                <TableHead className="w-[340px] sticky left-0 top-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] py-5 px-8 shadow-sm">Series & SKU</TableHead>
+                                {['Cash GST ($)', 'Trade GST ($)', 'Sub-D GST ($)', 'Sub-Ex GST ($)', 'AUS GST ($)', 'Total GST (Package)'].map(h => (
+                                    <TableHead key={h} className="border-r border-b-2 border-slate-300 text-right px-6 font-black uppercase text-[10px] tracking-widest bg-amber-50/30 text-amber-900">{h}</TableHead>
+                                ))}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredRanges.map((range: any) => (
+                                <React.Fragment key={range.id}>
+                                    <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
+                                        <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-sm">
+                                            <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
+                                        </TableCell>
+                                        <TableCell colSpan={6} className="border-b-2 border-slate-300 bg-slate-100/60" />
+                                    </TableRow>
+                                    {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
+                                        <React.Fragment key={model.id}>
+                                            <TableRow className="bg-slate-50">
+                                                <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-sm">
+                                                    <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES: {model.modelCode}</span></div>
+                                                </TableCell>
+                                                <TableCell colSpan={6} className="border-b-2 border-slate-300 bg-slate-50/50" />
+                                            </TableRow>
+                                            {(allVariants[model.id] || []).map((item: any, idx: number) => (
+                                                <PricingRow 
+                                                    key={item.id} id={item.id} name={item.name} sku={item.sku} strategy={strategy} vendor={vendor} organisation={organisation} exchangeRate={activeExchangeRate} rowIndex={idx} activeView="tax" indent 
+                                                />
+                                            ))}
+                                        </React.Fragment>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 w-full overflow-hidden flex flex-col bg-white border-t relative">
@@ -417,7 +490,7 @@ function PricingTable({
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[340px] sticky left-0 top-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
                             <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
-                            <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
+                            <TableHead colSpan={6} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
                             {!isOptions && <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
                             <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
                             {!isOptions && <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
@@ -437,6 +510,7 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Factory Disc USD</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Disc AUD</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px]">Landed AUD Ex</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px]">Landed AUD In</TableHead>
                             {!isOptions && (
                                 <>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Cost USD</TableHead>
@@ -468,7 +542,10 @@ function PricingTable({
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px]">GP %</TableHead>
                                         </React.Fragment>
                                     ))}
-                                    {boatSrpLevels.map((level, i) => (
+                                    {[
+                                        { id: 'srp1', label: 'SUB-D SRP (EXCL.)' },
+                                        { id: 'srp2', label: 'SUB-EX SRP (EXCL.)' }
+                                    ].map((level, i) => (
                                         <React.Fragment key={`srp-${level.id}-${i}`}>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px]">{level.label}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px]">{inclLabel}</TableHead>
@@ -492,7 +569,7 @@ function PricingTable({
                                     <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                         <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
                                     </TableCell>
-                                    <TableCell colSpan={isOptions ? 19 : 45} className="border-b-2 border-slate-300 bg-slate-100/60 p-0">
+                                    <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-100/60 p-0">
                                         <div className="flex items-center px-6 h-full gap-8">
                                             <div className="flex items-center gap-3">
                                                 <TrendingUp className="h-4 w-4 text-primary" />
@@ -508,7 +585,7 @@ function PricingTable({
                                             <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                                 <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                             </TableCell>
-                                            <TableCell colSpan={isOptions ? 19 : 45} className="border-b-2 border-slate-300 bg-slate-50/50" />
+                                            <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-50/50" />
                                         </TableRow>
                                         {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
                                             <PricingRow 
@@ -546,7 +623,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [isGlobalBulkOpen, setIsGlobalBulkOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
-    const [activeView, setActiveView] = useState<'boats' | 'options'>('boats');
+    const [activeView, setActiveView] = useState<'boats' | 'options' | 'tax'>('boats');
 
     const rangesQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')), [firestore, vendor.id]);
     const { data: ranges } = useCollection<Range>(rangesQuery);
@@ -611,7 +688,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         const modelsInRange = allModels.filter(m => m.rangeId === rangeId);
         const itemIds: string[] = [];
         
-        if (activeView === 'boats') {
+        if (activeView === 'boats' || activeView === 'tax') {
             modelsInRange.forEach(m => {
                 (allVariants[m.id] || []).forEach(v => itemIds.push(v.id));
             });
@@ -642,7 +719,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         const updatedValues = { ...currentValues };
         
         const itemIds: string[] = [];
-        if (activeView === 'boats') {
+        if (activeView === 'boats' || activeView === 'tax') {
             allModels.forEach(m => {
                 (allVariants[m.id] || []).forEach(v => itemIds.push(v.id));
             });
@@ -684,9 +761,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <Calculator className="h-5 w-5" />
                     </div>
                     <div>
-                        <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">HIGHFIELD STRATEGIC WORKSPACE</h2>
+                        <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">HIGHFIELD PRICING MANAGER</h2>
                         <div className="flex items-center gap-2 mt-1.5">
-                            <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-2 border-primary/20 px-2">PRECISION MODE</Badge>
+                            <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">STRATEGIC MODE</Badge>
                             <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
                             <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
                         </div>
@@ -696,19 +773,23 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
                         <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">Hull & SKUs</TabsTrigger>
                         <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">Factory Options</TabsTrigger>
+                        <TabsTrigger value="tax" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm rounded-lg">
+                            <Receipt className="h-3 w-3 mr-1.5" />
+                            Tax Audit
+                        </TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>
             <div className="flex items-center gap-3">
                 <Button 
                     type="button"
-                    variant="outline" 
+                    variant="default" 
                     size="sm" 
-                    className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all shadow-sm"
+                    className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg shadow-primary/20 bg-primary text-white hover:bg-primary/90 transition-all"
                     onClick={() => setIsGlobalBulkOpen(true)}
                 >
                     <Zap className="h-4 w-4 mr-2" />
-                    Global Strategic Update
+                    Global Update
                 </Button>
                 <Button 
                     type="button" 
@@ -744,7 +825,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 activeExchangeRate={activeExchangeRate}
             />
 
-            <GlobalStrategicDialog 
+            <GlobalUpdateDialog 
                 isOpen={isGlobalBulkOpen} 
                 onOpenChange={setIsGlobalBulkOpen} 
                 onApply={handleGlobalBulkUpdate} 
@@ -753,7 +834,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
                 <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
                     <DialogHeader className="p-0">
-                        <DialogTitle className="sr-only">Highfield Strategic Pricing Matrix - Focus Mode</DialogTitle>
+                        <DialogTitle className="sr-only">Highfield Pricing Manager - Focus Mode</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col h-full bg-background overflow-hidden">
                         <WorkspaceHeader isFocus />
