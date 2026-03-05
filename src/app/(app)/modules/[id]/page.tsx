@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -309,10 +308,16 @@ function SortableItemCard({
                 className="cursor-pointer hover:border-primary shadow-sm rounded-3xl overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
                 onClick={onClick}
             >
-                <div className="aspect-[4/3] relative bg-muted/30 border-b flex items-center justify-center p-4 overflow-hidden">
+                <div className="aspect-[4/3] relative bg-muted/30 border-b flex items-center justify-center overflow-hidden">
                     {imageUrl ? (
                         <div className="relative h-full w-full">
-                            <Image src={imageUrl} alt={name} fill className={cn("p-4 transition-transform group-hover:scale-105", code ? "object-cover p-0" : "object-contain")} unoptimized />
+                            <Image 
+                                src={imageUrl} 
+                                alt={name} 
+                                fill 
+                                className="object-cover transition-transform group-hover:scale-105" 
+                                unoptimized 
+                            />
                         </div>
                     ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-12 w-12 opacity-10" /></div>}
                 </div>
@@ -420,10 +425,10 @@ function QuoteSelectorDialog({
                                             className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1"
                                             onClick={() => setSelectedRange(range)}
                                         >
-                                            <div className="aspect-video bg-muted/30 relative border-b p-4">
+                                            <div className="aspect-video bg-muted/30 relative border-b">
                                                 {range.imageUrl ? (
                                                     <div className="relative h-full w-full">
-                                                        <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-2" unoptimized />
+                                                        <Image src={range.imageUrl} alt={range.name} fill className="object-cover" unoptimized />
                                                     </div>
                                                 ) : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
                                             </div>

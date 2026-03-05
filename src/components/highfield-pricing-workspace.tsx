@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -156,10 +155,10 @@ const getSectionColCount = (sec: PricingSection, view: 'boats' | 'options') => {
     if (sec.isCollapsed) return 1;
     if (view === 'options') {
         if (sec.id === 'sec-exchange') return 5;
-        if (sec.id === 'sec-vendor') return 1; // Base Price Only
-        if (sec.id === 'sec-misc') return 1; // Misc Charge
-        if (sec.id === 'sec-financials') return 4; // Cost to date, MU, GP, Sell
-        return 0; // Hide others
+        if (sec.id === 'sec-vendor') return 1; 
+        if (sec.id === 'sec-misc') return 1; 
+        if (sec.id === 'sec-financials') return 4; 
+        return 0; 
     }
     if (sec.id === 'sec-exchange') return 5;
     if (sec.id === 'sec-vendor') return 4;
@@ -196,51 +195,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const strategyRef = useMemoFirebase(() => doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}`), [firestore, organisationId, vendor.id]);
     const { data: strategy, loading: strategyLoading } = useDoc<PricingStrategy>(strategyRef);
 
-    const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
-    const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
-    const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
-    const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
-    
-    const [newSectionName, setNewSectionName] = useState('');
-    const [newColName, setNewColName] = useState('');
-    const [newColType, setNewColType] = useState<CustomColumn['type']>('percent');
-    const [isCalculated, setIsCalculated] = useState(false);
-    const [formulaLeft, setFormulaLeft] = useState('baseCost');
-    const [formulaOp, setFormulaOp] = useState<CustomColumn['formula']['operator']>('+');
-    const [formulaRight, setFormulaRight] = useState('');
-
-    useEffect(() => {
-        if (strategyLoading || !strategy) return;
-        const currentSections = strategy.sections || [];
-        const requiredIds = ['sec-exchange', 'sec-vendor', 'sec-freight', 'sec-handling', 'sec-markup', 'sec-price-levels', 'sec-misc', 'sec-financials'];
-        const missingIds = requiredIds.filter(id => !currentSections.some(s => s.id === id));
-        
-        if (missingIds.length > 0) {
-            const defaults: Record<string, PricingSection> = {
-                'sec-exchange': { id: 'sec-exchange', name: 'EXCHANGE', order: 0, columns: [] },
-                'sec-vendor': { id: 'sec-vendor', name: 'VENDOR', order: 1, columns: [] },
-                'sec-freight': { id: 'sec-freight', name: 'FREIGHT', order: 2, columns: [] },
-                'sec-handling': { id: 'sec-handling', name: 'HANDLING', order: 3, columns: [] },
-                'sec-markup': { id: 'sec-markup', name: 'MARKUP', order: 4, columns: [] },
-                'sec-price-levels': { id: 'sec-price-levels', name: 'PRICE LEVELS (HULL ONLY)', order: 5, columns: [] },
-                'sec-misc': { id: 'sec-misc', name: 'MISCELLANEOUS', order: 6, columns: [] },
-                'sec-financials': { id: 'sec-financials', name: 'FINANCIALS', order: 7, columns: [] },
-            };
-            let nextOrder = currentSections.length > 0 ? Math.max(...currentSections.map(s => s.order)) + 1 : 0;
-            const newSections = [...currentSections];
-            missingIds.forEach(id => {
-                if (!newSections.some(s => s.id === id)) {
-                    newSections.push({ ...defaults[id], order: nextOrder++ });
-                }
-            });
-            updateDoc(strategyRef, { sections: newSections.sort((a, b) => a.order - b.order) });
-        }
-    }, [strategy, strategyLoading, strategyRef]);
-
     useEffect(() => {
         const fetchDeepData = async () => {
             if (!ranges || ranges.length === 0) return;
-            setAllModels([]);
             setLoadingModels(true);
             try {
                 const models: Model[] = [];
@@ -288,26 +245,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (!strategy) return;
         const newSections = (strategy.sections || []).map(s => s.id === sectionId ? { ...s, isCollapsed: !s.isCollapsed } : s);
         await updateDoc(strategyRef, { sections: newSections });
-    };
-
-    const handleAddSection = async () => {
-        if (!newSectionName.trim()) return;
-        const currentSections = strategy?.sections || [];
-        const newSection: PricingSection = { id: `sec-${Date.now()}`, name: newSectionName.toUpperCase(), order: currentSections.length, columns: [] };
-        await updateDoc(strategyRef, { sections: [...currentSections, newSection] });
-        setIsAddSectionOpen(false);
-        setNewSectionName('');
-    };
-
-    const handleAddColumn = async () => {
-        if (!newColName.trim() || !targetSectionId) return;
-        const currentSections = strategy?.sections || [];
-        const newCol: CustomColumn = { id: `col-${Date.now()}`, name: newColName, type: newColType, isCalculated, formula: isCalculated ? { leftId: formulaLeft, operator: formulaOp, rightId: isNaN(parseFloat(formulaRight)) ? formulaRight : parseFloat(formulaRight) } : undefined };
-        const updatedSections = currentSections.map(s => s.id === targetSectionId ? { ...s, columns: [...s.columns, newCol] } : s);
-        await updateDoc(strategyRef, { sections: updatedSections });
-        setIsAddColumnOpen(false);
-        setNewColName('');
-        setIsCalculated(false);
     };
 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -370,18 +307,118 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:bg-primary/10" onClick={collapseAllRanges}><FoldVertical className="h-4 w-4" /></Button>
                     </div>
                 )}
+                <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 hover:bg-slate-50 transition-all bg-white"><History className="h-4 w-4 mr-2 text-primary" /> CHANGE LOG</Button>
                 {isFocus ? (
-                    <>
-                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 hover:bg-slate-50 transition-all bg-white"><History className="h-4 w-4 mr-2 text-primary" /> CHANGE LOG</Button>
-                        <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"><Minimize2 className="h-4 w-4 mr-2" /> EXIT FOCUS</Button>
-                    </>
+                    <Button type="button" onClick={() => setIsFocusMode(false)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"><Minimize2 className="h-4 w-4 mr-2" /> EXIT FOCUS</Button>
                 ) : (
-                    <>
-                        <Button type="button" onClick={() => setIsAuditLogOpen(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 hover:bg-slate-50 transition-all bg-white"><History className="h-4 w-4 mr-2 text-primary" /> CHANGE LOG</Button>
-                        <Button type="button" onClick={() => setIsFocusMode(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"><Maximize2 className="h-4 w-4 mr-2" /> FOCUS</Button>
-                    </>
+                    <Button type="button" onClick={() => setIsFocusMode(true)} variant="outline" size="sm" className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"><Maximize2 className="h-4 w-4 mr-2" /> FOCUS</Button>
                 )}
             </div>
+        </div>
+    );
+
+    const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
+
+    const PricingTable = () => (
+        <div className="flex-1 overflow-auto min-w-0 bg-white">
+            <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
+                <TableHeader className="sticky top-0 z-[45] bg-white">
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-[340px] sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">
+                            {activeView === 'boats' ? 'SERIES DESCRIPTION & SKU' : 'MODEL SERIES & OPTIONS'}
+                        </TableHead>
+                        {activeSections.map((sec) => (
+                            <TableHead key={sec.id} colSpan={getSectionColCount(sec, activeView)} className={cn("border-r border-b-2 border-slate-300 p-0 bg-slate-100 transition-colors", sec.isCollapsed ? "w-[64px]" : "")}>
+                                <div className="flex items-center gap-3 p-3 min-h-[48px]">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-primary/10 text-primary border border-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}</Button>
+                                    {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
+                                </div>
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                    <TableRow className="hover:bg-transparent bg-white">
+                        <TableHead className="sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] h-14 py-0 px-6">
+                            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" /><input placeholder="Filter..." className="w-full pl-9 h-10 bg-slate-50 border-2 border-slate-200 rounded-xl text-[11px] font-bold focus:outline-none focus:border-primary/40 transition-all placeholder:text-slate-400" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
+                        </TableHead>
+                        {activeSections.map(sec => {
+                            if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[64px] border-r border-b-2 border-slate-300 bg-slate-50 text-center p-0"><div className="flex flex-col items-center justify-center h-full"><span className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black tracking-widest text-slate-900 uppercase">{sec.name}</span></div></TableHead>;
+                            if (sec.id === 'sec-exchange') return (
+                                <React.Fragment key={sec.id}>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">{vendor.currency || 'USD'}</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">RATE</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">{organisation?.tradingCurrency || 'AUD'}</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">RATE</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">DUTY %</TableHead>
+                                </React.Fragment>
+                            );
+                            if (sec.id === 'sec-vendor') {
+                                if (activeView === 'options') return <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">BASE ({vendor.currency || 'USD'})</TableHead>;
+                                return (
+                                    <React.Fragment key={sec.id}>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vendor.currency || 'USD'})</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({organisation?.tradingCurrency || 'AUD'})</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">DISC ({vendor.currency || 'USD'})</TableHead>
+                                        <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">LANDED ({organisation?.tradingCurrency || 'AUD'})</TableHead>
+                                    </React.Fragment>
+                                );
+                            }
+                            if (sec.id === 'sec-misc') return <TableHead key={sec.id} className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">MISC CHARGE (AUD)</TableHead>;
+                            if (sec.id === 'sec-financials') return (
+                                <React.Fragment key={sec.id}>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">COST TO DATE (AUD)</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">MARKUP %</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">GP (AUD)</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5 text-primary">SELL PRICE (AUD)</TableHead>
+                                </React.Fragment>
+                            );
+                            if (sec.id === 'sec-freight' && activeView === 'boats') return (
+                                <React.Fragment key={sec.id}>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">OCEAN (USD)</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE (USD)</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">ROAD (AUD)</TableHead>
+                                </React.Fragment>
+                            );
+                            if (sec.id === 'sec-handling' && activeView === 'boats') return (
+                                <React.Fragment key={sec.id}>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">PREP (USD)</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">OTHER (AUD)</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GST</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">PD CODE</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">PD HRS</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700 px-5">LABOR $</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">PD COST</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">DETAIL $</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700 px-5">FUEL (L)</TableHead>
+                                </React.Fragment>
+                            );
+                            if (sec.id === 'sec-markup' && activeView === 'boats') return (
+                                <React.Fragment key={sec.id}>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">HULL MU %</TableHead>
+                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BMT MU %</TableHead>
+                                </React.Fragment>
+                            );
+                            if (sec.id === 'sec-price-levels' && activeView === 'boats') return (
+                                <React.Fragment key={sec.id}>
+                                    {['CASH', 'TRADE', 'SUB', 'EXCL', 'SAILING'].map(l => (
+                                        <React.Fragment key={l}>
+                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[110px] text-slate-700 px-4">{l} $</TableHead>
+                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GP %</TableHead>
+                                        </React.Fragment>
+                                    ))}
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-4">SUB SRP</TableHead>
+                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-4">EXCL SRP</TableHead>
+                                </React.Fragment>
+                            );
+                            return null;
+                        })}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredRanges.length > 0 ? filteredRanges.map(range => (
+                        <RangeSection key={range.id} range={range} models={allModels.filter((m: any) => m.rangeId === range.id)} variants={allVariants} isExpanded={expandedRanges.includes(range.id)} onToggle={() => toggleRange(range.id)} sections={activeSections} strategy={strategy} onUpdateValue={onUpdateValue} vendor={vendor} organisation={organisation} exchangeRate={activeExchangeRate} totalCalculatedCols={totalCalculatedCols} activeView={activeView} />
+                    )) : <TableRow><TableCell colSpan={totalCalculatedCols + 1} className="h-64 text-center opacity-20"><Search className="h-12 w-12 mb-4 mx-auto" /><p className="font-black uppercase tracking-widest text-xs">NO RECORDS MATCHING SEARCH</p></TableCell></TableRow>}
+                </TableBody>
+            </Table>
         </div>
     );
 
@@ -389,106 +426,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         <div className="flex flex-col h-full overflow-hidden bg-slate-50">
             {!isFocusMode && <WorkspaceHeader />}
             <div className="flex-1 min-h-0 min-w-0 bg-white flex flex-col overflow-hidden">
-                <ScrollArea className="h-full">
-                    <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
-                        <TableHeader className="sticky top-0 z-[45] bg-white">
-                            <TableRow className="hover:bg-transparent">
-                                <TableHead className="w-[340px] sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">
-                                    {activeView === 'boats' ? 'SERIES DESCRIPTION & SKU' : 'MODEL SERIES & OPTIONS'}
-                                </TableHead>
-                                {activeSections.map((sec) => (
-                                    <TableHead key={sec.id} colSpan={getSectionColCount(sec, activeView)} className={cn("border-r border-b-2 border-slate-300 p-0 bg-slate-100 transition-colors", sec.isCollapsed ? "w-[64px]" : "")}>
-                                        <div className="flex items-center gap-3 p-3 min-h-[48px]">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-primary/10 text-primary border border-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}</Button>
-                                            {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
-                                        </div>
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                            <TableRow className="hover:bg-transparent bg-white">
-                                <TableHead className="sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] h-14 py-0 px-6">
-                                    <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" /><input placeholder="Filter..." className="w-full pl-9 h-10 bg-slate-50 border-2 border-slate-200 rounded-xl text-[11px] font-bold focus:outline-none focus:border-primary/40 transition-all placeholder:text-slate-400" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                                </TableHead>
-                                {activeSections.map(sec => {
-                                    if (sec.isCollapsed) return <TableHead key={`sub-coll-${sec.id}`} className="w-[64px] border-r border-b-2 border-slate-300 bg-slate-50 text-center p-0"><div className="flex flex-col items-center justify-center h-full"><span className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black tracking-widest text-slate-900 uppercase">{sec.name}</span></div></TableHead>;
-                                    if (sec.id === 'sec-exchange') return (
-                                        <React.Fragment key={sec.id}>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">{vendor.currency || 'USD'}</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">RATE</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">{organisation?.tradingCurrency || 'AUD'}</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">RATE</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">DUTY %</TableHead>
-                                        </React.Fragment>
-                                    );
-                                    if (sec.id === 'sec-vendor') {
-                                        if (activeView === 'options') return <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">BASE ({vendor.currency || 'USD'})</TableHead>;
-                                        return (
-                                            <React.Fragment key={sec.id}>
-                                                <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({vendor.currency || 'USD'})</TableHead>
-                                                <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE ({organisation?.tradingCurrency || 'AUD'})</TableHead>
-                                                <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">DISC ({vendor.currency || 'USD'})</TableHead>
-                                                <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">LANDED ({organisation?.tradingCurrency || 'AUD'})</TableHead>
-                                            </React.Fragment>
-                                        );
-                                    }
-                                    if (sec.id === 'sec-misc') return <TableHead key={sec.id} className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">MISC CHARGE (AUD)</TableHead>;
-                                    if (sec.id === 'sec-financials') return (
-                                        <React.Fragment key={sec.id}>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">COST TO DATE (AUD)</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">MARKUP %</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5">GP (AUD)</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[140px] text-slate-700 px-5 text-primary">SELL PRICE (AUD)</TableHead>
-                                        </React.Fragment>
-                                    );
-                                    if (sec.id === 'sec-freight') return (
-                                        <React.Fragment key={sec.id}>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">OCEAN (USD)</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BASE (USD)</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">ROAD (AUD)</TableHead>
-                                        </React.Fragment>
-                                    );
-                                    if (sec.id === 'sec-handling') return (
-                                        <React.Fragment key={sec.id}>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">PREP (USD)</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">OTHER (AUD)</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GST</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700">PD CODE</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">PD HRS</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700 px-5">LABOR $</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">PD COST</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">DETAIL $</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[100px] text-slate-700 px-5">FUEL (L)</TableHead>
-                                        </React.Fragment>
-                                    );
-                                    if (sec.id === 'sec-markup') return (
-                                        <React.Fragment key={sec.id}>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">HULL MU %</TableHead>
-                                            <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-5">BMT MU %</TableHead>
-                                        </React.Fragment>
-                                    );
-                                    if (sec.id === 'sec-price-levels') return (
-                                        <React.Fragment key={sec.id}>
-                                            {['CASH', 'TRADE', 'SUB', 'EXCL', 'SAILING'].map(l => (
-                                                <React.Fragment key={l}>
-                                                    <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[110px] text-slate-700 px-4">{l} $</TableHead>
-                                                    <TableHead className="text-center border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[80px] text-slate-700">GP %</TableHead>
-                                                </React.Fragment>
-                                            ))}
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-4">SUB SRP</TableHead>
-                                            <TableHead className="text-right border-r border-b-2 border-slate-300 bg-slate-50 font-black uppercase text-[9px] tracking-tight w-[120px] text-slate-700 px-4">EXCL SRP</TableHead>
-                                        </React.Fragment>
-                                    );
-                                    return null;
-                                })}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredRanges.length > 0 ? filteredRanges.map(range => (
-                                <RangeSection key={range.id} range={range} models={allModels.filter((m: any) => m.rangeId === range.id)} variants={allVariants} isExpanded={expandedRanges.includes(range.id)} onToggle={() => toggleRange(range.id)} sections={activeSections} strategy={strategy} onUpdateValue={onUpdateValue} vendor={vendor} organisation={organisation} exchangeRate={activeExchangeRate} totalCalculatedCols={totalCalculatedCols} activeView={activeView} />
-                            )) : <TableRow><TableCell colSpan={totalCalculatedCols + 1} className="h-64 text-center opacity-20"><Search className="h-12 w-12 mb-4 mx-auto" /><p className="font-black uppercase tracking-widest text-xs">NO RECORDS MATCHING SEARCH</p></TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
-                </ScrollArea>
+                <PricingTable />
             </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
