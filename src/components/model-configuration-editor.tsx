@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, FormProvider, useController } from 'react-hook-form';
@@ -68,6 +67,9 @@ const getVendorSchema = (slug?: string) => {
             hiddenIds: z.array(z.string()).default([]),
             manualIds: z.array(z.string()).default([]),
         })).optional().default({}),
+        variantOverrides: z.record(z.string(), z.object({
+            imageUrl: z.string().nullable().optional(),
+        })).optional().default({}),
     });
 
     switch (slug) {
@@ -94,6 +96,7 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
         freightCostExclGst: data.freightCostExclGst ?? null,
         motorFactoryOptions: data.motorFactoryOptions ?? {},
         motorOverrides: data.motorOverrides ?? {},
+        variantOverrides: data.variantOverrides ?? {},
         specifications: {
             motorConfigurations: (specs.motorConfigurations ?? []).map((config: any) => {
                 if (config.engines && Array.isArray(config.engines) && config.engines.length > 0) return config;

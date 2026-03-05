@@ -152,21 +152,24 @@ export function HighfieldQuoteFlow({
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
 
                         const motorOverrides = model.motorOverrides || {};
-                        const allowedIds = new Set<string>();
+                        const allHidden = new Set<string>();
+                        const allManual = new Set<string>();
+                        
                         Object.values(motorOverrides).forEach((ov: any) => {
-                            if (ov.manualIds) ov.manualIds.forEach((id: string) => allowedIds.add(id));
+                            if (ov.manualIds) ov.manualIds.forEach((id: string) => allManual.add(id));
+                            if (ov.hiddenIds) ov.hiddenIds.forEach((id: string) => allHidden.add(id));
                         });
 
-                        if (allowedIds.size > 0) {
-                            setMotors(allRows.filter(r => allowedIds.has(r.id)));
-                        } else {
-                            const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
-                            const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
-                            setMotors(allRows.filter(r => {
-                                const hp = parseInt(r['HP Rating']) || 0;
-                                return hp >= minHp && hp <= maxHp;
-                            }));
-                        }
+                        const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
+                        const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
+
+                        setMotors(allRows.filter(r => {
+                            if (allHidden.has(r.id)) return false;
+                            if (allManual.has(r.id)) return true;
+                            
+                            const hp = parseInt(r['HP Rating']) || 0;
+                            return hp >= minHp && hp <= maxHp;
+                        }));
                     }
                 }
             } catch (e) {
@@ -223,16 +226,21 @@ export function HighfieldQuoteFlow({
 
     const carouselImages = useMemo(() => {
         const images = [];
-        if (activeVariant?.imageUrl) {
+        const variantOverride = model.variantOverrides?.[selectedColor || '']?.imageUrl;
+        
+        if (variantOverride) {
+            images.push(variantOverride);
+        } else if (activeVariant?.imageUrl) {
             images.push(activeVariant.imageUrl);
         } else if (model.coverImageUrl) {
             images.push(model.coverImageUrl);
         }
+        
         if (model.galleryImageUrls && Array.isArray(model.galleryImageUrls)) {
             images.push(...model.galleryImageUrls);
         }
         return [...new Set(images)].filter(img => typeof img === 'string' && img.trim() !== ''); 
-    }, [activeVariant, model]);
+    }, [activeVariant, selectedColor, model]);
 
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
@@ -241,14 +249,17 @@ export function HighfieldQuoteFlow({
 
     const availableColors = useMemo(() => {
         if (!variants || !selectedMaterial) return [];
-        return variants.filter(v => v.material === selectedMaterial).map(v => ({
-            id: v.id,
-            name: v.colorName || 'Default Color',
-            code: v.colorCode,
-            imageUrl: v.imageUrl,
-            sku: v.sku
-        }));
-    }, [variants, selectedMaterial]);
+        return variants.filter(v => v.material === selectedMaterial).map(v => {
+            const overrideImg = model.variantOverrides?.[v.id]?.imageUrl;
+            return {
+                id: v.id,
+                name: v.colorName || 'Default Color',
+                code: v.colorCode,
+                imageUrl: overrideImg || v.imageUrl,
+                sku: v.sku
+            };
+        });
+    }, [variants, selectedMaterial, model.variantOverrides]);
 
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
