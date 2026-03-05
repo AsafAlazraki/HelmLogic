@@ -35,7 +35,8 @@ import {
     Globe,
     Save,
     GripVertical,
-    Receipt
+    Receipt,
+    ListChecks
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,6 +130,50 @@ function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
                 onBlur={handleBlur} 
                 placeholder={placeholder || "-"} 
             />
+        </div>
+    );
+}
+
+function BulkActionToolbar({ onApply, activeView }: { onApply: (field: string, value: string) => void, activeView: string }) {
+    const [field, setField] = useState('exchange_duty_percent');
+    const [value, setValue] = useState('');
+
+    const options = [
+        { value: 'exchange_duty_percent', label: 'Duty %' },
+        { value: 'op_freight_margin_percent', label: 'Freight Margin %' },
+        { value: 'op_handling_margin_percent', label: 'Handling Margin %' },
+        { value: 'op_predel_margin_percent', label: 'Pre-Del Margin %' },
+        { value: 'strat_package_margin_percent', label: activeView === 'boats' ? 'Hull Margin %' : 'Option Margin %' },
+    ];
+
+    return (
+        <div className="flex items-center gap-2 p-1.5 bg-white border-2 rounded-xl shadow-sm animate-in fade-in zoom-in-95 duration-300">
+            <Select value={field} onValueChange={setField}>
+                <SelectTrigger className="h-7 w-[130px] text-[9px] font-black uppercase tracking-tighter bg-muted/50 border-none shadow-none focus:ring-0">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-2 rounded-xl">
+                    {options.map(o => <SelectItem key={o.value} value={o.value} className="text-[9px] font-bold uppercase">{o.label}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            <div className="relative">
+                <Percent className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-primary opacity-40" />
+                <Input 
+                    type="number" 
+                    placeholder="0.00" 
+                    className="h-7 w-20 pl-6 text-[10px] font-black bg-muted/30 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                />
+            </div>
+            <Button 
+                type="button" 
+                size="sm" 
+                className="h-7 px-3 text-[9px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90"
+                onClick={() => { onApply(field, value); setValue(''); }}
+            >
+                Apply Range
+            </Button>
         </div>
     );
 }
@@ -359,7 +404,7 @@ function PricingRow({
 }
 
 function PricingTable({ 
-    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate 
+    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, onRangeApply 
 }: any) {
     const isOptions = activeView === 'options';
     const isTax = activeView === 'tax';
@@ -479,7 +524,15 @@ function PricingTable({
                             <React.Fragment key={range.id}>
                                 <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
                                     <TableCell className="sticky left-0 z-[20] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                                        <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
+                                        <div className="flex items-center gap-4">
+                                            <ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />
+                                            <span>{range.name} RANGE</span>
+                                            {expandedRanges.includes(range.id) && (
+                                                <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                                                    <BulkActionToolbar activeView={activeView} onApply={(field, val) => onRangeApply(range.id, field, val)} />
+                                                </div>
+                                            )}
+                                        </div>
                                     </TableCell>
                                     <TableCell colSpan={isTax ? 6 : (isOptions ? 20 : 46)} className="border-b-2 border-slate-300 bg-slate-100/60 p-0" />
                                 </TableRow>
@@ -615,6 +668,37 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         toast({ title: "Global Update Executed", description: `Updated ${itemIds.length} items across the entire catalog.` });
     };
 
+    const handleRangeBulkUpdate = async (rangeId: string, field: string, value: string) => {
+        if (!strategyRef) return;
+        const currentValues = strategy?.itemValues || {};
+        const updatedValues = { ...currentValues };
+        
+        const rangeModels = allModels.filter(m => m.rangeId === rangeId);
+        const itemIds: string[] = [];
+        
+        rangeModels.forEach(m => {
+            if (activeView === 'boats') {
+                (allVariants[m.id] || []).forEach(v => itemIds.push(v.id));
+            } else {
+                (m.optionalFeatures || []).forEach(f => itemIds.push(f.id));
+            }
+        });
+
+        if (itemIds.length === 0) return;
+
+        itemIds.forEach(id => {
+            if (!updatedValues[id]) updatedValues[id] = {};
+            updatedValues[id][field] = value;
+        });
+
+        await updateDoc(strategyRef, {
+            itemValues: updatedValues,
+            lastUpdateAt: serverTimestamp()
+        });
+
+        toast({ title: "Range Update Applied", description: `Updated ${itemIds.length} units in this range.` });
+    };
+
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     
     const filteredRanges = useMemo(() => {
@@ -690,6 +774,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 vendor={vendor}
                 organisation={organisation}
                 activeExchangeRate={activeExchangeRate}
+                onRangeApply={handleRangeBulkUpdate}
             />
 
             <GlobalUpdateDialog 
@@ -718,6 +803,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             vendor={vendor}
                             organisation={organisation}
                             activeExchangeRate={activeExchangeRate}
+                            onRangeApply={handleRangeBulkUpdate}
                         />
                     </div>
                 </DialogContent>
