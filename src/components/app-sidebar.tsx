@@ -56,7 +56,7 @@ export function AppSidebar() {
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string; organisationRole?: string }>(userProfileRef);
   
-  const orgsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
+  const organisationsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
   const { data: organisations, loading: orgsLoading } = useCollection<any>(organisationsQuery);
 
   const organisation = useMemo(() => 

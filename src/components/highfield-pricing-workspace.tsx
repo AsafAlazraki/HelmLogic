@@ -406,7 +406,6 @@ function PricingTable({
                         </TableRow>
                         
                         <TableRow className="hover:bg-transparent bg-white shadow-sm">
-                            {/* Skip first cell due to rowSpan */}
                             {!isTax ? (
                                 <>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40] pricing-matrix-cell">From</TableHead>

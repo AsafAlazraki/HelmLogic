@@ -24,11 +24,6 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 210 100% 40%;
-    --chart-1: 188 71% 86%;
-    --chart-2: 210 100% 40%;
-    --chart-3: 213 100% 38%;
-    --chart-4: 51 100% 50%;
-    --chart-5: 0 0% 50%;
     --radius: 0.5rem;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
@@ -39,40 +34,6 @@
     --sidebar-border: 214.3 31.8% 91.4%;
     --sidebar-ring: 210 100% 40%;
   }
-  .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 100% 50%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 213 100% 48%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 213 100% 48%;
-    --chart-1: 188 71% 66%;
-    --chart-2: 210 100% 50%;
-    --chart-3: 213 100% 48%;
-    --chart-4: 51 100% 60%;
-    --chart-5: 0 0% 70%;
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 100% 50%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 213 100% 48%;
-  }
 }
 
 @layer base {
@@ -80,7 +41,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
@@ -91,15 +52,23 @@
     @apply relative transition-colors;
   }
 
-  .pricing-matrix-cell:hover::after {
+  /* Vertical Column Highlight (Showcase Mode) */
+  .pricing-matrix-table td:hover::after,
+  .pricing-matrix-table th:hover::after {
     content: "";
     @apply absolute left-0 w-full bg-primary/5 pointer-events-none;
     top: -1000vh;
     height: 2000vh;
-    z-index: 1; /* Subtle column highlight layered above background but below text/interactives if relative z-10 is used */
+    z-index: 1; 
   }
 
-  /* Key text and inputs need relative z-10 to stay above column highlights */
+  /* Reset backgrounds for sticky cells so they don't appear transparent during highlight */
+  .pricing-matrix-table td.sticky,
+  .pricing-matrix-table th.sticky {
+    @apply bg-white;
+  }
+
+  /* Ensure text remains readable above the highlight layer */
   .pricing-matrix-cell > div,
   .pricing-matrix-cell > span,
   .pricing-matrix-cell > input {

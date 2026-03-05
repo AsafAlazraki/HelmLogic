@@ -211,8 +211,7 @@ export function ModelConfigurationEditor({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Anti-clobber guard: Prevents real-time DB updates from resetting form truth
-    // while the user has just committed a change.
+    // Anti-clobber guard
     const isRecentlySaved = useRef(false);
     const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -226,10 +225,6 @@ export function ModelConfigurationEditor({
     
     const { reset, control, formState: { isDirty } } = form;
 
-    // Critical: Only reset the form from incoming model changes if:
-    // 1. The user isn't currently editing (isDirty)
-    // 2. We aren't in the middle of a submission (isSubmitting)
-    // 3. We haven't just saved (isRecentlySaved)
     useEffect(() => {
         if (model && !isSubmitting && !isDirty && !isRecentlySaved.current) {
             const currentDefaults = getSafeDefaultValues(model, vendor?.slug);
@@ -251,7 +246,6 @@ export function ModelConfigurationEditor({
             const sanitizedValues = sanitizeDataForFirestore(values);
             const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
-            // Activate Stability Window
             isRecentlySaved.current = true;
             if (saveTimer.current) clearTimeout(saveTimer.current);
 
@@ -265,7 +259,6 @@ export function ModelConfigurationEditor({
                 toast({ title: "Master Configuration Updated" });
             } else if (organisationId) {
                 const overrideRef = doc(firestore, `organisations/${organisationId}/modelOverrides/${model.id}`);
-                // Perform Absolute Override Set
                 await setDoc(overrideRef, {
                     ...sanitizedValues,
                     overrideAt: serverTimestamp(),
@@ -273,7 +266,7 @@ export function ModelConfigurationEditor({
                     lastSync: serverTimestamp()
                 });
 
-                toast({ title: "Organisation Configuration Updated", description: "Changes persisted to your custom catalog." });
+                toast({ title: "Organisation Configuration Updated" });
             } else {
                 if (!user) throw new Error("Missing auth context");
                 const quotesColRef = collection(firestore, `users/${user.uid}/quotes`);
@@ -286,10 +279,8 @@ export function ModelConfigurationEditor({
                 toast({ title: "Quote Draft Saved" });
             }
             
-            // Sync local state to prevent "dirty" reset loop
             reset(values);
 
-            // Maintain stability window for 5 seconds to allow Firestore indexing to stabilize
             saveTimer.current = setTimeout(() => {
                 isRecentlySaved.current = false;
             }, 5000);
