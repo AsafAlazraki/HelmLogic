@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs, updateDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDocs, updateDoc, serverTimestamp, where } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
     Table, 
@@ -27,8 +26,8 @@ import {
     TrendingUp,
     DollarSign
 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
     Dialog, 
     DialogContent, 
@@ -40,12 +39,6 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-interface PricingSection {
-    id: string;
-    name: string;
-    order: number;
-}
 
 interface PricingStrategy {
     itemValues?: Record<string, Record<string, any>>;
@@ -69,7 +62,6 @@ interface Variant {
     sku: string | null;
     name: string;
     cost?: number;
-    sellPriceExclGst?: number;
 }
 
 const getSellPrice = (cost: number, marginPercent: number) => {
@@ -171,7 +163,7 @@ function PricingRow({
                 <>
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" suffix={vendorCurrency} /></TableCell>
                     <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">{formatCurrency(freightAudConv, orgCurrency)}</TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_cost_aud'] || ''} placeholder={freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_margin_percent', val)} suffix="%" /></TableCell>
                     <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.03]">{formatCurrency(freightGP, orgCurrency)}</TableCell>
                 </>
@@ -380,7 +372,6 @@ function PricingTable({
 
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
-    const { user } = useUser();
     const { toast } = useToast();
     
     const [isFocusMode, setIsFocusMode] = useState(false);

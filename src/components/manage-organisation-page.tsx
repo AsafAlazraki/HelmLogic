@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
-import { Badge } from './ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { cn, createSlug } from '@/lib/utils';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
