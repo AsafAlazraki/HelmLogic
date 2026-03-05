@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -80,8 +81,8 @@ const calculateBaseCostAudEx = (itemValues: Record<string, any>, baseCostUsd: nu
     const discountUsd = parseFloat(itemValues['factory_discount_usd'] || '0');
     const dutyPercent = parseFloat(itemValues['exchange_duty_percent'] || '0');
 
-    const totalUsd = (usdBase || 0) - discountUsd;
     // Math Correction: AUD = USD / Rate (since rate is 1 AUD = X USD)
+    const totalUsd = (usdBase || 0) - discountUsd;
     const baseAud = exchangeRate > 0 ? totalUsd / exchangeRate : totalUsd;
     const withDuty = baseAud * (1 + (dutyPercent / 100));
     
@@ -112,7 +113,7 @@ function PricingRow({
     const gstMultiplier = 1 + ((organisation?.gstPercentage || 10) / 100);
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50";
 
-    const baseHullAudEx = calculateBaseCostAudEx(itemValues, cost || 0, exchangeRate);
+    const baseCostAudEx = calculateBaseCostAudEx(itemValues, cost || 0, exchangeRate);
 
     // Logistics Calculations (Ex-GST)
     const freightUsd = parseFloat(itemValues['op_freight_cost_usd'] || '0');
@@ -132,10 +133,12 @@ function PricingRow({
     const preDelSell = getSellPrice(preDelCost, preDelMargin);
     const preDelGP = preDelSell - preDelCost;
 
-    const totalStrategicLandedEx = baseHullAudEx + (activeView === 'boats' ? freightSell : 0) + handlingSell + (activeView === 'boats' ? preDelSell : 0);
+    const totalStrategicLandedEx = baseCostAudEx + (activeView === 'boats' ? freightSell : 0) + handlingSell + (activeView === 'boats' ? preDelSell : 0);
     const stratMarginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
     const totalPackageSell = getSellPrice(totalStrategicLandedEx, stratMarginPercent);
     const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
+
+    const isOptions = activeView === 'options';
 
     return (
         <TableRow className={cn("transition-colors group", rowBgClass)}>
@@ -161,9 +164,9 @@ function PricingRow({
             <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">{formatCurrency((parseFloat(itemValues['base_cost_override'] || cost || '0')) / (exchangeRate || 1), orgCurrency)}</TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'factory_discount_usd', val)} align="right" suffix={vendorCurrency} /></TableCell>
             <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">{formatCurrency((parseFloat(itemValues['factory_discount_usd'] || '0')) / (exchangeRate || 1), orgCurrency)}</TableCell>
-            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b border-slate-300 px-5 bg-primary/[0.04]">{formatCurrency(baseHullAudEx, orgCurrency)}</TableCell>
+            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b border-slate-300 px-5 bg-primary/[0.04]">{formatCurrency(baseCostAudEx, orgCurrency)}</TableCell>
 
-            {activeView === 'boats' && (
+            {!isOptions && (
                 <>
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" suffix={vendorCurrency} /></TableCell>
                     <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">{formatCurrency(freightAudConv, orgCurrency)}</TableCell>
@@ -177,7 +180,7 @@ function PricingRow({
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} suffix="%" /></TableCell>
             <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.03]">{formatCurrency(handlingGP, orgCurrency)}</TableCell>
 
-            {activeView === 'boats' && (
+            {!isOptions && (
                 <>
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} suffix="%" /></TableCell>
@@ -189,7 +192,7 @@ function PricingRow({
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} suffix="%" /></TableCell>
             <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.05]">{formatCurrency(totalPackageGP, orgCurrency)}</TableCell>
 
-            {activeView === 'boats' ? (
+            {!isOptions ? (
                 ['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
                     const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
                     const sellIn = sellEx * gstMultiplier;
@@ -219,7 +222,7 @@ function PricingRow({
                 </>
             )}
             
-            {activeView === 'boats' && [
+            {!isOptions && [
                 { id: 'hull_subdealer_srp', label: 'Sub-D SRP' },
                 { id: 'hull_subdealer_excl_srp', label: 'Sub-Ex SRP' }
             ].map(l => {
@@ -260,9 +263,9 @@ function PricingTable({
 
     return (
         <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col bg-white border-t relative">
-            {/* Main Horizontal Scroll Container */}
-            <div className="w-full h-full overflow-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
-                <Table className="border-separate border-spacing-0 min-w-max table-auto">
+            {/* Main Horizontal Scroll Container - Reinforced with visible scrollbar */}
+            <div className="w-full h-full overflow-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
+                <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
                     <TableHeader className="sticky top-0 z-[45]">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[340px] sticky left-0 top-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_4px_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
@@ -311,15 +314,15 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600">Total GP $</TableHead>
                             {!isOptions ? (
                                 <>
-                                    {boatPriceLevels.map(level => (
-                                        <React.Fragment key={`head-row-${level.id}`}>
+                                    {boatPriceLevels.map((level, i) => (
+                                        <React.Fragment key={`h-${level.id}-${i}`}>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white min-w-[120px]">{level.label}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 min-w-[120px]">{inclLabel}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white min-w-[60px]">GP %</TableHead>
                                         </React.Fragment>
                                     ))}
-                                    {boatSrpLevels.map(level => (
-                                        <React.Fragment key={`head-srp-${level.id}`}>
+                                    {boatSrpLevels.map((level, i) => (
+                                        <React.Fragment key={`srp-${level.id}-${i}`}>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white min-w-[120px]">{level.label}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 min-w-[120px]">{inclLabel}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white min-w-[60px]">GP %</TableHead>
@@ -327,7 +330,7 @@ function PricingTable({
                                     ))}
                                 </>
                             ) : (
-                                <React.Fragment key="head-opt-level-row">
+                                <React.Fragment key="opt-head-row">
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white min-w-[120px]">{`${shortCode} SELL PRICE (EXCL.)`}</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 min-w-[120px]">{inclLabel}</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white min-w-[60px]">GP %</TableHead>
@@ -342,7 +345,7 @@ function PricingTable({
                                     <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                                         <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
                                     </TableCell>
-                                    {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={`spacer-${range.id}-${i}`} className="border-b-2 border-slate-300 bg-slate-100/60" />)}
+                                    {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={`sp-${range.id}-${i}`} className="border-b-2 border-slate-300 bg-slate-100/60" />)}
                                 </TableRow>
                                 {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                     <React.Fragment key={model.id}>
@@ -350,7 +353,7 @@ function PricingTable({
                                             <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                                                 <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                             </TableCell>
-                                            {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={`spacer-model-${model.id}-${i}`} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
+                                            {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={`m-sp-${model.id}-${i}`} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
                                         </TableRow>
                                         {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
                                             <PricingRow 
