@@ -604,13 +604,12 @@ export default function ModuleDetailsPage() {
             {/* Premium Navigation Ribbon */}
             <div className="bg-white border-b shrink-0 z-10 px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid grid-cols-6 w-full h-12 bg-transparent p-0 gap-4">
+                    <TabsList className="grid grid-cols-5 w-full h-12 bg-transparent p-0 gap-4">
                         {[
                             { id: 'dashboard', label: 'Dashboard' },
                             { id: 'bmt', label: 'Product Catalog' },
                             { id: 'operations', label: 'Operations' },
                             { id: 'pricing', label: 'Pricing' },
-                            { id: 'fit-up', label: 'Fit Up' },
                             { id: 'network', label: 'Sub Dealers' }
                         ].map((t) => (
                             <TabsTrigger 
@@ -766,23 +765,6 @@ export default function ModuleDetailsPage() {
                                 {currentMemberOrg && mainVendor && (
                                     <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
                                 )}
-                            </div>
-                        </ScrollArea>
-                    </TabsContent>
-
-                    <TabsContent value="fit-up" className="m-0 h-full overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8">
-                                <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
-                                    <CardHeader className="p-8 border-b bg-muted/5">
-                                        <CardTitle className="text-xl font-black uppercase tracking-tight">Fit Up Workspace</CardTitle>
-                                        <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Global assembly and labor management.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="p-20 text-center text-muted-foreground opacity-20">
-                                        <Hammer className="h-12 w-12 mx-auto mb-4" />
-                                        <p className="font-black uppercase tracking-widest text-xs">Module-Wide Fit Up Metrics Synchronized</p>
-                                    </CardContent>
-                                </Card>
                             </div>
                         </ScrollArea>
                     </TabsContent>

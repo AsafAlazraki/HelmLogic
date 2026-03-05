@@ -457,8 +457,8 @@ function PricingTable({
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">AUD Conv</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Factory Disc USD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Disc AUD</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px]">Landed Ex</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px]">Landed In</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px]">Landed AUD (Excl.)</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px]">Landed AUD (Incl.)</TableHead>
                                     {!isOptions && (
                                         <>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Cost USD</TableHead>
