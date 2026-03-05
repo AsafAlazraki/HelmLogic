@@ -28,7 +28,11 @@ import {
     DollarSign,
     CheckCircle2,
     ShieldCheck,
-    Waves
+    Waves,
+    Plus,
+    X,
+    Ship,
+    Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +41,15 @@ import {
     DialogContent, 
     DialogHeader,
     DialogTitle,
+    DialogDescription
 } from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +93,7 @@ const calculateBaseCostAudEx = (itemValues: Record<string, any>, baseCostUsd: nu
     const discountUsd = parseFloat(itemValues['factory_discount_usd'] || '0');
     const dutyPercent = parseFloat(itemValues['exchange_duty_percent'] || '0');
 
-    // Math Correction: AUD = USD / Rate (since rate is 1 AUD = X USD)
+    // 1 AUD = X USD -> AUD = USD / Rate
     const totalUsd = (usdBase || 0) - discountUsd;
     const baseAud = exchangeRate > 0 ? totalUsd / exchangeRate : totalUsd;
     const withDuty = baseAud * (1 + (dutyPercent / 100));
@@ -89,32 +101,74 @@ const calculateBaseCostAudEx = (itemValues: Record<string, any>, baseCostUsd: nu
     return withDuty;
 };
 
-function EditableCell({ value, onChange, placeholder, prefix, suffix, align = 'center' }: any) {
-    const [localValue, setLocalValue] = useState(value);
-    const hasValue = value !== undefined && value !== '' && value !== null;
+function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
+    const [localValue, setLocalValue] = useState(value || '');
     
-    useEffect(() => { setLocalValue(value); }, [value]);
+    useEffect(() => { setLocalValue(value || ''); }, [value]);
     
     const handleBlur = () => { 
-        if (String(localValue || '') !== String(value || '')) {
+        if (String(localValue) !== String(value || '')) {
             onChange(localValue); 
         }
     };
 
     return (
-        <div className="relative h-full flex items-center px-2 min-h-[40px] bg-transparent">
+        <div className="h-full flex items-center bg-transparent min-h-[40px]">
             <input 
                 className={cn(
-                    "h-8 w-full bg-transparent border-none text-[11px] font-black outline-none transition-all placeholder:text-slate-300 rounded focus:bg-white focus:ring-2 focus:ring-primary/20", 
-                    align === 'right' ? "text-right" : "text-center", 
-                    hasValue ? "text-primary" : "text-slate-900"
+                    "h-full w-full bg-transparent border-none text-[11px] font-bold outline-none px-2 transition-colors",
+                    align === 'right' ? "text-right" : "text-center",
+                    localValue !== '' ? "text-primary font-black" : "text-slate-900"
                 )} 
                 value={localValue} 
                 onChange={e => setLocalValue(e.target.value)} 
                 onBlur={handleBlur} 
                 placeholder={placeholder || "-"} 
             />
-            {suffix && <span className="text-[8px] font-black text-slate-400 ml-1 select-none">{suffix}</span>}
+        </div>
+    );
+}
+
+function BulkActionToolbar({ onApply }: { onApply: (field: string, value: string) => void }) {
+    const [field, setField] = useState<string>('exchange_duty_percent');
+    const [value, setValue] = useState('');
+
+    const options = [
+        { value: 'exchange_duty_percent', label: 'Duty %' },
+        { value: 'op_freight_margin_percent', label: 'Freight Margin %' },
+        { value: 'op_handling_margin_percent', label: 'Handling Margin %' },
+        { value: 'op_predel_margin_percent', label: 'Pre-Del Margin %' },
+        { value: 'strat_package_margin_percent', label: 'Strat Margin %' },
+    ];
+
+    return (
+        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <Select value={field} onValueChange={setField}>
+                <SelectTrigger className="h-7 w-40 text-[9px] font-black uppercase bg-white border-slate-300">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {options.map(o => <SelectItem key={o.value} value={o.value} className="text-[9px] font-bold uppercase">{o.label}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            <div className="relative w-20">
+                <Input 
+                    type="number" 
+                    placeholder="Value" 
+                    className="h-7 text-[10px] font-black pr-5 border-slate-300" 
+                    value={value} 
+                    onChange={e => setValue(e.target.value)}
+                />
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">%</span>
+            </div>
+            <Button 
+                type="button"
+                className="h-7 px-3 text-[9px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90"
+                onClick={() => { onApply(field, value); setValue(''); }}
+            >
+                <Zap className="h-3 w-3 mr-1.5" />
+                Apply Range
+            </Button>
         </div>
     );
 }
@@ -156,10 +210,10 @@ function PricingRow({
     const isOptions = activeView === 'options';
 
     return (
-        <TableRow className={cn("transition-colors group", rowBgClass)}>
-            <TableCell className={cn("sticky left-0 z-[30] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03]", rowBgClass, indent ? "pl-16" : "px-8")}>
+        <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
+            <TableCell className={cn("sticky left-0 z-[30] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] min-h-[40px]", rowBgClass, indent ? "pl-16" : "px-8")}>
                 <div className="flex flex-col min-w-[240px]">
-                    <span className={cn("font-black text-[11px] uppercase truncate tracking-tight mb-0.5", isOption ? "text-slate-700" : "text-slate-950")}>{name}</span>
+                    <span className={cn("font-black text-[11px] uppercase truncate tracking-tight", isOption ? "text-slate-700" : "text-slate-950")}>{name}</span>
                     <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
                 </div>
             </TableCell>
@@ -169,43 +223,43 @@ function PricingRow({
             <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary">{exchangeRate.toFixed(4)}</TableCell>
             <TableCell className="text-center border-r border-b border-slate-200 bg-white"><Badge variant="outline" className="font-black text-[8px] h-4 border-slate-200">{orgCurrency}</Badge></TableCell>
             <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary">1.0000</TableCell>
-            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['exchange_duty_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'exchange_duty_percent', val)} suffix="%" /></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['exchange_duty_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'exchange_duty_percent', val)} /></TableCell>
 
             {/* Base Cost */}
-            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['base_cost_override'] || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" suffix={vendorCurrency} /></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['base_cost_override'] || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30">{formatCurrency((parseFloat(itemValues['base_cost_override'] || cost || '0')) / (exchangeRate || 1), orgCurrency)}</TableCell>
-            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'factory_discount_usd', val)} align="right" suffix={vendorCurrency} /></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'factory_discount_usd', val)} align="right" /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30">{formatCurrency((parseFloat(itemValues['factory_discount_usd'] || '0')) / (exchangeRate || 1), orgCurrency)}</TableCell>
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/[0.02]">{formatCurrency(baseCostAudEx, orgCurrency)}</TableCell>
 
             {!isOptions && (
                 <>
                     {/* Freight */}
-                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" suffix={vendorCurrency} /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30">{formatCurrency(freightAudConv, orgCurrency)}</TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_margin_percent', val)} suffix="%" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/[0.02]">{formatCurrency(freightGP, orgCurrency)}</TableCell>
                 </>
             )}
 
             {/* Handling */}
-            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
-            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} suffix="%" /></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" /></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/[0.02]">{formatCurrency(handlingGP, orgCurrency)}</TableCell>
 
             {!isOptions && (
                 <>
                     {/* Pre-Delivery */}
-                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} suffix="%" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/[0.02]">{formatCurrency(preDelGP, orgCurrency)}</TableCell>
                 </>
             )}
 
             {/* Strategic Totals */}
             <TableCell className="text-right text-[10px] font-black text-slate-950 border-r border-b border-slate-300 px-4 bg-slate-100/50">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</TableCell>
-            <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} suffix="%" /></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-300 px-4 bg-green-500/[0.05]">{formatCurrency(totalPackageGP, orgCurrency)}</TableCell>
 
             {/* Price Levels */}
@@ -216,7 +270,7 @@ function PricingRow({
                     const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                     return (
                         <React.Fragment key={l}>
-                            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues[`${l}_price`] || ''} onChange={(val: any) => onUpdateValue(id, `${l}_price`, val)} align="right" suffix={orgCurrency} /></TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues[`${l}_price`] || ''} onChange={(val: any) => onUpdateValue(id, `${l}_price`, val)} align="right" /></TableCell>
                             <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50">{formatCurrency(sellIn, orgCurrency)}</TableCell>
                             <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/[0.02]">{gpPercent.toFixed(1)}%</TableCell>
                         </React.Fragment>
@@ -224,7 +278,7 @@ function PricingRow({
                 })
             ) : (
                 <>
-                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" suffix={orgCurrency} /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" /></TableCell>
                     {(() => {
                         const sellEx = parseFloat(itemValues['hull_cash_price'] || '0');
                         const sellIn = sellEx * gstMultiplier;
@@ -248,7 +302,7 @@ function PricingRow({
                 const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                 return (
                     <React.Fragment key={l.id}>
-                        <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues[l.id] || ''} onChange={(val: any) => onUpdateValue(id, l.id, val)} align="right" suffix={orgCurrency} /></TableCell>
+                        <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues[l.id] || ''} onChange={(val: any) => onUpdateValue(id, l.id, val)} align="right" /></TableCell>
                         <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50">{formatCurrency(sellIn, orgCurrency)}</TableCell>
                         <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/[0.02]">{gpPercent.toFixed(1)}%</TableCell>
                     </React.Fragment>
@@ -259,7 +313,7 @@ function PricingRow({
 }
 
 function PricingTable({ 
-    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate 
+    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, onBulkUpdate 
 }: any) {
     const isOptions = activeView === 'options';
     const shortCode = (organisation?.shortCode || 'NSM').toUpperCase();
@@ -282,7 +336,7 @@ function PricingTable({
         <div className="flex-1 w-full overflow-hidden flex flex-col bg-white border-t relative">
             <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
                 <Table className="border-separate border-spacing-0 w-max table-fixed">
-                    <TableHeader className="sticky top-0 z-[45]">
+                    <TableHeader className="sticky top-0 z-[50]">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="w-[340px] sticky left-0 top-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
                             <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
@@ -303,9 +357,9 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px]">Duty %</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Base USD</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">AUD Conv</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Factory Disc (USD)</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Disc (AUD)</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px]">Landed AUD (Ex)</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Factory Disc USD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Disc AUD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px]">Landed AUD Ex</TableHead>
                             {!isOptions && (
                                 <>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Cost USD</TableHead>
@@ -325,7 +379,7 @@ function PricingTable({
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">GP $</TableHead>
                                 </>
                             )}
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px]">Total Landed (Ex)</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px]">Total Landed Ex</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px]">Strat Marg %</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px]">Total GP $</TableHead>
                             {!isOptions ? (
@@ -361,8 +415,15 @@ function PricingTable({
                                     <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                         <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
                                     </TableCell>
-                                    {/* Spacer cells for range header */}
-                                    <TableCell colSpan={isOptions ? 22 : 45} className="border-b-2 border-slate-300 bg-slate-100/60" />
+                                    <TableCell colSpan={isOptions ? 19 : 45} className="border-b-2 border-slate-300 bg-slate-100/60 p-0">
+                                        <div className="flex items-center px-6 h-full gap-8">
+                                            <div className="flex items-center gap-3">
+                                                <TrendingUp className="h-4 w-4 text-primary" />
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Range Strategic Bulk Actions:</span>
+                                            </div>
+                                            <BulkActionToolbar onApply={(field, val) => onBulkUpdate(range.id, field, val)} />
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
                                 {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                     <React.Fragment key={model.id}>
@@ -370,7 +431,7 @@ function PricingTable({
                                             <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                                 <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                             </TableCell>
-                                            <TableCell colSpan={isOptions ? 22 : 45} className="border-b-2 border-slate-300 bg-slate-50/50" />
+                                            <TableCell colSpan={isOptions ? 19 : 45} className="border-b-2 border-slate-300 bg-slate-50/50" />
                                         </TableRow>
                                         {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
                                             <PricingRow 
@@ -464,6 +525,39 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         updateDoc(strategyRef, { itemValues: updated, lastUpdateAt: serverTimestamp() });
     };
 
+    const handleBulkUpdate = async (rangeId: string, field: string, value: string) => {
+        if (!strategyRef) return;
+        const currentValues = strategy?.itemValues || {};
+        const updatedValues = { ...currentValues };
+
+        const modelsInRange = allModels.filter(m => m.rangeId === rangeId);
+        const itemIds: string[] = [];
+        
+        if (activeView === 'boats') {
+            modelsInRange.forEach(m => {
+                (allVariants[m.id] || []).forEach(v => itemIds.push(v.id));
+            });
+        } else {
+            modelsInRange.forEach(m => {
+                (m.optionalFeatures || []).forEach(f => itemIds.push(f.id));
+            });
+        }
+
+        if (itemIds.length === 0) return;
+
+        itemIds.forEach(id => {
+            if (!updatedValues[id]) updatedValues[id] = {};
+            updatedValues[id][field] = value;
+        });
+
+        await updateDoc(strategyRef, { 
+            itemValues: updatedValues, 
+            lastUpdateAt: serverTimestamp() 
+        });
+        
+        toast({ title: "Bulk Update Applied", description: `Updated ${itemIds.length} items in this range.` });
+    };
+
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     
     const filteredRanges = useMemo(() => {
@@ -525,6 +619,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 activeView={activeView}
                 strategy={strategy}
                 onUpdateValue={onUpdateValue}
+                onBulkUpdate={handleBulkUpdate}
                 vendor={vendor}
                 organisation={organisation}
                 activeExchangeRate={activeExchangeRate}
@@ -546,6 +641,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             activeView={activeView}
                             strategy={strategy}
                             onUpdateValue={onUpdateValue}
+                            onBulkUpdate={handleBulkUpdate}
                             vendor={vendor}
                             organisation={organisation}
                             activeExchangeRate={activeExchangeRate}
