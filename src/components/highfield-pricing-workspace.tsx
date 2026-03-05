@@ -36,7 +36,6 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import NextImage from "next/image";
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 
 interface PricingSection {
@@ -82,7 +81,7 @@ const getSellPrice = (cost: number, marginPercent: number) => {
 
 /**
  * Highfield Landed Cost Logic
- * Base USD -> Minus Discount -> Plus Duty -> Converted to AUD -> Plus GST
+ * Base USD -> Converted to AUD -> Plus Duty -> Plus GST
  */
 const calculateHullLanded = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
     const costOverride = itemValues['base_cost_override'];
@@ -91,7 +90,7 @@ const calculateHullLanded = (itemValues: Record<string, any>, baseCostUsd: numbe
     const discountUsd = parseFloat(itemValues['vendor_factory_discount_usd'] || '0');
     const dutyPercent = parseFloat(itemValues['exchange_duty_percent'] || '0');
 
-    const totalUsd = usdBase - discountUsd;
+    const totalUsd = (usdBase || 0) - discountUsd;
     const baseAud = totalUsd * exchangeRate;
     const withDuty = baseAud * (1 + (dutyPercent / 100));
     const withGst = withDuty * 1.10;
@@ -140,7 +139,7 @@ function PricingRow({ id, name, sku, cost, sections, strategy, onUpdateValue, in
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50";
 
     // 1. Hull Landed
-    const hullLandedAud = calculateHullLanded(itemValues, cost, exchangeRate);
+    const hullLandedAud = calculateHullLanded(itemValues, cost || 0, exchangeRate);
 
     // 2. Operational Components (Freight, Handling, Pre-Delivery)
     const freightCost = parseFloat(itemValues['op_freight_cost_aud'] || '0');
@@ -176,8 +175,6 @@ function PricingRow({ id, name, sku, cost, sections, strategy, onUpdateValue, in
                 </div>
             </TableCell>
             {sections.map((sec: any) => {
-                if (sec.isCollapsed) return <TableCell key={sec.id} className="bg-slate-50 border-r border-b border-slate-300 p-0 text-center"><div className="flex flex-col items-center justify-center h-full"><span className="[writing-mode:vertical-lr] rotate-180 text-[8px] font-black tracking-widest text-primary uppercase">{sec.name}</span></div></TableCell>;
-                
                 if (sec.id === 'sec-exchange') return (
                     <React.Fragment key={sec.id}>
                         <TableCell className="text-center border-r border-b border-slate-300 bg-white"><Badge variant="outline" className="font-black text-[9px] tracking-tighter text-slate-500 border-slate-300">{vendorCurrency}</Badge></TableCell>
@@ -409,9 +406,11 @@ function PricingTable({
                                     ))}
                                 </React.Fragment>
                             ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                        </React.Fragment>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
     );
 }
 
