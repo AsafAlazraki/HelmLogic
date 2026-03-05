@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from './tabs';
 
 interface PricingSection {
     id: string;
@@ -78,7 +78,7 @@ const getSellPrice = (cost: number, marginPercent: number) => {
     return cost / factor;
 };
 
-const calculateHullLanded = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
+const calculateHullLandedExGst = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
     const costOverride = itemValues['base_cost_override'];
     const usdBase = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : baseCostUsd;
     
@@ -88,9 +88,9 @@ const calculateHullLanded = (itemValues: Record<string, any>, baseCostUsd: numbe
     const totalUsd = (usdBase || 0) - discountUsd;
     const baseAud = totalUsd * exchangeRate;
     const withDuty = baseAud * (1 + (dutyPercent / 100));
-    const withGst = withDuty * 1.10;
     
-    return withGst;
+    // Landed cost for the business is EX-GST as the GST paid on import is typically claimable
+    return withDuty;
 };
 
 function EditableCell({ value, onChange, placeholder, prefix, suffix, align = 'center' }: any) {
@@ -114,11 +114,12 @@ function PricingRow({
     const itemValues = strategy?.itemValues?.[id] || {};
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
     const vendorCurrency = vendor.currency || 'USD';
+    const gstMultiplier = 1 + ((organisation?.gstPercentage || 10) / 100);
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50";
 
-    const hullLandedAud = calculateHullLanded(itemValues, cost || 0, exchangeRate);
+    const hullLandedAudEx = calculateHullLandedExGst(itemValues, cost || 0, exchangeRate);
 
-    // Logistics Calculations
+    // Logistics Calculations (All internal values handled as EX-GST)
     const freightUsd = parseFloat(itemValues['op_freight_cost_usd'] || '0');
     const freightAudConv = freightUsd * exchangeRate;
     const freightFinalCost = parseFloat(itemValues['op_freight_cost_aud'] || freightAudConv.toString() || '0');
@@ -136,10 +137,10 @@ function PricingRow({
     const preDelSell = getSellPrice(preDelCost, preDelMargin);
     const preDelGP = preDelSell - preDelCost;
 
-    const totalStrategicLanded = hullLandedAud + (activeView === 'boats' ? freightSell : 0) + handlingSell + (activeView === 'boats' ? preDelSell : 0);
+    const totalStrategicLandedEx = hullLandedAudEx + (activeView === 'boats' ? freightSell : 0) + handlingSell + (activeView === 'boats' ? preDelSell : 0);
     const stratMarginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
-    const totalPackageSell = getSellPrice(totalStrategicLanded, stratMarginPercent);
-    const totalPackageGP = totalPackageSell - totalStrategicLanded;
+    const totalPackageSell = getSellPrice(totalStrategicLandedEx, stratMarginPercent);
+    const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
 
     return (
         <TableRow className={cn("transition-colors group", rowBgClass)}>
@@ -160,12 +161,12 @@ function PricingRow({
             <TableCell className="text-center border-r border-b border-slate-300 bg-white text-[10px] font-black text-primary">1.0000</TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['exchange_duty_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'exchange_duty_percent', val)} suffix="%" /></TableCell>
 
-            {/* Landed Cost Section (Same for Boat/Option) */}
+            {/* Landed Cost Section */}
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['base_cost_override'] || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" suffix={vendorCurrency} /></TableCell>
             <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">{formatCurrency((parseFloat(itemValues['base_cost_override'] || cost || '0')) * exchangeRate, orgCurrency)}</TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'factory_discount_usd', val)} align="right" suffix={vendorCurrency} /></TableCell>
             <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">{formatCurrency((parseFloat(itemValues['factory_discount_usd'] || '0')) * exchangeRate, orgCurrency)}</TableCell>
-            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b border-slate-300 px-5 bg-primary/[0.04]">{formatCurrency(hullLandedAud, orgCurrency)}</TableCell>
+            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b border-slate-300 px-5 bg-primary/[0.04]">{formatCurrency(hullLandedAudEx, orgCurrency)}</TableCell>
 
             {activeView === 'boats' && (
                 <>
@@ -193,18 +194,20 @@ function PricingRow({
             )}
 
             {/* Strategic Totals */}
-            <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-100/50">{formatCurrency(totalStrategicLanded, orgCurrency)}</TableCell>
+            <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-100/50">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} suffix="%" /></TableCell>
             <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.05]">{formatCurrency(totalPackageGP, orgCurrency)}</TableCell>
 
-            {/* Price Levels */}
+            {/* Price Levels (Excl & Incl GST) */}
             {activeView === 'boats' ? (
                 ['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
-                    const sell = parseFloat(itemValues[`${l}_price`] || '0');
-                    const gpPercent = sell > 0 ? ((sell - totalStrategicLanded) / sell) * 100 : 0;
+                    const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
+                    const sellIn = sellEx * gstMultiplier;
+                    const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                     return (
                         <React.Fragment key={l}>
                             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues[`${l}_price`] || ''} onChange={(val: any) => onUpdateValue(id, `${l}_price`, val)} align="right" suffix={orgCurrency} /></TableCell>
+                            <TableCell className="text-right text-[10px] font-bold text-slate-500 border-r border-b border-slate-300 px-4 bg-slate-50">{formatCurrency(sellIn, orgCurrency)}</TableCell>
                             <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-300 bg-green-500/[0.02]">{gpPercent.toFixed(1)}%</TableCell>
                         </React.Fragment>
                     );
@@ -213,21 +216,27 @@ function PricingRow({
                 <>
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" suffix={orgCurrency} /></TableCell>
                     {(() => {
-                        const sell = parseFloat(itemValues['hull_cash_price'] || '0');
-                        const gpPercent = sell > 0 ? ((sell - totalStrategicLanded) / sell) * 100 : 0;
+                        const sellEx = parseFloat(itemValues['hull_cash_price'] || '0');
+                        const sellIn = sellEx * gstMultiplier;
+                        const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                         return (
-                            <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-300 bg-green-500/[0.02]">{gpPercent.toFixed(1)}%</TableCell>
+                            <>
+                                <TableCell className="text-right text-[10px] font-bold text-slate-500 border-r border-b border-slate-300 px-4 bg-slate-50">{formatCurrency(sellIn, orgCurrency)}</TableCell>
+                                <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-300 bg-green-500/[0.02]">{gpPercent.toFixed(1)}%</TableCell>
+                            </>
                         );
                     })()}
                 </>
             )}
             
             {activeView === 'boats' && ['hull_subdealer_srp', 'hull_subdealer_excl_srp'].map(l => {
-                const sell = parseFloat(itemValues[l] || '0');
-                const gpPercent = sell > 0 ? ((sell - totalStrategicLanded) / sell) * 100 : 0;
+                const sellEx = parseFloat(itemValues[l] || '0');
+                const sellIn = sellEx * gstMultiplier;
+                const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                 return (
                     <React.Fragment key={l}>
                         <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues[l] || ''} onChange={(val: any) => onUpdateValue(id, l, val)} align="right" suffix={orgCurrency} /></TableCell>
+                        <TableCell className="text-right text-[10px] font-bold text-slate-500 border-r border-b border-slate-300 px-4 bg-slate-50">{formatCurrency(sellIn, orgCurrency)}</TableCell>
                         <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-300 bg-green-500/[0.02]">{gpPercent.toFixed(1)}%</TableCell>
                     </React.Fragment>
                 );
@@ -241,7 +250,21 @@ function PricingTable({
 }: any) {
     const isOptions = activeView === 'options';
     const shortCode = organisation?.shortCode || 'NSM';
-    const sellPriceLabel = `${shortCode} SELL PRICE`;
+    const sellPriceLabel = `${shortCode} SELL PRICE (EXCL.)`;
+    const inclLabel = `(INCL. GST)`;
+
+    const boatPriceLevels = [
+        { id: 'sell', label: sellPriceLabel },
+        { id: 'trade', label: 'TRADE PRICE (EXCL.)' },
+        { id: 'sub', label: 'SUB-D PRICE (EXCL.)' },
+        { id: 'subex', label: 'SUB-EX PRICE (EXCL.)' },
+        { id: 'aus', label: 'AUS PRICE (EXCL.)' }
+    ];
+
+    const boatSrpLevels = [
+        { id: 'srp1', label: 'SUB-D SRP (EXCL.)' },
+        { id: 'srp2', label: 'SUB-EX SRP (EXCL.)' }
+    ];
 
     return (
         <div className="flex-1 overflow-auto min-w-0 bg-white border-t scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
@@ -266,7 +289,7 @@ function PricingTable({
                             <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>
                         )}
                         <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Strategic Totals</span></TableHead>
-                        <TableHead colSpan={isOptions ? 2 : 14} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Strategic Price Levels</span></TableHead>
+                        <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Strategic Price Levels</span></TableHead>
                     </TableRow>
                     
                     {/* Header Row 2: Columns */}
@@ -285,7 +308,7 @@ function PricingTable({
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">AUD Conv</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Factory Discount (USD)</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Discount (AUD)</TableHead>
-                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary">Landed AUD</TableHead>
+                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary">Landed AUD (Excl.)</TableHead>
                         
                         {!isOptions && (
                             <>
@@ -313,27 +336,32 @@ function PricingTable({
                         )}
 
                         {/* Strategic Totals Cols */}
-                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold">Total Landed</TableHead>
+                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold">Total Landed (Excl.)</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">Strat Margin</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600">Total GP $</TableHead>
 
                         {/* Price Level Cols */}
-                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{sellPriceLabel}</TableHead>
-                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
-                        
-                        {!isOptions && (
+                        {!isOptions ? (
                             <>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Trade Price</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Sub-D Price</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Sub-Ex Price</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">AUS Price</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Sub-D SRP</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Sub-Ex SRP</TableHead>
+                                {boatPriceLevels.map(level => (
+                                    <React.Fragment key={level.id}>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{level.label}</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">{inclLabel}</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
+                                    </React.Fragment>
+                                ))}
+                                {boatSrpLevels.map(level => (
+                                    <React.Fragment key={level.id}>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{level.label}</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">{inclLabel}</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
+                                    </React.Fragment>
+                                ))}
+                            </>
+                        ) : (
+                            <>
+                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{sellPriceLabel}</TableHead>
+                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">{inclLabel}</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
                             </>
                         )}
@@ -346,7 +374,7 @@ function PricingTable({
                                 <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                                     <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
                                 </TableCell>
-                                {Array.from({ length: isOptions ? 21 : 38 }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-100/60" />)}
+                                {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-100/60" />)}
                             </TableRow>
                             {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                 <React.Fragment key={model.id}>
@@ -354,7 +382,7 @@ function PricingTable({
                                         <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                                             <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                         </TableCell>
-                                        {Array.from({ length: isOptions ? 21 : 38 }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
+                                        {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
                                     </TableRow>
                                     {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
                                         <PricingRow 
@@ -477,6 +505,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <div className="flex items-center gap-2 mt-1.5">
                             <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-2 border-primary/20 px-2">PRECISION MODE</Badge>
                             <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
+                            <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
                         </div>
                     </div>
                 </div>
