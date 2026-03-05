@@ -18,7 +18,7 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { firebaseConfig } from '@/firebase/config';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Save, X, PlusCircle, DollarSign, Percent, TrendingUp, Settings2, Trash2, User, UserPlus, Key, Mail, ShieldCheck } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, DollarSign, Percent, TrendingUp, Settings2, Trash2, User, UserPlus, Key, Mail, ShieldCheck, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 import { Badge } from './ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, createSlug } from '@/lib/utils';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -48,6 +48,7 @@ const roleSchema = z.object({
 const formSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
+  shortCode: z.string().max(10).nullable().optional(),
   address: z.string().nullable().optional(),
   phoneNumber: z.string().nullable().optional(),
   abn: z.string().nullable().optional(),
@@ -79,12 +80,6 @@ const addUserFormSchema = z.object({
 });
 
 type AddUserFormData = z.infer<typeof addUserFormSchema>;
-
-const createSlug = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '');
 
 const permissionsConfig = [
     { id: 'can_access_module', label: 'Access Modules' },
@@ -202,6 +197,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: '',
+            shortCode: '',
             permissions: {},
             roles: [],
             tradingCurrency: 'AUD',
@@ -236,6 +232,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 gstPercentage: organisation.gstPercentage ?? 10,
                 brandMargins: organisation.brandMargins || {},
                 moduleMargins: organisation.moduleMargins || {},
+                shortCode: organisation.shortCode || '',
             });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
@@ -250,15 +247,12 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         let tempApp;
 
         try {
-            // 1. Initialize secondary app to avoid logging out current admin
             tempApp = initializeApp(firebaseConfig, tempAppName);
             const tempAuth = getAuth(tempApp);
 
-            // 2. Create actual Auth user
             const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
             const newUser = userCredential.user;
 
-            // 3. Create Firestore Profile
             const userRef = doc(firestore, 'users', newUser.uid);
             const profileData = {
                 email: values.email,
@@ -277,7 +271,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 throw e;
             });
 
-            // 4. Sign out the temp auth instance
             await signOut(tempAuth);
 
             toast({ title: "User Created", description: `${values.email} has been added to ${organisation.name}.` });
@@ -302,6 +295,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             const dataToUpdate: { [key: string]: any } = {
                 name: values.name,
                 slug: createSlug(values.name),
+                shortCode: values.shortCode || '',
                 address: values.address || '',
                 phoneNumber: values.phoneNumber || '',
                 abn: values.abn || '',
@@ -392,9 +386,28 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                         <Card>
                                             <CardHeader><CardTitle>Organisation Details</CardTitle></CardHeader>
                                             <CardContent className="space-y-6">
-                                                <FormField control={form.control} name="name" render={({ field }) => (
-                                                    <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                                                )} />
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                    <FormField control={form.control} name="name" render={({ field }) => (
+                                                        <FormItem className="md:col-span-2">
+                                                            <FormLabel>Organisation Name</FormLabel>
+                                                            <FormControl><Input placeholder="e.g., Northside Marine" {...field} value={field.value ?? ''} /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="shortCode" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="flex items-center gap-2">
+                                                                <Hash className="h-3.5 w-3.5" />
+                                                                Selling Short Code
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="e.g., NSM" {...field} value={field.value ?? ''} className="font-black uppercase" />
+                                                            </FormControl>
+                                                            <FormDescription>Used for dynamic price columns.</FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                </div>
                                                 <FormField control={form.control} name="address" render={({ field }) => (
                                                     <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Ocean Ave, Metropolis, NY 10001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                                 )} />
