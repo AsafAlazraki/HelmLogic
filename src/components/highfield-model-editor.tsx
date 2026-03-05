@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -322,7 +321,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -926,7 +925,7 @@ function SpecsSection() {
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <CollapsibleCardHeader 
                 title="General Specifications" 
-                count={fields.length} 
+                count={specFields.length} 
                 onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })}
             />
             <CollapsibleContent>

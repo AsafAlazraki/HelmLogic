@@ -302,20 +302,28 @@ function SortableItemCard({
         opacity: isDragging ? 0.5 : 1,
     };
 
+    const isModelView = viewLabel === "VIEW MODEL";
+
     return (
         <div ref={setNodeRef} style={style} className="group relative h-full">
             <Card 
                 className="cursor-pointer hover:border-primary shadow-sm rounded-3xl overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
                 onClick={onClick}
             >
-                <div className="aspect-[4/3] relative bg-white border-b flex items-center justify-center overflow-hidden p-6">
+                <div className={cn(
+                    "aspect-[4/3] relative border-b flex items-center justify-center overflow-hidden transition-all",
+                    isModelView ? "p-0 bg-white" : "p-6 bg-white"
+                )}>
                     {imageUrl ? (
                         <div className="relative h-full w-full">
                             <Image 
                                 src={imageUrl} 
                                 alt={name} 
                                 fill 
-                                className="object-contain transition-transform group-hover:scale-105" 
+                                className={cn(
+                                    "transition-transform group-hover:scale-105",
+                                    isModelView ? "object-cover" : "object-contain"
+                                )}
                                 unoptimized 
                             />
                         </div>
