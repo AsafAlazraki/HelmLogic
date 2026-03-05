@@ -6,7 +6,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -133,7 +133,7 @@ function SkuCompatibilityDialog({
     featureName 
 }: { 
     isOpen: boolean, 
-    onClose: void, 
+    onClose: () => void, 
     variants: any[], 
     value: string[], 
     onChange: (value: string[]) => void, 
@@ -162,7 +162,7 @@ function SkuCompatibilityDialog({
     [variants, value]);
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden">
                 <DialogHeader className="p-6 border-b bg-muted/10">
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
@@ -810,7 +810,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                         {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                         {coverImageUrl ? (
                             <div className="h-full w-full flex items-center justify-center relative">
-                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" sizes="(max-width: 1024px) 100vw, 50vw" />
+                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" sizes="(max-width: 1024px) 100vw, 50vw" unoptimized />
                                 <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
                             </div>
                         ) : (
@@ -836,7 +836,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                         <div className="grid grid-cols-3 gap-3">
                             {galleryUrls.map((url, index) => (
                                 <div key={index} className="relative aspect-square group rounded-lg overflow-hidden border bg-muted">
-                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" />
+                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" unoptimized />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                         <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
@@ -1113,7 +1113,6 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     [firestore, vendorId, rangeId, model.id]);
     const { data: variants = [] } = useCollection<any>(variantsQuery);
 
-    // Derived categories - Ensures new categories added to features are instantly visible
     const categories = useMemo(() => {
         const defaults = ['Consoles', 'Seats'];
         const existing = watchedOptionalFeatures

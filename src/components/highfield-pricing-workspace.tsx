@@ -306,9 +306,9 @@ function PricingTable({
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">Strat Margin</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600">Total GP $</TableHead>
 
-                                {/* Price Level Cols */}
-                                {['Cash Price', 'GP %', 'Trade Price', 'GP %', 'Sub-D Price', 'GP %', 'Sub-Ex Price', 'GP %', 'AUS Price', 'GP %'].map(l => (
-                                    <TableHead key={l} className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{l}</TableHead>
+                                {/* Price Level Cols - Fixed Unique Keys */}
+                                {['Cash Price', 'GP %', 'Trade Price', 'GP %', 'Sub-D Price', 'GP %', 'Sub-Ex Price', 'GP %', 'AUS Price', 'GP %'].map((l, idx) => (
+                                    <TableHead key={`${l}-${idx}`} className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{l}</TableHead>
                                 ))}
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Sub-D SRP</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Sub-Ex SRP</TableHead>

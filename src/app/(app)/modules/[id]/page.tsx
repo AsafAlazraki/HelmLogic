@@ -116,13 +116,11 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
     return (
         <div className="fixed inset-0 z-[100] bg-primary flex flex-col items-center justify-center text-white overflow-hidden animate-in fade-in duration-500">
             <div className="absolute inset-0 z-0">
-                <div className="absolute bottom-0 left-0 w-full h-1/2 opacity-20 bg-gradient-to-t from-white/20 to-transparent" />
-                <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] bg-white/5 rounded-full blur-3xl animate-pulse" />
                 <div className="absolute top-20 right-20 w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-3xl animate-pulse duration-[4000ms]" />
             </div>
 
             <div className="relative z-10 flex flex-col items-center gap-12 max-w-2xl text-center">
-                <div className="relative h-48 w-48 bg-white/10 backdrop-blur-xl rounded-[3.5rem] p-10 border border-white/20 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700">
+                <div className="relative h-64 w-64 bg-white/10 backdrop-blur-xl rounded-[3.5rem] p-10 border border-white/20 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700">
                     {organisation?.primaryLogoUrl ? (
                         <div className="relative h-full w-full">
                             <Image 
