@@ -344,7 +344,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [loadingModels, setLoadingModels] = useState(false);
 
     const strategyRef = useMemoFirebase(() => doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}`), [firestore, organisationId, vendor.id]);
-    const { data: strategy } = useDoc<PricingStrategy>(strategyRef);
+    const { data: strategy, isLoading: strategyLoading } = useDoc<PricingStrategy>(strategyRef);
 
     useEffect(() => {
         const fetchDeepData = async () => {

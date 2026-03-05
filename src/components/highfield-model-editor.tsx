@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -134,7 +133,7 @@ function SkuCompatibilityDialog({
     featureName 
 }: { 
     isOpen: boolean, 
-    onClose: () => void, 
+    onClose: void, 
     variants: any[], 
     value: string[], 
     onChange: (value: string[]) => void, 
@@ -1125,9 +1124,6 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
 
     const handleAddCategory = () => {
         if (!newCategoryName.trim()) return;
-        // Adding a new category just stages it - it becomes part of "categories" 
-        // as soon as an item is assigned to it or we can manually track empty ones if needed.
-        // For now, let's just clear the input and rely on the select/append to use it.
         setNewCategoryName('');
     };
 
