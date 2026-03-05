@@ -529,6 +529,20 @@ export default function ModuleDetailsPage() {
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
 
+    // --- Strategic Multi-Layer Data Synchronizer ---
+    // This fetches the organisation override for the selected boat model in real-time.
+    const overrideRef = useMemoFirebase(() => 
+        currentMemberOrg?.id && selectedModel?.id ? doc(firestore, 'organisations', currentMemberOrg.id, 'modelOverrides', selectedModel.id) : null,
+    [firestore, currentMemberOrg?.id, selectedModel?.id]);
+    const { data: modelOverride } = useDoc<any>(overrideRef);
+
+    // This merges the master catalog data with any local organisation customizations.
+    const effectiveModel = useMemo(() => {
+        if (!selectedModel) return null;
+        if (!modelOverride) return selectedModel;
+        return { ...selectedModel, ...modelOverride };
+    }, [selectedModel, modelOverride]);
+
     const handleRangeSelect = (range: Range) => { setSelectedRange(range); setView('models'); };
     
     const handleModelSelect = (model: Model) => { 
@@ -697,10 +711,10 @@ export default function ModuleDetailsPage() {
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
                                     {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} canEdit={canEdit} />}
                                     {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} canEdit={canEdit} />}
-                                    {view === 'bmt' && selectedModel && selectedRange && (
+                                    {view === 'bmt' && effectiveModel && selectedRange && (
                                         <ModelConfigurationEditor 
-                                            model={selectedModel}
-                                            docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`}
+                                            model={effectiveModel}
+                                            docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel!.id}`}
                                             vendor={mainVendor}
                                             module={moduleData}
                                             user={user as any}

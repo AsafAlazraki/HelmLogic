@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, FormProvider, useController } from 'react-hook-form';
@@ -211,8 +210,8 @@ export function ModelConfigurationEditor({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Stability guard to prevent Firestore real-time updates from clobbering 
-    // the local form state during the round-trip delay.
+    // Anti-clobber guard: Prevents real-time DB updates from resetting form truth
+    // while the user has just committed a change.
     const isRecentlySaved = useRef(false);
     const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -226,8 +225,10 @@ export function ModelConfigurationEditor({
     
     const { reset, control, formState: { isDirty } } = form;
 
-    // Synchronize form with model data ONLY if user isn't currently editing
-    // and we haven't just performed a save.
+    // Critical: Only reset the form from incoming model changes if:
+    // 1. The user isn't currently editing (isDirty)
+    // 2. We aren't in the middle of a submission (isSubmitting)
+    // 3. We haven't just saved (isRecentlySaved)
     useEffect(() => {
         if (model && !isSubmitting && !isDirty && !isRecentlySaved.current) {
             const currentDefaults = getSafeDefaultValues(model, vendor?.slug);
@@ -249,24 +250,21 @@ export function ModelConfigurationEditor({
             const sanitizedValues = sanitizeDataForFirestore(values);
             const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
-            // Stability Flag: Block resets for 3 seconds to allow cloud indexing to catch up
+            // Activate Stability Window
             isRecentlySaved.current = true;
             if (saveTimer.current) clearTimeout(saveTimer.current);
 
             if (shouldSaveToMaster) {
-                // Case 1: Updating Global Data Warehouse
                 const modelDocRef = doc(firestore, docPath);
                 await setDoc(modelDocRef, { 
                     ...sanitizedValues, 
                     lastMasterUpdate: serverTimestamp() 
                 }, { merge: true });
                 
-                toast({ title: "Master Configuration Updated", description: "Changes persisted to global catalog." });
+                toast({ title: "Master Configuration Updated" });
             } else if (organisationId) {
-                // Case 2: Updating Organisation Overrides
-                // We use setDoc WITHOUT merge: true for the organisation override to ensure 
-                // the organisation's version represents the exact state of the form.
                 const overrideRef = doc(firestore, `organisations/${organisationId}/modelOverrides/${model.id}`);
+                // Perform Absolute Override Set
                 await setDoc(overrideRef, {
                     ...sanitizedValues,
                     overrideAt: serverTimestamp(),
@@ -274,9 +272,8 @@ export function ModelConfigurationEditor({
                     lastSync: serverTimestamp()
                 });
 
-                toast({ title: "Organisation Catalog Updated", description: "Changes saved to your organisation version." });
+                toast({ title: "Organisation Configuration Updated", description: "Changes persisted to your custom catalog." });
             } else {
-                // Fallback: Create Quote
                 if (!user) throw new Error("Missing auth context");
                 const quotesColRef = collection(firestore, `users/${user.uid}/quotes`);
                 await addDoc(quotesColRef, {
@@ -285,20 +282,20 @@ export function ModelConfigurationEditor({
                     createdAt: serverTimestamp(),
                     status: 'Draft'
                 });
-                toast({ title: "Local Build Saved", description: "Quote draft created successfully." });
+                toast({ title: "Quote Draft Saved" });
             }
             
-            // Explicitly sync the local form with the sent values to clear dirty state
+            // Sync local state to prevent "dirty" reset loop
             reset(values);
 
-            // Extended Stability Window
+            // Maintain stability window for 5 seconds to allow Firestore indexing to stabilize
             saveTimer.current = setTimeout(() => {
                 isRecentlySaved.current = false;
-            }, 3000);
+            }, 5000);
 
         } catch (e: any) {
             console.error("Save failed:", e);
-            toast({ variant: "destructive", title: "Error", description: e.message || "Could not save changes." });
+            toast({ variant: "destructive", title: "Persistence Error", description: e.message || "Could not save configuration." });
             isRecentlySaved.current = false;
         } finally {
             setIsSubmitting(false);
@@ -353,9 +350,8 @@ export function ModelConfigurationEditor({
                                 <div className="flex items-center gap-4">
                                     {canEdit && (
                                         <Button type="submit" disabled={isSubmitting} className="font-black uppercase tracking-widest shadow-lg min-w-[160px]">
-                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            <Save className="mr-2 h-4 w-4" />
-                                            {shouldSaveToMaster ? 'Update Master' : 'Update Catalog'}
+                                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                            {shouldSaveToMaster ? 'Update Master' : 'Update Config'}
                                         </Button>
                                     )}
                                 </div>
