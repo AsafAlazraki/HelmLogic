@@ -97,6 +97,7 @@ interface Organisation {
     phoneNumber?: string;
     address?: string;
     roles?: any[];
+    shortCode?: string;
 }
 
 interface Range {
@@ -652,9 +653,8 @@ export default function ModuleDetailsPage() {
                                                     <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
                                                     <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 gap-2">
-                                                    Manage Stock
-                                                    <ArrowRight className="h-3 w-3" />
+                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary/5 rounded-full">
+                                                    <ArrowRight className="h-4 w-4" />
                                                 </Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
@@ -668,9 +668,8 @@ export default function ModuleDetailsPage() {
                                                     <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
                                                     <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 gap-2">
-                                                    View Pipeline
-                                                    <ArrowRight className="h-3 w-3" />
+                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary/5 rounded-full">
+                                                    <ArrowRight className="h-4 w-4" />
                                                 </Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
