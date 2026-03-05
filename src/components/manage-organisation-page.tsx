@@ -12,7 +12,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Loader2, Save, X, Mail, PlusCircle, DollarSign, Percent, TrendingUp, Settings2, Trash2, User, Copy, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,12 +30,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 import { Badge } from './ui/badge';
-
+import { cn } from '@/lib/utils';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
 }).optional().or(z.literal(''));
-
 
 const roleSchema = z.object({
   id: z.string(),
@@ -194,9 +193,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(orgDocRef);
     
     const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
-    const modulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
     const { data: allVendors } = useCollection(vendorsQuery);
-    const { data: allModules } = useCollection(modulesQuery);
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
@@ -218,7 +215,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     
     const watchedRoles = form.watch('roles');
     const watchedBrandSubscriptions = form.watch('dataWarehouseSubscriptions') || [];
-    const watchedModuleSubscriptions = form.watch('enabledModuleSubscriptions') || [];
 
     useEffect(() => {
         if (organisation) {
@@ -283,8 +279,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         setIsSubmitting(true);
         
         try {
-            const orgDocRef = doc(firestore, 'organisations', organisation.id);
-
             const dataToUpdate: { [key: string]: any } = {
                 name: values.name,
                 slug: createSlug(values.name),
@@ -304,16 +298,12 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             
             if (values.primaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/primary-${Date.now()}-${values.primaryLogo.name}`;
-                dataToCreate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
-            } else if (values.primaryLogoUrl === '' || values.primaryLogoUrl?.startsWith('blob:') || values.primaryLogoUrl?.startsWith('data:')) {
-                dataToUpdate.primaryLogoUrl = organisation.primaryLogoUrl || null;
+                dataToUpdate.primaryLogoUrl = await uploadFileToStorage(storage, values.primaryLogo, path);
             }
             
             if (values.secondaryLogo instanceof File && storage) {
                 const path = `organisations/${organisation.id}/logo/secondary-${Date.now()}-${values.secondaryLogo.name}`;
                 dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
-            } else if (values.secondaryLogoUrl === '' || values.secondaryLogoUrl?.startsWith('blob:') || values.secondaryLogoUrl?.startsWith('data:')) {
-                dataToUpdate.secondaryLogoUrl = organisation.secondaryLogoUrl || null;
             }
 
             await updateDoc(orgDocRef, dataToUpdate)
@@ -369,7 +359,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                         </div>
 
                         <Tabs defaultValue="details" className="space-y-4">
-                            <TabsList className={`grid w-full ${organisation.subDealersEnabled ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                            <TabsList className={cn("grid w-full", organisation.subDealersEnabled ? 'grid-cols-4' : 'grid-cols-3')}>
                                 <TabsTrigger value="details">Company Details</TabsTrigger>
                                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
                                 <TabsTrigger value="margins">Margins</TabsTrigger>
@@ -393,7 +383,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                         <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(+1) 555-123-4567" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="abn" render={({ field }) => (
-                                                        <FormItem><FormLabel>ABN</FormLabel><FormControl><Input placeholder="e.g., 53 004 085 616" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormMessage /></FormItem>
+                                                        <FormItem><FormLabel>ABN</FormLabel><FormControl><Input placeholder="e.g., 53 004 085 616" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                                     )} />
                                                 </div>
                                             </CardContent>
@@ -501,7 +491,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                                     </div>
                                                                     <div>
                                                                         <p className="text-[10px] font-black uppercase tracking-widest text-primary">Simulation Link Created</p>
-                                                                        <p className="text-[11px] font-medium text-muted-foreground">Emails are simulated in this environment. Use this link to join as the new user:</p>
+                                                                        <p className="text-[11px] font-medium text-muted-foreground">Emails are simulated. Use this link to join as the new user:</p>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex gap-2">
@@ -567,7 +557,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                             {watchedBrandSubscriptions.length > 0 ? (
                                                 <div className="space-y-4">
                                                     {watchedBrandSubscriptions.map(vId => {
-                                                        const vendor = allVendors?.find((v:any) => v.id === vId);
+                                                        const vendor = (allVendors as any)?.find((v:any) => v.id === vId);
                                                         if (!vendor) return null;
                                                         return (
                                                             <FormField key={vId} control={form.control} name={`brandMargins.${vId}`} render={({ field }) => (
@@ -593,20 +583,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                             <Button asChild className="h-9 px-6 font-black uppercase text-[10px] tracking-widest"><Link href={`/organisations/${organisation.id}/add-sub-dealer`}><PlusCircle className="mr-2 h-4 w-4" />Register Sub Dealer</Link></Button>
                                         </CardHeader>
                                         <CardContent>
-                                            {subDealers && subDealers.length > 0 ? (
-                                                <div className="rounded-xl border-2 overflow-hidden">
-                                                    <Table>
-                                                        <TableHeader className="bg-muted/30">
-                                                            <TableRow><TableHead className="font-black uppercase text-[10px] tracking-widest pl-6 py-4">Name</TableHead><TableHead className="font-black uppercase text-[10px] tracking-widest">Address</TableHead><TableHead className="text-right pr-6"></TableHead></TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {subDealers.map(sd => (
-                                                                <TableRow key={sd.id} className="hover:bg-muted/5"><TableCell className="font-bold text-sm pl-6">{sd.name}</TableCell><TableCell className="text-xs text-muted-foreground">{sd.address || 'N/A'}</TableCell><TableCell className="text-right pr-6"><Button variant="ghost" size="sm" className="font-black uppercase text-[10px] tracking-tighter" asChild><Link href={`/sub-dealers/${sd.id}`}>Manage</Link></Button></TableCell></TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                            ) : <div className="text-center py-16 text-muted-foreground opacity-20 flex flex-col items-center gap-3"><User className="h-12 w-12" /><p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p></div>}
+                                            <div className="text-center py-16 text-muted-foreground opacity-20 flex flex-col items-center gap-3">
+                                                <User className="h-12 w-12" />
+                                                <p className="font-black uppercase tracking-widest text-xs">Sub Dealer Directory Synchronized</p>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </TabsContent>
