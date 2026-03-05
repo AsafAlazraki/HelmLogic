@@ -580,7 +580,7 @@ export default function ModuleDetailsPage() {
 
     const navTabs = [
         { id: 'dashboard', label: 'Dashboard' },
-        { id: 'bmt', label: 'Product Catalog' },
+        { id: 'bmt', label: 'Catalog' },
         { id: 'stock', label: 'Stock Management' },
         { id: 'pricing', label: 'Pricing', visible: canAccessPricing },
         { id: 'network', label: 'Sub Dealers' }
