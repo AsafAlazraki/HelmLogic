@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, FormProvider, useController } from 'react-hook-form';
@@ -210,8 +211,8 @@ export function ModelConfigurationEditor({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Stability guard to prevent Firestore listeners from resetting the form
-    // immediately after a save (prevents reverting while indexing).
+    // Stability guard to prevent Firestore real-time updates from clobbering 
+    // the local form state during the round-trip delay.
     const isRecentlySaved = useRef(false);
     const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -225,6 +226,8 @@ export function ModelConfigurationEditor({
     
     const { reset, control, formState: { isDirty } } = form;
 
+    // Synchronize form with model data only if user isn't currently editing
+    // and we haven't just performed a save.
     useEffect(() => {
         if (model && !isSubmitting && !isDirty && !isRecentlySaved.current) {
             const currentDefaults = getSafeDefaultValues(model, vendor?.slug);
@@ -246,7 +249,7 @@ export function ModelConfigurationEditor({
             const sanitizedValues = sanitizeDataForFirestore(values);
             const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
-            // Stability Flag: Block resets for 2 seconds
+            // Stability Flag: Block resets for 3 seconds to allow cloud indexing to catch up
             isRecentlySaved.current = true;
             if (saveTimer.current) clearTimeout(saveTimer.current);
 
@@ -265,7 +268,8 @@ export function ModelConfigurationEditor({
                 await setDoc(overrideRef, {
                     ...sanitizedValues,
                     overrideAt: serverTimestamp(),
-                    overriddenBy: user?.uid
+                    overriddenBy: user?.uid,
+                    lastSync: serverTimestamp()
                 }, { merge: true });
 
                 toast({ title: "Organisation Catalog Updated", description: "Changes saved to your organisation version." });
@@ -282,13 +286,13 @@ export function ModelConfigurationEditor({
                 toast({ title: "Local Build Saved", description: "Quote draft created successfully." });
             }
             
-            // Sync local form state
+            // Explicitly sync the local form with the sent values
             reset(values);
 
-            // Stability Window
+            // Extended Stability Window
             saveTimer.current = setTimeout(() => {
                 isRecentlySaved.current = false;
-            }, 2000);
+            }, 3000);
 
         } catch (e: any) {
             console.error("Save failed:", e);

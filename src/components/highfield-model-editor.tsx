@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -183,7 +184,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -1208,8 +1209,8 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                                 type="button" 
                                                                 variant="ghost" 
                                                                 size="icon" 
-                                                                className="h-6 w-6 hover:bg-primary/10 text-primary"
-                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, imageUrl: null, code: '', category: cat, color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}
+                                                                className="h-4 w-4 hover:bg-primary/10 text-primary"
+                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}
                                                             >
                                                                 <PlusCircle className="h-4 w-4" />
                                                             </Button>
