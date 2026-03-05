@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -56,7 +57,7 @@ export function AppSidebar() {
   const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string; organisationRole?: string }>(userProfileRef);
   
   const orgsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
-  const { data: organisations, loading: orgsLoading } = useCollection<any>(orgsQuery);
+  const { data: organisations, loading: orgsLoading } = useCollection<any>(organisationsQuery);
 
   const organisation = useMemo(() => 
     userProfile?.organisationId ? organisations?.find((o: any) => o.id === userProfile.organisationId) : null,

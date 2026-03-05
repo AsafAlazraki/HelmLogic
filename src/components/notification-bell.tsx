@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCollection } from "@/firebase/firestore/use-collection";
@@ -32,7 +33,7 @@ export function NotificationBell() {
         );
     }, [firestore, user]);
 
-    const { data: notifications, loading } = useCollection<Notification>(notificationsQuery);
+    const { data: notifications, loading } = useCollection<any>(notificationsQuery);
 
     const unreadCount = useMemo(() => 
         notifications?.filter(n => !n.isRead).length || 0,
@@ -105,7 +106,7 @@ export function NotificationBell() {
                                     {!n.isRead && <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />}
                                 </div>
                                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                    {n.createdAt ? formatDistanceToNow(new Date(n.createdAt), { addSuffix: true }) : 'Recently'}
+                                    {n.createdAt ? formatDistanceToNow(new Date(n.createdAt.seconds * 1000), { addSuffix: true }) : 'Recently'}
                                 </span>
                             </DropdownMenuItem>
                         ))

@@ -725,7 +725,7 @@ export default function ModuleDetailsPage() {
                                         <div className="relative inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] overflow-hidden group">
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full group-hover:animate-[shimmer_3s_infinite] transition-transform" />
                                             <Ship className="mr-3 h-5 w-5 text-primary relative z-10" />
-                                            <span className="relative z-10">{mainVendor?.name || 'Highfield'} Catalogue</span>
+                                            <span className="relative z-10">{mainVendor?.name || 'Highfield'} Catalog</span>
                                         </div>
                                     ) : (
                                         <Button 
