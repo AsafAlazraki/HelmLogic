@@ -296,17 +296,79 @@ function PricingTable({
     totalCalculatedCols
 }: any) {
     return (
-        <div className="flex-1 overflow-auto min-w-0 bg-white">
+        <div className="flex-1 overflow-auto min-w-0 bg-white border-t scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
             <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
                 <TableHeader className="sticky top-0 z-[45] bg-white">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[340px] sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
+                        <TableHead className="w-[340px] sticky left-0 z-[50] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
                         {activeSections.map((sec: any) => (
-                            <TableHead key={sec.id} colSpan={getSectionColCount(sec, activeView)} className="border-r border-b-2 border-slate-300 p-0 bg-slate-100">
-                                <div className="flex items-center gap-3 p-3 min-h-[48px]">
-                                    {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
-                                </div>
+                            <TableHead key={sec.id} colSpan={getSectionColCount(sec, activeView)} className="border-r border-b bg-slate-50 text-center border-slate-200">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{sec.name}</span>
                             </TableHead>
+                        ))}
+                    </TableRow>
+                    <TableRow className="hover:bg-transparent bg-white shadow-sm">
+                        <TableHead className="sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]"></TableHead>
+                        {activeSections.map((sec: any) => (
+                            <React.Fragment key={`${sec.id}-cols`}>
+                                {sec.id === 'sec-exchange' && (
+                                    <>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px]">From</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px]">Rate</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px]">To</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px]">Rate</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px]">Duty %</TableHead>
+                                    </>
+                                )}
+                                {sec.id === 'sec-hull-cost' && (
+                                    <>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Base USD</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">AUD Conv</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Discount</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary">Landed AUD</TableHead>
+                                    </>
+                                )}
+                                {(sec.id === 'sec-freight' || sec.id === 'sec-handling' || sec.id === 'sec-predelivery') && (
+                                    <>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Cost AUD</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Margin %</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP $</TableHead>
+                                    </>
+                                )}
+                                {sec.id === 'sec-summary' && (
+                                    <>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold">Total Landed</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">Strat Margin</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600">Total GP</TableHead>
+                                    </>
+                                )}
+                                {sec.id === 'sec-levels' && (
+                                    <>
+                                        {['Cash', 'Trade', 'Sub-D', 'Sub-Ex', 'AUS'].map(l => (
+                                            <React.Fragment key={l}>
+                                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{l} Price</TableHead>
+                                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600">GP %</TableHead>
+                                            </React.Fragment>
+                                        ))}
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Sub-D SRP</TableHead>
+                                        <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Sub-Ex SRP</TableHead>
+                                    </>
+                                )}
+                                {activeView === 'options' && (
+                                    <>
+                                        {sec.id === 'sec-vendor' && <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Base USD</TableHead>}
+                                        {sec.id === 'sec-misc' && <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Misc AUD</TableHead>}
+                                        {sec.id === 'sec-financials' && (
+                                            <>
+                                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Landed AUD</TableHead>
+                                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Margin %</TableHead>
+                                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP $</TableHead>
+                                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary">Sell AUD</TableHead>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                            </React.Fragment>
                         ))}
                     </TableRow>
                 </TableHeader>
@@ -347,11 +409,9 @@ function PricingTable({
                                     ))}
                                 </React.Fragment>
                             ))}
-                        </React.Fragment>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
+                        </TableBody>
+                    </Table>
+                </div>
     );
 }
 
@@ -433,20 +493,20 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const activeSections = useMemo(() => {
         if (activeView === 'options') {
             return [
-                { id: 'sec-exchange', name: 'Strategic Exchange', order: 1 },
-                { id: 'sec-vendor', name: 'Vendor USD', order: 2 },
+                { id: 'sec-exchange', name: 'Exchange Rate', order: 1 },
+                { id: 'sec-vendor', name: 'Vendor Base', order: 2 },
                 { id: 'sec-misc', name: 'Misc Charges', order: 3 },
-                { id: 'sec-financials', name: 'Profitability Matrix', order: 4 }
+                { id: 'sec-financials', name: 'Pricing Strategy', order: 4 }
             ];
         }
         return [
-            { id: 'sec-exchange', name: 'Strategic Exchange', order: 1 },
-            { id: 'sec-hull-cost', name: 'Landed Hull Costing', order: 2 },
-            { id: 'sec-freight', name: 'Freight Strategy', order: 3 },
-            { id: 'sec-handling', name: 'Handling Strategy', order: 4 },
-            { id: 'sec-predelivery', name: 'Pre-Delivery Strategy', order: 5 },
-            { id: 'sec-summary', name: 'Financial Summary', order: 6 },
-            { id: 'sec-levels', name: 'Operational Price Levels', order: 7 }
+            { id: 'sec-exchange', name: 'Exchange Rate', order: 1 },
+            { id: 'sec-hull-cost', name: 'Hull Landed Cost', order: 2 },
+            { id: 'sec-freight', name: 'Freight', order: 3 },
+            { id: 'sec-handling', name: 'Handling', order: 4 },
+            { id: 'sec-predelivery', name: 'Pre-Delivery', order: 5 },
+            { id: 'sec-summary', name: 'Strategic Totals', order: 6 },
+            { id: 'sec-levels', name: 'Price Levels', order: 7 }
         ];
     }, [activeView]);
 
