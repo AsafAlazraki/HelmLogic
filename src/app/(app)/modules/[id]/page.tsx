@@ -36,7 +36,8 @@ import {
     Save,
     ArrowRight,
     Hammer,
-    Coins
+    Coins,
+    Package
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -580,7 +581,7 @@ export default function ModuleDetailsPage() {
     const navTabs = [
         { id: 'dashboard', label: 'Dashboard' },
         { id: 'bmt', label: 'Product Catalog' },
-        { id: 'operations', label: 'Operations' },
+        { id: 'stock', label: 'Stock Management' },
         { id: 'pricing', label: 'Pricing', visible: canAccessPricing },
         { id: 'network', label: 'Sub Dealers' }
     ].filter(t => t.visible !== false);
@@ -651,6 +652,10 @@ export default function ModuleDetailsPage() {
                                                     <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
                                                     <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
                                                 </div>
+                                                <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 gap-2">
+                                                    Manage Stock
+                                                    <ArrowRight className="h-3 w-3" />
+                                                </Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
                                                 <StockList organisation={currentMemberOrg as any} subDealers={subDealers || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
@@ -663,6 +668,10 @@ export default function ModuleDetailsPage() {
                                                     <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
                                                     <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
                                                 </div>
+                                                <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 gap-2">
+                                                    View Pipeline
+                                                    <ArrowRight className="h-3 w-3" />
+                                                </Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
                                                 <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
@@ -743,7 +752,7 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="operations" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden p-8">
+                    <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden p-8">
                         <div className="grid grid-cols-12 gap-8 h-full">
                             <Card className="col-span-8 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
                                 <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between">
@@ -760,7 +769,7 @@ export default function ModuleDetailsPage() {
                                 <CardHeader className="py-4 px-8 border-b bg-muted/5">
                                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                                         <ClipboardList className="h-4 w-4 text-primary" />
-                                        Operational Log
+                                        Inventory Audit Log
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0">
