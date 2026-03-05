@@ -183,7 +183,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -225,6 +225,7 @@ function SkuCompatibilityDialog({
                                     <div key={v.id} className="group relative bg-background border p-2.5 rounded-md shadow-sm">
                                         <p className="text-[11px] font-bold truncate pr-6">{v.name}</p>
                                         <Button 
+                                            type="button"
                                             variant="ghost" 
                                             size="icon" 
                                             className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
@@ -862,6 +863,241 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
     );
 }
 
+function DocumentsSection() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({ control, name: "documents" });
+    const storage = useStorage();
+    const [isUploading, setIsUploading] = useState(false);
+    const { toast } = useToast();
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !storage) return;
+        setIsUploading(true);
+        try {
+            const path = `documents/${Date.now()}-${file.name}`;
+            const url = await uploadFileToStorage(storage, file, path);
+            append({ id: `doc-${Date.now()}`, name: file.name, url });
+            toast({ title: "Document Uploaded" });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Upload Failed", description: error.message });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader title="Technical Documents" count={fields.length} />
+            <CollapsibleContent>
+                <CardContent className="pt-6 space-y-4">
+                    <div className="grid gap-2">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc">
+                                <FileText className="h-5 w-5 text-primary/40 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <FormField 
+                                        control={control} 
+                                        name={`documents.${index}.name`} 
+                                        render={({ field }) => (
+                                            <FormControl>
+                                                <Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" />
+                                            </FormControl>
+                                        )} 
+                                    />
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link">
+                                        <a href={(field as any).url} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                    </Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-all group/upload border-muted-foreground/20">
+                        {isUploading ? (
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        ) : (
+                            <>
+                                <Upload className="h-6 w-6 text-muted-foreground/40 group-hover/upload:text-primary transition-colors mb-2" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload Manual / Spec Sheet</p>
+                            </>
+                        )}
+                        <Input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
+                    </label>
+                </CardContent>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
+    const firestore = useFirestore();
+    const storage = useStorage();
+    const { toast } = useToast();
+    const { watch, setValue } = useFormContext();
+    const variantOverrides = watch('variantOverrides') || {};
+
+    const variantsQuery = useMemoFirebase(() => 
+        query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
+    [firestore, vendorId, rangeId, model.id]);
+    
+    const { data: variants, loading } = useCollection<any>(variantsQuery);
+
+    const [editingVariant, setEditingVariant] = useState<any | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleUpdateVariantImage = async (file: File) => {
+        if (!editingVariant || !storage) return;
+        setIsUploading(true);
+        try {
+            const path = `variants/${editingVariant.id}/override-${Date.now()}`;
+            const url = await uploadFileToStorage(storage, file, path);
+            
+            const currentOverrides = { ...variantOverrides };
+            currentOverrides[editingVariant.id] = { ...currentOverrides[editingVariant.id], imageUrl: url };
+            
+            setValue('variantOverrides', currentOverrides, { shouldDirty: true });
+            toast({ title: "SKU Image Staged", description: "Save configuration to persist changes." });
+            setEditingVariant(null);
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Upload Failed" });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleMoveVariant = async (index: number, direction: 'up' | 'down') => {
+        if (!variants) return;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= variants.length) return;
+
+        const v1 = variants[index];
+        const v2 = variants[newIndex];
+
+        const batch = writeBatch(firestore);
+        const ref1 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v1.id);
+        const ref2 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v2.id);
+
+        batch.update(ref1, { order: v2.order ?? newIndex });
+        batch.update(ref2, { order: v1.order ?? index });
+
+        try {
+            await batch.commit();
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Move Failed" });
+        }
+    };
+
+    if (loading) return <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>;
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader 
+                title="Model Series SKUs" 
+                count={variants?.length || 0} 
+            />
+            <CollapsibleContent>
+                <div className="p-0">
+                    <Table>
+                        <TableHeader className="bg-muted/30">
+                            <TableRow>
+                                <TableHead className="w-16 pl-6 py-4"></TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest pl-4">Variant Name & Master Code</TableHead>
+                                <TableHead className="text-right pr-6 w-20"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {variants?.map((v, i) => {
+                                const imageUrl = variantOverrides[v.id]?.imageUrl || v.imageUrl;
+                                return (
+                                    <TableRow key={v.id} className="group/row transition-colors hover:bg-muted/5 cursor-pointer" onClick={() => setEditingVariant(v)}>
+                                        <TableCell className="pl-6 py-3">
+                                            <div className="h-10 w-10 relative rounded border bg-white overflow-hidden shadow-inner">
+                                                {imageUrl ? (
+                                                    <Image src={imageUrl} alt={v.name} fill className="object-contain p-1" unoptimized />
+                                                ) : (
+                                                    <Ship className="h-5 w-5 m-auto mt-2.5 opacity-10" />
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="pl-4 py-3">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-xs uppercase">{v.name}</span>
+                                                <span className="text-[9px] font-mono text-muted-foreground uppercase">{v.sku || 'NO SKU'}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right pr-6">
+                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleMoveVariant(i, 'up'); }} disabled={i === 0}>
+                                                    <ArrowUp className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleMoveVariant(i, 'down'); }} disabled={i === variants.length - 1}>
+                                                    <ArrowDown className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CollapsibleContent>
+
+            <Dialog open={!!editingVariant} onOpenChange={(open) => !open && setEditingVariant(null)}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Edit SKU Visuals</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Override Organization Asset</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-6 space-y-6 flex flex-col items-center">
+                        <div className="relative h-48 w-72 rounded-2xl border-2 border-dashed bg-muted/20 overflow-hidden group shadow-inner">
+                            {isUploading && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                            {editingVariant && (variantOverrides[editingVariant.id]?.imageUrl || editingVariant.imageUrl) ? (
+                                <>
+                                    <Image src={variantOverrides[editingVariant.id]?.imageUrl || editingVariant.imageUrl} alt="Variant" fill className="object-contain p-4" unoptimized />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <label className="cursor-pointer">
+                                            <Upload className="h-8 w-8 text-white" />
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) handleUpdateVariantImage(file);
+                                            }} />
+                                        </label>
+                                    </div>
+                                </>
+                            ) : (
+                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
+                                    <ImageIcon className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                                    <span className="text-[10px] font-black uppercase text-muted-foreground">Upload Custom Render</span>
+                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleUpdateVariantImage(file);
+                                    }} />
+                                </label>
+                            )}
+                        </div>
+                        <div className="text-center space-y-1">
+                            <p className="font-black uppercase text-sm">{editingVariant?.name}</p>
+                            <p className="text-[10px] font-mono font-bold text-muted-foreground uppercase">{editingVariant?.sku}</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline" className="font-black uppercase text-[10px] tracking-widest rounded-xl">Close</Button></DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Collapsible>
+    );
+}
+
 export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean, gstPercentage: number }) {
     const { control, watch } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
@@ -1045,306 +1281,5 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                 </div>
             </div>
         </div>
-    );
-}
-
-function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
-    const firestore = useFirestore();
-    const storage = useStorage();
-    const { toast } = useToast();
-    const { watch, setValue } = useFormContext();
-    const variantOverrides = watch('variantOverrides') || {};
-
-    const variantsQuery = useMemoFirebase(() => 
-        query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
-    [firestore, vendorId, rangeId, model.id]);
-    
-    const { data: variants, loading } = useCollection<any>(variantsQuery);
-
-    const [editingVariant, setEditingVariant] = useState<any | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
-
-    const handleUpdateVariantImage = async (file: File) => {
-        if (!editingVariant || !storage) return;
-        setIsUploading(true);
-        try {
-            const path = `variants/${editingVariant.id}/override-${Date.now()}`;
-            const url = await uploadFileToStorage(storage, file, path);
-            
-            const currentOverrides = { ...variantOverrides };
-            currentOverrides[editingVariant.id] = { ...currentOverrides[editingVariant.id], imageUrl: url };
-            
-            setValue('variantOverrides', currentOverrides, { shouldDirty: true });
-            toast({ title: "SKU Image Staged", description: "Save configuration to persist changes." });
-            setEditingVariant(null);
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Upload Failed" });
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    const handleMoveVariant = async (index: number, direction: 'up' | 'down') => {
-        if (!variants) return;
-        const newIndex = direction === 'up' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= variants.length) return;
-
-        const v1 = variants[index];
-        const v2 = variants[newIndex];
-
-        const batch = writeBatch(firestore);
-        const ref1 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v1.id);
-        const ref2 = doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`, v2.id);
-
-        batch.update(ref1, { order: v2.order ?? newIndex });
-        batch.update(ref2, { order: v1.order ?? index });
-
-        try {
-            await batch.commit();
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Move Failed" });
-        }
-    };
-
-    if (loading) return <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>;
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="Model Series SKUs" 
-                count={variants?.length || 0} 
-            />
-            <CollapsibleContent>
-                <div className="p-0">
-                    <Table>
-                        <TableHeader className="bg-muted/30">
-                            <TableRow>
-                                <TableHead className="w-16 pl-6 py-4"></TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest pl-4">Variant Name & Master Code</TableHead>
-                                <TableHead className="text-right pr-6 w-20"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {variants?.map((v, i) => {
-                                const imageUrl = variantOverrides[v.id]?.imageUrl || v.imageUrl;
-                                return (
-                                    <TableRow key={v.id} className="group/row transition-colors hover:bg-muted/5 cursor-pointer" onClick={() => setEditingVariant(v)}>
-                                        <TableCell className="pl-6 py-3">
-                                            <div className="h-10 w-10 relative rounded border bg-white overflow-hidden shadow-inner">
-                                                {imageUrl ? (
-                                                    <Image src={imageUrl} alt={v.name} fill className="object-contain p-1" unoptimized />
-                                                ) : (
-                                                    <Ship className="h-5 w-5 m-auto mt-2.5 opacity-10" />
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="pl-4 py-3">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-xs uppercase">{v.name}</span>
-                                                <span className="text-[9px] font-mono text-muted-foreground uppercase">{v.sku || 'NO SKU'}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right pr-6">
-                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleMoveVariant(i, 'up'); }} disabled={i === 0}>
-                                                    <ArrowUp className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleMoveVariant(i, 'down'); }} disabled={i === variants.length - 1}>
-                                                    <ArrowDown className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </div>
-            </CollapsibleContent>
-
-            <Dialog open={!!editingVariant} onOpenChange={(open) => !open && setEditingVariant(null)}>
-                <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Edit SKU Visuals</DialogTitle>
-                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Override Organization Asset</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-6 space-y-6 flex flex-col items-center">
-                        <div className="relative h-48 w-72 rounded-2xl border-2 border-dashed bg-muted/20 overflow-hidden group shadow-inner">
-                            {isUploading && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
-                            {editingVariant && (variantOverrides[editingVariant.id]?.imageUrl || editingVariant.imageUrl) ? (
-                                <>
-                                    <Image src={variantOverrides[editingVariant.id]?.imageUrl || editingVariant.imageUrl} alt="Variant" fill className="object-contain p-4" unoptimized />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <label className="cursor-pointer">
-                                            <Upload className="h-8 w-8 text-white" />
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) handleUpdateVariantImage(file);
-                                            }} />
-                                        </label>
-                                    </div>
-                                </>
-                            ) : (
-                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/50">
-                                    <ImageIcon className="h-10 w-10 text-muted-foreground/40 mb-2" />
-                                    <span className="text-[10px] font-black uppercase text-muted-foreground">Upload Custom Render</span>
-                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) handleUpdateVariantImage(file);
-                                    }} />
-                                </label>
-                            )}
-                        </div>
-                        <div className="text-center space-y-1">
-                            <p className="font-black uppercase text-sm">{editingVariant?.name}</p>
-                            <p className="text-[10px] font-mono font-bold text-muted-foreground uppercase">{editingVariant?.sku}</p>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button variant="outline" className="font-black uppercase text-[10px] tracking-widest rounded-xl">Close</Button></DialogClose>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </Collapsible>
-    );
-}
-
-function SpecsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
-    const [bulkSpecs, setBulkSpecs] = useState('');
-
-    const handleBulkImport = () => {
-        const lines = bulkSpecs.split('\n').filter(line => line.trim() !== '');
-        const newSpecs = lines.map(line => {
-            const separatorIndex = line.indexOf(':');
-            let label = line.trim();
-            let value = '';
-            if (separatorIndex !== -1) {
-                label = line.substring(0, separatorIndex).trim();
-                value = line.substring(separatorIndex + 1).trim();
-            }
-            return { id: `spec-${Date.now()}-${Math.random()}`, label, value };
-        });
-
-        append(newSpecs);
-        setBulkSpecs('');
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="General Specifications" 
-                count={fields.length} 
-                onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })}
-            />
-            <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="grid gap-3">
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 group/field">
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
-                    </div>
-                    <Separator />
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import Specs</Label>
-                        <Textarea 
-                            placeholder="Paste specs (e.g. Length: 5.4m) one per line..." 
-                            className="bg-background min-h-[100px]" 
-                            value={bulkSpecs} 
-                            onChange={(e) => setBulkSpecs(e.target.value)} 
-                        />
-                        <Button 
-                            type="button" 
-                            variant="secondary" 
-                            size="sm" 
-                            className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" 
-                            onClick={handleBulkImport}
-                        >
-                            Append Bulk Specs
-                        </Button>
-                    </div>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function MotorConfigurationsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" });
-
-    const configOptions = [
-        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
-        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
-        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
-        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
-        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
-    ];
-
-    const handleAddConfig = (type: string) => {
-        const option = configOptions.find(o => o.id === type);
-        if (!option) return;
-        append({
-            type,
-            engines: Array.from({ length: option.engineCount }, (_, i) => ({
-                label: option.engineLabels[i],
-                minHp: 0,
-                maxHp: 0,
-                recommendedHp: 0
-            }))
-        });
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
-                <div className="flex items-center gap-3">
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                        </Button>
-                    </CollapsibleTrigger>
-                    <CardTitle className="text-lg font-bold">Motor Configurations</CardTitle>
-                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-                        {fields.length}
-                    </span>
-                </div>
-                <Select onValueChange={handleAddConfig}>
-                    <SelectTrigger className="h-8 w-[180px] text-xs">
-                        <SelectValue placeholder="Add Configuration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            <CollapsibleContent>
-                <CardContent className="pt-6 space-y-6">
-                    {fields.map((field, index) => (
-                        <Card key={field.id} className="relative p-4 bg-muted/10 rounded-xl border-none shadow-none">
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                            <div className="space-y-4">
-                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                                <div className="grid gap-4">
-                                    {(field as any).engines.map((engine: any, engineIdx: number) => (
-                                        <div key={engineIdx} className="grid grid-cols-4 gap-3 items-end border-t pt-4 first:border-0 first:pt-0">
-                                            <div className="space-y-1"><Label className="text-[10px] uppercase font-bold text-muted-foreground">{engine.label}</Label></div>
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </Card>
-                    ))}
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
     );
 }
