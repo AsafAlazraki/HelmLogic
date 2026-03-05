@@ -10,11 +10,15 @@ import Link from 'next/link';
 
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase, useAuth } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, doc, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { initializeApp, deleteApp, getApp, getApps } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { firebaseConfig } from '@/firebase/config';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Save, X, Mail, PlusCircle, DollarSign, Percent, TrendingUp, Settings2, Trash2, User, Copy, ExternalLink } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, DollarSign, Percent, TrendingUp, Settings2, Trash2, User, UserPlus, Key, Mail, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -25,7 +29,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { sendInviteEmail } from '@/ai/flows/send-invite-email-flow';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
@@ -69,12 +72,13 @@ const formSchema = z.object({
 
 type OrganisationFormData = z.infer<typeof formSchema>;
 
-const inviteFormSchema = z.object({
+const addUserFormSchema = z.object({
     email: z.string().email({ message: 'Please enter a valid email address.' }),
+    password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
     roleId: z.string().min(1, { message: 'Please select a role for the user.' }),
 });
 
-type InviteFormData = z.infer<typeof inviteFormSchema>;
+type AddUserFormData = z.infer<typeof addUserFormSchema>;
 
 const createSlug = (name: string) =>
   name
@@ -182,8 +186,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const router = useRouter();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isInviting, setIsInviting] = useState(false);
-    const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
+    const [isAddingUser, setIsAddingUser] = useState(false);
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
     const firestore = useFirestore();
@@ -208,9 +211,9 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         },
     });
 
-    const inviteForm = useForm<InviteFormData>({
-        resolver: zodResolver(inviteFormSchema),
-        defaultValues: { email: '', roleId: '' },
+    const addUserForm = useForm<AddUserFormData>({
+        resolver: zodResolver(addUserFormSchema),
+        defaultValues: { email: '', password: '', roleId: '' },
     });
     
     const watchedRoles = form.watch('roles');
@@ -239,38 +242,55 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         }
     }, [organisation, form]);
 
-    async function onInviteSubmit(values: InviteFormData) {
+    async function onAddUserSubmit(values: AddUserFormData) {
         if (!organisation) return;
-        setIsInviting(true);
-        setLastInviteUrl(null);
+        setIsAddingUser(true);
         
-        const roleName = organisation.roles?.find(r => r.id === values.roleId)?.name;
-        if (!roleName) {
-            toast({ variant: "destructive", title: "Invalid Role" });
-            setIsInviting(false);
-            return;
-        }
-    
+        const tempAppName = `temp-enroller-${Date.now()}`;
+        let tempApp;
+
         try {
-            const result = await sendInviteEmail({
+            // 1. Initialize secondary app to avoid logging out current admin
+            tempApp = initializeApp(firebaseConfig, tempAppName);
+            const tempAuth = getAuth(tempApp);
+
+            // 2. Create actual Auth user
+            const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
+            const newUser = userCredential.user;
+
+            // 3. Create Firestore Profile
+            const userRef = doc(firestore, 'users', newUser.uid);
+            const profileData = {
                 email: values.email,
-                organisationName: organisation.name,
-                roleName: roleName,
                 organisationId: organisation.id,
-                roleId: values.roleId,
+                organisationRole: values.roleId,
+                appRole: 'General User',
+                createdAt: serverTimestamp(),
+            };
+
+            await setDoc(userRef, profileData).catch(e => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: userRef.path,
+                    operation: 'create',
+                    requestResourceData: profileData
+                }));
+                throw e;
             });
-    
-            if (result.success) {
-                toast({ title: "Simulation Link Created", description: "Invite link is ready for testing." });
-                setLastInviteUrl(result.inviteUrl || null);
-                inviteForm.reset({ email: '', roleId: values.roleId });
-            } else {
-                throw new Error(result.message);
-            }
+
+            // 4. Sign out the temp auth instance
+            await signOut(tempAuth);
+
+            toast({ title: "User Created", description: `${values.email} has been added to ${organisation.name}.` });
+            addUserForm.reset({ email: '', password: '', roleId: values.roleId });
+
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Invite Failed", description: error.message });
+            console.error("Failed to add user:", error);
+            toast({ variant: "destructive", title: "User Creation Failed", description: error.message });
         } finally {
-            setIsInviting(false);
+            if (tempApp) {
+                await deleteApp(tempApp);
+            }
+            setIsAddingUser(false);
         }
     }
 
@@ -441,7 +461,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Users &amp; Permissions</CardTitle>
-                                        <CardDescription>Invite new members and manage their roles.</CardDescription>
+                                        <CardDescription>Directly manage organisation members and their access levels.</CardDescription>
                                     </CardHeader>
                                     <CardContent>
                                         <Tabs defaultValue="manage-users">
@@ -450,69 +470,75 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                 <TabsTrigger value="manage-permissions">Manage Permissions</TabsTrigger>
                                             </TabsList>
                                             <TabsContent value="manage-users" className="pt-6 space-y-8">
-                                                <div className="p-6 border-2 border-dashed rounded-2xl bg-muted/5">
-                                                    <h3 className="text-base font-black uppercase tracking-tight mb-4">Invite New User</h3>
-                                                    <Form {...inviteForm}>
-                                                        <div className="grid md:grid-cols-2 gap-6 items-end">
-                                                            <FormField control={inviteForm.control} name="email" render={({ field }) => ( 
-                                                                <FormItem>
-                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email Address</FormLabel>
-                                                                    <FormControl><Input placeholder="name@example.com" {...field} className="h-10 font-bold" /></FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem> 
-                                                            )} />
-                                                            <FormField control={inviteForm.control} name="roleId" render={({ field }) => ( 
-                                                                <FormItem>
-                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assigned Role</FormLabel>
-                                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                                        <FormControl><SelectTrigger className="h-10 font-bold"><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
-                                                                        <SelectContent>
-                                                                            {organisation.roles?.map(role => (
-                                                                                <SelectItem key={role.id} value={role.id} className="font-bold">{role.name}</SelectItem>
-                                                                            ))}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                    <FormMessage />
-                                                                </FormItem> 
-                                                            )} />
+                                                <div className="p-6 border-2 border-dashed rounded-2xl bg-muted/5 shadow-inner">
+                                                    <div className="flex items-center gap-3 mb-6">
+                                                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                            <UserPlus className="h-5 w-5" />
                                                         </div>
-                                                        <Button type="button" disabled={isInviting} onClick={inviteForm.handleSubmit(onInviteSubmit)} className="mt-6 h-10 px-8 font-black uppercase tracking-widest text-[10px] shadow-lg">
-                                                            {isInviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-                                                            Send Simulation Invite
-                                                        </Button>
-                                                    </Form>
-
-                                                    {lastInviteUrl && (
-                                                        <div className="mt-6 p-4 rounded-xl bg-primary/5 border-2 border-primary/20 animate-in fade-in slide-in-from-top-2">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                                        <Settings2 className="h-4 w-4" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary">Simulation Link Created</p>
-                                                                        <p className="text-[11px] font-medium text-muted-foreground">Emails are simulated. Use this link to join as the new user:</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex gap-2">
-                                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase border-2" onClick={() => { navigator.clipboard.writeText(lastInviteUrl); toast({ title: "Copied" }); }}>
-                                                                        <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
-                                                                    </Button>
-                                                                    <Button variant="secondary" size="sm" className="h-8 text-[10px] font-black uppercase" asChild>
-                                                                        <a href={lastInviteUrl} target="_blank" rel="noopener noreferrer">
-                                                                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Test Sign-up
-                                                                        </a>
-                                                                    </Button>
-                                                                </div>
+                                                        <h3 className="text-base font-black uppercase tracking-tight">Direct User Enrollment</h3>
+                                                    </div>
+                                                    
+                                                    <Form {...addUserForm}>
+                                                        <form onSubmit={addUserForm.handleSubmit(onAddUserSubmit)} className="space-y-6">
+                                                            <div className="grid md:grid-cols-3 gap-6">
+                                                                <FormField control={addUserForm.control} name="email" render={({ field }) => ( 
+                                                                    <FormItem>
+                                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Log-in Email</FormLabel>
+                                                                        <FormControl>
+                                                                            <div className="relative">
+                                                                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                                                                                <Input placeholder="name@example.com" {...field} className="h-11 pl-10 font-bold bg-background border-2 transition-all focus-visible:ring-primary/20" />
+                                                                            </div>
+                                                                        </FormControl>
+                                                                        <FormMessage />
+                                                                    </FormItem> 
+                                                                )} />
+                                                                <FormField control={addUserForm.control} name="password" render={({ field }) => ( 
+                                                                    <FormItem>
+                                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Secret Password</FormLabel>
+                                                                        <FormControl>
+                                                                            <div className="relative">
+                                                                                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                                                                                <Input type="password" placeholder="••••••••" {...field} className="h-11 pl-10 font-bold bg-background border-2 transition-all focus-visible:ring-primary/20" />
+                                                                            </div>
+                                                                        </FormControl>
+                                                                        <FormMessage />
+                                                                    </FormItem> 
+                                                                )} />
+                                                                <FormField control={addUserForm.control} name="roleId" render={({ field }) => ( 
+                                                                    <FormItem>
+                                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Organisation Role</FormLabel>
+                                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                                            <FormControl>
+                                                                                <SelectTrigger className="h-11 font-bold border-2 bg-background">
+                                                                                    <SelectValue placeholder="Assign a role" />
+                                                                                </SelectTrigger>
+                                                                            </FormControl>
+                                                                            <SelectContent>
+                                                                                {organisation.roles?.map(role => (
+                                                                                    <SelectItem key={role.id} value={role.id} className="font-bold">{role.name}</SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                        <FormMessage />
+                                                                    </FormItem> 
+                                                                )} />
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                            <div className="flex items-center justify-between pt-4 border-t border-dashed">
+                                                                <p className="text-[10px] text-muted-foreground font-medium italic">New users will be created in Firebase Auth and added to this organisation instantly.</p>
+                                                                <Button type="submit" disabled={isAddingUser} className="h-11 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                                                    {isAddingUser ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                                                                    Enroll Member
+                                                                </Button>
+                                                            </div>
+                                                        </form>
+                                                    </Form>
                                                 </div>
 
                                                 <ExistingUsersList orgId={organisation.id} roles={organisation.roles || []} />
                                             </TabsContent>
                                             <TabsContent value="manage-permissions" className="pt-6">
-                                                <div className="mt-4 rounded-xl border-2 overflow-hidden shadow-sm">
+                                                <div className="mt-4 rounded-xl border-2 overflow-hidden shadow-sm bg-white">
                                                     <Table>
                                                         <TableHeader className="bg-muted/30">
                                                             <TableRow>
