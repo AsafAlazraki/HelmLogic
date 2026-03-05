@@ -12,7 +12,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 import type { User } from 'firebase/auth';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Building, Hammer } from 'lucide-react';
