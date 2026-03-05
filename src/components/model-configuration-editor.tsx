@@ -226,7 +226,7 @@ export function ModelConfigurationEditor({
     
     const { reset, control, formState: { isDirty } } = form;
 
-    // Synchronize form with model data only if user isn't currently editing
+    // Synchronize form with model data ONLY if user isn't currently editing
     // and we haven't just performed a save.
     useEffect(() => {
         if (model && !isSubmitting && !isDirty && !isRecentlySaved.current) {
@@ -264,13 +264,15 @@ export function ModelConfigurationEditor({
                 toast({ title: "Master Configuration Updated", description: "Changes persisted to global catalog." });
             } else if (organisationId) {
                 // Case 2: Updating Organisation Overrides
+                // We use setDoc WITHOUT merge: true for the organisation override to ensure 
+                // the organisation's version represents the exact state of the form.
                 const overrideRef = doc(firestore, `organisations/${organisationId}/modelOverrides/${model.id}`);
                 await setDoc(overrideRef, {
                     ...sanitizedValues,
                     overrideAt: serverTimestamp(),
                     overriddenBy: user?.uid,
                     lastSync: serverTimestamp()
-                }, { merge: true });
+                });
 
                 toast({ title: "Organisation Catalog Updated", description: "Changes saved to your organisation version." });
             } else {
@@ -286,7 +288,7 @@ export function ModelConfigurationEditor({
                 toast({ title: "Local Build Saved", description: "Quote draft created successfully." });
             }
             
-            // Explicitly sync the local form with the sent values
+            // Explicitly sync the local form with the sent values to clear dirty state
             reset(values);
 
             // Extended Stability Window

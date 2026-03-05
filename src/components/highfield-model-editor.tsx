@@ -184,7 +184,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -1103,7 +1103,6 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     const { control, watch } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
 
-    const [categories, setCategories] = useState<string[]>(['Consoles', 'Seats']);
     const [newCategoryName, setNewCategoryName] = useState('');
 
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
@@ -1115,29 +1114,21 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     [firestore, vendorId, rangeId, model.id]);
     const { data: variants = [] } = useCollection<any>(variantsQuery);
 
-    useEffect(() => {
-        if (watchedOptionalFeatures) {
-            const currentCats = [...new Set(watchedOptionalFeatures.map((f: any) => f.category).filter(Boolean) as string[])];
-            setCategories(prev => {
-                const defaults = ['Consoles', 'Seats'];
-                const combined = [...new Set([...defaults, ...currentCats])];
-                return combined.sort();
-            });
-        }
+    // Derived categories - Ensures new categories added to features are instantly visible
+    const categories = useMemo(() => {
+        const defaults = ['Consoles', 'Seats'];
+        const existing = watchedOptionalFeatures
+            .map((f: any) => f.category)
+            .filter((c: any) => c && !defaults.includes(c));
+        return [...new Set([...defaults, ...existing])].sort();
     }, [watchedOptionalFeatures]);
 
     const handleAddCategory = () => {
         if (!newCategoryName.trim()) return;
-        const trimmedName = newCategoryName.trim();
-        if (!categories.includes(trimmedName)) {
-            setCategories(prev => [...prev, trimmedName].sort());
-        }
+        // Adding a new category just stages it - it becomes part of "categories" 
+        // as soon as an item is assigned to it or we can manually track empty ones if needed.
+        // For now, let's just clear the input and rely on the select/append to use it.
         setNewCategoryName('');
-    };
-
-    const handleRemoveCategory = (cat: string) => {
-        if (['Consoles', 'Seats'].includes(cat)) return;
-        setCategories(prev => prev.filter(c => c !== cat));
     };
 
     return (
@@ -1190,7 +1181,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                 <ScrollArea className="h-[700px] pr-4">
                                     <div className="space-y-8 pb-40">
                                         {categories.map(cat => {
-                                            const catItems = optionalFeatureFields.filter((_, idx) => watchedOptionalFeatures[idx]?.category === cat);
+                                            const catItems = optionalFeatureFields.map((field, idx) => ({ field, idx })).filter(item => watchedOptionalFeatures[item.idx]?.category === cat);
 
                                             return (
                                                 <Collapsible key={cat} className="space-y-4" defaultOpen>
@@ -1214,36 +1205,21 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                             >
                                                                 <PlusCircle className="h-4 w-4" />
                                                             </Button>
-                                                            {catItems.length === 0 && !['Consoles', 'Seats'].includes(cat) && (
-                                                                <Button 
-                                                                    type="button" 
-                                                                    variant="ghost" 
-                                                                    size="icon" 
-                                                                    className="h-6 w-6 hover:bg-destructive/10 text-destructive"
-                                                                    onClick={() => handleRemoveCategory(cat)}
-                                                                >
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            )}
                                                         </div>
                                                     </div>
                                                     <CollapsibleContent className="space-y-4 pt-2 ml-2 border-l-2 border-dashed border-muted pl-4">
                                                         {catItems.length > 0 ? (
                                                             <div className="grid grid-cols-1 gap-4">
-                                                                {optionalFeatureFields.map((field, index) => {
-                                                                    const feat = watchedOptionalFeatures[index];
-                                                                    if (feat?.category !== cat) return null;
-                                                                    return (
-                                                                        <OptionalFeatureItem 
-                                                                            key={field.id} 
-                                                                            index={index} 
-                                                                            remove={removeOptionalFeature} 
-                                                                            categories={categories}
-                                                                            variants={variants}
-                                                                            allFeatures={watchedOptionalFeatures}
-                                                                        />
-                                                                    );
-                                                                })}
+                                                                {catItems.map((item) => (
+                                                                    <OptionalFeatureItem 
+                                                                        key={item.field.id} 
+                                                                        index={item.idx} 
+                                                                        remove={removeOptionalFeature} 
+                                                                        categories={categories}
+                                                                        variants={variants}
+                                                                        allFeatures={watchedOptionalFeatures}
+                                                                    />
+                                                                ))}
                                                             </div>
                                                         ) : (
                                                             <div className="py-6 border-2 border-dashed rounded-xl bg-muted/10 flex flex-col items-center justify-center text-center">
@@ -1256,6 +1232,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                             );
                                         })}
 
+                                        {/* Uncategorized Items */}
                                         <div className="grid grid-cols-1 gap-4">
                                             {optionalFeatureFields.map((field, index) => {
                                                 const feat = watchedOptionalFeatures[index];
