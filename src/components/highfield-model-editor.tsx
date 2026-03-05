@@ -322,7 +322,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -1247,7 +1247,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
         <div className="space-y-8 max-w-full overflow-x-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className="lg:col-span-4 space-y-8 min-w-0">
-                    <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} gstPercentage={gstPercentage} />
+                    <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} />
                     <FeaturesSection />
                     <SpecsSection />
                     <MotorConfigurationsSection />
@@ -1391,7 +1391,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView, g
     );
 }
 
-function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: any, vendorId: string, rangeId: string, gstPercentage: number }) {
+function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const variantsQuery = useMemoFirebase(() => 
@@ -1427,7 +1427,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
     return (
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <CollapsibleCardHeader 
-                title="Model SKUs & Base Pricing" 
+                title="Model Series SKUs" 
                 count={variants?.length || 0} 
             />
             <CollapsibleContent>
@@ -1435,9 +1435,7 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                     <Table>
                         <TableHeader className="bg-muted/30">
                             <TableRow>
-                                <TableHead className="w-[200px] text-[10px] font-black uppercase tracking-widest pl-6">Variant Name</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Base Cost (Excl.)</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Master Sell (Excl.)</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest pl-6">Variant Name & Master Code</TableHead>
                                 <TableHead className="text-right pr-6 w-20"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -1449,12 +1447,6 @@ function VariantsSection({ model, vendorId, rangeId, gstPercentage }: { model: a
                                             <span className="font-bold text-xs uppercase">{v.name}</span>
                                             <span className="text-[9px] font-mono text-muted-foreground uppercase">{v.sku || 'NO SKU'}</span>
                                         </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-xs font-medium text-muted-foreground">{formatCurrency(v.cost)}</span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-xs font-black text-primary">{formatCurrency(v.sellPriceExclGst)}</span>
                                     </TableCell>
                                     <TableCell className="text-right pr-6">
                                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
