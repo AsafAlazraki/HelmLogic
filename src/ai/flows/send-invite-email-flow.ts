@@ -22,11 +22,13 @@ export type SendInviteEmailInput = z.infer<typeof SendInviteEmailInputSchema>;
 const EmailContentSchema = z.object({
     subject: z.string().describe('The subject line of the email.'),
     body: z.string().describe('The HTML body of the email.'),
+    inviteUrl: z.string().describe('The sign-up URL for the user.'),
 });
 
 const SendInviteEmailOutputSchema = z.object({
   success: z.boolean(),
   message: z.string(),
+  inviteUrl: z.string().optional(),
 });
 export type SendInviteEmailOutput = z.infer<typeof SendInviteEmailOutputSchema>;
 
@@ -46,7 +48,8 @@ The user's email is: {{{email}}}
 The organisation is: {{{organisationName}}}
 The user's role will be: {{{roleName}}}
 
-The email should be welcoming and clearly state the purpose of the invitation. It must include a call-to-action link to sign up. The link should be: \`https://[YOUR_APP_URL]/signup?org_id={{{organisationId}}}&role_id={{{roleId}}}&email={{{email}}}\`. Replace [YOUR_APP_URL] with a placeholder. The body should be in HTML format.
+The email should be welcoming and clearly state the purpose of the invitation. It must include a call-to-action link to sign up. The link should be: \`http://localhost:9002/signup?org_id={{{organisationId}}}&role_id={{{roleId}}}&email={{{email}}}\`. 
+Respond with the subject, body, and the inviteUrl explicitly.
 `,
 });
 
@@ -70,13 +73,13 @@ const sendInviteEmailFlow = ai.defineFlow(
         console.log('--- SIMULATING EMAIL SEND ---');
         console.log(`To: ${input.email}`);
         console.log(`Subject: ${output.subject}`);
-        console.log('Body:');
-        console.log(output.body);
+        console.log(`Invite URL: ${output.inviteUrl}`);
         console.log('-----------------------------');
 
         return {
             success: true,
             message: `An invitation email has been sent to ${input.email}.`,
+            inviteUrl: output.inviteUrl,
         };
 
     } catch (error) {
