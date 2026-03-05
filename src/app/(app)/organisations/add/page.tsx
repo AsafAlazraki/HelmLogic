@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -21,7 +22,7 @@ import { useFirestore, useStorage } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Hash } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import AdminGuard from '@/components/admin-guard';
@@ -44,6 +45,7 @@ const formSchema = z.object({
   name: z.string().min(1, {
     message: 'Organisation name is required.',
   }),
+  shortCode: z.string().max(10).optional(),
   address: z.string().optional(),
   phoneNumber: z.string().optional(),
   abn: z.string().optional(),
@@ -76,6 +78,7 @@ export default function AddOrganisationPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      shortCode: '',
       address: '',
       phoneNumber: '',
       abn: '',
@@ -100,6 +103,7 @@ export default function AddOrganisationPage() {
       const dataToCreate: { [key: string]: any } = {
           name: values.name,
           slug: createSlug(values.name),
+          shortCode: values.shortCode || '',
           address: values.address || '',
           phoneNumber: values.phoneNumber || '',
           abn: values.abn || '',
@@ -199,19 +203,35 @@ export default function AddOrganisationPage() {
                             <CardDescription>Enter the primary details for the new organisation.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                             <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Organisation Name</FormLabel>
-                                    <FormControl>
-                                    <Input placeholder="e.g., Global Shipping Inc." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                    <FormItem className="md:col-span-2">
+                                        <FormLabel>Organisation Name</FormLabel>
+                                        <FormControl>
+                                        <Input placeholder="e.g., Northside Marine" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="shortCode"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center gap-2"><Hash className="h-3.5 w-3.5" />Selling Short Code</FormLabel>
+                                        <FormControl>
+                                        <Input placeholder="e.g., NSM" {...field} className="uppercase font-black" />
+                                        </FormControl>
+                                        <FormDescription>Used for price levels.</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
                             <FormField
                                 control={form.control}
                                 name="address"

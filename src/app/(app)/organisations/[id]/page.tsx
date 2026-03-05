@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -13,7 +14,7 @@ import { useCollection, useDoc, useFirestore, useMemoFirebase, useStorage } from
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp, Hash } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -56,6 +57,7 @@ const formSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
   slug: z.string().nullable().optional(),
+  shortCode: z.string().max(10).nullable().optional(),
   address: z.string().nullable().optional(),
   phoneNumber: z.string().nullable().optional(),
   abn: z.string().nullable().optional(),
@@ -170,6 +172,7 @@ export default function OrganisationDetailsPage() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: '',
+            shortCode: '',
             permissions: {},
             roles: [],
             dataWarehouseSubscriptions: [],
@@ -269,6 +272,7 @@ export default function OrganisationDetailsPage() {
             const dataToUpdate: { [key: string]: any } = {
                 name: values.name,
                 slug: createSlug(values.name),
+                shortCode: values.shortCode || '',
                 address: values.address || '',
                 phoneNumber: values.phoneNumber || '',
                 abn: values.abn || '',
@@ -395,9 +399,14 @@ export default function OrganisationDetailsPage() {
                                         <Card>
                                             <CardHeader><CardTitle>Organisation Details</CardTitle></CardHeader>
                                             <CardContent className="space-y-6">
-                                                <FormField control={form.control} name="name" render={({ field }) => (
-                                                    <FormItem><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Global Shipping Inc." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                                                )} />
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                    <FormField control={form.control} name="name" render={({ field }) => (
+                                                        <FormItem className="md:col-span-2"><FormLabel>Organisation Name</FormLabel><FormControl><Input placeholder="e.g., Northside Marine" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="shortCode" render={({ field }) => (
+                                                        <FormItem><FormLabel className="flex items-center gap-2"><Hash className="h-3.5 w-3.5" />Selling Short Code</FormLabel><FormControl><Input placeholder="e.g., NSM" {...field} value={field.value ?? ''} className="font-black uppercase" /></FormControl><FormDescription>Used for price levels (e.g. NSM Sell Price).</FormDescription><FormMessage /></FormItem>
+                                                    )} />
+                                                </div>
                                                 <FormField control={form.control} name="address" render={({ field }) => (
                                                     <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Ocean Ave, Metropolis, NY 10001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                                 )} />

@@ -52,6 +52,10 @@
           "type": "string",
           "description": "A URL-friendly version of the organisation name."
         },
+        "shortCode": {
+          "type": "string",
+          "description": "A short alphanumeric code for branding/pricing (e.g. NSM)."
+        },
         "address": {
           "type": "string",
           "description": "The physical address of the organisation."
@@ -797,12 +801,6 @@
         "$ref": "#/backend/entities/ExchangeRate"
       },
       "description": "Organisation-specific manual exchange rate settings."
-    },
-    "/organisations/{organisationId}/exchangeRates/{currencyCode}/changeLog/{logId}": {
-      "schema": {
-        "$ref": "#/backend/entities/ExchangeRateLog"
-      },
-      "description": "Historical audit log of manual currency adjustments."
     },
     "/organisations/{organisationId}/pricingStrategies/{vendorId}": {
       "schema": {
