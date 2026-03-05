@@ -644,9 +644,9 @@ export default function ModuleDetailsPage() {
                 <Tabs value={activeTab} className="h-full">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
-                            <div className="p-8">
-                                <div className="grid grid-cols-12 gap-8 h-full">
-                                    <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
+                            <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
+                                <div className="grid grid-cols-12 gap-8 flex-1">
+                                    <div className="col-span-4 flex flex-col gap-8 h-full">
                                         <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
                                             <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                                 <div className="flex items-center gap-3 shrink-0">
@@ -751,33 +751,39 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden p-8">
-                        <div className="grid grid-cols-12 gap-8 h-full">
-                            <Card className="col-span-8 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
-                                <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between">
-                                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                        <MapIcon className="h-4 w-4 text-primary" />
-                                        Fleet Live Positions
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-0 h-[calc(100%-60px)]">
-                                    <VesselMap />
-                                </CardContent>
-                            </Card>
-                            <Card className="col-span-4 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
-                                <CardHeader className="py-4 px-8 border-b bg-muted/5">
-                                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                        <ClipboardList className="h-4 w-4 text-primary" />
-                                        Inventory Audit Log
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="p-12 text-center text-muted-foreground italic text-[10px] uppercase font-black tracking-widest opacity-20">
-                                        Metrics Synchronized with Fleet
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                    <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
+                                <div className="grid grid-cols-12 gap-8 flex-1">
+                                    <Card className="col-span-8 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm flex flex-col">
+                                        <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                                <MapIcon className="h-4 w-4 text-primary" />
+                                                Fleet Live Positions
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-0 flex-1 relative">
+                                            <div className="absolute inset-0">
+                                                <VesselMap />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                    <Card className="col-span-4 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm flex flex-col">
+                                        <CardHeader className="py-4 px-8 border-b bg-muted/5 shrink-0">
+                                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                                <ClipboardList className="h-4 w-4 text-primary" />
+                                                Inventory Audit Log
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-0 flex-1 flex items-center justify-center">
+                                            <div className="p-12 text-center text-muted-foreground italic text-[10px] uppercase font-black tracking-widest opacity-20">
+                                                Metrics Synchronized with Fleet
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
+                        </ScrollArea>
                     </TabsContent>
 
                     {canAccessPricing && (
