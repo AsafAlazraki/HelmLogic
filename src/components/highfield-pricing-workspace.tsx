@@ -135,50 +135,6 @@ function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
     );
 }
 
-function BulkActionToolbar({ onApply, activeView }: { onApply: (field: string, value: string) => void, activeView: string }) {
-    const [field, setField] = useState('exchange_duty_percent');
-    const [value, setValue] = useState('');
-
-    const options = [
-        { value: 'exchange_duty_percent', label: 'Duty %' },
-        { value: 'op_freight_margin_percent', label: 'Freight Margin %' },
-        { value: 'op_handling_margin_percent', label: 'Handling Margin %' },
-        { value: 'op_predel_margin_percent', label: 'Pre-Del Margin %' },
-        { value: 'strat_package_margin_percent', label: activeView === 'boats' ? 'Hull Margin %' : 'Option Margin %' },
-    ];
-
-    return (
-        <div className="flex items-center gap-2 p-1.5 bg-white border-2 rounded-xl shadow-sm animate-in fade-in zoom-in-95 duration-300">
-            <Select value={field} onValueChange={setField}>
-                <SelectTrigger className="h-7 w-[130px] text-[9px] font-black uppercase tracking-tighter bg-muted/50 border-none shadow-none focus:ring-0">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-2 rounded-xl">
-                    {options.map(o => <SelectItem key={o.value} value={o.value} className="text-[9px] font-bold uppercase">{o.label}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <div className="relative">
-                <Percent className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-primary opacity-40" />
-                <Input 
-                    type="number" 
-                    placeholder="0.00" 
-                    className="h-7 w-20 pl-6 text-[10px] font-black bg-muted/30 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                />
-            </div>
-            <Button 
-                type="button" 
-                size="sm" 
-                className="h-7 px-3 text-[9px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90"
-                onClick={() => { onApply(field, value); setValue(''); }}
-            >
-                Apply Range
-            </Button>
-        </div>
-    );
-}
-
 function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onApply: (field: string, value: string) => void, activeView: string }) {
     const [field, setField] = useState<string>('exchange_duty_percent');
     const [value, setValue] = useState('');
@@ -405,7 +361,7 @@ function PricingRow({
 }
 
 function PricingTable({ 
-    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, onRangeApply 
+    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate 
 }: any) {
     const isOptions = activeView === 'options';
     const isTax = activeView === 'tax';
@@ -528,11 +484,6 @@ function PricingTable({
                                         <div className="flex items-center gap-4">
                                             <ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />
                                             <span>{range.name} RANGE</span>
-                                            {expandedRanges.includes(range.id) && (
-                                                <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-                                                    <BulkActionToolbar activeView={activeView} onApply={(field, val) => onRangeApply(range.id, field, val)} />
-                                                </div>
-                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell colSpan={isTax ? 6 : (isOptions ? 20 : 46)} className="border-b-2 border-slate-300 bg-slate-100/60 p-0" />
@@ -578,7 +529,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const { toast } = useToast();
     
     const [isFocusMode, setIsFocusMode] = useState(false);
-    const [isGlobalBulkOpen, setIsGlobalBulkOpen] = useState(false);
+    const [isGlobalUpdateOpen, setIsGlobalUpdateOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
     const [activeView, setActiveView] = useState<'boats' | 'options' | 'tax'>('boats');
@@ -638,7 +589,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         updateDoc(strategyRef, { itemValues: updated, lastUpdateAt: serverTimestamp() });
     };
 
-    const handleGlobalBulkUpdate = async (field: string, value: string) => {
+    const handleGlobalUpdate = async (field: string, value: string) => {
         if (!strategyRef) return;
         const currentValues = strategy?.itemValues || {};
         const updatedValues = { ...currentValues };
@@ -667,37 +618,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         });
 
         toast({ title: "Global Update Executed", description: `Updated ${itemIds.length} items across the entire catalog.` });
-    };
-
-    const handleRangeBulkUpdate = async (rangeId: string, field: string, value: string) => {
-        if (!strategyRef) return;
-        const currentValues = strategy?.itemValues || {};
-        const updatedValues = { ...currentValues };
-        
-        const rangeModels = allModels.filter(m => m.rangeId === rangeId);
-        const itemIds: string[] = [];
-        
-        rangeModels.forEach(m => {
-            if (activeView === 'boats') {
-                (allVariants[m.id] || []).forEach(v => itemIds.push(v.id));
-            } else {
-                (m.optionalFeatures || []).forEach(f => itemIds.push(f.id));
-            }
-        });
-
-        if (itemIds.length === 0) return;
-
-        itemIds.forEach(id => {
-            if (!updatedValues[id]) updatedValues[id] = {};
-            updatedValues[id][field] = value;
-        });
-
-        await updateDoc(strategyRef, {
-            itemValues: updatedValues,
-            lastUpdateAt: serverTimestamp()
-        });
-
-        toast({ title: "Range Update Applied", description: `Updated ${itemIds.length} units in this range.` });
     };
 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -739,7 +659,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     variant="default" 
                     size="sm" 
                     className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg bg-primary text-white hover:bg-primary/90 transition-all border-none"
-                    onClick={() => setIsGlobalBulkOpen(true)}
+                    onClick={() => setIsGlobalUpdateOpen(true)}
                 >
                     <Zap className="h-4 w-4 mr-2" />
                     Global Update
@@ -775,13 +695,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 vendor={vendor}
                 organisation={organisation}
                 activeExchangeRate={activeExchangeRate}
-                onRangeApply={handleRangeBulkUpdate}
             />
 
             <GlobalUpdateDialog 
-                isOpen={isGlobalBulkOpen} 
-                onOpenChange={setIsGlobalBulkOpen} 
-                onApply={handleGlobalBulkUpdate} 
+                isOpen={isGlobalUpdateOpen} 
+                onOpenChange={setIsGlobalUpdateOpen} 
+                onApply={handleGlobalUpdate} 
                 activeView={activeView}
             />
 
@@ -804,7 +723,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                             vendor={vendor}
                             organisation={organisation}
                             activeExchangeRate={activeExchangeRate}
-                            onRangeApply={handleRangeBulkUpdate}
                         />
                     </div>
                 </DialogContent>
