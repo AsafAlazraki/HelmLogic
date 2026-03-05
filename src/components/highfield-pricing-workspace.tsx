@@ -32,7 +32,10 @@ import {
     Plus,
     X,
     Ship,
-    Zap
+    Zap,
+    Globe,
+    Save,
+    GripVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +44,9 @@ import {
     DialogContent, 
     DialogHeader,
     DialogTitle,
-    DialogDescription
+    DialogDescription,
+    DialogFooter,
+    DialogClose
 } from '@/components/ui/dialog';
 import {
     Select,
@@ -55,6 +60,7 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
 
 interface PricingStrategy {
     itemValues?: Record<string, Record<string, any>>;
@@ -86,6 +92,10 @@ const getSellPrice = (cost: number, marginPercent: number) => {
     return cost / factor;
 };
 
+/**
+ * High-precision currency conversion logic.
+ * Formula: USD / Rate = AUD (where rate is 1 AUD = X USD)
+ */
 const calculateBaseCostAudEx = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
     const costOverride = itemValues['base_cost_override'];
     const usdBase = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : baseCostUsd;
@@ -116,9 +126,9 @@ function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
         <div className="h-full flex items-center bg-transparent min-h-[40px]">
             <input 
                 className={cn(
-                    "h-full w-full bg-transparent border-none text-[11px] font-bold outline-none px-2 transition-colors",
+                    "h-full w-full bg-transparent border-none text-[11px] outline-none px-2 transition-colors",
                     align === 'right' ? "text-right" : "text-center",
-                    localValue !== '' ? "text-primary font-black" : "text-slate-900"
+                    localValue !== '' ? "text-primary font-black" : "text-slate-900 font-bold"
                 )} 
                 value={localValue} 
                 onChange={e => setLocalValue(e.target.value)} 
@@ -154,7 +164,7 @@ function BulkActionToolbar({ onApply }: { onApply: (field: string, value: string
             <div className="relative w-20">
                 <Input 
                     type="number" 
-                    placeholder="Value" 
+                    placeholder="Val" 
                     className="h-7 text-[10px] font-black pr-5 border-slate-300" 
                     value={value} 
                     onChange={e => setValue(e.target.value)}
@@ -163,13 +173,80 @@ function BulkActionToolbar({ onApply }: { onApply: (field: string, value: string
             </div>
             <Button 
                 type="button"
-                className="h-7 px-3 text-[9px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90"
+                className="h-7 px-3 text-[9px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 rounded-md"
                 onClick={() => { onApply(field, value); setValue(''); }}
             >
                 <Zap className="h-3 w-3 mr-1.5" />
                 Apply Range
             </Button>
         </div>
+    );
+}
+
+function GlobalStrategicDialog({ isOpen, onOpenChange, onApply }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onApply: (field: string, value: string) => void }) {
+    const [field, setField] = useState<string>('exchange_duty_percent');
+    const [value, setValue] = useState('');
+
+    const options = [
+        { value: 'exchange_duty_percent', label: 'Global Duty %' },
+        { value: 'op_freight_margin_percent', label: 'Global Freight Margin %' },
+        { value: 'op_handling_margin_percent', label: 'Global Handling Margin %' },
+        { value: 'op_predel_margin_percent', label: 'Global Pre-Delivery Margin %' },
+        { value: 'strat_package_margin_percent', label: 'Global Strategic Margin %' },
+    ];
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-8 border-b bg-muted/5">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic">Global Strategic Update</DialogTitle>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary mt-1">Universal Inventory Adjustment</DialogDescription>
+                </DialogHeader>
+                <div className="p-8 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target Strategy Field</Label>
+                        <Select value={field} onValueChange={setField}>
+                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-2">
+                                {options.map(o => <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold uppercase py-2.5">{o.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Universal Value (%)</Label>
+                        <div className="relative">
+                            <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                            <Input 
+                                type="number" 
+                                placeholder="0.00" 
+                                className="pl-12 h-12 font-black text-lg border-2 rounded-xl bg-muted/5 shadow-inner"
+                                value={value}
+                                onChange={e => setValue(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-100 flex items-start gap-3">
+                        <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-[10px] font-bold text-amber-800 leading-relaxed uppercase">
+                            Executing this action will overwrite the selected field for <span className="font-black">every boat and SKU</span> in the current catalog view.
+                        </p>
+                    </div>
+                </div>
+                <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
+                    <Button 
+                        onClick={() => { onApply(field, value); onOpenChange(false); setValue(''); }} 
+                        disabled={!value}
+                        className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl shadow-primary/20 transition-all hover:scale-[1.02]"
+                    >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Execute Global Sync
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -466,6 +543,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const { toast } = useToast();
     
     const [isFocusMode, setIsFocusMode] = useState(false);
+    const [isGlobalBulkOpen, setIsGlobalBulkOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
     const [activeView, setActiveView] = useState<'boats' | 'options'>('boats');
@@ -558,6 +636,37 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         toast({ title: "Bulk Update Applied", description: `Updated ${itemIds.length} items in this range.` });
     };
 
+    const handleGlobalBulkUpdate = async (field: string, value: string) => {
+        if (!strategyRef) return;
+        const currentValues = strategy?.itemValues || {};
+        const updatedValues = { ...currentValues };
+        
+        const itemIds: string[] = [];
+        if (activeView === 'boats') {
+            allModels.forEach(m => {
+                (allVariants[m.id] || []).forEach(v => itemIds.push(v.id));
+            });
+        } else {
+            allModels.forEach(m => {
+                (m.optionalFeatures || []).forEach(f => itemIds.push(f.id));
+            });
+        }
+
+        if (itemIds.length === 0) return;
+
+        itemIds.forEach(id => {
+            if (!updatedValues[id]) updatedValues[id] = {};
+            updatedValues[id][field] = value;
+        });
+
+        await updateDoc(strategyRef, {
+            itemValues: updatedValues,
+            lastUpdateAt: serverTimestamp()
+        });
+
+        toast({ title: "Global Update Executed", description: `Updated ${itemIds.length} items across the entire catalog.` });
+    };
+
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     
     const filteredRanges = useMemo(() => {
@@ -568,7 +677,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [ranges, searchTerm, allModels]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative z-10">
+        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative z-[100]">
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
@@ -591,6 +700,16 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </Tabs>
             </div>
             <div className="flex items-center gap-3">
+                <Button 
+                    type="button"
+                    variant="outline" 
+                    size="sm" 
+                    className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all shadow-sm"
+                    onClick={() => setIsGlobalBulkOpen(true)}
+                >
+                    <Zap className="h-4 w-4 mr-2" />
+                    Global Strategic Update
+                </Button>
                 <Button 
                     type="button" 
                     onClick={() => setIsFocusMode(!isFocusMode)} 
@@ -623,6 +742,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 vendor={vendor}
                 organisation={organisation}
                 activeExchangeRate={activeExchangeRate}
+            />
+
+            <GlobalStrategicDialog 
+                isOpen={isGlobalBulkOpen} 
+                onOpenChange={setIsGlobalBulkOpen} 
+                onApply={handleGlobalBulkUpdate} 
             />
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
