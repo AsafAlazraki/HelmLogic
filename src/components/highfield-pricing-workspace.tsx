@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -240,7 +239,7 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isO
                     <Button 
                         onClick={() => { onApply(field, value); onOpenChange(false); setValue(''); }} 
                         disabled={!value}
-                        className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl transition-all hover:scale-[1.02]"
+                        className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl transition-all hover:scale-[1.02] bg-primary text-white"
                     >
                         <Zap className="h-4 w-4 mr-2" />
                         Confirm Global Sync
@@ -286,33 +285,6 @@ function PricingRow({
     const hullMarginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
     const totalPackageSell = getSellPrice(totalStrategicLandedEx, hullMarginPercent);
     const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
-
-    const isTax = activeView === 'tax';
-
-    if (isTax) {
-        return (
-            <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
-                <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] min-h-[40px]", rowBgClass, indent ? "pl-16" : "px-8")}>
-                    <div className="flex flex-col min-w-[240px]">
-                        <span className="font-black text-[11px] uppercase truncate tracking-tight">{name}</span>
-                        <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
-                    </div>
-                </TableCell>
-                {['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
-                    const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
-                    const gstDollar = sellEx * gstRate;
-                    return (
-                        <TableCell key={l} className="text-right text-[10px] font-black text-amber-600 border-r border-b border-slate-200 px-6 bg-amber-50/20">
-                            {gstDollar > 0 ? formatCurrency(gstDollar, orgCurrency) : '-'}
-                        </TableCell>
-                    );
-                })}
-                <TableCell className="text-right text-[10px] font-black text-amber-700 border-r border-b border-slate-300 px-6 bg-amber-100/20">
-                    {formatCurrency(totalPackageSell * gstRate, orgCurrency)}
-                </TableCell>
-            </TableRow>
-        );
-    }
 
     return (
         <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
@@ -422,7 +394,6 @@ function PricingTable({
     filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, onBulkUpdate 
 }: any) {
     const isOptions = activeView === 'options';
-    const isTax = activeView === 'tax';
     const shortCode = (organisation?.shortCode || 'NSM').toUpperCase();
     const inclLabel = `(INCL. GST)`;
 
@@ -433,52 +404,6 @@ function PricingTable({
         { id: 'subex', label: 'SUB-EX PRICE (EXCL.)' },
         { id: 'aus', label: 'AUS PRICE (EXCL.)' }
     ];
-
-    if (isTax) {
-        return (
-            <div className="flex-1 w-full overflow-hidden flex flex-col bg-white border-t relative">
-                <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
-                    <Table className="border-separate border-spacing-0 w-full table-fixed">
-                        <TableHeader className="sticky top-0 z-[40]">
-                            <TableRow className="hover:bg-transparent bg-white">
-                                <TableHead className="w-[340px] sticky left-0 top-0 z-[50] bg-white border-r-2 border-b font-black uppercase text-[10px] py-5 px-8 shadow-sm">Series & SKU</TableHead>
-                                {['Cash GST ($)', 'Trade GST ($)', 'Sub-D GST ($)', 'Sub-Ex GST ($)', 'AUS GST ($)', 'Total GST (Package)'].map(h => (
-                                    <TableHead key={h} className="border-r border-b-2 border-slate-300 text-right px-6 font-black uppercase text-[10px] tracking-widest bg-amber-50/30 text-amber-900">{h}</TableHead>
-                                ))}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredRanges.map((range: any) => (
-                                <React.Fragment key={range.id}>
-                                    <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
-                                        <TableCell className="sticky left-0 z-[20] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-sm">
-                                            <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
-                                        </TableCell>
-                                        <TableCell colSpan={6} className="border-b-2 border-slate-300 bg-slate-100/60" />
-                                    </TableRow>
-                                    {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
-                                        <React.Fragment key={model.id}>
-                                            <TableRow className="bg-slate-50">
-                                                <TableCell className="sticky left-0 z-[20] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-sm">
-                                                    <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES: {model.modelCode}</span></div>
-                                                </TableCell>
-                                                <TableCell colSpan={6} className="border-b-2 border-slate-300 bg-slate-50/50" />
-                                            </TableRow>
-                                            {(allVariants[model.id] || []).map((item: any, idx: number) => (
-                                                <PricingRow 
-                                                    key={item.id} id={item.id} name={item.name} sku={item.sku} strategy={strategy} vendor={vendor} organisation={organisation} exchangeRate={activeExchangeRate} rowIndex={idx} activeView="tax" indent 
-                                                />
-                                            ))}
-                                        </React.Fragment>
-                                    ))}
-                                </React.Fragment>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="flex-1 w-full overflow-hidden flex flex-col bg-white border-t relative">
@@ -621,7 +546,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [isGlobalBulkOpen, setIsGlobalBulkOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
-    const [activeView, setActiveView] = useState<'boats' | 'options' | 'tax'>('boats');
+    const [activeView, setActiveView] = useState<'boats' | 'options'>('boats');
 
     const rangesQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')), [firestore, vendor.id]);
     const { data: ranges } = useCollection<Range>(rangesQuery);
@@ -686,7 +611,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         const modelsInRange = allModels.filter(m => m.rangeId === rangeId);
         const itemIds: string[] = [];
         
-        if (activeView === 'boats' || activeView === 'tax') {
+        if (activeView === 'boats') {
             modelsInRange.forEach(m => {
                 (allVariants[m.id] || []).forEach(v => itemIds.push(v.id));
             });
@@ -717,7 +642,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         const updatedValues = { ...currentValues };
         
         const itemIds: string[] = [];
-        if (activeView === 'boats' || activeView === 'tax') {
+        if (activeView === 'boats') {
             allModels.forEach(m => {
                 (allVariants[m.id] || []).forEach(v => itemIds.push(v.id));
             });
@@ -771,10 +696,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
                         <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">Hull & SKUs</TabsTrigger>
                         <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">Factory Options</TabsTrigger>
-                        <TabsTrigger value="tax" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm rounded-lg">
-                            <Receipt className="h-3 w-3 mr-1.5" />
-                            Tax Audit
-                        </TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>
