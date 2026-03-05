@@ -140,7 +140,7 @@ function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
     );
 }
 
-function BulkActionToolbar({ onApply }: { onApply: (field: string, value: string) => void }) {
+function BulkActionToolbar({ onApply, activeView }: { onApply: (field: string, value: string) => void, activeView: string }) {
     const [field, setField] = useState<string>('exchange_duty_percent');
     const [value, setValue] = useState('');
 
@@ -149,7 +149,7 @@ function BulkActionToolbar({ onApply }: { onApply: (field: string, value: string
         { value: 'op_freight_margin_percent', label: 'Freight Margin %' },
         { value: 'op_handling_margin_percent', label: 'Handling Margin %' },
         { value: 'op_predel_margin_percent', label: 'Pre-Del Margin %' },
-        { value: 'strat_package_margin_percent', label: 'Strat Margin %' },
+        { value: 'strat_package_margin_percent', label: activeView === 'boats' ? 'Hull Margin %' : 'Option Margin %' },
     ];
 
     return (
@@ -184,7 +184,7 @@ function BulkActionToolbar({ onApply }: { onApply: (field: string, value: string
     );
 }
 
-function GlobalUpdateDialog({ isOpen, onOpenChange, onApply }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onApply: (field: string, value: string) => void }) {
+function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onApply: (field: string, value: string) => void, activeView: string }) {
     const [field, setField] = useState<string>('exchange_duty_percent');
     const [value, setValue] = useState('');
 
@@ -193,19 +193,19 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply }: { isOpen: boolean
         { value: 'op_freight_margin_percent', label: 'Global Freight Margin %' },
         { value: 'op_handling_margin_percent', label: 'Global Handling Margin %' },
         { value: 'op_predel_margin_percent', label: 'Global Pre-Delivery Margin %' },
-        { value: 'strat_package_margin_percent', label: 'Global Strategic Margin %' },
+        { value: 'strat_package_margin_percent', label: activeView === 'boats' ? 'Global Hull Margin %' : 'Global Option Margin %' },
     ];
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
+            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden z-[200]">
                 <DialogHeader className="p-8 border-b bg-muted/5">
                     <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Global Update</DialogTitle>
-                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Inventory Adjustment</DialogDescription>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Catalog Adjustment</DialogDescription>
                 </DialogHeader>
                 <div className="p-8 space-y-6">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target Strategy Field</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target Field</Label>
                         <Select value={field} onValueChange={setField}>
                             <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
                                 <SelectValue />
@@ -231,7 +231,7 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply }: { isOpen: boolean
                     <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-100 flex items-start gap-3">
                         <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                         <p className="text-[10px] font-bold text-amber-800 leading-relaxed uppercase">
-                            Executing this action will overwrite the selected field for <span className="font-black">every boat and SKU</span> in the current catalog view.
+                            Warning: This will overwrite the selected field for <span className="font-black">every SKU</span> in the current view.
                         </p>
                     </div>
                 </div>
@@ -243,7 +243,7 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply }: { isOpen: boolean
                         className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl transition-all hover:scale-[1.02]"
                     >
                         <Zap className="h-4 w-4 mr-2" />
-                        Execute Global Sync
+                        Confirm Global Sync
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -283,23 +283,21 @@ function PricingRow({
     const preDelGP = preDelSell - preDelCost;
 
     const totalStrategicLandedEx = baseCostAudEx + (activeView === 'boats' ? freightSell : 0) + handlingSell + (activeView === 'boats' ? preDelSell : 0);
-    const stratMarginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
-    const totalPackageSell = getSellPrice(totalStrategicLandedEx, stratMarginPercent);
+    const hullMarginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
+    const totalPackageSell = getSellPrice(totalStrategicLandedEx, hullMarginPercent);
     const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
 
-    const isOptions = activeView === 'options';
     const isTax = activeView === 'tax';
 
     if (isTax) {
         return (
             <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
-                <TableCell className={cn("sticky left-0 z-[30] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] min-h-[40px]", rowBgClass, indent ? "pl-16" : "px-8")}>
+                <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] min-h-[40px]", rowBgClass, indent ? "pl-16" : "px-8")}>
                     <div className="flex flex-col min-w-[240px]">
                         <span className="font-black text-[11px] uppercase truncate tracking-tight">{name}</span>
                         <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
                     </div>
                 </TableCell>
-                {/* Tax Breakdown View: Show only dollar amount of GST */}
                 {['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
                     const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
                     const gstDollar = sellEx * gstRate;
@@ -318,7 +316,7 @@ function PricingRow({
 
     return (
         <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
-            <TableCell className={cn("sticky left-0 z-[30] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] min-h-[40px]", rowBgClass, indent ? "pl-16" : "px-8")}>
+            <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] min-h-[40px]", rowBgClass, indent ? "pl-16" : "px-8")}>
                 <div className="flex flex-col min-w-[240px]">
                     <span className={cn("font-black text-[11px] uppercase truncate tracking-tight", isOption ? "text-slate-700" : "text-slate-950")}>{name}</span>
                     <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
@@ -340,7 +338,7 @@ function PricingRow({
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/[0.02]">{formatCurrency(baseCostAudEx, orgCurrency)}</TableCell>
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5">{formatCurrency(baseCostAudIn, orgCurrency)}</TableCell>
 
-            {!isOptions && (
+            {activeView === 'boats' && (
                 <>
                     {/* Freight */}
                     <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" /></TableCell>
@@ -356,7 +354,7 @@ function PricingRow({
             <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/[0.02]">{formatCurrency(handlingGP, orgCurrency)}</TableCell>
 
-            {!isOptions && (
+            {activeView === 'boats' && (
                 <>
                     {/* Pre-Delivery */}
                     <TableCell className="p-0 border-r border-b border-slate-200"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
@@ -365,13 +363,13 @@ function PricingRow({
                 </>
             )}
 
-            {/* Strategic Totals */}
+            {/* Totals */}
             <TableCell className="text-right text-[10px] font-black text-slate-950 border-r border-b border-slate-300 px-4 bg-slate-100/50">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-300 px-4 bg-green-500/[0.05]">{formatCurrency(totalPackageGP, orgCurrency)}</TableCell>
 
             {/* Price Levels */}
-            {!isOptions ? (
+            {activeView === 'boats' ? (
                 ['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
                     const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
                     const sellIn = sellEx * gstMultiplier;
@@ -401,7 +399,7 @@ function PricingRow({
                 </>
             )}
             
-            {!isOptions && [
+            {activeView === 'boats' && [
                 { id: 'hull_subdealer_srp', label: 'Sub-D SRP' },
                 { id: 'hull_subdealer_excl_srp', label: 'Sub-Ex SRP' }
             ].map(l => {
@@ -441,9 +439,9 @@ function PricingTable({
             <div className="flex-1 w-full overflow-hidden flex flex-col bg-white border-t relative">
                 <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
                     <Table className="border-separate border-spacing-0 w-full table-fixed">
-                        <TableHeader className="sticky top-0 z-[50]">
+                        <TableHeader className="sticky top-0 z-[40]">
                             <TableRow className="hover:bg-transparent bg-white">
-                                <TableHead className="w-[340px] sticky left-0 top-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] py-5 px-8 shadow-sm">Series & SKU</TableHead>
+                                <TableHead className="w-[340px] sticky left-0 top-0 z-[50] bg-white border-r-2 border-b font-black uppercase text-[10px] py-5 px-8 shadow-sm">Series & SKU</TableHead>
                                 {['Cash GST ($)', 'Trade GST ($)', 'Sub-D GST ($)', 'Sub-Ex GST ($)', 'AUS GST ($)', 'Total GST (Package)'].map(h => (
                                     <TableHead key={h} className="border-r border-b-2 border-slate-300 text-right px-6 font-black uppercase text-[10px] tracking-widest bg-amber-50/30 text-amber-900">{h}</TableHead>
                                 ))}
@@ -453,7 +451,7 @@ function PricingTable({
                             {filteredRanges.map((range: any) => (
                                 <React.Fragment key={range.id}>
                                     <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
-                                        <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-sm">
+                                        <TableCell className="sticky left-0 z-[20] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-sm">
                                             <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
                                         </TableCell>
                                         <TableCell colSpan={6} className="border-b-2 border-slate-300 bg-slate-100/60" />
@@ -461,7 +459,7 @@ function PricingTable({
                                     {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                         <React.Fragment key={model.id}>
                                             <TableRow className="bg-slate-50">
-                                                <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-sm">
+                                                <TableCell className="sticky left-0 z-[20] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-sm">
                                                     <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES: {model.modelCode}</span></div>
                                                 </TableCell>
                                                 <TableCell colSpan={6} className="border-b-2 border-slate-300 bg-slate-50/50" />
@@ -486,20 +484,20 @@ function PricingTable({
         <div className="flex-1 w-full overflow-hidden flex flex-col bg-white border-t relative">
             <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
                 <Table className="border-separate border-spacing-0 w-max table-fixed">
-                    <TableHeader className="sticky top-0 z-[50]">
+                    <TableHeader className="sticky top-0 z-[40]">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[340px] sticky left-0 top-0 z-[60] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
-                            <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
-                            <TableHead colSpan={6} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
-                            {!isOptions && <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
-                            {!isOptions && <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Strategic Totals</span></TableHead>
-                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b bg-slate-50 text-center border-slate-200 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Strategic Price Levels</span></TableHead>
+                            <TableHead className="w-[340px] sticky left-0 top-0 z-[50] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
+                            <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
+                            <TableHead colSpan={6} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
+                            {!isOptions && <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
+                            {!isOptions && <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
+                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
                         </TableRow>
                         
                         <TableRow className="hover:bg-transparent bg-white shadow-sm">
-                            <TableHead className="sticky left-0 top-[52px] z-[60] bg-white border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12"></TableHead>
+                            <TableHead className="sticky left-0 top-[52px] z-[50] bg-white border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] h-12"></TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px]">From</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px]">Rate</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px]">To</TableHead>
@@ -509,8 +507,8 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">AUD Conv</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Factory Disc USD</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Disc AUD</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px]">Landed AUD Ex</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px]">Landed AUD In</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px]">Landed Ex</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px]">Landed In</TableHead>
                             {!isOptions && (
                                 <>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">Cost USD</TableHead>
@@ -530,8 +528,8 @@ function PricingTable({
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px]">GP $</TableHead>
                                 </>
                             )}
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px]">Total Landed Ex</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px]">Strat Marg %</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px]">Final Cost Ex</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px]">{isOptions ? 'Opt' : 'Hull'} Margin %</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px]">Total GP $</TableHead>
                             {!isOptions ? (
                                 <>
@@ -566,23 +564,23 @@ function PricingTable({
                         {filteredRanges.map((range: any) => (
                             <React.Fragment key={range.id}>
                                 <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
-                                    <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                    <TableCell className="sticky left-0 z-[20] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                         <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
                                     </TableCell>
                                     <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-100/60 p-0">
                                         <div className="flex items-center px-6 h-full gap-8">
                                             <div className="flex items-center gap-3">
                                                 <TrendingUp className="h-4 w-4 text-primary" />
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Range Strategic Bulk Actions:</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Range Bulk Actions:</span>
                                             </div>
-                                            <BulkActionToolbar onApply={(field, val) => onBulkUpdate(range.id, field, val)} />
+                                            <BulkActionToolbar onApply={(field, val) => onBulkUpdate(range.id, field, val)} activeView={activeView} />
                                         </div>
                                     </TableCell>
                                 </TableRow>
                                 {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                     <React.Fragment key={model.id}>
                                         <TableRow className="bg-slate-50">
-                                            <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                            <TableCell className="sticky left-0 z-[20] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                                 <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                             </TableCell>
                                             <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-50/50" />
@@ -754,7 +752,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [ranges, searchTerm, allModels]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative z-[100]">
+        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative z-[10]">
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
@@ -763,7 +761,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <div>
                         <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">HIGHFIELD PRICING MANAGER</h2>
                         <div className="flex items-center gap-2 mt-1.5">
-                            <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">STRATEGIC MODE</Badge>
+                            <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">AUDIT MODE</Badge>
                             <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
                             <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
                         </div>
@@ -785,7 +783,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     type="button"
                     variant="default" 
                     size="sm" 
-                    className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg shadow-primary/20 bg-primary text-white hover:bg-primary/90 transition-all"
+                    className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg bg-primary text-white hover:bg-primary/90 transition-all border-none"
                     onClick={() => setIsGlobalBulkOpen(true)}
                 >
                     <Zap className="h-4 w-4 mr-2" />
@@ -829,6 +827,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 isOpen={isGlobalBulkOpen} 
                 onOpenChange={setIsGlobalBulkOpen} 
                 onApply={handleGlobalBulkUpdate} 
+                activeView={activeView}
             />
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
