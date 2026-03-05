@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -25,7 +26,9 @@ import {
     Waves,
     Star,
     Maximize2,
-    Info
+    Info,
+    Anchor,
+    CircleDashed
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -224,6 +227,13 @@ export function HighfieldQuoteFlow({
         return variants.find(v => v.id === selectedColor);
     }, [selectedColor, variants]);
 
+    const isOpenClassification = useMemo(() => {
+        if (!model.optionalFeatures) return true;
+        const consoleOptions = model.optionalFeatures.filter((f: any) => f.category === 'Consoles');
+        if (consoleOptions.length === 0) return true;
+        return !selectedOptionIds.some(id => consoleOptions.some((f: any) => f.id === id));
+    }, [model.optionalFeatures, selectedOptionIds]);
+
     const carouselImages = useMemo(() => {
         const images = [];
         const variantOverride = model.variantOverrides?.[selectedColor || '']?.imageUrl;
@@ -291,7 +301,11 @@ export function HighfieldQuoteFlow({
         }).filter(Boolean);
 
         let filtered = options.filter((opt: any) => {
-            if (!activeVariant) return false;
+            if (!activeVariant) {
+                // If no variant selected, allow seeing options based on default logic
+                if (opt.category === 'Seats') return false;
+                return true;
+            }
             // If applicableVariantIds is empty, it fits everything
             if (opt.applicableVariantIds?.length > 0 && !opt.applicableVariantIds.includes(activeVariant.id)) return false;
             
@@ -356,7 +370,6 @@ export function HighfieldQuoteFlow({
         return false;
     };
 
-    const isStep1Complete = !!(selectedMaterial && selectedColor);
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
@@ -370,6 +383,8 @@ export function HighfieldQuoteFlow({
     const modelPart = fullModelName.toLowerCase().startsWith(rangePart.toLowerCase()) 
         ? fullModelName.substring(rangePart.length).trim()
         : fullModelName;
+
+    const displayedModelName = isOpenClassification ? `${modelPart} (Open)` : modelPart;
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden">
@@ -546,7 +561,7 @@ export function HighfieldQuoteFlow({
                                 <div className="flex items-center justify-between px-1">
                                     <div className="flex items-center gap-3 text-4xl tracking-tight min-0 truncate">
                                         {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
-                                        <span className="text-slate-950 font-black whitespace-nowrap">{modelPart}</span>
+                                        <span className="text-slate-950 font-black whitespace-nowrap">{displayedModelName}</span>
                                     </div>
                                     <div className="text-5xl font-black flex items-center justify-end gap-1.5 text-slate-950 tracking-tighter shrink-0">
                                         <span className="text-primary text-2xl">$</span>
@@ -580,10 +595,16 @@ export function HighfieldQuoteFlow({
                                 <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Select a compatible outboard and associated rigging kits.</p>
                             </div>
                         )}
-                        {currentStep > 3 && (
+                        {currentStep === 6 && (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <h2 className="text-4xl font-black uppercase tracking-tight leading-none">Summary</h2>
+                                <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Complete your configuration with trailer and dealer options.</p>
+                            </div>
+                        )}
+                        {(currentStep === 4 || currentStep === 5) && (
                             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <h2 className="text-4xl font-black uppercase tracking-tight leading-none">{STEPS.find(s => s.id === currentStep)?.label}</h2>
-                                <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Complete your configuration with trailer and dealer options.</p>
+                                <p className="text-muted-foreground font-medium text-base leading-relaxed max-w-md">Refine the build with logistics and local fitment details.</p>
                             </div>
                         )}
                     </div>
@@ -814,6 +835,87 @@ export function HighfieldQuoteFlow({
                                     )}
                                 </div>
                             )}
+
+                            {currentStep === 6 && (
+                                <div className="space-y-10 animate-in slide-in-from-right-4 duration-500 pb-20">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                <Anchor className="h-3.5 w-3.5" />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Build Configuration Summary</span>
+                                        </div>
+
+                                        <Card className="rounded-[2.5rem] border-2 shadow-sm overflow-hidden bg-white">
+                                            <div className="p-8 border-b bg-muted/5 flex items-center justify-between">
+                                                <div>
+                                                    <h3 className="font-black text-xl uppercase tracking-tight italic text-primary">{displayedModelName}</h3>
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Highfield {rangePart} Series</p>
+                                                </div>
+                                                <Badge variant="outline" className={cn("h-6 px-3 text-[10px] font-black uppercase border-primary/20 text-primary", isOpenClassification && "bg-amber-50 text-amber-600 border-amber-200")}>
+                                                    {isOpenClassification ? 'Open Deck Classification' : 'Console Configuration'}
+                                                </Badge>
+                                            </div>
+                                            <CardContent className="p-8 space-y-8">
+                                                <div className="grid grid-cols-2 gap-8">
+                                                    <div className="space-y-1.5">
+                                                        <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Tube Material</span>
+                                                        <p className="font-black uppercase text-sm tracking-tight">{selectedMaterial || 'Standard PVC'}</p>
+                                                    </div>
+                                                    <div className="space-y-1.5 text-right">
+                                                        <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Tube Color</span>
+                                                        <p className="font-black uppercase text-sm tracking-tight">{activeVariant?.colorName || 'No Selection'}</p>
+                                                    </div>
+                                                </div>
+
+                                                <Separator className="border-dashed" />
+
+                                                <div className="space-y-4">
+                                                    <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Selected Rigging</span>
+                                                    {selectedMotor ? (
+                                                        <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                                                            <div className="flex items-center gap-4">
+                                                                <Zap className="h-4 w-4 text-primary" />
+                                                                <div>
+                                                                    <p className="font-black text-[11px] uppercase tracking-tight">{selectedMotor['Model Name']}</p>
+                                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Outboard</p>
+                                                                </div>
+                                                            </div>
+                                                            <span className="font-black text-xs text-primary">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-3 p-4 bg-muted/10 rounded-2xl border border-dashed text-muted-foreground">
+                                                            <CircleDashed className="h-4 w-4 opacity-40" />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">No Motor Selected (Supply Only)</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Factory Inclusions</span>
+                                                    <div className="grid gap-2">
+                                                        {selectedOptionIds.length > 0 ? selectedOptionIds.map(id => {
+                                                            const opt = model.optionalFeatures?.find((f: any) => f.id === id);
+                                                            if (!opt) return null;
+                                                            return (
+                                                                <div key={id} className="flex items-center justify-between text-[10px] font-bold p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {opt.isStandard ? <Star className="h-3 w-3 text-primary fill-primary" /> : <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />}
+                                                                        <span className="uppercase tracking-tight">{opt.name}</span>
+                                                                    </div>
+                                                                    {!opt.isStandard && <span className="font-black text-primary">${(opt.sellPriceExclGst || 0).toLocaleString()}</span>}
+                                                                </div>
+                                                            );
+                                                        }) : (
+                                                            <p className="text-[10px] text-muted-foreground italic text-center py-4">No optional features chosen.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </ScrollArea>
 
@@ -829,7 +931,6 @@ export function HighfieldQuoteFlow({
                                 type="button"
                                 size="lg" 
                                 className="flex-1 h-16 rounded-2xl font-black uppercase tracking-[0.1em] text-sm shadow-2xl shadow-primary/30 group transition-all active:scale-[0.98]"
-                                disabled={currentStep === 1 && !isStep1Complete}
                                 onClick={nextStep}
                             >
                                 {currentStep === STEPS.length ? 'Finalize Quote' : `Next: ${STEPS[currentStep].label}`}
