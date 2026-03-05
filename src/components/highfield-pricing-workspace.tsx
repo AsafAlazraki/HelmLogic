@@ -39,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from './tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PricingSection {
     id: string;
@@ -89,7 +89,6 @@ const calculateHullLandedExGst = (itemValues: Record<string, any>, baseCostUsd: 
     const baseAud = totalUsd * exchangeRate;
     const withDuty = baseAud * (1 + (dutyPercent / 100));
     
-    // Landed cost for the business is EX-GST as the GST paid on import is typically claimable
     return withDuty;
 };
 
@@ -119,7 +118,7 @@ function PricingRow({
 
     const hullLandedAudEx = calculateHullLandedExGst(itemValues, cost || 0, exchangeRate);
 
-    // Logistics Calculations (All internal values handled as EX-GST)
+    // Logistics Calculations (Ex-GST)
     const freightUsd = parseFloat(itemValues['op_freight_cost_usd'] || '0');
     const freightAudConv = freightUsd * exchangeRate;
     const freightFinalCost = parseFloat(itemValues['op_freight_cost_aud'] || freightAudConv.toString() || '0');
@@ -170,7 +169,6 @@ function PricingRow({
 
             {activeView === 'boats' && (
                 <>
-                    {/* Freight */}
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" suffix={vendorCurrency} /></TableCell>
                     <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">{formatCurrency(freightAudConv, orgCurrency)}</TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_cost_aud'] || ''} placeholder={freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
@@ -179,26 +177,22 @@ function PricingRow({
                 </>
             )}
 
-            {/* Handling */}
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} suffix="%" /></TableCell>
             <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.03]">{formatCurrency(handlingGP, orgCurrency)}</TableCell>
 
             {activeView === 'boats' && (
                 <>
-                    {/* Pre-Delivery */}
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} suffix="%" /></TableCell>
                     <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.03]">{formatCurrency(preDelGP, orgCurrency)}</TableCell>
                 </>
             )}
 
-            {/* Strategic Totals */}
             <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-100/50">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} suffix="%" /></TableCell>
             <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.05]">{formatCurrency(totalPackageGP, orgCurrency)}</TableCell>
 
-            {/* Price Levels (Excl & Incl GST) */}
             {activeView === 'boats' ? (
                 ['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
                     const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
@@ -249,12 +243,11 @@ function PricingTable({
     filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate 
 }: any) {
     const isOptions = activeView === 'options';
-    const shortCode = organisation?.shortCode || 'NSM';
-    const sellPriceLabel = `${shortCode} SELL PRICE (EXCL.)`;
+    const shortCode = (organisation?.shortCode || 'NSM').toUpperCase();
     const inclLabel = `(INCL. GST)`;
 
     const boatPriceLevels = [
-        { id: 'sell', label: sellPriceLabel },
+        { id: 'sell', label: `${shortCode} SELL PRICE (EXCL.)` },
         { id: 'trade', label: 'TRADE PRICE (EXCL.)' },
         { id: 'sub', label: 'SUB-D PRICE (EXCL.)' },
         { id: 'subex', label: 'SUB-EX PRICE (EXCL.)' },
@@ -270,49 +263,31 @@ function PricingTable({
         <div className="flex-1 overflow-auto min-w-0 bg-white border-t scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-slate-100">
             <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
                 <TableHeader className="sticky top-0 z-[45] bg-white">
-                    {/* Header Row 1: Groups */}
                     <TableRow className="hover:bg-transparent">
                         <TableHead className="w-[340px] sticky left-0 z-[50] bg-white border-r-2 border-b font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
-                        <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span>
-                        </TableHead>
-                        <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">
-                                {isOptions ? "Factory Option Landed Cost" : "Hull Landed Cost"}
-                            </span>
-                        </TableHead>
-                        {!isOptions && (
-                            <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>
-                        )}
+                        <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
+                        <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Factory Option Landed Cost" : "Hull Landed Cost"}</span></TableHead>
+                        {!isOptions && <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
                         <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
-                        {!isOptions && (
-                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>
-                        )}
+                        {!isOptions && <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
                         <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Strategic Totals</span></TableHead>
                         <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b bg-slate-50 text-center border-slate-200"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Strategic Price Levels</span></TableHead>
                     </TableRow>
                     
-                    {/* Header Row 2: Columns */}
                     <TableRow className="hover:bg-transparent bg-white shadow-sm">
                         <TableHead className="sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]"></TableHead>
-                        
-                        {/* Exchange Rate Cols */}
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px]">From</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px]">Rate</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px]">To</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px]">Rate</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px]">Duty %</TableHead>
-
-                        {/* Landed Cost Cols */}
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Base USD</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">AUD Conv</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Factory Discount (USD)</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Discount (AUD)</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary">Landed AUD (Excl.)</TableHead>
-                        
                         {!isOptions && (
                             <>
-                                {/* Freight Cols */}
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Cost USD</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">AUD Conv</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Cost AUD</TableHead>
@@ -320,38 +295,30 @@ function PricingTable({
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP $</TableHead>
                             </>
                         )}
-
-                        {/* Handling Cols */}
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Cost AUD</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Margin %</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP $</TableHead>
-
                         {!isOptions && (
                             <>
-                                {/* Pre-Del Cols */}
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Cost AUD</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">Margin %</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP $</TableHead>
                             </>
                         )}
-
-                        {/* Strategic Totals Cols */}
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold">Total Landed (Excl.)</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">Strat Margin</TableHead>
                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600">Total GP $</TableHead>
-
-                        {/* Price Level Cols */}
                         {!isOptions ? (
                             <>
                                 {boatPriceLevels.map(level => (
-                                    <React.Fragment key={level.id}>
+                                    <React.Fragment key={`head-${level.id}`}>
                                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{level.label}</TableHead>
                                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">{inclLabel}</TableHead>
                                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
                                     </React.Fragment>
                                 ))}
                                 {boatSrpLevels.map(level => (
-                                    <React.Fragment key={level.id}>
+                                    <React.Fragment key={`head-${level.id}`}>
                                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{level.label}</TableHead>
                                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">{inclLabel}</TableHead>
                                         <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
@@ -359,11 +326,11 @@ function PricingTable({
                                 ))}
                             </>
                         ) : (
-                            <>
-                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{sellPriceLabel}</TableHead>
+                            <React.Fragment key="head-opt-level">
+                                <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">{`${shortCode} SELL PRICE (EXCL.)`}</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50">{inclLabel}</TableHead>
                                 <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white">GP %</TableHead>
-                            </>
+                            </React.Fragment>
                         )}
                     </TableRow>
                 </TableHeader>
@@ -374,7 +341,7 @@ function PricingTable({
                                 <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                                     <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
                                 </TableCell>
-                                {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-100/60" />)}
+                                {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={`spacer-${range.id}-${i}`} className="border-b-2 border-slate-300 bg-slate-100/60" />)}
                             </TableRow>
                             {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                 <React.Fragment key={model.id}>
@@ -382,7 +349,7 @@ function PricingTable({
                                         <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
                                             <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                         </TableCell>
-                                        {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
+                                        {Array.from({ length: isOptions ? 22 : 45 }).map((_, i) => <TableCell key={`spacer-model-${model.id}-${i}`} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
                                     </TableRow>
                                     {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
                                         <PricingRow 
@@ -472,16 +439,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     const onUpdateValue = async (itemId: string, colId: string, value: any) => {
         const currentValues = strategy?.itemValues || {};
-        const oldValue = currentValues[itemId]?.[colId];
         const updated = { ...currentValues, [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } };
-        
         updateDoc(strategyRef, { itemValues: updated, lastUpdateAt: serverTimestamp() });
-        
-        const logRef = collection(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}/auditLog`);
-        addDoc(logRef, {
-            itemId, colId, oldValue: oldValue ?? null, newValue: value, timestamp: serverTimestamp(),
-            userId: user?.uid, userName: user?.displayName || user?.email || 'System'
-        });
     };
 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -490,7 +449,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         if (!ranges) return [];
         if (!searchTerm) return ranges;
         const lower = searchTerm.toLowerCase();
-        return ranges.filter(range => range.name.toLowerCase().includes(lower) || allModels.filter(m => m.rangeId === range.id).some(m => m.name.toLowerCase().includes(lower) || m.modelCode?.toLowerCase().includes(lower)));
+        return ranges.filter(range => range.name.toLowerCase().includes(lower) || allModels.filter(m => m.rangeId === range.id).some(m => m.name.toLowerCase().includes(lower)));
     }, [ranges, searchTerm, allModels]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
@@ -554,8 +513,8 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
                 <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
-                    <DialogHeader className="sr-only">
-                        <DialogTitle>Highfield Strategic Pricing Matrix - Focus Mode</DialogTitle>
+                    <DialogHeader className="p-0">
+                        <DialogTitle className="sr-only">Highfield Strategic Pricing Matrix - Focus Mode</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col h-full bg-background overflow-hidden">
                         <WorkspaceHeader isFocus />
