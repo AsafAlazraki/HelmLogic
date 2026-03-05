@@ -61,7 +61,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
-  useSidebar,
+  useSensor,
   useSensors,
   DragEndEvent,
 } from '@dnd-kit/core';
