@@ -33,7 +33,8 @@ import {
     Upload,
     ImageIcon,
     Save,
-    ArrowRight
+    ArrowRight,
+    Hammer
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -529,14 +530,12 @@ export default function ModuleDetailsPage() {
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
 
-    // --- Strategic Multi-Layer Data Synchronizer ---
-    // This fetches the organisation override for the selected boat model in real-time.
+    // Override Sync Logic
     const overrideRef = useMemoFirebase(() => 
         currentMemberOrg?.id && selectedModel?.id ? doc(firestore, 'organisations', currentMemberOrg.id, 'modelOverrides', selectedModel.id) : null,
     [firestore, currentMemberOrg?.id, selectedModel?.id]);
     const { data: modelOverride } = useDoc<any>(overrideRef);
 
-    // This merges the master catalog data with any local organisation customizations.
     const effectiveModel = useMemo(() => {
         if (!selectedModel) return null;
         if (!modelOverride) return selectedModel;
@@ -607,12 +606,13 @@ export default function ModuleDetailsPage() {
             {/* Premium Navigation Ribbon */}
             <div className="bg-white border-b shrink-0 z-10 px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid grid-cols-5 w-full h-12 bg-transparent p-0 gap-4">
+                    <TabsList className="grid grid-cols-6 w-full h-12 bg-transparent p-0 gap-4">
                         {[
                             { id: 'dashboard', label: 'Dashboard' },
                             { id: 'bmt', label: 'Product Catalog' },
                             { id: 'operations', label: 'Operations' },
                             { id: 'pricing', label: 'Pricing' },
+                            { id: 'fit-up', label: 'Fit Up' },
                             { id: 'network', label: 'Sub Dealers' }
                         ].map((t) => (
                             <TabsTrigger 
@@ -630,59 +630,63 @@ export default function ModuleDetailsPage() {
             {/* Operational Workspace */}
             <main className="flex-1 overflow-hidden relative">
                 <Tabs value={activeTab} className="h-full">
-                    <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in slide-in-from-bottom-2 duration-500 p-8">
-                        <div className="grid grid-cols-12 gap-8 h-full">
-                            <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
-                                <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                        <div className="flex items-center gap-3 shrink-0">
-                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
-                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="flex-1 min-h-0 p-0">
-                                        <StockList organisation={currentMemberOrg as any} subDealers={subDealers || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
-                                    </CardContent>
-                                </Card>
+                    <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-8">
+                                <div className="grid grid-cols-12 gap-8 h-full">
+                                    <div className="col-span-4 flex flex-col gap-8 h-full overflow-hidden">
+                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
+                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="flex-1 min-h-0 p-0">
+                                                <StockList organisation={currentMemberOrg as any} subDealers={subDealers || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
+                                            </CardContent>
+                                        </Card>
 
-                                <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                        <div className="flex items-center gap-3 shrink-0">
-                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
-                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="flex-1 min-h-0 p-0">
-                                        <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
-                                    </CardContent>
-                                </Card>
+                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
+                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="flex-1 min-h-0 p-0">
+                                                <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+
+                                    <Card className="col-span-8 flex flex-col border-2 rounded-[3rem] shadow-2xl bg-white overflow-hidden">
+                                        <CardHeader className="p-10 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
+                                                    <Anchor className="h-3.5 w-3.5" />
+                                                    <span>Quotation Engine</span>
+                                                </div>
+                                                <h2 className="text-4xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
+                                            </div>
+                                            <Button 
+                                                className="h-16 px-10 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl hover:scale-[1.03] transition-all bg-primary text-white"
+                                                onClick={() => setIsNewQuoteOpen(true)}
+                                            >
+                                                <PlusCircle className="mr-2 h-4 w-4" />
+                                                Draft New Quote
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 p-10 flex flex-col items-center justify-center text-center gap-8">
+                                            <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
+                                                <FileText className="h-12 w-12 text-slate-200" />
+                                            </div>
+                                            <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
+                                        </CardContent>
+                                    </Card>
+                                </div>
                             </div>
-
-                            <Card className="col-span-8 flex flex-col border-2 rounded-[3rem] shadow-2xl bg-white overflow-hidden">
-                                <CardHeader className="p-10 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-                                            <Anchor className="h-3.5 w-3.5" />
-                                            <span>Quotation Engine</span>
-                                        </div>
-                                        <h2 className="text-4xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
-                                    </div>
-                                    <Button 
-                                        className="h-16 px-10 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl hover:scale-[1.03] transition-all bg-primary text-white"
-                                        onClick={() => setIsNewQuoteOpen(true)}
-                                    >
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Draft New Quote
-                                    </Button>
-                                </CardHeader>
-                                <CardContent className="flex-1 p-10 flex flex-col items-center justify-center text-center gap-8">
-                                    <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
-                                        <FileText className="h-12 w-12 text-slate-200" />
-                                    </div>
-                                    <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
-                                </CardContent>
-                            </Card>
-                        </div>
+                        </ScrollArea>
                     </TabsContent>
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
@@ -758,53 +762,78 @@ export default function ModuleDetailsPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="pricing" className="m-0 h-full p-8">
-                        {currentMemberOrg && mainVendor && (
-                            <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
-                        )}
+                    <TabsContent value="pricing" className="m-0 h-full overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-8">
+                                {currentMemberOrg && mainVendor && (
+                                    <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
+                                )}
+                            </div>
+                        </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="network" className="m-0 h-full animate-in fade-in duration-500 p-8">
-                        <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
-                            <CardHeader className="p-8 border-b bg-muted/5">
-                                <CardTitle className="text-xl font-black uppercase tracking-tight">Sub Dealer Network</CardTitle>
-                                <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Manage business relationships and regional allocations.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                {subDealers && subDealers.length > 0 ? (
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="px-8 font-black uppercase text-[10px]">Location</TableHead>
-                                                <TableHead className="px-8 font-black uppercase text-[10px]">Contact</TableHead>
-                                                <TableHead className="text-right px-8 font-black uppercase text-[10px]">Management</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {subDealers.map(sd => (
-                                                <TableRow key={sd.id} className="hover:bg-muted/5 transition-colors">
-                                                    <TableCell className="px-8 py-4">
-                                                        <div className="font-black uppercase text-xs text-slate-900">{sd.name}</div>
-                                                        <div className="text-[10px] text-muted-foreground font-bold uppercase">{sd.address || 'Regional Allocation'}</div>
-                                                    </TableCell>
-                                                    <TableCell className="px-8 py-4 text-[10px] font-mono font-bold text-primary">{sd.phoneNumber || 'N/A'}</TableCell>
-                                                    <TableCell className="text-right px-8 py-4">
-                                                        <Button variant="outline" size="sm" className="h-7 text-[10px] font-black uppercase rounded-lg border-2 shadow-sm" asChild>
-                                                            <Link href={`/sub-dealers/${sd.slug || sd.id}`}>Manage</Link>
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                ) : (
-                                    <div className="p-20 text-center text-muted-foreground opacity-20">
-                                        <Building className="h-12 w-12 mx-auto mb-4" />
-                                        <p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                    <TabsContent value="fit-up" className="m-0 h-full overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-8">
+                                <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
+                                    <CardHeader className="p-8 border-b bg-muted/5">
+                                        <CardTitle className="text-xl font-black uppercase tracking-tight">Fit Up Workspace</CardTitle>
+                                        <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Global assembly and labor management.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-20 text-center text-muted-foreground opacity-20">
+                                        <Hammer className="h-12 w-12 mx-auto mb-4" />
+                                        <p className="font-black uppercase tracking-widest text-xs">Module-Wide Fit Up Metrics Synchronized</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </ScrollArea>
+                    </TabsContent>
+
+                    <TabsContent value="network" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-8">
+                                <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
+                                    <CardHeader className="p-8 border-b bg-muted/5">
+                                        <CardTitle className="text-xl font-black uppercase tracking-tight">Sub Dealer Network</CardTitle>
+                                        <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Manage business relationships and regional allocations.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-0">
+                                        {subDealers && subDealers.length > 0 ? (
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="px-8 font-black uppercase text-[10px]">Location</TableHead>
+                                                        <TableHead className="px-8 font-black uppercase text-[10px]">Contact</TableHead>
+                                                        <TableHead className="text-right px-8 font-black uppercase text-[10px]">Management</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {subDealers.map(sd => (
+                                                        <TableRow key={sd.id} className="hover:bg-muted/5 transition-colors">
+                                                            <TableCell className="px-8 py-4">
+                                                                <div className="font-black uppercase text-xs text-slate-900">{sd.name}</div>
+                                                                <div className="text-[10px] text-muted-foreground font-bold uppercase">{sd.address || 'Regional Allocation'}</div>
+                                                            </TableCell>
+                                                            <TableCell className="px-8 py-4 text-[10px] font-mono font-bold text-primary">{sd.phoneNumber || 'N/A'}</TableCell>
+                                                            <TableCell className="text-right px-8 py-4">
+                                                                <Button variant="outline" size="sm" className="h-7 text-[10px] font-black uppercase rounded-lg border-2 shadow-sm" asChild>
+                                                                    <Link href={`/sub-dealers/${sd.slug || sd.id}`}>Manage</Link>
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        ) : (
+                                            <div className="p-20 text-center text-muted-foreground opacity-20">
+                                                <Building className="h-12 w-12 mx-auto mb-4" />
+                                                <p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </ScrollArea>
                     </TabsContent>
                 </Tabs>
             </main>
