@@ -534,34 +534,6 @@ export default function ModuleDetailsPage() {
     }, [userProfile, currentMemberOrg]);
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
-    const isBoatBrand = mainVendor?.vendorType === 'Boat Brand';
-
-    const handleWipePipeline = async () => {
-        if (!currentMemberOrg) return;
-        const q = query(
-            collection(firestore, 'vessels'), 
-            where('organisationId', '==', currentMemberOrg.id), 
-            where('status', '==', 'On Order')
-        );
-        const snap = await getDocs(q);
-        const batch = writeBatch(firestore);
-        snap.docs.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-        toast({ title: "Pipeline Strategic Wipe Complete" });
-    };
-
-    const handleWipeStock = async () => {
-        if (!currentMemberOrg) return;
-        const q = query(
-            collection(firestore, 'inventory'), 
-            where('organisationId', '==', currentMemberOrg.id)
-        );
-        const snap = await getDocs(q);
-        const batch = writeBatch(firestore);
-        snap.docs.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-        toast({ title: "Stock Strategic Wipe Complete" });
-    };
 
     const handleRangeSelect = (range: Range) => { setSelectedRange(range); setView('models'); };
     
@@ -659,11 +631,6 @@ export default function ModuleDetailsPage() {
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
                                         </div>
-                                        {isAdmin && (
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-destructive/40 hover:text-destructive transition-all" onClick={handleWipeStock}>
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        )}
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
                                         <StockList organisation={currentMemberOrg as any} subDealers={subDealers || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
@@ -676,11 +643,6 @@ export default function ModuleDetailsPage() {
                                             <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
                                         </div>
-                                        {isAdmin && (
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-destructive/40 hover:text-destructive transition-all" onClick={handleWipePipeline}>
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        )}
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-0 p-0">
                                         <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
