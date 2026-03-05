@@ -308,14 +308,14 @@ function SortableItemCard({
                 className="cursor-pointer hover:border-primary shadow-sm rounded-3xl overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
                 onClick={onClick}
             >
-                <div className="aspect-[4/3] relative bg-muted/30 border-b flex items-center justify-center overflow-hidden">
+                <div className="aspect-[4/3] relative bg-white border-b flex items-center justify-center overflow-hidden p-6">
                     {imageUrl ? (
                         <div className="relative h-full w-full">
                             <Image 
                                 src={imageUrl} 
                                 alt={name} 
                                 fill 
-                                className="object-cover transition-transform group-hover:scale-105" 
+                                className="object-contain transition-transform group-hover:scale-105" 
                                 unoptimized 
                             />
                         </div>
