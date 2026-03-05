@@ -44,12 +44,10 @@ interface PricingSection {
     name: string;
     order: number;
     isCollapsed?: boolean;
-    columns: any[];
 }
 
 interface PricingStrategy {
     itemValues?: Record<string, Record<string, any>>;
-    sections?: PricingSection[];
 }
 
 interface Range {
@@ -74,27 +72,31 @@ interface Variant {
 }
 
 /**
- * Highfield Landed Cost Logic
- * Base USD -> Minus Discount -> Plus Ocean Freight -> Plus Duty -> Converted to AUD -> Plus GST -> Plus Handling/Road
+ * Calculates the Sell Price based on a Cost and Margin %
  */
-const calculateLandedCost = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
+const getSellPrice = (cost: number, marginPercent: number) => {
+    const factor = 1 - (marginPercent / 100);
+    if (factor <= 0) return cost;
+    return cost / factor;
+};
+
+/**
+ * Highfield Landed Cost Logic
+ * Base USD -> Minus Discount -> Plus Duty -> Converted to AUD -> Plus GST
+ */
+const calculateHullLanded = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
     const costOverride = itemValues['base_cost_override'];
     const usdBase = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : baseCostUsd;
     
     const discountUsd = parseFloat(itemValues['vendor_factory_discount_usd'] || '0');
-    const oceanFreightUsd = parseFloat(itemValues['freight_ocean_usd'] || '0');
     const dutyPercent = parseFloat(itemValues['exchange_duty_percent'] || '0');
 
-    // Simple Landed Calc for MVP
-    const totalUsd = usdBase - discountUsd + oceanFreightUsd;
+    const totalUsd = usdBase - discountUsd;
     const baseAud = totalUsd * exchangeRate;
     const withDuty = baseAud * (1 + (dutyPercent / 100));
     const withGst = withDuty * 1.10;
-
-    const roadFreightAud = parseFloat(itemValues['freight_road_aud'] || '0');
-    const otherChargesAud = parseFloat(itemValues['handling_other_charges_aud'] || '0');
     
-    return withGst + roadFreightAud + otherChargesAud;
+    return withGst;
 };
 
 const getSectionColCount = (sec: PricingSection, view: 'boats' | 'options') => {
@@ -107,8 +109,11 @@ const getSectionColCount = (sec: PricingSection, view: 'boats' | 'options') => {
         return 0; 
     }
     if (sec.id === 'sec-exchange') return 5;
-    if (sec.id === 'sec-costs') return 4;
-    if (sec.id === 'sec-strategy') return 2;
+    if (sec.id === 'sec-hull-cost') return 4;
+    if (sec.id === 'sec-freight') return 3;
+    if (sec.id === 'sec-handling') return 3;
+    if (sec.id === 'sec-predelivery') return 3;
+    if (sec.id === 'sec-summary') return 3;
     if (sec.id === 'sec-levels') return 12;
     return 1;
 };
@@ -134,7 +139,30 @@ function PricingRow({ id, name, sku, cost, sections, strategy, onUpdateValue, in
     const vendorCurrency = vendor.currency || 'USD';
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50";
 
-    const landedAud = calculateLandedCost(itemValues, cost, exchangeRate);
+    // 1. Hull Landed
+    const hullLandedAud = calculateHullLanded(itemValues, cost, exchangeRate);
+
+    // 2. Operational Components (Freight, Handling, Pre-Delivery)
+    const freightCost = parseFloat(itemValues['op_freight_cost_aud'] || '0');
+    const freightMargin = parseFloat(itemValues['op_freight_margin_percent'] || '0');
+    const freightSell = getSellPrice(freightCost, freightMargin);
+    const freightGP = freightSell - freightCost;
+
+    const handlingCost = parseFloat(itemValues['op_handling_cost_aud'] || '0');
+    const handlingMargin = parseFloat(itemValues['op_handling_margin_percent'] || '0');
+    const handlingSell = getSellPrice(handlingCost, handlingMargin);
+    const handlingGP = handlingSell - handlingCost;
+
+    const preDelCost = parseFloat(itemValues['op_predel_cost_aud'] || '0');
+    const preDelMargin = parseFloat(itemValues['op_predel_margin_percent'] || '0');
+    const preDelSell = getSellPrice(preDelCost, preDelMargin);
+    const preDelGP = preDelSell - preDelCost;
+
+    // 3. Totals
+    const totalStrategicLanded = hullLandedAud + freightSell + handlingSell + preDelSell;
+    const stratMarginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
+    const totalPackageSell = getSellPrice(totalStrategicLanded, stratMarginPercent);
+    const totalPackageGP = totalPackageSell - totalStrategicLanded;
 
     return (
         <TableRow className={cn("transition-colors group", rowBgClass)}>
@@ -160,7 +188,7 @@ function PricingRow({ id, name, sku, cost, sections, strategy, onUpdateValue, in
                     </React.Fragment>
                 );
                 
-                if (sec.id === 'sec-costs' && activeView === 'boats') {
+                if (sec.id === 'sec-hull-cost' && activeView === 'boats') {
                     const costOverride = itemValues['base_cost_override'];
                     const effectiveUsdCost = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : cost;
                     const convertedAudCost = (effectiveUsdCost || 0) * (exchangeRate || 1);
@@ -169,29 +197,49 @@ function PricingRow({ id, name, sku, cost, sections, strategy, onUpdateValue, in
                             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={costOverride || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" suffix={vendorCurrency} /></TableCell>
                             <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-50/50">{formatCurrency(convertedAudCost, orgCurrency)}</TableCell>
                             <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['vendor_factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'vendor_factory_discount_usd', val)} align="right" suffix={vendorCurrency} /></TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b border-slate-300 px-5 bg-primary/[0.04]">{formatCurrency(landedAud, orgCurrency)}</TableCell>
+                            <TableCell className="text-right text-[11px] font-black text-primary border-r border-b border-slate-300 px-5 bg-primary/[0.04]">{formatCurrency(hullLandedAud, orgCurrency)}</TableCell>
                         </React.Fragment>
                     );
                 }
 
-                if (sec.id === 'sec-strategy' && activeView === 'boats') {
-                    const margin = parseFloat(itemValues['markup_hull_percent'] || '0');
-                    const sellPrice = margin < 100 ? landedAud / (1 - (margin / 100)) : landedAud;
-                    const gp = sellPrice - landedAud;
-                    return (
-                        <React.Fragment key={sec.id}>
-                            <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['markup_hull_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'markup_hull_percent', val)} suffix="%" /></TableCell>
-                            <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.03]">{formatCurrency(gp, orgCurrency)}</TableCell>
-                        </React.Fragment>
-                    );
-                }
+                if (sec.id === 'sec-freight' && activeView === 'boats') return (
+                    <React.Fragment key={sec.id}>
+                        <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
+                        <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_margin_percent', val)} suffix="%" /></TableCell>
+                        <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.03]">{formatCurrency(freightGP, orgCurrency)}</TableCell>
+                    </React.Fragment>
+                );
+
+                if (sec.id === 'sec-handling' && activeView === 'boats') return (
+                    <React.Fragment key={sec.id}>
+                        <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
+                        <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} suffix="%" /></TableCell>
+                        <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.03]">{formatCurrency(handlingGP, orgCurrency)}</TableCell>
+                    </React.Fragment>
+                );
+
+                if (sec.id === 'sec-predelivery' && activeView === 'boats') return (
+                    <React.Fragment key={sec.id}>
+                        <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" suffix={orgCurrency} /></TableCell>
+                        <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} suffix="%" /></TableCell>
+                        <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.03]">{formatCurrency(preDelGP, orgCurrency)}</TableCell>
+                    </React.Fragment>
+                );
+
+                if (sec.id === 'sec-summary' && activeView === 'boats') return (
+                    <React.Fragment key={sec.id}>
+                        <TableCell className="text-right text-[11px] font-black text-slate-950 border-r border-b border-slate-300 px-5 bg-slate-100/50">{formatCurrency(totalStrategicLanded, orgCurrency)}</TableCell>
+                        <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} suffix="%" /></TableCell>
+                        <TableCell className="text-right text-[11px] font-black text-green-600 border-r border-b border-slate-300 px-5 bg-green-500/[0.05]">{formatCurrency(totalPackageGP, orgCurrency)}</TableCell>
+                    </React.Fragment>
+                );
 
                 if (sec.id === 'sec-levels' && activeView === 'boats') {
                     return (
                         <React.Fragment key={sec.id}>
                             {['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
                                 const sell = parseFloat(itemValues[`${l}_price`] || '0');
-                                const gpPercent = sell > 0 ? ((sell - landedAud) / sell) * 100 : 0;
+                                const gpPercent = sell > 0 ? ((sell - totalStrategicLanded) / sell) * 100 : 0;
                                 return (
                                     <React.Fragment key={l}>
                                         <TableCell className="p-0 border-r border-b border-slate-300"><EditableCell value={itemValues[`${l}_price`] || ''} onChange={(val: any) => onUpdateValue(id, `${l}_price`, val)} align="right" suffix={orgCurrency} /></TableCell>
@@ -383,20 +431,23 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     
     const activeSections = useMemo(() => {
-        // Defined sections for the table
-        const defaultSections: PricingSection[] = [
-            { id: 'sec-exchange', name: 'Strategic Exchange', order: 1, columns: [] },
-            { id: 'sec-costs', name: 'Landed Costing', order: 2, columns: [] },
-            { id: 'sec-strategy', name: 'Sales Strategy', order: 3, columns: [] },
-            { id: 'sec-levels', name: 'Operational Price Tiers', order: 4, columns: [] },
-            { id: 'sec-misc', name: 'Misc Charges', order: 5, columns: [] },
-            { id: 'sec-financials', name: 'Profitability Matrix', order: 6, columns: [] }
-        ];
-
         if (activeView === 'options') {
-            return defaultSections.filter(s => ['sec-exchange', 'sec-vendor', 'sec-misc', 'sec-financials'].includes(s.id));
+            return [
+                { id: 'sec-exchange', name: 'Strategic Exchange', order: 1 },
+                { id: 'sec-vendor', name: 'Vendor USD', order: 2 },
+                { id: 'sec-misc', name: 'Misc Charges', order: 3 },
+                { id: 'sec-financials', name: 'Profitability Matrix', order: 4 }
+            ];
         }
-        return defaultSections.filter(s => ['sec-exchange', 'sec-costs', 'sec-strategy', 'sec-levels'].includes(s.id));
+        return [
+            { id: 'sec-exchange', name: 'Strategic Exchange', order: 1 },
+            { id: 'sec-hull-cost', name: 'Landed Hull Costing', order: 2 },
+            { id: 'sec-freight', name: 'Freight Strategy', order: 3 },
+            { id: 'sec-handling', name: 'Handling Strategy', order: 4 },
+            { id: 'sec-predelivery', name: 'Pre-Delivery Strategy', order: 5 },
+            { id: 'sec-summary', name: 'Financial Summary', order: 6 },
+            { id: 'sec-levels', name: 'Operational Price Levels', order: 7 }
+        ];
     }, [activeView]);
 
     const totalCalculatedCols = useMemo(() => {
