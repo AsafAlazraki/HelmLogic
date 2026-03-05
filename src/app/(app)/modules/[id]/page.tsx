@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -34,7 +35,8 @@ import {
     ImageIcon,
     Save,
     ArrowRight,
-    Hammer
+    Hammer,
+    Coins
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -49,6 +51,7 @@ import { cn, createSlug } from '@/lib/utils';
 import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
+import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { VesselMap } from '@/components/map';
@@ -72,7 +75,7 @@ import {
   useSortable,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { CSS } from '@radix-ui/react-slot';
 
 interface Vendor {
     id: string;
@@ -92,6 +95,7 @@ interface Organisation {
     subDealersEnabled?: boolean;
     phoneNumber?: string;
     address?: string;
+    roles?: any[];
 }
 
 interface Range {
@@ -289,7 +293,7 @@ function SortableItemCard({
     } = useSortable({ id });
 
     const style = {
-        transform: CSS.Transform.toString(transform),
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         transition,
         zIndex: isDragging ? 50 : 'auto',
         opacity: isDragging ? 0.5 : 1,
@@ -528,6 +532,13 @@ export default function ModuleDetailsPage() {
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
 
+    const canAccessPricing = useMemo(() => {
+        if (isAdmin) return true;
+        const roleId = userProfile?.organisationRole;
+        const isMD = currentMemberOrg?.roles?.find((r: any) => r.id === roleId)?.name === 'Managing Director';
+        return !!userPermissions.can_access_pricing_manager || isMD;
+    }, [isAdmin, userPermissions, userProfile, currentMemberOrg]);
+
     // Override Sync Logic
     const overrideRef = useMemoFirebase(() => 
         currentMemberOrg?.id && selectedModel?.id ? doc(firestore, 'organisations', currentMemberOrg.id, 'modelOverrides', selectedModel.id) : null,
@@ -565,6 +576,14 @@ export default function ModuleDetailsPage() {
 
     if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
+
+    const navTabs = [
+        { id: 'dashboard', label: 'Dashboard' },
+        { id: 'bmt', label: 'Product Catalog' },
+        { id: 'operations', label: 'Operations' },
+        { id: 'pricing', label: 'Pricing', visible: canAccessPricing },
+        { id: 'network', label: 'Sub Dealers' }
+    ].filter(t => t.visible !== false);
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -604,14 +623,8 @@ export default function ModuleDetailsPage() {
             {/* Premium Navigation Ribbon */}
             <div className="bg-white border-b shrink-0 z-10 px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid grid-cols-5 w-full h-12 bg-transparent p-0 gap-4">
-                        {[
-                            { id: 'dashboard', label: 'Dashboard' },
-                            { id: 'bmt', label: 'Product Catalog' },
-                            { id: 'operations', label: 'Operations' },
-                            { id: 'pricing', label: 'Pricing' },
-                            { id: 'network', label: 'Sub Dealers' }
-                        ].map((t) => (
+                    <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${navTabs.length}`)}>
+                        {navTabs.map((t) => (
                             <TabsTrigger 
                                 key={t.id} 
                                 value={t.id} 
@@ -759,15 +772,23 @@ export default function ModuleDetailsPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="pricing" className="m-0 h-full overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8">
+                    {canAccessPricing && (
+                        <TabsContent value="pricing" className="m-0 h-full overflow-hidden">
+                            <div className="h-full flex flex-col">
                                 {currentMemberOrg && mainVendor && (
-                                    <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
+                                    mainVendor.slug === 'highfield' ? (
+                                        <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                                    ) : (
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-8">
+                                                <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
+                                            </div>
+                                        </ScrollArea>
+                                    )
                                 )}
                             </div>
-                        </ScrollArea>
-                    </TabsContent>
+                        </TabsContent>
+                    )}
 
                     <TabsContent value="network" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
