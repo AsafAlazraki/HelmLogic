@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Building } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Building, Hammer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
@@ -360,11 +360,12 @@ export function ModelConfigurationEditor({
                     </Card>
 
                     <Tabs defaultValue="boat" className="w-full">
-                        <TabsList className={cn("grid w-full", isModuleView ? "grid-cols-4" : "grid-cols-1 max-w-[200px]")}>
+                        <TabsList className={cn("grid w-full", isModuleView ? "grid-cols-5" : "grid-cols-1 max-w-[200px]")}>
                             <TabsTrigger value="boat">Series Details</TabsTrigger>
                             {isModuleView && (
                                 <>
                                     <TabsTrigger value="motor">Motor Options</TabsTrigger>
+                                    <TabsTrigger value="fit-up">Fit Up</TabsTrigger>
                                     <TabsTrigger value="trailer">Trailer Options</TabsTrigger>
                                     <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
                                 </>
@@ -442,6 +443,30 @@ export function ModelConfigurationEditor({
                             <>
                                 <TabsContent value="motor" className="mt-6">
                                     <MotorOptions model={model} module={module} />
+                                </TabsContent>
+                                <TabsContent value="fit-up" className="mt-6">
+                                    <Card className="rounded-xl border-2">
+                                        <CardHeader className="bg-muted/10 border-b">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                                    <Hammer className="h-4 w-4" />
+                                                </div>
+                                                <div>
+                                                    <CardTitle className="text-xl font-bold uppercase tracking-tight italic text-primary">Fit Up Workspace</CardTitle>
+                                                    <CardDescription className="text-[10px] font-black uppercase tracking-widest opacity-60">Manage technical assembly and labor requirements</CardDescription>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-muted/5">
+                                            <div className="h-16 w-16 bg-white rounded-3xl border-2 border-dashed flex items-center justify-center text-muted-foreground/20">
+                                                <Hammer className="h-8 w-8" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Assembly Console Ready</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase">Technical man-hours and rigging templates will be synchronized here.</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
                                 </TabsContent>
                                 <TabsContent value="trailer" className="mt-6">
                                     <Card className="rounded-xl">
