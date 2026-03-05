@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs, updateDoc, addDoc, serverTimestamp, where, deleteDoc } from 'firebase/firestore';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { collection, query, orderBy, doc, getDocs, updateDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
     Table, 
     TableBody, 
@@ -14,58 +14,27 @@ import {
 } from '@/components/ui/table';
 import { 
     Loader2, 
-    Plus, 
-    Trash2, 
-    ChevronDown, 
     ChevronRight, 
-    Ship, 
     Coins,
     Building,
     Search,
-    X,
     Maximize2,
     Minimize2,
-    Truck,
     Calculator,
-    AlertCircle,
-    History,
-    Clock,
-    Save,
-    Layers,
     ArrowRightLeft,
-    CheckCircle2,
-    LayoutList,
-    FoldVertical,
-    UnfoldVertical,
-    Wrench,
-    Percent,
-    Anchor,
-    Fuel,
-    Tag,
-    DollarSign,
-    Target,
-    ListChecks
+    Percent
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
+import { 
+    Dialog, 
+    DialogContent, 
 } from '@/components/ui/dialog';
-import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import NextImage from "next/image";
-import { formatDistanceToNow } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 
 interface PricingSection {
@@ -159,7 +128,7 @@ function EditableCell({ value, onChange, placeholder, prefix, suffix, align = 'c
     );
 }
 
-function PricingRow({ id, name, sku, cost, sell, sections, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, rowIndex, activeView }: any) {
+function PricingRow({ id, name, sku, cost, sections, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, rowIndex, activeView }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
     const vendorCurrency = vendor.currency || 'USD';
@@ -167,7 +136,7 @@ function PricingRow({ id, name, sku, cost, sell, sections, strategy, onUpdateVal
 
     return (
         <TableRow className={cn("transition-colors group", rowBgClass)}>
-            <TableCell className={cn("sticky left-0 z-[30] border-r-2 border-b border-slate-200 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] transition-colors group-hover:bg-primary/[0.03]", rowBgClass, indent ? "pl-20" : "px-8")}>
+            <TableCell className={cn("sticky left-0 z-[30] border-r-2 border-b border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] transition-colors group-hover:bg-primary/[0.03]", rowBgClass, indent ? "pl-20" : "px-8")}>
                 <div className="flex flex-col min-w-0"><span className={cn("font-black text-[11px] uppercase truncate tracking-tight mb-0.5", isOption ? "text-slate-700" : "text-slate-950")}>{name}</span><div className="flex items-center gap-2"><span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>{isOption && <Badge className="text-[7px] font-black h-3.5 px-1.5 bg-slate-200 text-slate-700 border-none">OPT</Badge>}</div></div>
             </TableCell>
             {sections.map((sec: any) => {
@@ -276,6 +245,81 @@ function PricingRow({ id, name, sku, cost, sell, sections, strategy, onUpdateVal
     );
 }
 
+function PricingTable({ 
+    filteredRanges, 
+    expandedRanges, 
+    toggleRange, 
+    allModels, 
+    allVariants, 
+    activeSections, 
+    activeView, 
+    strategy, 
+    onUpdateValue, 
+    vendor, 
+    organisation, 
+    activeExchangeRate,
+    totalCalculatedCols
+}: any) {
+    return (
+        <div className="flex-1 overflow-auto min-w-0 bg-white">
+            <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
+                <TableHeader className="sticky top-0 z-[45] bg-white">
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-[340px] sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
+                        {activeSections.map((sec: any) => (
+                            <TableHead key={sec.id} colSpan={getSectionColCount(sec, activeView)} className="border-r border-b-2 border-slate-300 p-0 bg-slate-100">
+                                <div className="flex items-center gap-3 p-3 min-h-[48px]">
+                                    {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
+                                </div>
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredRanges.map((range: any) => (
+                        <React.Fragment key={range.id}>
+                            <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
+                                <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
+                                    <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
+                                </TableCell>
+                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-100/60" />)}
+                            </TableRow>
+                            {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
+                                <React.Fragment key={model.id}>
+                                    <TableRow className="bg-slate-50">
+                                        <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
+                                            <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
+                                        </TableCell>
+                                        {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
+                                    </TableRow>
+                                    {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
+                                        <PricingRow 
+                                            key={item.id} 
+                                            id={item.id} 
+                                            name={item.name} 
+                                            sku={item.sku || item.code} 
+                                            cost={item.cost} 
+                                            sections={activeSections} 
+                                            strategy={strategy} 
+                                            onUpdateValue={onUpdateValue} 
+                                            vendor={vendor} 
+                                            organisation={organisation} 
+                                            exchangeRate={activeExchangeRate} 
+                                            rowIndex={idx} 
+                                            activeView={activeView} 
+                                            indent 
+                                        />
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </React.Fragment>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    );
+}
+
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
     const { user } = useUser();
@@ -348,12 +392,6 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         });
     };
 
-    const handleToggleSectionCollapse = async (sectionId: string) => {
-        if (!strategy || !strategy.sections) return;
-        const newSections = strategy.sections.map(s => s.id === sectionId ? { ...s, isCollapsed: !s.isCollapsed } : s);
-        await updateDoc(strategyRef, { sections: newSections });
-    };
-
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     
     const activeSections = useMemo(() => {
@@ -409,58 +447,27 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         </div>
     );
 
-    const PricingTable = () => (
-        <div className="flex-1 overflow-auto min-w-0 bg-white">
-            <Table className="border-separate border-spacing-0 w-max min-w-full table-auto">
-                <TableHeader className="sticky top-0 z-[45] bg-white">
-                    <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[340px] sticky left-0 z-[50] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
-                        {activeSections.map((sec) => (
-                            <TableHead key={sec.id} colSpan={getSectionColCount(sec, activeView)} className="border-r border-b-2 border-slate-300 p-0 bg-slate-100">
-                                <div className="flex items-center gap-3 p-3 min-h-[48px]">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-primary/10 text-primary border border-primary/10" onClick={() => handleToggleSectionCollapse(sec.id)}>{sec.isCollapsed ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}</Button>
-                                    {!sec.isCollapsed && <span className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">{sec.name}</span>}
-                                </div>
-                            </TableHead>
-                        ))}
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredRanges.map(range => (
-                        <React.Fragment key={range.id}>
-                            <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
-                                <TableCell className="sticky left-0 z-[30] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
-                                    <div className="flex items-center gap-4"><ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />{range.name} RANGE</div>
-                                </TableCell>
-                                {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-100/60" />)}
-                            </TableRow>
-                            {expandedRanges.includes(range.id) && allModels.filter(m => m.rangeId === range.id).map(model => (
-                                <React.Fragment key={model.id}>
-                                    <TableRow className="bg-slate-50">
-                                        <TableCell className="sticky left-0 z-[30] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_15px_-2px_rgba(0,0,0,0.2)]">
-                                            <div className="flex flex-col"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
-                                        </TableCell>
-                                        {Array.from({ length: totalCalculatedCols }).map((_, i) => <TableCell key={i} className="border-b-2 border-slate-300 bg-slate-50/50" />)}
-                                    </TableRow>
-                                    {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
-                                        <PricingRow key={item.id} id={item.id} name={item.name} sku={item.sku || item.code} cost={item.cost} sections={activeSections} strategy={strategy} onUpdateValue={onUpdateValue} vendor={vendor} organisation={organisation} exchangeRate={activeExchangeRate} rowIndex={idx} activeView={activeView} indent />
-                                    ))}
-                                </React.Fragment>
-                            ))}
-                        </React.Fragment>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
-    );
-
     if (loadingModels || strategyLoading) return <div className="flex-1 flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-slate-50">
             {!isFocusMode && <WorkspaceHeader />}
             <div className="flex-1 min-h-0 min-w-0 bg-white flex flex-col overflow-hidden">
-                <PricingTable />
+                <PricingTable 
+                    filteredRanges={filteredRanges}
+                    expandedRanges={expandedRanges}
+                    toggleRange={toggleRange}
+                    allModels={allModels}
+                    allVariants={allVariants}
+                    activeSections={activeSections}
+                    activeView={activeView}
+                    strategy={strategy}
+                    onUpdateValue={onUpdateValue}
+                    vendor={vendor}
+                    organisation={organisation}
+                    activeExchangeRate={activeExchangeRate}
+                    totalCalculatedCols={totalCalculatedCols}
+                />
             </div>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
@@ -468,7 +475,21 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <div className="flex flex-col h-full bg-background overflow-hidden">
                         <WorkspaceHeader isFocus />
                         <div className="flex-1 min-h-0 bg-white flex flex-col overflow-hidden">
-                            <PricingTable />
+                            <PricingTable 
+                                filteredRanges={filteredRanges}
+                                expandedRanges={expandedRanges}
+                                toggleRange={toggleRange}
+                                allModels={allModels}
+                                allVariants={allVariants}
+                                activeSections={activeSections}
+                                activeView={activeView}
+                                strategy={strategy}
+                                onUpdateValue={onUpdateValue}
+                                vendor={vendor}
+                                organisation={organisation}
+                                activeExchangeRate={activeExchangeRate}
+                                totalCalculatedCols={totalCalculatedCols}
+                            />
                         </div>
                     </div>
                 </DialogContent>

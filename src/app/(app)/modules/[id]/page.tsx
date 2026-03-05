@@ -120,15 +120,15 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                 <div className="absolute top-20 right-20 w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-3xl animate-pulse duration-[4000ms]" />
             </div>
 
-            <div className="relative z-10 flex flex-col items-center gap-8 max-w-md text-center">
-                <div className="relative h-24 w-24 bg-white/10 backdrop-blur-md rounded-3xl p-4 border border-white/20 shadow-2xl animate-in zoom-in-95 duration-700">
+            <div className="relative z-10 flex flex-col items-center gap-12 max-w-2xl text-center">
+                <div className="relative h-48 w-48 bg-white/10 backdrop-blur-xl rounded-[3.5rem] p-10 border border-white/20 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700">
                     {organisation?.primaryLogoUrl ? (
                         <div className="relative h-full w-full">
                             <Image 
                                 src={organisation.primaryLogoUrl} 
                                 alt={organisation.name} 
                                 fill 
-                                className="object-contain p-3 brightness-0 invert" 
+                                className="object-contain p-2 brightness-0 invert" 
                                 unoptimized
                             />
                         </div>
@@ -137,29 +137,23 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                     )}
                 </div>
 
-                <div className="space-y-3">
-                    <div className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
-                        <Zap className="h-3 w-3 fill-current" />
+                <div className="space-y-4">
+                    <div className="flex items-center justify-center gap-3 text-[12px] font-black uppercase tracking-[0.5em] text-white/50 leading-none">
+                        <Zap className="h-4 w-4 fill-current" />
                         <span>Initializing Precision Build</span>
                     </div>
-                    <h2 className="text-4xl font-black italic uppercase tracking-tighter">
+                    <h2 className="text-6xl font-black italic uppercase tracking-tighter">
                         {model?.name}
                     </h2>
                 </div>
 
-                <div className="relative w-48 h-1 flex items-center justify-center bg-white/10 rounded-full overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_2s_infinite] w-1/2" />
+                <div className="relative w-64 h-1.5 flex items-center justify-center bg-white/10 rounded-full overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-[shimmer_2s_infinite] w-1/2" />
                 </div>
 
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/60 animate-pulse">
+                <p className="text-[12px] font-bold uppercase tracking-widest text-white/60 animate-pulse">
                     Synchronizing factory data sets...
                 </p>
-            </div>
-
-            <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] translate-y-1">
-                <svg className="relative block w-[calc(10%+1.3px)] h-[120px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-                    <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" className="fill-white/5"></path>
-                </svg>
             </div>
             
             <style jsx global>{`
