@@ -19,14 +19,6 @@ import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-interface Notification {
-    id: string;
-    message: string;
-    type: string;
-    isRead: boolean;
-    createdAt: string;
-}
-
 export function NotificationBell() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -76,7 +68,7 @@ export function NotificationBell() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
+                <Button variant="ghost" size="icon" className="relative hover:bg-primary hover:text-white transition-all active:scale-95 border border-primary/10 shadow-sm rounded-xl h-9 w-9">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">

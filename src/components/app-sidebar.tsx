@@ -132,7 +132,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2 overflow-hidden">
             <Logo />
         </div>
-        <SidebarTrigger className="shrink-0 hover:bg-primary/10 text-primary transition-colors" />
+        <SidebarTrigger className="shrink-0 text-primary border-2 border-primary/10 bg-primary/5 shadow-inner" />
       </SidebarHeader>
       
       <SidebarContent className="bg-card">

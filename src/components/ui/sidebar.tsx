@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -263,14 +262,14 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      className={cn("h-9 w-9 hover:bg-primary hover:text-white transition-all active:scale-95 shadow-sm border border-transparent", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      <PanelLeft />
+      <PanelLeft className="size-5" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -601,7 +600,7 @@ const SidebarMenuAction = React.forwardRef<
   return (
     <Comp
       ref={ref}
-      data-sidebar="menu-action"
+      data-sidebar="group-action"
       className={cn(
         "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         "after:absolute after:-inset-2 after:md:hidden",
