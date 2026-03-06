@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -34,6 +33,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
     Carousel,
     CarouselContent,
@@ -441,7 +441,7 @@ export function HighfieldQuoteFlow({
                             
                             {/* Seamless Visualizer Workspace */}
                             <div className="relative flex-1 w-full flex flex-col bg-white rounded-[3rem] border-2 border-slate-100 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden group min-h-0">
-                                <div className="flex-1 w-full min-h-0 relative bg-white">
+                                <div className="flex-1 w-full min-0 relative bg-white">
                                     <Carousel className="w-full h-full" opts={{ loop: true }}>
                                         <CarouselContent className="h-full">
                                             {carouselImages.length > 0 ? carouselImages.map((url, idx) => (
