@@ -216,7 +216,8 @@ export function HighfieldQuoteFlow({
         } else if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) {
-                viewport.scrollTo({ top: 0, behavior: 'smooth' });
+                const targetTop = 0;
+                viewport.scrollTo({ top: targetTop, behavior: 'smooth' });
             }
         }
     }, [currentStep, selectedMaterial]);
@@ -231,6 +232,7 @@ export function HighfieldQuoteFlow({
         if (!model.optionalFeatures) return true;
         const consoleOptions = model.optionalFeatures.filter((f: any) => f.category === 'Consoles');
         if (consoleOptions.length === 0) return true;
+        // Classified as 'Open' if no console option is selected
         return !selectedOptionIds.some(id => consoleOptions.some((f: any) => f.id === id));
     }, [model.optionalFeatures, selectedOptionIds]);
 
@@ -476,8 +478,8 @@ export function HighfieldQuoteFlow({
 
                                         {carouselImages.length > 1 && (
                                             <>
-                                                <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 backdrop-blur-md shadow-xl border-none text-primary hover:bg-primary hover:text-white transition-all z-40" />
-                                                <CarouselNext className="right-6 h-12 w-12 bg-white/90 backdrop-blur-md shadow-xl border-none text-primary hover:bg-primary hover:text-white transition-all z-40" />
+                                                <CarouselPrevious className="left-6 h-12 w-12 bg-white/10 hover:bg-white/30 border-none text-white z-50 transition-all rounded-2xl backdrop-blur-md" />
+                                                <CarouselNext className="right-6 h-12 w-12 bg-white/10 hover:bg-white/30 border-none text-white z-50 transition-all rounded-2xl backdrop-blur-md" />
                                             </>
                                         )}
                                     </Carousel>
@@ -786,6 +788,7 @@ export function HighfieldQuoteFlow({
                                                     return (
                                                         <div key={motor.id} className="space-y-3">
                                                             <button
+                                                                key={motor.id}
                                                                 type="button"
                                                                 onClick={() => setSelectedMotor(isSelected ? null : motor)}
                                                                 className={cn(

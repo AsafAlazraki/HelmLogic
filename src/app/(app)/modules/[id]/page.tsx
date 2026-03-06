@@ -955,7 +955,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit }: { vendor: Vendor; onRang
 function ModelsGrid({ range, vendor, onModelSelect, canEdit }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; canEdit: boolean }) {
     const firestore = useFirestore();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
-    const { data: models, loading } = useCollection<Model>(modelsQuery);
+    const { data: models, loading = false } = useCollection<Model>(modelsQuery);
 
     const [editingItem, setEditingItem] = useState<Model | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
