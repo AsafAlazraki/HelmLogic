@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs, updateDoc, serverTimestamp, where, addDoc } from 'firebase/firestore';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { 
     Table, 
     TableBody, 
@@ -37,7 +37,8 @@ import {
     Save,
     GripVertical,
     Receipt,
-    ListChecks
+    ListChecks,
+    ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +64,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 
 interface PricingStrategy {
     itemValues?: Record<string, Record<string, any>>;
@@ -71,6 +73,7 @@ interface PricingStrategy {
 interface Range {
     id: string;
     name: string;
+    imageUrl?: string;
 }
 
 interface Model {
@@ -336,10 +339,10 @@ function PricingRow({
                         const sellIn = sellEx * gstMultiplier;
                         const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                         return (
-                            <>
+                            <React.Fragment key="opt-retail-cols">
                                 <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
                                 <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
-                            </>
+                            </React.Fragment>
                         );
                     })()}
                 </>
@@ -667,69 +670,138 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <Zap className="h-4 w-4 mr-2" />
                     Global Update
                 </Button>
-                <Button 
-                    type="button" 
-                    onClick={() => setIsFocusMode(!isFocusMode)} 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"
-                >
-                    {isFocusMode ? <Minimize2 className="h-4 w-4 mr-2" /> : <Maximize2 className="h-4 w-4 mr-2" />}
-                    {isFocusMode ? 'EXIT FOCUS' : 'FOCUS'}
-                </Button>
+                {isFocus && (
+                    <Button 
+                        type="button" 
+                        onClick={() => setIsFocusMode(false)} 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"
+                    >
+                        <Minimize2 className="h-4 w-4 mr-2" />
+                        EXIT FOCUS
+                    </Button>
+                )}
             </div>
         </div>
     );
 
     if (loadingModels || strategyLoading || orgLoading) return <div className="flex-1 flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
-    return (
-        <div className="flex flex-col h-full overflow-hidden bg-slate-50">
-            {!isFocusMode && <WorkspaceHeader />}
-            <PricingTable 
-                filteredRanges={filteredRanges}
-                expandedRanges={expandedRanges}
-                toggleRange={toggleRange}
-                allModels={allModels}
-                allVariants={allVariants}
-                activeView={activeView}
-                strategy={strategy}
-                onUpdateValue={onUpdateValue}
-                vendor={vendor}
-                organisation={organisation}
-                activeExchangeRate={activeExchangeRate}
-            />
+    if (!isFocusMode) {
+        return (
+            <ScrollArea className="h-full bg-slate-50/50">
+                <div className="p-10 space-y-10 max-w-7xl mx-auto">
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
+                                <Calculator className="h-3.5 w-3.5" />
+                                <span>Strategic Pricing Control</span>
+                            </div>
+                            <h2 className="text-4xl font-black uppercase tracking-tighter italic">Highfield Workspace</h2>
+                        </div>
+                        <Button 
+                            onClick={() => setIsFocusMode(true)}
+                            size="lg"
+                            className="h-16 px-10 rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all hover:scale-105 bg-primary text-white"
+                        >
+                            <Maximize2 className="h-4 w-4 mr-2" />
+                            Enter Precision Audit
+                        </Button>
+                    </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {ranges?.map(range => {
+                            const rangeModels = allModels.filter(m => m.rangeId === range.id);
+                            return (
+                                <Card key={range.id} className="group relative border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm transition-all hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 flex flex-col">
+                                    <div className="aspect-[16/10] relative border-b bg-muted/10">
+                                        {range.imageUrl ? (
+                                            <Image src={range.imageUrl} alt={range.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" unoptimized />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-16 w-16" /></div>
+                                        )}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                                        <div className="absolute bottom-6 left-8">
+                                            <h3 className="text-2xl font-black text-white uppercase tracking-tight italic">{range.name}</h3>
+                                        </div>
+                                    </div>
+                                    <CardContent className="p-8 space-y-6 flex-1">
+                                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                            <span>Inventory Complexity</span>
+                                            <span>Configuration Tier</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-black text-slate-900">{rangeModels.length}</span>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase">Models</span>
+                                            </div>
+                                            <Badge variant="secondary" className="h-6 font-black uppercase text-[9px] px-3 bg-primary/5 text-primary border-primary/10">Precision Managed</Badge>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="px-8 pb-8 pt-0 mt-auto">
+                                        <Button 
+                                            variant="ghost" 
+                                            className="w-full h-12 rounded-xl font-black uppercase text-[10px] tracking-widest bg-slate-50 hover:bg-primary hover:text-white transition-all group/btn"
+                                            onClick={() => {
+                                                setExpandedRanges([range.id]);
+                                                setIsFocusMode(true);
+                                            }}
+                                        >
+                                            Audit {range.name} Series
+                                            <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            );
+                        })}
+                    </div>
+
+                    <div className="p-10 bg-primary/5 rounded-[3rem] border-2 border-primary/10 flex items-start gap-8">
+                        <div className="h-16 w-16 bg-white rounded-[1.5rem] shadow-xl flex items-center justify-center shrink-0 border-2 border-primary/5">
+                            <ShieldCheck className="h-8 w-8 text-primary" />
+                        </div>
+                        <div className="space-y-2">
+                            <h4 className="text-lg font-black uppercase tracking-tight text-primary">Strategic Configuration Mode</h4>
+                            <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-4xl">
+                                The high-precision pricing matrix is optimized for full-screen auditing. Select a range above or enter the main workspace to manage exchange rates, landed costs, and multi-tier retail margins with absolute precision.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </ScrollArea>
+        );
+    }
+
+    return (
+        <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
+            <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
+                <DialogHeader className="p-0">
+                    <DialogTitle className="sr-only">Highfield Pricing Manager - Focus Mode</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col h-full bg-background overflow-hidden">
+                    <WorkspaceHeader isFocus />
+                    <PricingTable 
+                        filteredRanges={filteredRanges}
+                        expandedRanges={expandedRanges}
+                        toggleRange={toggleRange}
+                        allModels={allModels}
+                        allVariants={allVariants}
+                        activeView={activeView}
+                        strategy={strategy}
+                        onUpdateValue={onUpdateValue}
+                        vendor={vendor}
+                        organisation={organisation}
+                        activeExchangeRate={activeExchangeRate}
+                    />
+                </div>
+            </DialogContent>
             <GlobalUpdateDialog 
                 isOpen={isGlobalUpdateOpen} 
                 onOpenChange={setIsGlobalUpdateOpen} 
                 onApply={handleGlobalUpdate} 
                 activeView={activeView}
             />
-
-            <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
-                    <DialogHeader className="p-0">
-                        <DialogTitle className="sr-only">Highfield Pricing Manager - Focus Mode</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col h-full bg-background overflow-hidden">
-                        <WorkspaceHeader isFocus />
-                        <PricingTable 
-                            filteredRanges={filteredRanges}
-                            expandedRanges={expandedRanges}
-                            toggleRange={toggleRange}
-                            allModels={allModels}
-                            allVariants={allVariants}
-                            activeView={activeView}
-                            strategy={strategy}
-                            onUpdateValue={onUpdateValue}
-                            vendor={vendor}
-                            organisation={organisation}
-                            activeExchangeRate={activeExchangeRate}
-                        />
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </div>
+        </Dialog>
     );
 }
