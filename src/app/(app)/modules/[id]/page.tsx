@@ -827,7 +827,7 @@ export default function ModuleDetailsPage() {
                                 <Card className="border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden flex flex-col">
                                     <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3 shrink-0">
-                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2 text-primary">Blueprint</Badge>
+                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Blueprint</Badge>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Templates</h3>
                                         </div>
                                         <Button 

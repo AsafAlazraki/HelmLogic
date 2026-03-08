@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs, updateDoc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDocs, updateDoc, serverTimestamp, where, addDoc } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
     Table, 
@@ -22,7 +22,9 @@ import {
     Save,
     Maximize2,
     Minimize2,
-    Building
+    Building,
+    ArrowRightLeft,
+    MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +51,7 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 
 interface PricingStrategy {
     itemValues?: Record<string, Record<string, any>>;
@@ -188,7 +191,6 @@ function PricingRow({
 }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
-    const vendorCurrency = vendor.currency || 'USD';
     const gstRate = (organisation?.gstPercentage || 10) / 100;
     const gstMultiplier = 1 + gstRate;
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50";
@@ -224,7 +226,7 @@ function PricingRow({
                 </div>
             </TableCell>
 
-            <TableCell className="text-center border-r border-b border-slate-200 bg-white hover:bg-primary/10 relative"><Badge variant="outline" className="font-black text-[8px] h-4 border-slate-200 relative z-10">{vendorCurrency}</Badge></TableCell>
+            <TableCell className="text-center border-r border-b border-slate-200 bg-white hover:bg-primary/10 relative"><Badge variant="outline" className="font-black text-[8px] h-4 border-slate-200 relative z-10">{(vendor?.currency || 'USD')}</Badge></TableCell>
             <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary hover:bg-primary/10 relative"><span className="relative z-10">{exchangeRate.toFixed(4)}</span></TableCell>
             <TableCell className="text-center border-r border-b border-slate-200 bg-white hover:bg-primary/10 relative"><Badge variant="outline" className="font-black text-[8px] h-4 border-slate-200 relative z-10">{orgCurrency}</Badge></TableCell>
             <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary hover:bg-primary/10 relative"><span className="relative z-10">1.0000</span></TableCell>
@@ -568,7 +570,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         {isFocus && (
                             <div className="flex items-center gap-2 mt-1.5 animate-in slide-in-from-left-2 duration-300">
                                 <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">AUDIT MODE</Badge>
-                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
+                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{(vendor?.currency || 'USD')} BASE</Badge>
                                 <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
                             </div>
                         )}
@@ -646,6 +648,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
                 <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Focus Mode - Pricing Audit</DialogTitle>
+                        <DialogDescription>Full screen immersive auditing workspace for Highfield pricing strategies.</DialogDescription>
+                    </DialogHeader>
                     <MatrixContent isFocus={true} />
                 </DialogContent>
             </Dialog>
