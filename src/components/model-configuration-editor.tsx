@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, FormProvider, useController } from 'react-hook-form';
@@ -467,6 +466,7 @@ export function ModelConfigurationEditor({
                                     <Card className="rounded-xl">
                                         <CardHeader>
                                             <CardTitle>Trailer Options</CardTitle>
+                                            <CardDescription>Associated trailer configuration sets</CardDescription>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg text-muted-foreground bg-muted/5">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -24,7 +23,8 @@ import {
     Minimize2,
     Building,
     ArrowRightLeft,
-    MessageSquare
+    MessageSquare,
+    ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -219,7 +219,7 @@ function PricingRow({
 
     return (
         <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
-            <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/5", rowBgClass, indent ? "pl-16" : "px-8")}>
+            <TableCell className={cn("sticky left-0 z-[80] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/5", rowBgClass, indent ? "pl-16" : "px-8")}>
                 <div className="flex flex-col min-w-[240px] relative z-10">
                     <span className={cn("font-black text-[11px] uppercase truncate tracking-tight", isOption ? "text-slate-700" : "text-slate-950")}>{name}</span>
                     <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
@@ -325,51 +325,51 @@ function PricingTable({
         <div className="flex-1 w-full overflow-hidden flex flex-col bg-white relative pricing-matrix-container">
             <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin">
                 <Table className="border-separate border-spacing-0 w-max table-fixed pricing-matrix-table">
-                    <TableHeader className="sticky top-0 z-[40]">
-                        <TableRow className="hover:bg-transparent">
-                            <TableHead rowSpan={2} className="w-[340px] sticky left-0 top-0 z-[60] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
-                            <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
-                            <TableHead colSpan={6} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
-                            {!isOptions && <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
-                            {!isOptions && <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
-                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
+                    <TableHeader className="sticky top-0 z-[100]">
+                        <TableRow className="hover:bg-transparent h-[52px]">
+                            <TableHead rowSpan={2} className="w-[340px] sticky left-0 top-0 z-[110] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
+                            <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
+                            <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
+                            {!isOptions && <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
+                            {!isOptions && <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
+                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
                         </TableRow>
-                        <TableRow className="hover:bg-transparent bg-white shadow-sm">
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">From</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Rate</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">To</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Rate</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">Duty %</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Base USD</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">AUD Conv</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Factory Disc USD</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Disc AUD</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px] sticky top-[52px] z-[40]">Landed AUD (Excl. GST)</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[40]">Landed AUD (Incl. GST)</TableHead>
+                        <TableRow className="hover:bg-transparent bg-white shadow-sm h-[52px]">
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">From</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Rate</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">To</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Rate</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">Duty %</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Base USD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">AUD Conv</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Factory Disc USD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Disc AUD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px] sticky top-[52px] z-[90]">Landed AUD (Excl. GST)</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[90]">Landed AUD (Incl. GST)</TableHead>
                             {!isOptions && (
                                 <>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost USD</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">AUD Conv</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost AUD</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Margin %</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">GP $</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost USD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">AUD Conv</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                                 </>
                             )}
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost AUD</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Margin %</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">GP $</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                             {!isOptions && (
                                 <>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost AUD</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Margin %</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">GP $</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                                 </>
                             )}
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px] sticky top-[52px] z-[40]">Final Cost Excl. GST</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px] sticky top-[52px] z-[40]">{isOptions ? 'Opt' : 'Hull'} Margin %</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px] sticky top-[52px] z-[40]">Total GP $</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px] sticky top-[52px] z-[90]">Final Cost Excl. GST</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px] sticky top-[52px] z-[90]">{isOptions ? 'Opt' : 'Hull'} Margin %</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px] sticky top-[52px] z-[90]">Total GP $</TableHead>
                             {!isOptions ? (
                                 <>
                                     {[
@@ -380,9 +380,9 @@ function PricingTable({
                                         { id: 'aus', label: 'AUS PRICE (EXCL. GST)' }
                                     ].map((level, i) => (
                                         <React.Fragment key={`h-${level.id}-${i}`}>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{level.label}</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40]">{inclLabel}</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">GP %</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[90]">{level.label}</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[90]">{inclLabel}</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">GP %</TableHead>
                                         </React.Fragment>
                                     ))}
                                     {[
@@ -390,17 +390,17 @@ function PricingTable({
                                         { id: 'srp2', label: 'SUB-EX SRP (EXCL. GST)' }
                                     ].map((level, i) => (
                                         <React.Fragment key={`srp-${level.id}-${i}`}>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{level.label}</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40]">{inclLabel}</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">GP %</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[90]">{level.label}</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[90]">{inclLabel}</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">GP %</TableHead>
                                         </React.Fragment>
                                     ))}
                                 </>
                             ) : (
                                 <React.Fragment key="opt-head-row">
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{`${shortCode} SELL PRICE (EXCL. GST)`}</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40]">{inclLabel}</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">GP %</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[90]">{`${shortCode} SELL PRICE (EXCL. GST)`}</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[90]">{inclLabel}</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">GP %</TableHead>
                                 </React.Fragment>
                             )}
                         </TableRow>
@@ -409,7 +409,7 @@ function PricingTable({
                         {filteredRanges.map((range: any) => (
                             <React.Fragment key={range.id}>
                                 <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
-                                    <TableCell className="sticky left-0 z-[20] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                    <TableCell className="sticky left-0 z-[80] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                         <div className="flex items-center gap-4 relative z-10">
                                             <ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />
                                             <span>{range.name} RANGE</span>
@@ -420,7 +420,7 @@ function PricingTable({
                                 {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                     <React.Fragment key={model.id}>
                                         <TableRow className="bg-slate-50">
-                                            <TableCell className="sticky left-0 z-[20] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                            <TableCell className="sticky left-0 z-[80] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                                 <div className="flex flex-col relative z-10"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                             </TableCell>
                                             <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-50/50" />
@@ -559,7 +559,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [ranges, searchTerm, allModels]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[10]">
+        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">

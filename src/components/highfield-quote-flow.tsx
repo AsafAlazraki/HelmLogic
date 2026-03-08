@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -381,7 +380,7 @@ export function HighfieldQuoteFlow({
                                                         selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/40"
                                                     )}
                                                 >
-                                                    <span className="textxl font-black uppercase tracking-tight">{mat}</span>
+                                                    <span className="text-xl font-black uppercase tracking-tight">{mat}</span>
                                                     <p className={cn("text-[10px] font-bold mt-2 uppercase tracking-widest", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>{mat === 'PVC' ? 'Standard PVC' : 'ORCA® Hypalon'}</p>
                                                 </button>
                                             ))}
