@@ -214,31 +214,6 @@ function PricingRow({
     const totalPackageSell = getSellPrice(totalStrategicLandedEx, marginPercent);
     const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
 
-    if (activeView === 'tax') {
-        return (
-            <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
-                <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/5", rowBgClass, indent ? "pl-16" : "px-8")}>
-                    <div className="flex flex-col min-w-[240px] relative z-10">
-                        <span className="font-black text-[11px] uppercase truncate tracking-tight text-slate-950">{name}</span>
-                        <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
-                    </div>
-                </TableCell>
-                <TableCell className="text-right border-r border-b border-slate-200 px-4 text-[10px] font-black text-slate-500 hover:bg-primary/10 relative">
-                    <span className="relative z-10">{formatCurrency(baseCostAudEx * gstRate, orgCurrency)}</span>
-                </TableCell>
-                {['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
-                    const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
-                    const gstAmount = sellEx * gstRate;
-                    return (
-                        <TableCell key={l} className="text-right border-r border-b border-slate-200 px-4 text-[10px] font-black text-primary bg-primary/5 hover:bg-primary/10 relative">
-                            <span className="relative z-10">{formatCurrency(gstAmount, orgCurrency)}</span>
-                        </TableCell>
-                    );
-                })}
-            </TableRow>
-        );
-    }
-
     return (
         <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
             <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/5", rowBgClass, indent ? "pl-16" : "px-8")}>
@@ -340,7 +315,6 @@ function PricingTable({
     filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate 
 }: any) {
     const isOptions = activeView === 'options';
-    const isTax = activeView === 'tax';
     const shortCode = (organisation?.shortCode || 'NSM').toUpperCase();
     const inclLabel = "(INCL. GST)";
 
@@ -351,100 +325,80 @@ function PricingTable({
                     <TableHeader className="sticky top-0 z-[40]">
                         <TableRow className="hover:bg-transparent">
                             <TableHead rowSpan={2} className="w-[340px] sticky left-0 top-0 z-[60] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
-                            {!isTax ? (
-                                <>
-                                    <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
-                                    <TableHead colSpan={6} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
-                                    {!isOptions && <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
-                                    <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
-                                    {!isOptions && <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
-                                    <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
-                                    <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
-                                </>
-                            ) : (
-                                <>
-                                    <TableHead className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Base Cost GST</span></TableHead>
-                                    <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Price Level GST Liabilities</span></TableHead>
-                                </>
-                            )}
+                            <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
+                            <TableHead colSpan={6} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
+                            {!isOptions && <TableHead colSpan={5} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
+                            {!isOptions && <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
+                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b bg-slate-50 text-center border-slate-200 sticky top-0 z-[40]"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
                         </TableRow>
                         <TableRow className="hover:bg-transparent bg-white shadow-sm">
-                            {!isTax ? (
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">From</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Rate</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">To</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Rate</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">Duty %</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Base USD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">AUD Conv</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Factory Disc USD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Disc AUD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px] sticky top-[52px] z-[40]">Landed AUD (Excl. GST)</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[40]">Landed AUD (Incl. GST)</TableHead>
+                            {!isOptions && (
                                 <>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">From</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Rate</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">To</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Rate</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">Duty %</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Base USD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost USD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">AUD Conv</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Factory Disc USD</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Disc AUD</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px] sticky top-[52px] z-[40]">Landed AUD (Excl. GST)</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[40]">Landed AUD (Incl. GST)</TableHead>
-                                    {!isOptions && (
-                                        <>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost USD</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">AUD Conv</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost AUD</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Margin %</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">GP $</TableHead>
-                                        </>
-                                    )}
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Margin %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">GP $</TableHead>
-                                    {!isOptions && (
-                                        <>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost AUD</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Margin %</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">GP $</TableHead>
-                                        </>
-                                    )}
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px] sticky top-[52px] z-[40]">Final Cost Ex</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px] sticky top-[52px] z-[40]">{isOptions ? 'Opt' : 'Hull'} Margin %</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px] sticky top-[52px] z-[40]">Total GP $</TableHead>
-                                    {!isOptions ? (
-                                        <>
-                                            {[
-                                                { id: 'cash', label: `${shortCode} SELL PRICE (EXCL. GST)` },
-                                                { id: 'trade', label: 'TRADE PRICE (EXCL. GST)' },
-                                                { id: 'sub', label: 'SUB-D PRICE (EXCL. GST)' },
-                                                { id: 'subex', label: 'SUB-EX PRICE (EXCL. GST)' },
-                                                { id: 'aus', label: 'AUS PRICE (EXCL. GST)' }
-                                            ].map((level, i) => (
-                                                <React.Fragment key={`h-${level.id}-${i}`}>
-                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{level.label}</TableHead>
-                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40]">{inclLabel}</TableHead>
-                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">GP %</TableHead>
-                                                </React.Fragment>
-                                            ))}
-                                            {[
-                                                { id: 'srp1', label: 'SUB-D SRP (EXCL. GST)' },
-                                                { id: 'srp2', label: 'SUB-EX SRP (EXCL. GST)' }
-                                            ].map((level, i) => (
-                                                <React.Fragment key={`srp-${level.id}-${i}`}>
-                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{level.label}</TableHead>
-                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40]">{inclLabel}</TableHead>
-                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">GP %</TableHead>
-                                                </React.Fragment>
-                                            ))}
-                                        </>
-                                    ) : (
-                                        <React.Fragment key="opt-head-row">
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{`${shortCode} SELL PRICE (EXCL. GST)`}</TableHead>
+                                </>
+                            )}
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost AUD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Margin %</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">GP $</TableHead>
+                            {!isOptions && (
+                                <>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Cost AUD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Margin %</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">GP $</TableHead>
+                                </>
+                            )}
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px] sticky top-[52px] z-[40]">Final Cost Excl. GST</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px] sticky top-[52px] z-[40]">{isOptions ? 'Opt' : 'Hull'} Margin %</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px] sticky top-[52px] z-[40]">Total GP $</TableHead>
+                            {!isOptions ? (
+                                <>
+                                    {[
+                                        { id: 'cash', label: `${shortCode} SELL PRICE (EXCL. GST)` },
+                                        { id: 'trade', label: 'TRADE PRICE (EXCL. GST)' },
+                                        { id: 'sub', label: 'SUB-D PRICE (EXCL. GST)' },
+                                        { id: 'subex', label: 'SUB-EX PRICE (EXCL. GST)' },
+                                        { id: 'aus', label: 'AUS PRICE (EXCL. GST)' }
+                                    ].map((level, i) => (
+                                        <React.Fragment key={`h-${level.id}-${i}`}>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{level.label}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40]">{inclLabel}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">GP %</TableHead>
                                         </React.Fragment>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[140px] sticky top-[52px] z-[40]">Base GST $</TableHead>
-                                    {['Cash', 'Trade', 'Sub-D', 'Sub-Ex', 'AUS'].map(l => (
-                                        <TableHead key={l} className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[140px] sticky top-[52px] z-[40]">{l} GST $</TableHead>
+                                    ))}
+                                    {[
+                                        { id: 'srp1', label: 'SUB-D SRP (EXCL. GST)' },
+                                        { id: 'srp2', label: 'SUB-EX SRP (EXCL. GST)' }
+                                    ].map((level, i) => (
+                                        <React.Fragment key={`srp-${level.id}-${i}`}>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{level.label}</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40]">{inclLabel}</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">GP %</TableHead>
+                                        </React.Fragment>
                                     ))}
                                 </>
+                            ) : (
+                                <React.Fragment key="opt-head-row">
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40]">{`${shortCode} SELL PRICE (EXCL. GST)`}</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40]">{inclLabel}</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">GP %</TableHead>
+                                </React.Fragment>
                             )}
                         </TableRow>
                     </TableHeader>
@@ -458,7 +412,7 @@ function PricingTable({
                                             <span>{range.name} RANGE</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell colSpan={isTax ? 6 : (isOptions ? 20 : 46)} className="border-b-2 border-slate-300 bg-slate-100/60 p-0" />
+                                    <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-100/60 p-0" />
                                 </TableRow>
                                 {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                     <React.Fragment key={model.id}>
@@ -466,9 +420,9 @@ function PricingTable({
                                             <TableCell className="sticky left-0 z-[20] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                                 <div className="flex flex-col relative z-10"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                             </TableCell>
-                                            <TableCell colSpan={isTax ? 6 : (isOptions ? 20 : 46)} className="border-b-2 border-slate-300 bg-slate-50/50" />
+                                            <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-50/50" />
                                         </TableRow>
-                                        {(activeView === 'boats' ? (allVariants[model.id] || []) : (isTax ? (allVariants[model.id] || []) : (model.optionalFeatures || []))).map((item: any, idx: number) => (
+                                        {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
                                             <PricingRow 
                                                 key={item.id} 
                                                 id={item.id} 
@@ -504,7 +458,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [isGlobalUpdateOpen, setIsGlobalUpdateOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
-    const [activeView, setActiveView] = useState<'boats' | 'options' | 'tax'>('boats');
+    const [activeView, setActiveView] = useState<'boats' | 'options'>('boats');
 
     const rangesQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')), [firestore, vendor.id]);
     const { data: ranges } = useCollection<Range>(rangesQuery);
@@ -610,24 +564,22 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     </div>
                     <div>
                         <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">HIGHFIELD PRICING MANAGER</h2>
-                        <div className="flex items-center gap-2 mt-1.5">
-                            <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">AUDIT MODE</Badge>
-                            <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
-                            <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
-                        </div>
+                        {isFocus && (
+                            <div className="flex items-center gap-2 mt-1.5 animate-in slide-in-from-left-2 duration-300">
+                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">AUDIT MODE</Badge>
+                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{vendor.currency || 'USD'} BASE</Badge>
+                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
+                            </div>
+                        )}
                     </div>
                 </div>
                 
-                {/* View Pills Only in Focus Mode */}
-                {isFocus && (
-                    <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="ml-4">
-                        <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
-                            <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>
-                            <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">FACTORY OPTIONS</TabsTrigger>
-                            <TabsTrigger value="tax" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">GST BREAKDOWN</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                )}
+                <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="ml-4">
+                    <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
+                        <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>
+                        <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">FACTORY OPTIONS</TabsTrigger>
+                    </TabsList>
+                </Tabs>
             </div>
             <div className="flex items-center gap-3">
                 <Button 
