@@ -24,7 +24,9 @@ import {
     Building,
     ArrowRightLeft,
     MessageSquare,
-    ChevronDown
+    ChevronDown,
+    Ship,
+    Star
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -139,7 +141,7 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isO
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden z-[200]">
+            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
                 <DialogHeader className="p-8 border-b bg-muted/5">
                     <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Global Update</DialogTitle>
                     <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Catalog Adjustment</DialogDescription>
