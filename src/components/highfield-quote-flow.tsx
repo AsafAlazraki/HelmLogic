@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -381,7 +381,7 @@ export function HighfieldQuoteFlow({
                                                         selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/40"
                                                     )}
                                                 >
-                                                    <span className="text-xl font-black uppercase tracking-tight">{mat}</span>
+                                                    <span className="textxl font-black uppercase tracking-tight">{mat}</span>
                                                     <p className={cn("text-[10px] font-bold mt-2 uppercase tracking-widest", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>{mat === 'PVC' ? 'Standard PVC' : 'ORCA® Hypalon'}</p>
                                                 </button>
                                             ))}

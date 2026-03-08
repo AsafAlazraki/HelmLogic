@@ -449,7 +449,11 @@ function QuoteSelectorDialog({
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    <Button variant="ghost" onClick={() => setSelectedRange(null)} className="font-black uppercase text-[10px] tracking-widest text-primary hover:bg-primary/5">
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => setSelectedRange(null)} 
+                                        className="h-10 px-6 rounded-xl font-black uppercase text-[10px] tracking-widest border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                    >
                                         <ChevronLeft className="mr-2 h-4 w-4" /> Back to Ranges
                                     </Button>
                                     {modelsLoading ? (
