@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -192,8 +193,8 @@ export function ModulePricingDashboard({
                                         <span>Margin</span>
                                     </div>
                                 </TableHead>
-                                <TableHead className="text-right font-bold text-primary">Retail Sell (Excl.)</TableHead>
-                                <TableHead className="text-right font-black bg-primary/5">Retail Sell (Incl.)</TableHead>
+                                <TableHead className="text-right font-bold text-primary">Retail Sell (Excl. GST)</TableHead>
+                                <TableHead className="text-right font-black bg-primary/5">Retail Sell (Incl. GST)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

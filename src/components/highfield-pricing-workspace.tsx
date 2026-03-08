@@ -373,11 +373,11 @@ function PricingTable({
     const inclLabel = `(INCL. GST)`;
 
     const boatPriceLevels = [
-        { id: 'sell', label: `${shortCode} SELL PRICE (EXCL.)` },
-        { id: 'trade', label: 'TRADE PRICE (EXCL.)' },
-        { id: 'sub', label: 'SUB-D PRICE (EXCL.)' },
-        { id: 'subex', label: 'SUB-EX PRICE (EXCL.)' },
-        { id: 'aus', label: 'AUS PRICE (EXCL.)' }
+        { id: 'sell', label: `${shortCode} SELL PRICE (EXCL. GST)` },
+        { id: 'trade', label: 'TRADE PRICE (EXCL. GST)' },
+        { id: 'sub', label: 'SUB-D PRICE (EXCL. GST)' },
+        { id: 'subex', label: 'SUB-EX PRICE (EXCL. GST)' },
+        { id: 'aus', label: 'AUS PRICE (EXCL. GST)' }
     ];
 
     return (
@@ -417,8 +417,8 @@ function PricingTable({
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40] pricing-matrix-cell">AUD Conv</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40] pricing-matrix-cell">Factory Disc USD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40] pricing-matrix-cell">Disc AUD</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">Landed AUD (Excl.)</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">Landed AUD (Incl.)</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">Landed AUD (Excl. GST)</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">Landed AUD (Incl. GST)</TableHead>
                                     {!isOptions && (
                                         <>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40] pricing-matrix-cell">Cost USD</TableHead>
@@ -451,8 +451,8 @@ function PricingTable({
                                                 </React.Fragment>
                                             ))}
                                             {[
-                                                { id: 'srp1', label: 'SUB-D SRP (EXCL.)' },
-                                                { id: 'srp2', label: 'SUB-EX SRP (EXCL.)' }
+                                                { id: 'srp1', label: 'SUB-D SRP (EXCL. GST)' },
+                                                { id: 'srp2', label: 'SUB-EX SRP (EXCL. GST)' }
                                             ].map((level, i) => (
                                                 <React.Fragment key={`srp-${level.id}-${i}`}>
                                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{level.label}</TableHead>
@@ -463,7 +463,7 @@ function PricingTable({
                                         </>
                                     ) : (
                                         <React.Fragment key="opt-head-row">
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{`${shortCode} SELL PRICE (EXCL.)`}</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{`${shortCode} SELL PRICE (EXCL. GST)`}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{inclLabel}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40] pricing-matrix-cell">{`GP %`}</TableHead>
                                         </React.Fragment>
@@ -518,10 +518,10 @@ function PricingTable({
                                         ))}
                                     </React.Fragment>
                                 ))}
-                            </React.Fragment>
-                        ))}
-                    </TableBody>
-                </Table>
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
             </div>
         </div>
     );
