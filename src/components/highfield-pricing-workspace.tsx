@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs, updateDoc, serverTimestamp, where, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDocs, updateDoc, serverTimestamp, where } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
     Table, 
@@ -323,18 +323,18 @@ function PricingTable({
 
     return (
         <div className="flex-1 w-full overflow-hidden flex flex-col bg-white relative pricing-matrix-container">
-            <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin">
+            <div className="flex-1 overflow-auto scrollbar-thin">
                 <Table className="border-separate border-spacing-0 w-max table-fixed pricing-matrix-table">
                     <TableHeader className="sticky top-0 z-[100]">
                         <TableRow className="hover:bg-transparent h-[52px]">
-                            <TableHead rowSpan={2} className="w-[340px] sticky left-0 top-0 z-[110] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
-                            <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
-                            <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
-                            {!isOptions && <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
-                            {!isOptions && <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
-                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b-2 bg-slate-100/80 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
+                            <TableHead rowSpan={2} className="w-[340px] sticky left-0 top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
+                            <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
+                            <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
+                            {!isOptions && <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
+                            {!isOptions && <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
+                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
                         </TableRow>
                         <TableRow className="hover:bg-transparent bg-white shadow-sm h-[52px]">
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">From</TableHead>
