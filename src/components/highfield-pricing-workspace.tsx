@@ -20,7 +20,8 @@ import {
     Zap,
     Save,
     Maximize2,
-    Minimize2
+    Minimize2,
+    Building
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -374,7 +375,7 @@ function PricingTable({
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Rate</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">To</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Rate</TableHead>
-                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[40]">Duty %</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40]">Duty %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Base USD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">AUD Conv</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[40]">Factory Disc USD</TableHead>
@@ -616,13 +617,17 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         </div>
                     </div>
                 </div>
-                <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="ml-4">
-                    <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
-                        <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>
-                        <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">FACTORY OPTIONS</TabsTrigger>
-                        <TabsTrigger value="tax" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">GST BREAKDOWN</TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                
+                {/* View Pills Only in Focus Mode */}
+                {isFocus && (
+                    <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="ml-4">
+                        <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
+                            <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>
+                            <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">FACTORY OPTIONS</TabsTrigger>
+                            <TabsTrigger value="tax" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">GST BREAKDOWN</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                )}
             </div>
             <div className="flex items-center gap-3">
                 <Button 
@@ -661,9 +666,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     if (loadingModels || strategyLoading || orgLoading) return <div className="flex-1 flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
-    const MatrixContent = () => (
+    const MatrixContent = ({ isFocus = false }) => (
         <div className="flex flex-col h-full bg-white overflow-hidden">
-            <WorkspaceHeader isFocus={isFocusMode} />
+            <WorkspaceHeader isFocus={isFocus} />
             <PricingTable 
                 filteredRanges={filteredRanges}
                 expandedRanges={expandedRanges}
@@ -683,12 +688,12 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     return (
         <div className="flex-1 h-full p-8 overflow-hidden">
             <Card className="h-full rounded-[2.5rem] border-2 shadow-2xl overflow-hidden flex flex-col">
-                <MatrixContent />
+                <MatrixContent isFocus={false} />
             </Card>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
                 <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
-                    <MatrixContent />
+                    <MatrixContent isFocus={true} />
                 </DialogContent>
             </Dialog>
 
