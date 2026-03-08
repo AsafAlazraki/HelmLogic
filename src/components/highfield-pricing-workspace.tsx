@@ -4,7 +4,7 @@ import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp, orderBy } from "firebase/firestore";
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck } from "lucide-react";
@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/currency-utils";
 import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Vendor {
     id: string;
@@ -182,7 +183,6 @@ function PricingRow({
 
             {activeView === 'boats' && (
                 <>
-                    {/* Sea Freight Section */}
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_sea_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_cost_usd', val)} align="right" /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(seaFreightAudConv, orgCurrency)}</span></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_sea_freight_cost_aud'] || seaFreightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_cost_aud', val)} align="right" /></TableCell>
@@ -190,7 +190,6 @@ function PricingRow({
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(seaFreightSell, orgCurrency)}</span></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(seaFreightGP, orgCurrency)}</span></TableCell>
 
-                    {/* Road Freight Section */}
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_road_freight_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_road_freight_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_road_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_road_freight_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(roadFreightSell, orgCurrency)}</span></TableCell>
@@ -198,7 +197,6 @@ function PricingRow({
                 </>
             )}
 
-            {/* Handling Section */}
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" /></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(handlingSell, orgCurrency)}</span></TableCell>
@@ -206,7 +204,6 @@ function PricingRow({
 
             {activeView === 'boats' && (
                 <>
-                    {/* Pre-Delivery Section */}
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(preDelSell, orgCurrency)}</span></TableCell>
@@ -308,41 +305,33 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[90]">Landed AUD (Incl. GST)</TableHead>
                             {!isOptions && (
                                 <>
-                                    {/* Sea Freight Detail Headers */}
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost USD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">AUD Conv</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
-                                    
-                                    {/* Road Freight Detail Headers */}
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                                 </>
                             )}
-                            {/* Handling Detail Headers */}
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
-                            
                             {!isOptions && (
                                 <>
-                                    {/* Pre-Delivery Detail Headers */}
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                                 </>
                             )}
-                            
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px] sticky top-[52px] z-[90]">Final Cost Excl. GST</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px] sticky top-[52px] z-[90]">{isOptions ? 'Opt' : 'Hull'} Margin %</TableHead>
                             <TableHead className="border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px] sticky top-[52px] z-[90]">Total GP $</TableHead>
-                            
                             {!isOptions ? (
                                 <>
                                     {[
@@ -443,6 +432,10 @@ function MatrixContent({
     onUpdateValue, 
     activeExchangeRate 
 }: any) {
+    const commonProps = {
+        filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate
+    };
+
     return (
         <div className="flex flex-col h-full bg-white overflow-hidden">
             <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
@@ -503,19 +496,7 @@ function MatrixContent({
                     )}
                 </div>
             </div>
-            <PricingTable 
-                filteredRanges={filteredRanges}
-                expandedRanges={expandedRanges}
-                toggleRange={toggleRange}
-                allModels={allModels}
-                allVariants={allVariants}
-                activeView={activeView}
-                strategy={strategy}
-                onUpdateValue={onUpdateValue}
-                vendor={vendor}
-                organisation={organisation}
-                activeExchangeRate={activeExchangeRate}
-            />
+            <PricingTable {...commonProps} />
         </div>
     );
 }
