@@ -37,7 +37,9 @@ import {
     ArrowRight,
     Hammer,
     Coins,
-    Package
+    Package,
+    Settings,
+    Layout
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -76,7 +78,7 @@ import {
   useSortable,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@radix-ui/react-slot';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
     id: string;
@@ -295,7 +297,7 @@ function SortableItemCard({
     } = useSortable({ id });
 
     const style = {
-        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 50 : 'auto',
         opacity: isDragging ? 0.5 : 1,
@@ -584,7 +586,7 @@ export default function ModuleDetailsPage() {
         { id: 'bmt', label: 'Catalog' },
         { id: 'stock', label: 'Stock Management' },
         { id: 'pricing', label: 'Pricing', visible: canAccessPricing },
-        { id: 'network', label: 'Sub Dealers' }
+        { id: 'settings', label: 'Settings' }
     ].filter(t => t.visible !== false);
 
     return (
@@ -657,7 +659,7 @@ export default function ModuleDetailsPage() {
                                                     variant="ghost" 
                                                     size="icon" 
                                                     onClick={() => setActiveTab('stock')} 
-                                                    className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors"
+                                                    className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
                                                 >
                                                     <ArrowRight className="h-4 w-4" />
                                                 </Button>
@@ -677,13 +679,36 @@ export default function ModuleDetailsPage() {
                                                     variant="ghost" 
                                                     size="icon" 
                                                     onClick={() => setActiveTab('stock')} 
-                                                    className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors"
+                                                    className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
                                                 >
                                                     <ArrowRight className="h-4 w-4" />
                                                 </Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
                                                 <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
+                                            </CardContent>
+                                        </Card>
+
+                                        {/* Templates Card */}
+                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
+                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Blueprint</Badge>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Templates</h3>
+                                                </div>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
+                                                >
+                                                    <PlusCircle className="h-4 w-4" />
+                                                </Button>
+                                            </CardHeader>
+                                            <CardContent className="flex-1 min-h-0 flex flex-col items-center justify-center p-8 text-center bg-slate-50/30">
+                                                <div className="space-y-2 opacity-20">
+                                                    <ClipboardList className="h-8 w-8 mx-auto text-slate-400" />
+                                                    <p className="text-[10px] font-black uppercase tracking-widest">Template Engine (Coming Soon)</p>
+                                                </div>
                                             </CardContent>
                                         </Card>
                                     </div>
@@ -814,49 +839,59 @@ export default function ModuleDetailsPage() {
                         </TabsContent>
                     )}
 
-                    <TabsContent value="network" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                    <TabsContent value="settings" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
-                            <div className="p-8">
-                                <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
-                                    <CardHeader className="p-8 border-b bg-muted/5">
-                                        <CardTitle className="text-xl font-black uppercase tracking-tight">Sub Dealer Network</CardTitle>
-                                        <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Manage business relationships and regional allocations.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="p-0">
-                                        {subDealers && subDealers.length > 0 ? (
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className="px-8 font-black uppercase text-[10px]">Location</TableHead>
-                                                        <TableHead className="px-8 font-black uppercase text-[10px]">Contact</TableHead>
-                                                        <TableHead className="text-right px-8 font-black uppercase text-[10px]">Management</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {subDealers.map(sd => (
-                                                        <TableRow key={sd.id} className="hover:bg-muted/5 transition-colors">
-                                                            <TableCell className="px-8 py-4">
-                                                                <div className="font-black uppercase text-xs text-slate-900">{sd.name}</div>
-                                                                <div className="text-[10px] text-muted-foreground font-bold uppercase">{sd.address || 'Regional Allocation'}</div>
-                                                            </TableCell>
-                                                            <TableCell className="px-8 py-4 text-[10px] font-mono font-bold text-primary">{sd.phoneNumber || 'N/A'}</TableCell>
-                                                            <TableCell className="text-right px-8 py-4">
-                                                                <Button variant="outline" size="sm" className="h-7 text-[10px] font-black uppercase rounded-lg border-2 shadow-sm" asChild>
-                                                                    <Link href={`/sub-dealers/${sd.slug || sd.id}`}>Manage</Link>
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        ) : (
-                                            <div className="p-20 text-center text-muted-foreground opacity-20">
-                                                <Building className="h-12 w-12 mx-auto mb-4" />
-                                                <p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p>
+                            <div className="p-8 space-y-8 pb-32">
+                                {currentMemberOrg?.subDealersEnabled && (
+                                    <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
+                                        <CardHeader className="p-8 border-b bg-muted/5 flex flex-row items-center justify-between">
+                                            <div>
+                                                <CardTitle className="text-xl font-black uppercase tracking-tight">Sub Dealer Network</CardTitle>
+                                                <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Manage business relationships and regional allocations.</CardDescription>
                                             </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
+                                            <Button asChild className="h-10 px-6 font-black uppercase text-[10px] tracking-widest rounded-xl shadow-lg">
+                                                <Link href={`/organisations/${currentMemberOrg.id}/add-sub-dealer`}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                                    Add Sub Dealer
+                                                </Link>
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent className="p-0">
+                                            {subDealers && subDealers.length > 0 ? (
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead className="px-8 font-black uppercase text-[10px]">Location</TableHead>
+                                                            <TableHead className="px-8 font-black uppercase text-[10px]">Contact</TableHead>
+                                                            <TableHead className="text-right px-8 font-black uppercase text-[10px]">Management</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {subDealers.map(sd => (
+                                                            <TableRow key={sd.id} className="hover:bg-muted/5 transition-colors">
+                                                                <TableCell className="px-8 py-4">
+                                                                    <div className="font-black uppercase text-xs text-slate-900">{sd.name}</div>
+                                                                    <div className="text-[10px] text-muted-foreground font-bold uppercase">{sd.address || 'Regional Allocation'}</div>
+                                                                </TableCell>
+                                                                <TableCell className="px-8 py-4 text-[10px] font-mono font-bold text-primary">{sd.phoneNumber || 'N/A'}</TableCell>
+                                                                <TableCell className="text-right px-8 py-4">
+                                                                    <Button variant="outline" size="sm" className="h-7 text-[10px] font-black uppercase rounded-lg border-2 shadow-sm" asChild>
+                                                                        <Link href={`/sub-dealers/${sd.slug || sd.id}`}>Manage</Link>
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            ) : (
+                                                <div className="p-20 text-center text-muted-foreground opacity-20">
+                                                    <Building className="h-12 w-12 mx-auto mb-4" />
+                                                    <p className="font-black uppercase tracking-widest text-xs">No Sub Dealers Registered</p>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
                             </div>
                         </ScrollArea>
                     </TabsContent>

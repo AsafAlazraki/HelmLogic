@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -128,7 +129,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0 shadow-2xl">
-      <SidebarHeader className="h-16 flex items-center justify-between px-4 border-b bg-card">
+      <SidebarHeader className="h-14 flex items-center justify-between px-4 border-b bg-card">
         <div className="flex items-center gap-2 overflow-hidden">
             <Logo />
         </div>

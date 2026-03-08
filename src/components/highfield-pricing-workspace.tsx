@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -41,7 +42,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
@@ -197,7 +198,7 @@ function PricingRow({
 
     const freightUsd = parseFloat(itemValues['op_freight_cost_usd'] || '0');
     const freightAudConv = exchangeRate > 0 ? freightUsd / exchangeRate : freightUsd;
-    const freightFinalCost = parseFloat(itemValues['op_freight_cost_aud'] || freightAudConv.toString() || '0');
+    const freightFinalCost = parseFloat(itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2));
     const freightMargin = parseFloat(itemValues['op_freight_margin_percent'] || '0');
     const freightSell = getSellPrice(freightFinalCost, freightMargin);
 
@@ -276,7 +277,7 @@ function PricingRow({
                     );
                 })
             ) : (
-                <>
+                <React.Fragment key="opt-retail-cells">
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" /></TableCell>
                     {(() => {
                         const sellEx = parseFloat(itemValues['hull_cash_price'] || '0');
@@ -289,7 +290,7 @@ function PricingRow({
                             </React.Fragment>
                         );
                     })()}
-                </>
+                </React.Fragment>
             )}
             
             {activeView === 'boats' && [
