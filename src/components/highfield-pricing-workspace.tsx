@@ -7,7 +7,7 @@ import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp } from "firebase/firestore";
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator } from "lucide-react";
+import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -126,21 +126,34 @@ function PricingRow({
     const baseCostAudEx = calculateBaseCostAudEx(itemValues, cost || 0, exchangeRate);
     const baseCostAudIn = baseCostAudEx * gstMultiplier;
 
-    const freightUsd = parseFloat(itemValues['op_freight_cost_usd'] || '0');
-    const freightAudConv = exchangeRate > 0 ? freightUsd / exchangeRate : freightUsd;
-    const freightFinalCost = parseFloat(itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2));
-    const freightMargin = parseFloat(itemValues['op_freight_margin_percent'] || '0');
-    const freightSell = getSellPrice(freightFinalCost, freightMargin);
+    // 1. Sea Freight (International)
+    const seaFreightUsd = parseFloat(itemValues['op_sea_freight_cost_usd'] || '0');
+    const seaFreightAudConv = exchangeRate > 0 ? seaFreightUsd / exchangeRate : seaFreightUsd;
+    const seaFreightFinalCost = parseFloat(itemValues['op_sea_freight_cost_aud'] || seaFreightAudConv.toFixed(2));
+    const seaFreightMargin = parseFloat(itemValues['op_sea_freight_margin_percent'] || '0');
+    const seaFreightSell = getSellPrice(seaFreightFinalCost, seaFreightMargin);
+    const seaFreightGP = seaFreightSell - seaFreightFinalCost;
 
+    // 2. Road Freight (Domestic)
+    const roadFreightCost = parseFloat(itemValues['op_road_freight_cost_aud'] || '0');
+    const roadFreightMargin = parseFloat(itemValues['op_road_freight_margin_percent'] || '0');
+    const roadFreightSell = getSellPrice(roadFreightCost, roadFreightMargin);
+    const roadFreightGP = roadFreightSell - roadFreightCost;
+
+    // 3. Handling
     const handlingCost = parseFloat(itemValues['op_handling_cost_aud'] || '0');
     const handlingMargin = parseFloat(itemValues['op_handling_margin_percent'] || '0');
     const handlingSell = getSellPrice(handlingCost, handlingMargin);
+    const handlingGP = handlingSell - handlingCost;
 
+    // 4. Pre-Delivery
     const preDelCost = parseFloat(itemValues['op_predel_cost_aud'] || '0');
     const preDelMargin = parseFloat(itemValues['op_predel_margin_percent'] || '0');
     const preDelSell = getSellPrice(preDelCost, preDelMargin);
+    const preDelGP = preDelSell - preDelCost;
 
-    const totalStrategicLandedEx = baseCostAudEx + (activeView === 'boats' ? freightSell : 0) + handlingSell + (activeView === 'boats' ? preDelSell : 0);
+    // Baseline Summation
+    const totalStrategicLandedEx = baseCostAudEx + (activeView === 'boats' ? (seaFreightSell + roadFreightSell + preDelSell) : 0) + handlingSell;
     const marginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
     const totalPackageSell = getSellPrice(totalStrategicLandedEx, marginPercent);
     const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
@@ -169,29 +182,41 @@ function PricingRow({
 
             {activeView === 'boats' && (
                 <>
-                    <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" /></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(freightAudConv, orgCurrency)}</span></TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" /></TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_margin_percent', val)} /></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(getSellPrice(freightFinalCost, freightMargin) - freightFinalCost, orgCurrency)}</span></TableCell>
+                    {/* Sea Freight Section */}
+                    <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_sea_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_cost_usd', val)} align="right" /></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(seaFreightAudConv, orgCurrency)}</span></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_sea_freight_cost_aud'] || seaFreightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_cost_aud', val)} align="right" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_sea_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_margin_percent', val)} /></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(seaFreightSell, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(seaFreightGP, orgCurrency)}</span></TableCell>
+
+                    {/* Road Freight Section */}
+                    <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_road_freight_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_road_freight_cost_aud', val)} align="right" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_road_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_road_freight_margin_percent', val)} /></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(roadFreightSell, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(roadFreightGP, orgCurrency)}</span></TableCell>
                 </>
             )}
 
+            {/* Handling Section */}
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" /></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(getSellPrice(handlingCost, handlingMargin) - handlingCost, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(handlingSell, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(handlingGP, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' && (
                 <>
+                    {/* Pre-Delivery Section */}
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} /></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(getSellPrice(preDelCost, preDelMargin) - preDelCost, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(preDelSell, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(preDelGP, orgCurrency)}</span></TableCell>
                 </>
             )}
 
-            <TableCell className="text-right text-[10px] font-black text-slate-950 border-r border-b border-slate-300 px-4 bg-slate-100 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-slate-950 border-r-2 border-b border-slate-300 px-4 bg-slate-100 relative"><span className="relative z-10">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</span></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300 hover:bg-primary/10 relative"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-300 px-4 bg-green-500/10 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(totalPackageGP, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-green-600 border-r-2 border-b border-slate-300 px-4 bg-green-500/10 relative"><span className="relative z-10">{formatCurrency(totalPackageGP, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' ? (
                 ['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
@@ -201,8 +226,8 @@ function PricingRow({
                     return (
                         <React.Fragment key={l}>
                             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues[`${l}_price`] || ''} onChange={(val: any) => onUpdateValue(id, `${l}_price`, val)} align="right" /></TableCell>
-                            <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                            <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 hover:bg-primary/10 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                            <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
+                            <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
                         </React.Fragment>
                     );
                 })
@@ -215,8 +240,8 @@ function PricingRow({
                         const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                         return (
                             <React.Fragment key="opt-retail-v">
-                                <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                                <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 hover:bg-primary/10 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                                <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
+                                <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
                             </React.Fragment>
                         );
                     })()}
@@ -233,8 +258,8 @@ function PricingRow({
                 return (
                     <React.Fragment key={l.id}>
                         <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues[l.id] || ''} onChange={(val: any) => onUpdateValue(id, l.id, val)} align="right" /></TableCell>
-                        <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                        <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 hover:bg-primary/10 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                        <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
+                        <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
                     </React.Fragment>
                 );
             })}
@@ -258,10 +283,15 @@ function PricingTable({
                             <TableHead rowSpan={2} className="w-[340px] sticky left-0 top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
                             <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
                             <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
-                            {!isOptions && <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
-                            {!isOptions && <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
+                            {!isOptions && (
+                                <>
+                                    <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Sea Freight (Intl.)</span></TableHead>
+                                    <TableHead colSpan={4} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Road Freight (Dom.)</span></TableHead>
+                                </>
+                            )}
+                            <TableHead colSpan={4} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
+                            {!isOptions && <TableHead colSpan={4} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r-2 border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
                             <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
                         </TableRow>
                         <TableRow className="hover:bg-transparent bg-white shadow-sm h-[52px]">
@@ -278,26 +308,41 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[90]">Landed AUD (Incl. GST)</TableHead>
                             {!isOptions && (
                                 <>
+                                    {/* Sea Freight Detail Headers */}
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost USD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">AUD Conv</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
-                                </>
-                            )}
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
-                            {!isOptions && (
-                                <>
+                                    
+                                    {/* Road Freight Detail Headers */}
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                                 </>
                             )}
+                            {/* Handling Detail Headers */}
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
+                            
+                            {!isOptions && (
+                                <>
+                                    {/* Pre-Delivery Detail Headers */}
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
+                                </>
+                            )}
+                            
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold w-[120px] sticky top-[52px] z-[90]">Final Cost Excl. GST</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px] sticky top-[52px] z-[90]">{isOptions ? 'Opt' : 'Hull'} Margin %</TableHead>
-                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px] sticky top-[52px] z-[90]">Total GP $</TableHead>
+                            <TableHead className="border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px] sticky top-[52px] z-[90]">Total GP $</TableHead>
+                            
                             {!isOptions ? (
                                 <>
                                     {[
@@ -343,7 +388,7 @@ function PricingTable({
                                             <span>{range.name} RANGE</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-100 p-0" />
+                                    <TableCell colSpan={isOptions ? 21 : 55} className="border-b-2 border-slate-300 bg-slate-100 p-0" />
                                 </TableRow>
                                 {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                     <React.Fragment key={model.id}>
@@ -351,7 +396,7 @@ function PricingTable({
                                             <TableCell className="sticky left-0 z-[80] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                                 <div className="flex flex-col relative z-10"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                             </TableCell>
-                                            <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-50" />
+                                            <TableCell colSpan={isOptions ? 21 : 55} className="border-b-2 border-slate-300 bg-slate-50" />
                                         </TableRow>
                                         {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
                                             <PricingRow 
@@ -481,7 +526,8 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isO
 
     const options = [
         { value: 'exchange_duty_percent', label: 'Global Duty %' },
-        { value: 'op_freight_margin_percent', label: 'Global Freight Margin %' },
+        { value: 'op_sea_freight_margin_percent', label: 'Sea Freight Margin %' },
+        { value: 'op_road_freight_margin_percent', label: 'Road Freight Margin %' },
         { value: 'op_handling_margin_percent', label: 'Global Handling Margin %' },
         { value: 'op_predel_margin_percent', label: 'Global Pre-Delivery Margin %' },
         { value: 'strat_package_margin_percent', label: activeView === 'boats' ? 'Global Hull Margin %' : 'Global Option Margin %' },
