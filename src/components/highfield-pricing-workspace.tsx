@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs, updateDoc, serverTimestamp, where } from 'firebase/firestore';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
     Table, 
     TableBody, 
@@ -16,15 +16,11 @@ import {
     Loader2, 
     ChevronRight, 
     Calculator,
-    ArrowRightLeft,
     Percent,
     Zap,
-    Ship,
     Save,
     Maximize2,
-    Minimize2,
-    ArrowRight,
-    Search
+    Minimize2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,13 +40,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PricingStrategy {
@@ -349,8 +344,8 @@ function PricingTable({
     const inclLabel = "(INCL. GST)";
 
     return (
-        <div className="flex-1 w-full overflow-hidden flex flex-col bg-white border-t relative pricing-matrix-container">
-            <div className="flex-1 overflow-x-auto overflow-y-auto">
+        <div className="flex-1 w-full overflow-hidden flex flex-col bg-white relative pricing-matrix-container">
+            <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin">
                 <Table className="border-separate border-spacing-0 w-max table-fixed pricing-matrix-table">
                     <TableHeader className="sticky top-0 z-[40]">
                         <TableRow className="hover:bg-transparent">
@@ -606,7 +601,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [ranges, searchTerm, allModels]);
 
     const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 shadow-sm relative z-[10]">
+        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[10]">
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
@@ -646,7 +641,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 bg-primary text-white hover:scale-105 transition-all"
                     >
                         <Maximize2 className="h-4 w-4 mr-2" />
-                        Precision Focus
+                        FOCUS MODE
                     </Button>
                 ) : (
                     <Button 
@@ -666,100 +661,43 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     if (loadingModels || strategyLoading || orgLoading) return <div className="flex-1 flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
-    if (!isFocusMode) {
-        return (
-            <div className="h-full flex flex-col overflow-hidden">
-                <WorkspaceHeader />
-                <ScrollArea className="flex-1 bg-slate-50/50">
-                    <div className="p-10 space-y-10 max-w-7xl mx-auto">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-1.5">
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-                                    <Calculator className="h-3.5 w-3.5" />
-                                    <span>Strategic Pricing Control</span>
-                                </div>
-                                <h2 className="text-4xl font-black uppercase tracking-tighter italic">Highfield Workspace</h2>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {ranges?.map(range => {
-                                const rangeModels = allModels.filter(m => m.rangeId === range.id);
-                                return (
-                                    <Card key={range.id} className="group relative border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm transition-all hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 flex flex-col">
-                                        <div className="aspect-[16/10] relative border-b bg-muted/10">
-                                            {range.imageUrl ? (
-                                                <Image src={range.imageUrl} alt={range.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" unoptimized />
-                                            ) : (
-                                                <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-16 w-16" /></div>
-                                            )}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                                            <div className="absolute bottom-6 left-8">
-                                                <h3 className="text-2xl font-black text-white uppercase tracking-tight italic">{range.name}</h3>
-                                            </div>
-                                        </div>
-                                        <CardContent className="p-8 space-y-6 flex-1">
-                                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
-                                                <span>Inventory Complexity</span>
-                                                <span>Configuration Tier</span>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-baseline gap-1">
-                                                    <span className="text-3xl font-black text-slate-900">{rangeModels.length}</span>
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Models</span>
-                                                </div>
-                                                <Badge variant="secondary" className="h-6 font-black uppercase text-[9px] px-3 bg-primary/5 text-primary border-primary/10">Precision Managed</Badge>
-                                            </div>
-                                        </CardContent>
-                                        <CardFooter className="px-8 pb-8 pt-0 mt-auto">
-                                            <Button 
-                                                variant="ghost" 
-                                                className="w-full h-12 rounded-xl font-black uppercase text-[10px] tracking-widest bg-slate-50 hover:bg-primary hover:text-white transition-all group/btn"
-                                                onClick={() => {
-                                                    setExpandedRanges([range.id]);
-                                                    setIsFocusMode(true);
-                                                }}
-                                            >
-                                                Audit {range.name} Series
-                                                <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </ScrollArea>
-            </div>
-        );
-    }
+    const MatrixContent = () => (
+        <div className="flex flex-col h-full bg-white overflow-hidden">
+            <WorkspaceHeader isFocus={isFocusMode} />
+            <PricingTable 
+                filteredRanges={filteredRanges}
+                expandedRanges={expandedRanges}
+                toggleRange={toggleRange}
+                allModels={allModels}
+                allVariants={allVariants}
+                activeView={activeView}
+                strategy={strategy}
+                onUpdateValue={onUpdateValue}
+                vendor={vendor}
+                organisation={organisation}
+                activeExchangeRate={activeExchangeRate}
+            />
+        </div>
+    );
 
     return (
-        <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-            <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
-                <div className="flex flex-col h-full bg-background overflow-hidden">
-                    <WorkspaceHeader isFocus />
-                    <PricingTable 
-                        filteredRanges={filteredRanges}
-                        expandedRanges={expandedRanges}
-                        toggleRange={toggleRange}
-                        allModels={allModels}
-                        allVariants={allVariants}
-                        activeView={activeView}
-                        strategy={strategy}
-                        onUpdateValue={onUpdateValue}
-                        vendor={vendor}
-                        organisation={organisation}
-                        activeExchangeRate={activeExchangeRate}
-                    />
-                </div>
-            </DialogContent>
+        <div className="flex-1 h-full p-8 overflow-hidden">
+            <Card className="h-full rounded-[2.5rem] border-2 shadow-2xl overflow-hidden flex flex-col">
+                <MatrixContent />
+            </Card>
+
+            <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
+                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
+                    <MatrixContent />
+                </DialogContent>
+            </Dialog>
+
             <GlobalUpdateDialog 
                 isOpen={isGlobalUpdateOpen} 
                 onOpenChange={setIsGlobalUpdateOpen} 
                 onApply={handleGlobalUpdate} 
                 activeView={activeView}
             />
-        </Dialog>
+        </div>
     );
 }

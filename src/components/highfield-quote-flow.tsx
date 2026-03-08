@@ -244,6 +244,11 @@ export function HighfieldQuoteFlow({
         setSelectedOptionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
+    const handleMaterialSelect = (mat: 'PVC' | 'HYP') => {
+        setSelectedMaterial(mat);
+        setSelectedColor(null); // Reset color when material changes
+    };
+
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
@@ -369,7 +374,7 @@ export function HighfieldQuoteFlow({
                                                 <button
                                                     key={mat}
                                                     type="button"
-                                                    onClick={() => handleMaterialSelect(mat)}
+                                                    onClick={() => handleMaterialSelect(mat as any)}
                                                     className={cn(
                                                         "group relative flex flex-col items-start p-8 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[200px] text-left",
                                                         selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/40"
@@ -512,11 +517,13 @@ export function HighfieldQuoteFlow({
                                                     <p className="font-black uppercase text-sm tracking-tight">{activeVariant?.colorName || 'Not Selected'}</p>
                                                 </div>
                                             </div>
+                                            
                                             <Separator className="border-dashed" />
+                                            
                                             <div className="space-y-4">
                                                 <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Selection Summary</span>
                                                 <div className="grid gap-2">
-                                                    {selectedOptionIds.map(id => {
+                                                    {selectedOptionIds.length > 0 ? selectedOptionIds.map(id => {
                                                         const opt = model.optionalFeatures?.find((f: any) => f.id === id);
                                                         return opt && (
                                                             <div key={id} className="flex items-center justify-between text-[10px] font-bold p-3 bg-slate-50 rounded-xl border">
@@ -524,8 +531,27 @@ export function HighfieldQuoteFlow({
                                                                 <span className="font-black text-primary">${(opt.sellPriceExclGst || 0).toLocaleString()}</span>
                                                             </div>
                                                         );
-                                                    })}
+                                                    }) : (
+                                                        <p className="text-[10px] text-muted-foreground italic font-medium">No optional features selected.</p>
+                                                    )}
                                                 </div>
+                                            </div>
+
+                                            <Separator className="border-dashed" />
+
+                                            <div className="space-y-4">
+                                                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Engine Selection</span>
+                                                {selectedMotor ? (
+                                                    <div className="flex items-center justify-between text-[10px] font-bold p-3 bg-primary/5 rounded-xl border border-primary/20">
+                                                        <div className="flex items-center gap-3">
+                                                            <Anchor className="h-3.5 w-3.5 text-primary" />
+                                                            <span className="uppercase tracking-tight">{selectedMotor['Model Name']}</span>
+                                                        </div>
+                                                        <span className="font-black text-primary">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</span>
+                                                    </div>
+                                                ) : (
+                                                    <Badge variant="secondary" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest">Supply Only (No Engine)</Badge>
+                                                )}
                                             </div>
                                         </CardContent>
                                     </Card>
