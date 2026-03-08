@@ -45,8 +45,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <SidebarInset className="overflow-hidden flex flex-col h-screen max-w-full relative bg-background">
           <main className={cn(
-            "flex-1 overflow-y-auto overflow-x-hidden min-w-0",
-            !isModulePage ? "p-8" : "p-0"
+            "flex-1 min-w-0 min-h-0",
+            !isModulePage ? "p-8 overflow-y-auto" : "p-0 overflow-hidden"
           )}>
             {children}
           </main>

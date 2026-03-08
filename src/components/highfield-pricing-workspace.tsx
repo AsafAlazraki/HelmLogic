@@ -25,8 +25,7 @@ import {
     ArrowRightLeft,
     MessageSquare,
     ChevronDown,
-    Ship,
-    Star
+    Ship
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +51,6 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 
 interface PricingStrategy {
@@ -62,7 +60,6 @@ interface PricingStrategy {
 interface Range {
     id: string;
     name: string;
-    imageUrl?: string;
 }
 
 interface Model {
@@ -324,7 +321,7 @@ function PricingTable({
     const inclLabel = "(INCL. GST)";
 
     return (
-        <div className="flex-1 w-full overflow-hidden flex flex-col bg-white relative pricing-matrix-container">
+        <div className="flex-1 w-full overflow-hidden flex flex-col bg-white relative pricing-matrix-container border-t">
             <div className="flex-1 overflow-auto scrollbar-thin">
                 <Table className="border-separate border-spacing-0 w-max table-fixed pricing-matrix-table">
                     <TableHeader className="sticky top-0 z-[100]">
