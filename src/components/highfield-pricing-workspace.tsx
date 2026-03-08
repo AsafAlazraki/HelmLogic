@@ -670,7 +670,15 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                     <Zap className="h-4 w-4 mr-2" />
                     Global Update
                 </Button>
-                {isFocus && (
+                {!isFocus ? (
+                    <Button 
+                        onClick={() => setIsFocusMode(true)}
+                        className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 bg-primary text-white hover:scale-105 transition-all"
+                    >
+                        <Maximize2 className="h-4 w-4 mr-2" />
+                        Precision Focus
+                    </Button>
+                ) : (
                     <Button 
                         type="button" 
                         onClick={() => setIsFocusMode(false)} 
@@ -690,95 +698,87 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
     if (!isFocusMode) {
         return (
-            <ScrollArea className="h-full bg-slate-50/50">
-                <div className="p-10 space-y-10 max-w-7xl mx-auto">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-                                <Calculator className="h-3.5 w-3.5" />
-                                <span>Strategic Pricing Control</span>
+            <div className="h-full flex flex-col overflow-hidden">
+                <WorkspaceHeader />
+                <ScrollArea className="flex-1 bg-slate-50/50">
+                    <div className="p-10 space-y-10 max-w-7xl mx-auto">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
+                                    <Calculator className="h-3.5 w-3.5" />
+                                    <span>Strategic Pricing Control</span>
+                                </div>
+                                <h2 className="text-4xl font-black uppercase tracking-tighter italic">Highfield Workspace</h2>
                             </div>
-                            <h2 className="text-4xl font-black uppercase tracking-tighter italic">Highfield Workspace</h2>
                         </div>
-                        <Button 
-                            onClick={() => setIsFocusMode(true)}
-                            size="lg"
-                            className="h-16 px-10 rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all hover:scale-105 bg-primary text-white"
-                        >
-                            <Maximize2 className="h-4 w-4 mr-2" />
-                            Enter Precision Audit
-                        </Button>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {ranges?.map(range => {
-                            const rangeModels = allModels.filter(m => m.rangeId === range.id);
-                            return (
-                                <Card key={range.id} className="group relative border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm transition-all hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 flex flex-col">
-                                    <div className="aspect-[16/10] relative border-b bg-muted/10">
-                                        {range.imageUrl ? (
-                                            <Image src={range.imageUrl} alt={range.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" unoptimized />
-                                        ) : (
-                                            <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-16 w-16" /></div>
-                                        )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                                        <div className="absolute bottom-6 left-8">
-                                            <h3 className="text-2xl font-black text-white uppercase tracking-tight italic">{range.name}</h3>
-                                        </div>
-                                    </div>
-                                    <CardContent className="p-8 space-y-6 flex-1">
-                                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
-                                            <span>Inventory Complexity</span>
-                                            <span>Configuration Tier</span>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-3xl font-black text-slate-900">{rangeModels.length}</span>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase">Models</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {ranges?.map(range => {
+                                const rangeModels = allModels.filter(m => m.rangeId === range.id);
+                                return (
+                                    <Card key={range.id} className="group relative border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm transition-all hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 flex flex-col">
+                                        <div className="aspect-[16/10] relative border-b bg-muted/10">
+                                            {range.imageUrl ? (
+                                                <Image src={range.imageUrl} alt={range.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" unoptimized />
+                                            ) : (
+                                                <div className="flex h-full w-full items-center justify-center opacity-5"><Ship className="h-16 w-16" /></div>
+                                            )}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                                            <div className="absolute bottom-6 left-8">
+                                                <h3 className="text-2xl font-black text-white uppercase tracking-tight italic">{range.name}</h3>
                                             </div>
-                                            <Badge variant="secondary" className="h-6 font-black uppercase text-[9px] px-3 bg-primary/5 text-primary border-primary/10">Precision Managed</Badge>
                                         </div>
-                                    </CardContent>
-                                    <CardFooter className="px-8 pb-8 pt-0 mt-auto">
-                                        <Button 
-                                            variant="ghost" 
-                                            className="w-full h-12 rounded-xl font-black uppercase text-[10px] tracking-widest bg-slate-50 hover:bg-primary hover:text-white transition-all group/btn"
-                                            onClick={() => {
-                                                setExpandedRanges([range.id]);
-                                                setIsFocusMode(true);
-                                            }}
-                                        >
-                                            Audit {range.name} Series
-                                            <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-                            );
-                        })}
-                    </div>
+                                        <CardContent className="p-8 space-y-6 flex-1">
+                                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                                <span>Inventory Complexity</span>
+                                                <span>Configuration Tier</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-3xl font-black text-slate-900">{rangeModels.length}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Models</span>
+                                                </div>
+                                                <Badge variant="secondary" className="h-6 font-black uppercase text-[9px] px-3 bg-primary/5 text-primary border-primary/10">Precision Managed</Badge>
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="px-8 pb-8 pt-0 mt-auto">
+                                            <Button 
+                                                variant="ghost" 
+                                                className="w-full h-12 rounded-xl font-black uppercase text-[10px] tracking-widest bg-slate-50 hover:bg-primary hover:text-white transition-all group/btn"
+                                                onClick={() => {
+                                                    setExpandedRanges([range.id]);
+                                                    setIsFocusMode(true);
+                                                }}
+                                            >
+                                                Audit {range.name} Series
+                                                <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                );
+                            })}
+                        </div>
 
-                    <div className="p-10 bg-primary/5 rounded-[3rem] border-2 border-primary/10 flex items-start gap-8">
-                        <div className="h-16 w-16 bg-white rounded-[1.5rem] shadow-xl flex items-center justify-center shrink-0 border-2 border-primary/5">
-                            <ShieldCheck className="h-8 w-8 text-primary" />
-                        </div>
-                        <div className="space-y-2">
-                            <h4 className="text-lg font-black uppercase tracking-tight text-primary">Strategic Configuration Mode</h4>
-                            <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-4xl">
-                                The high-precision pricing matrix is optimized for full-screen auditing. Select a range above or enter the main workspace to manage exchange rates, landed costs, and multi-tier retail margins with absolute precision.
-                            </p>
+                        <div className="p-10 bg-primary/5 rounded-[3rem] border-2 border-primary/10 flex items-start gap-8">
+                            <div className="h-16 w-16 bg-white rounded-[1.5rem] shadow-xl flex items-center justify-center shrink-0 border-2 border-primary/5">
+                                <ShieldCheck className="h-8 w-8 text-primary" />
+                            </div>
+                            <div className="space-y-2">
+                                <h4 className="text-lg font-black uppercase tracking-tight text-primary">Strategic Configuration Mode</h4>
+                                <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-4xl">
+                                    The high-precision pricing matrix is optimized for full-screen auditing. Select a range above or enter the main workspace to manage exchange rates, landed costs, and multi-tier retail margins with absolute precision.
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </ScrollArea>
+                </ScrollArea>
+            </div>
         );
     }
 
     return (
         <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
             <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
-                <DialogHeader className="p-0">
-                    <DialogTitle className="sr-only">Highfield Pricing Manager - Focus Mode</DialogTitle>
-                </DialogHeader>
                 <div className="flex flex-col h-full bg-background overflow-hidden">
                     <WorkspaceHeader isFocus />
                     <PricingTable 

@@ -783,7 +783,8 @@ export function HighfieldQuoteFlow({
                                                         if (!path) return null;
                                                         const clean = path.trim().replace(/\\/g, '/');
                                                         if (clean.startsWith('http')) return clean;
-                                                        return `https://www.yamaha-motor.com.au${clean.startsWith('/') ? '' : '/'}${clean}`;
+                                                        const prefix = clean.startsWith('/') ? '' : '/';
+                                                        return `https://www.yamaha-motor.com.au${prefix}${clean}`;
                                                     };
                                                     
                                                     return (
