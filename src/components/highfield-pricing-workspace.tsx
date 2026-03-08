@@ -57,12 +57,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Label } from '@/components/ui/label';
 
 interface PricingStrategy {
     itemValues?: Record<string, Record<string, any>>;
@@ -238,20 +238,20 @@ function PricingRow({
     if (activeView === 'tax') {
         return (
             <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
-                <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] pricing-matrix-cell", rowBgClass, indent ? "pl-16" : "px-8")}>
+                <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/5 pricing-matrix-cell", rowBgClass, indent ? "pl-16" : "px-8")}>
                     <div className="flex flex-col min-w-[240px] relative z-10">
                         <span className="font-black text-[11px] uppercase truncate tracking-tight text-slate-950">{name}</span>
                         <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
                     </div>
                 </TableCell>
-                <TableCell className="text-right border-r border-b border-slate-200 px-4 text-[10px] font-black text-slate-500 pricing-matrix-cell hover:bg-primary/[0.08] relative">
+                <TableCell className="text-right border-r border-b border-slate-200 px-4 text-[10px] font-black text-slate-500 pricing-matrix-cell hover:bg-primary/10 relative">
                     <span className="relative z-10">{formatCurrency(baseCostAudEx * gstRate, orgCurrency)}</span>
                 </TableCell>
                 {['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
                     const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
                     const gstAmount = sellEx * gstRate;
                     return (
-                        <TableCell key={l} className="text-right border-r border-b border-slate-200 px-4 text-[10px] font-black text-primary bg-primary/[0.02] pricing-matrix-cell hover:bg-primary/[0.08] relative">
+                        <TableCell key={l} className="text-right border-r border-b border-slate-200 px-4 text-[10px] font-black text-primary bg-primary/5 pricing-matrix-cell hover:bg-primary/10 relative">
                             <span className="relative z-10">{formatCurrency(gstAmount, orgCurrency)}</span>
                         </TableCell>
                     );
@@ -262,7 +262,7 @@ function PricingRow({
 
     return (
         <TableRow className={cn("transition-colors group h-[40px]", rowBgClass)}>
-            <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/[0.03] pricing-matrix-cell", rowBgClass, indent ? "pl-16" : "px-8")}>
+            <TableCell className={cn("sticky left-0 z-[20] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/5 pricing-matrix-cell", rowBgClass, indent ? "pl-16" : "px-8")}>
                 <div className="flex flex-col min-w-[240px] relative z-10">
                     <span className={cn("font-black text-[11px] uppercase truncate tracking-tight", isOption ? "text-slate-700" : "text-slate-950")}>{name}</span>
                     <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
@@ -270,49 +270,49 @@ function PricingRow({
             </TableCell>
 
             {/* Exchange Rate */}
-            <TableCell className="text-center border-r border-b border-slate-200 bg-white pricing-matrix-cell hover:bg-primary/[0.08] relative"><Badge variant="outline" className="font-black text-[8px] h-4 border-slate-200 relative z-10">{vendorCurrency}</Badge></TableCell>
-            <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{exchangeRate.toFixed(4)}</span></TableCell>
-            <TableCell className="text-center border-r border-b border-slate-200 bg-white pricing-matrix-cell hover:bg-primary/[0.08] relative"><Badge variant="outline" className="font-black text-[8px] h-4 border-slate-200 relative z-10">{orgCurrency}</Badge></TableCell>
-            <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">1.0000</span></TableCell>
-            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['exchange_duty_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'exchange_duty_percent', val)} /></TableCell>
+            <TableCell className="text-center border-r border-b border-slate-200 bg-white pricing-matrix-cell hover:bg-primary/10 relative"><Badge variant="outline" className="font-black text-[8px] h-4 border-slate-200 relative z-10">{vendorCurrency}</Badge></TableCell>
+            <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{exchangeRate.toFixed(4)}</span></TableCell>
+            <TableCell className="text-center border-r border-b border-slate-200 bg-white pricing-matrix-cell hover:bg-primary/10 relative"><Badge variant="outline" className="font-black text-[8px] h-4 border-slate-200 relative z-10">{orgCurrency}</Badge></TableCell>
+            <TableCell className="text-center border-r border-b border-slate-200 bg-white text-[10px] font-black text-primary pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">1.0000</span></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['exchange_duty_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'exchange_duty_percent', val)} /></TableCell>
 
             {/* Base Cost */}
-            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['base_cost_override'] || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency((parseFloat(itemValues['base_cost_override'] || cost || '0')) / (exchangeRate || 1), orgCurrency)}</span></TableCell>
-            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'factory_discount_usd', val)} align="right" /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency((parseFloat(itemValues['factory_discount_usd'] || '0')) / (exchangeRate || 1), orgCurrency)}</span></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/[0.02] pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(baseCostAudEx, orgCurrency)}</span></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(baseCostAudIn, orgCurrency)}</span></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['base_cost_override'] || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" /></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency((parseFloat(itemValues['base_cost_override'] || cost || '0')) / (exchangeRate || 1), orgCurrency)}</span></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'factory_discount_usd', val)} align="right" /></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency((parseFloat(itemValues['factory_discount_usd'] || '0')) / (exchangeRate || 1), orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(baseCostAudEx, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(baseCostAudIn, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' && (
                 <>
                     {/* Freight */}
-                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" /></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(freightAudConv, orgCurrency)}</span></TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" /></TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['op_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_margin_percent', val)} /></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/[0.02] pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(getSellPrice(freightFinalCost, freightMargin) - freightFinalCost, orgCurrency)}</span></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" /></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(freightAudConv, orgCurrency)}</span></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_margin_percent', val)} /></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(getSellPrice(freightFinalCost, freightMargin) - freightFinalCost, orgCurrency)}</span></TableCell>
                 </>
             )}
 
             {/* Handling */}
-            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" /></TableCell>
-            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/[0.02] pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(getSellPrice(handlingCost, handlingMargin) - handlingCost, orgCurrency)}</span></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" /></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} /></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(getSellPrice(handlingCost, handlingMargin) - handlingCost, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' && (
                 <>
                     {/* Pre-Delivery */}
-                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
-                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} /></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/[0.02] pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(getSellPrice(preDelCost, preDelMargin) - preDelCost, orgCurrency)}</span></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} /></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(getSellPrice(preDelCost, preDelMargin) - preDelCost, orgCurrency)}</span></TableCell>
                 </>
             )}
 
             {/* Totals */}
-            <TableCell className="text-right text-[10px] font-black text-slate-950 border-r border-b border-slate-300 px-4 bg-slate-100/50 pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</span></TableCell>
-            <TableCell className="p-0 border-r border-b border-slate-300 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-300 px-4 bg-green-500/[0.05] pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(totalPackageGP, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-slate-950 border-r border-b border-slate-300 px-4 bg-slate-100/50 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</span></TableCell>
+            <TableCell className="p-0 border-r border-b border-slate-300 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} /></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-300 px-4 bg-green-500/10 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(totalPackageGP, orgCurrency)}</span></TableCell>
 
             {/* Price Levels */}
             {activeView === 'boats' ? (
@@ -322,23 +322,23 @@ function PricingRow({
                     const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                     return (
                         <React.Fragment key={l}>
-                            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues[`${l}_price`] || ''} onChange={(val: any) => onUpdateValue(id, `${l}_price`, val)} align="right" /></TableCell>
-                            <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                            <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/[0.02] pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                            <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues[`${l}_price`] || ''} onChange={(val: any) => onUpdateValue(id, `${l}_price`, val)} align="right" /></TableCell>
+                            <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
+                            <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
                         </React.Fragment>
                     );
                 })
             ) : (
                 <>
-                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" /></TableCell>
+                    <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" /></TableCell>
                     {(() => {
                         const sellEx = parseFloat(itemValues['hull_cash_price'] || '0');
                         const sellIn = sellEx * gstMultiplier;
                         const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                         return (
                             <>
-                                <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                                <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/[0.02] pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                                <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
+                                <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
                             </>
                         );
                     })()}
@@ -354,9 +354,9 @@ function PricingRow({
                 const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                 return (
                     <React.Fragment key={l.id}>
-                        <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/[0.08] relative"><EditableCell value={itemValues[l.id] || ''} onChange={(val: any) => onUpdateValue(id, l.id, val)} align="right" /></TableCell>
-                        <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                        <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/[0.02] pricing-matrix-cell hover:bg-primary/[0.08] relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                        <TableCell className="p-0 border-r border-b border-slate-200 pricing-matrix-cell hover:bg-primary/10 relative"><EditableCell value={itemValues[l.id] || ''} onChange={(val: any) => onUpdateValue(id, l.id, val)} align="right" /></TableCell>
+                        <TableCell className="text-right text-[9px] font-bold text-slate-500 border-r border-b border-slate-200 px-3 bg-slate-50 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
+                        <TableCell className="text-center text-[9px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 pricing-matrix-cell hover:bg-primary/10 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
                     </React.Fragment>
                 );
             })}
@@ -370,7 +370,7 @@ function PricingTable({
     const isOptions = activeView === 'options';
     const isTax = activeView === 'tax';
     const shortCode = (organisation?.shortCode || 'NSM').toUpperCase();
-    const inclLabel = `(INCL. GST)`;
+    const inclLabel = "(INCL. GST)";
 
     const boatPriceLevels = [
         { id: 'sell', label: `${shortCode} SELL PRICE (EXCL. GST)` },
@@ -447,7 +447,7 @@ function PricingTable({
                                                 <React.Fragment key={`h-${level.id}-${i}`}>
                                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{level.label}</TableHead>
                                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{inclLabel}</TableHead>
-                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40] pricing-matrix-cell">{`GP %`}</TableHead>
+                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40] pricing-matrix-cell">GP %</TableHead>
                                                 </React.Fragment>
                                             ))}
                                             {[
@@ -457,7 +457,7 @@ function PricingTable({
                                                 <React.Fragment key={`srp-${level.id}-${i}`}>
                                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{level.label}</TableHead>
                                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{inclLabel}</TableHead>
-                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40] pricing-matrix-cell">{`GP %`}</TableHead>
+                                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40] pricing-matrix-cell">GP %</TableHead>
                                                 </React.Fragment>
                                             ))}
                                         </>
@@ -465,7 +465,7 @@ function PricingTable({
                                         <React.Fragment key="opt-head-row">
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{`${shortCode} SELL PRICE (EXCL. GST)`}</TableHead>
                                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[40] pricing-matrix-cell">{inclLabel}</TableHead>
-                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40] pricing-matrix-cell">{`GP %`}</TableHead>
+                                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[40] pricing-matrix-cell">GP %</TableHead>
                                         </React.Fragment>
                                     )}
                                 </>
@@ -518,10 +518,10 @@ function PricingTable({
                                         ))}
                                     </React.Fragment>
                                 ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </div>
+                            </React.Fragment>
+                        ))}
+                    </TableBody>
+                </Table>
             </div>
         </div>
     );
@@ -650,9 +650,9 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </div>
                 <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="ml-4">
                     <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
-                        <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">Hull & SKUs</TabsTrigger>
-                        <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">Factory Options</TabsTrigger>
-                        <TabsTrigger value="tax" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">GST Breakdown</TabsTrigger>
+                        <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>
+                        <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">FACTORY OPTIONS</TabsTrigger>
+                        <TabsTrigger value="tax" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">GST BREAKDOWN</TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>
