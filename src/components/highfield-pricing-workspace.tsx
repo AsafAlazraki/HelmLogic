@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -65,6 +64,7 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PricingStrategy {
     itemValues?: Record<string, Record<string, any>>;
