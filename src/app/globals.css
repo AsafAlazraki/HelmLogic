@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -56,16 +55,16 @@
   .pricing-matrix-table td:hover::after,
   .pricing-matrix-table th:hover::after {
     content: "";
-    @apply absolute left-0 w-full bg-primary/5 pointer-events-none;
+    @apply absolute left-0 w-full bg-primary/[0.04] pointer-events-none;
     top: -1000vh;
     height: 2000vh;
     z-index: 1; 
   }
 
-  /* Reset backgrounds for sticky cells so they don't appear transparent during highlight */
+  /* Sticky backgrounds must be solid */
   .pricing-matrix-table td.sticky,
   .pricing-matrix-table th.sticky {
-    @apply bg-white;
+    @apply bg-inherit;
   }
 
   /* Ensure text remains readable above the highlight layer */
@@ -73,5 +72,20 @@
   .pricing-matrix-cell > span,
   .pricing-matrix-cell > input {
     @apply relative z-10;
+  }
+
+  /* Custom Professional Scrollbar for dense matrices */
+  .pricing-matrix-container ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .pricing-matrix-container ::-webkit-scrollbar-thumb {
+    @apply bg-primary/20 rounded-full border-2 border-slate-100;
+  }
+  .pricing-matrix-container ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/40;
+  }
+  .pricing-matrix-container ::-webkit-scrollbar-track {
+    @apply bg-slate-100;
   }
 }

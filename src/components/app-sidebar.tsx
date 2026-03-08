@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/collapsible";
 import { navLinks } from "@/lib/nav-links";
 import { Logo } from "@/components/logo";
-import { ChevronRight, Bell, User, LogOut, ShieldCheck, Cog, Check } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
 import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
