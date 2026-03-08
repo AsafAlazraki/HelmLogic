@@ -688,29 +688,6 @@ export default function ModuleDetailsPage() {
                                                 <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
                                             </CardContent>
                                         </Card>
-
-                                        {/* Templates Card */}
-                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Blueprint</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Templates</h3>
-                                                </div>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
-                                                >
-                                                    <PlusCircle className="h-4 w-4" />
-                                                </Button>
-                                            </CardHeader>
-                                            <CardContent className="flex-1 min-h-0 flex flex-col items-center justify-center p-8 text-center bg-slate-50/30">
-                                                <div className="space-y-2 opacity-20">
-                                                    <ClipboardList className="h-8 w-8 mx-auto text-slate-400" />
-                                                    <p className="text-[10px] font-black uppercase tracking-widest">Template Engine (Coming Soon)</p>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
                                     </div>
 
                                     <Card className="col-span-8 flex flex-col border-2 rounded-[3rem] shadow-2xl bg-white overflow-hidden">
@@ -841,10 +818,33 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="settings" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
-                            <div className="p-8 space-y-8 pb-32">
+                            <div className="p-8 grid md:grid-cols-2 gap-8 pb-32">
+                                {/* Templates Card */}
+                                <Card className="border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden flex flex-col">
+                                    <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2 text-primary">Blueprint</Badge>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Templates</h3>
+                                        </div>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
+                                        >
+                                            <PlusCircle className="h-4 w-4" />
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="flex-1 min-h-[200px] flex flex-col items-center justify-center p-8 text-center bg-slate-50/30">
+                                        <div className="space-y-2 opacity-20">
+                                            <ClipboardList className="h-12 w-12 mx-auto text-slate-400" />
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-4">Template Engine (Coming Soon)</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
                                 {currentMemberOrg?.subDealersEnabled && (
-                                    <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
-                                        <CardHeader className="p-8 border-b bg-muted/5 flex flex-row items-center justify-between">
+                                    <Card className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm flex flex-col">
+                                        <CardHeader className="p-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                             <div>
                                                 <CardTitle className="text-xl font-black uppercase tracking-tight">Sub Dealer Network</CardTitle>
                                                 <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Manage business relationships and regional allocations.</CardDescription>
@@ -856,7 +856,7 @@ export default function ModuleDetailsPage() {
                                                 </Link>
                                             </Button>
                                         </CardHeader>
-                                        <CardContent className="p-0">
+                                        <CardContent className="p-0 flex-1">
                                             {subDealers && subDealers.length > 0 ? (
                                                 <Table>
                                                     <TableHeader>

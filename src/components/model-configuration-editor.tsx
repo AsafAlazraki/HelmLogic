@@ -373,10 +373,13 @@ export function ModelConfigurationEditor({
                                                 <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                             </Button>
                                         </CollapsibleTrigger>
-                                        <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                            <ShieldCheck className="h-5 w-5 text-primary" />
-                                            Range Identity
-                                        </CardTitle>
+                                        <div className="flex flex-col">
+                                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                                <ShieldCheck className="h-5 w-5 text-primary" />
+                                                Range Identity
+                                            </CardTitle>
+                                            <CardDescription className="text-xs">Configure the core parameters for this model series.</CardDescription>
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CollapsibleContent>
