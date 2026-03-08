@@ -1,57 +1,46 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, doc, getDocs, updateDoc, serverTimestamp, where } from 'firebase/firestore';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableHead, 
-    TableHeader, 
-    TableRow 
-} from '@/components/ui/table';
-import { 
-    Loader2, 
-    ChevronRight, 
-    Calculator,
-    Percent,
-    Zap,
-    Save,
-    Maximize2,
-    Minimize2,
-    Building,
-    ArrowRightLeft,
-    MessageSquare,
-    ChevronDown,
-    Ship
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose
-} from '@/components/ui/dialog';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/currency-utils';
-import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
+import { useUser } from "@/firebase/auth/use-user";
+import { useDoc } from "@/firebase/firestore/use-doc";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp } from "firebase/firestore";
+import React, { useState, useMemo, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import NextImage from "next/image";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { formatCurrency } from "@/lib/currency-utils";
+import { useToast } from "@/hooks/use-toast";
+
+interface Vendor {
+    id: string;
+    name: string;
+    logoUrl?: string;
+    vendorType: string;
+    slug?: string;
+    currency?: string;
+}
+
+interface Organisation {
+    id: string;
+    name: string;
+    roles?: any[];
+    tradingCurrency?: string;
+    dataWarehouseSubscriptions?: string[];
+    permissions?: Record<string, Record<string, boolean>>;
+    gstPercentage?: number;
+    shortCode?: string;
+}
 
 interface PricingStrategy {
     itemValues?: Record<string, Record<string, any>>;
@@ -68,6 +57,7 @@ interface Model {
     modelCode?: string;
     rangeId: string;
     optionalFeatures?: any[];
+    cost?: number;
 }
 
 interface Variant {
@@ -124,67 +114,6 @@ function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
     );
 }
 
-function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onApply: (field: string, value: string) => void, activeView: string }) {
-    const [field, setField] = useState<string>('exchange_duty_percent');
-    const [value, setValue] = useState('');
-
-    const options = [
-        { value: 'exchange_duty_percent', label: 'Global Duty %' },
-        { value: 'op_freight_margin_percent', label: 'Global Freight Margin %' },
-        { value: 'op_handling_margin_percent', label: 'Global Handling Margin %' },
-        { value: 'op_predel_margin_percent', label: 'Global Pre-Delivery Margin %' },
-        { value: 'strat_package_margin_percent', label: activeView === 'boats' ? 'Global Hull Margin %' : 'Global Option Margin %' },
-    ];
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
-                <DialogHeader className="p-8 border-b bg-muted/5">
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Global Update</DialogTitle>
-                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Catalog Adjustment</DialogDescription>
-                </DialogHeader>
-                <div className="p-8 space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target Field</Label>
-                        <Select value={field} onValueChange={setField}>
-                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-2">
-                                {options.map(o => <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold uppercase py-2.5">{o.label}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Universal Value (%)</Label>
-                        <div className="relative">
-                            <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                            <Input 
-                                type="number" 
-                                placeholder="0.00" 
-                                className="pl-12 h-12 font-black text-lg border-2 rounded-xl bg-muted/5 shadow-inner"
-                                value={value}
-                                onChange={(e) => setValue(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                </div>
-                <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
-                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
-                    <Button 
-                        onClick={() => { onApply(field, value); onOpenChange(false); setValue(''); }} 
-                        disabled={!value}
-                        className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white"
-                    >
-                        <Zap className="h-4 w-4 mr-2" />
-                        Confirm Global Sync
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 function PricingRow({ 
     id, name, sku, cost, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, rowIndex, activeView 
 }: any) {
@@ -232,16 +161,16 @@ function PricingRow({
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['exchange_duty_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'exchange_duty_percent', val)} /></TableCell>
 
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['base_cost_override'] || ''} placeholder={cost ? cost.toFixed(2) : "0.00"} onChange={(val: any) => onUpdateValue(id, 'base_cost_override', val)} align="right" /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency((parseFloat(itemValues['base_cost_override'] || cost || '0')) / (exchangeRate || 1), orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency((parseFloat(itemValues['base_cost_override'] || cost || '0')) / (exchangeRate || 1), orgCurrency)}</span></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['factory_discount_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'factory_discount_usd', val)} align="right" /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency((parseFloat(itemValues['factory_discount_usd'] || '0')) / (exchangeRate || 1), orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency((parseFloat(itemValues['factory_discount_usd'] || '0')) / (exchangeRate || 1), orgCurrency)}</span></TableCell>
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(baseCostAudEx, orgCurrency)}</span></TableCell>
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(baseCostAudIn, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' && (
                 <>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_usd', val)} align="right" /></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50/30 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(freightAudConv, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(freightAudConv, orgCurrency)}</span></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_cost_aud'] || freightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_freight_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative"><EditableCell value={itemValues['op_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_freight_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(getSellPrice(freightFinalCost, freightMargin) - freightFinalCost, orgCurrency)}</span></TableCell>
@@ -260,7 +189,7 @@ function PricingRow({
                 </>
             )}
 
-            <TableCell className="text-right text-[10px] font-black text-slate-950 border-r border-b border-slate-300 px-4 bg-slate-100/50 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-slate-950 border-r border-b border-slate-300 px-4 bg-slate-100 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</span></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300 hover:bg-primary/10 relative"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-300 px-4 bg-green-500/10 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(totalPackageGP, orgCurrency)}</span></TableCell>
 
@@ -327,13 +256,13 @@ function PricingTable({
                     <TableHeader className="sticky top-0 z-[100]">
                         <TableRow className="hover:bg-transparent h-[52px]">
                             <TableHead rowSpan={2} className="w-[340px] sticky left-0 top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 font-black uppercase text-[10px] shadow-[4px_4px_10px_-2px_rgba(0,0,0,0.1)] py-5 px-8 text-slate-950">Series & SKU</TableHead>
-                            <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
-                            <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
-                            {!isOptions && <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
-                            {!isOptions && <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
-                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
-                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b-2 bg-slate-100/90 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle backdrop-blur-sm"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
+                            <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
+                            <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
+                            {!isOptions && <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Freight</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
+                            {!isOptions && <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
+                            <TableHead colSpan={3} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
+                            <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
                         </TableRow>
                         <TableRow className="hover:bg-transparent bg-white shadow-sm h-[52px]">
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">From</TableHead>
@@ -414,7 +343,7 @@ function PricingTable({
                                             <span>{range.name} RANGE</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-100/60 p-0" />
+                                    <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-100 p-0" />
                                 </TableRow>
                                 {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
                                     <React.Fragment key={model.id}>
@@ -422,7 +351,7 @@ function PricingTable({
                                             <TableCell className="sticky left-0 z-[80] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
                                                 <div className="flex flex-col relative z-10"><span className="font-black text-[11px] uppercase tracking-tight text-slate-950">{model.name}</span><span className="text-[8px] font-black text-primary/90 uppercase">SERIES CODE: {model.modelCode}</span></div>
                                             </TableCell>
-                                            <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-50/50" />
+                                            <TableCell colSpan={isOptions ? 20 : 46} className="border-b-2 border-slate-300 bg-slate-50" />
                                         </TableRow>
                                         {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
                                             <PricingRow 
@@ -452,6 +381,161 @@ function PricingTable({
     );
 }
 
+function MatrixContent({ 
+    isFocus, 
+    activeView, 
+    setActiveView, 
+    setIsFocusMode, 
+    setIsGlobalUpdateOpen, 
+    vendor, 
+    organisation, 
+    filteredRanges, 
+    expandedRanges, 
+    toggleRange, 
+    allModels, 
+    allVariants, 
+    strategy, 
+    onUpdateValue, 
+    activeExchangeRate 
+}: any) {
+    return (
+        <div className="flex flex-col h-full bg-white overflow-hidden">
+            <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
+                            <Calculator className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">HIGHFIELD PRICING MANAGER</h2>
+                            {isFocus && (
+                                <div className="flex items-center gap-2 mt-1.5 animate-in slide-in-from-left-2 duration-300">
+                                    <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">AUDIT MODE</Badge>
+                                    <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{(vendor?.currency || 'USD')} BASE</Badge>
+                                    <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="ml-4">
+                        <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
+                            <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>
+                            <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">FACTORY OPTIONS</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button 
+                        type="button"
+                        variant="default" 
+                        size="sm" 
+                        className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg bg-primary text-white hover:bg-primary/90 transition-all border-none"
+                        onClick={() => setIsGlobalUpdateOpen(true)}
+                    >
+                        <Zap className="h-4 w-4 mr-1.5" />
+                        Global Update
+                    </Button>
+                    {!isFocus ? (
+                        <Button 
+                            onClick={() => setIsFocusMode(true)}
+                            className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 bg-primary text-white hover:scale-105 transition-all"
+                        >
+                            <Maximize2 className="h-4 w-4 mr-1.5" />
+                            FOCUS MODE
+                        </Button>
+                    ) : (
+                        <Button 
+                            type="button" 
+                            onClick={() => setIsFocusMode(false)} 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"
+                        >
+                            <Minimize2 className="h-4 w-4 mr-1.5" />
+                            EXIT FOCUS
+                        </Button>
+                    )}
+                </div>
+            </div>
+            <PricingTable 
+                filteredRanges={filteredRanges}
+                expandedRanges={expandedRanges}
+                toggleRange={toggleRange}
+                allModels={allModels}
+                allVariants={allVariants}
+                activeView={activeView}
+                strategy={strategy}
+                onUpdateValue={onUpdateValue}
+                vendor={vendor}
+                organisation={organisation}
+                activeExchangeRate={activeExchangeRate}
+            />
+        </div>
+    );
+}
+
+function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onApply: (field: string, value: string) => void, activeView: string }) {
+    const [field, setField] = useState<string>('exchange_duty_percent');
+    const [value, setValue] = useState('');
+
+    const options = [
+        { value: 'exchange_duty_percent', label: 'Global Duty %' },
+        { value: 'op_freight_margin_percent', label: 'Global Freight Margin %' },
+        { value: 'op_handling_margin_percent', label: 'Global Handling Margin %' },
+        { value: 'op_predel_margin_percent', label: 'Global Pre-Delivery Margin %' },
+        { value: 'strat_package_margin_percent', label: activeView === 'boats' ? 'Global Hull Margin %' : 'Global Option Margin %' },
+    ];
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-8 border-b bg-muted/5">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Global Update</DialogTitle>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Catalog Adjustment</DialogDescription>
+                </DialogHeader>
+                <div className="p-8 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target Field</Label>
+                        <Select value={field} onValueChange={setField}>
+                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-2">
+                                {options.map(o => <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold uppercase py-2.5">{o.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Universal Value (%)</Label>
+                        <div className="relative">
+                            <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                            <Input 
+                                type="number" 
+                                placeholder="0.00" 
+                                className="pl-12 h-12 font-black text-lg border-2 rounded-xl bg-muted/5 shadow-inner"
+                                value={value}
+                                onChange={(e) => setValue(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
+                    <Button 
+                        onClick={() => { onApply(field, value); onOpenChange(false); setValue(''); }} 
+                        disabled={!value}
+                        className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white"
+                    >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Confirm Global Sync
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -466,7 +550,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const { data: ranges } = useCollection<Range>(rangesQuery);
 
     const orgRef = useMemoFirebase(() => doc(firestore, 'organisations', organisationId), [firestore, organisationId]);
-    const { data: organisation, loading: orgLoading } = useDoc<any>(orgRef);
+    const { data: organisation, loading: orgLoading } = useDoc<Organisation>(orgRef);
 
     const ratesQuery = useMemoFirebase(() => collection(firestore, `organisations/${organisationId}/exchangeRates`), [firestore, organisationId]);
     const { data: exchangeRates } = useCollection<any>(ratesQuery);
@@ -557,92 +641,29 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         return ranges.filter(range => range.name.toLowerCase().includes(lower) || allModels.filter(m => m.rangeId === range.id).some(m => m.name.toLowerCase().includes(lower)));
     }, [ranges, searchTerm, allModels]);
 
-    const WorkspaceHeader = ({ isFocus = false }: { isFocus?: boolean }) => (
-        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
-            <div className="flex items-center gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
-                        <Calculator className="h-5 w-5" />
-                    </div>
-                    <div>
-                        <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">HIGHFIELD PRICING MANAGER</h2>
-                        {isFocus && (
-                            <div className="flex items-center gap-2 mt-1.5 animate-in slide-in-from-left-2 duration-300">
-                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">AUDIT MODE</Badge>
-                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{(vendor?.currency || 'USD')} BASE</Badge>
-                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
-                            </div>
-                        )}
-                    </div>
-                </div>
-                
-                <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="ml-4">
-                    <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
-                        <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>
-                        <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">FACTORY OPTIONS</TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
-            <div className="flex items-center gap-3">
-                <Button 
-                    type="button"
-                    variant="default" 
-                    size="sm" 
-                    className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg bg-primary text-white hover:bg-primary/90 transition-all border-none"
-                    onClick={() => setIsGlobalUpdateOpen(true)}
-                >
-                    <Zap className="h-4 w-4 mr-2" />
-                    Global Update
-                </Button>
-                {!isFocus ? (
-                    <Button 
-                        onClick={() => setIsFocusMode(true)}
-                        className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 bg-primary text-white hover:scale-105 transition-all"
-                    >
-                        <Maximize2 className="h-4 w-4 mr-2" />
-                        FOCUS MODE
-                    </Button>
-                ) : (
-                    <Button 
-                        type="button" 
-                        onClick={() => setIsFocusMode(false)} 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"
-                    >
-                        <Minimize2 className="h-4 w-4 mr-2" />
-                        EXIT FOCUS
-                    </Button>
-                )}
-            </div>
-        </div>
-    );
-
     if (loadingModels || strategyLoading || orgLoading) return <div className="flex-1 flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
-    const MatrixContent = ({ isFocus = false }) => (
-        <div className="flex flex-col h-full bg-white overflow-hidden">
-            <WorkspaceHeader isFocus={isFocus} />
-            <PricingTable 
-                filteredRanges={filteredRanges}
-                expandedRanges={expandedRanges}
-                toggleRange={toggleRange}
-                allModels={allModels}
-                allVariants={allVariants}
-                activeView={activeView}
-                strategy={strategy}
-                onUpdateValue={onUpdateValue}
-                vendor={vendor}
-                organisation={organisation}
-                activeExchangeRate={activeExchangeRate}
-            />
-        </div>
-    );
+    const commonProps = {
+        activeView,
+        setActiveView,
+        setIsFocusMode,
+        setIsGlobalUpdateOpen,
+        vendor,
+        organisation,
+        filteredRanges,
+        expandedRanges,
+        toggleRange,
+        allModels,
+        allVariants,
+        strategy,
+        onUpdateValue,
+        activeExchangeRate
+    };
 
     return (
         <div className="flex-1 h-full p-8 overflow-hidden">
             <Card className="h-full rounded-[2.5rem] border-2 shadow-2xl overflow-hidden flex flex-col">
-                <MatrixContent isFocus={false} />
+                <MatrixContent {...commonProps} isFocus={false} />
             </Card>
 
             <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
@@ -651,7 +672,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         <DialogTitle>Focus Mode - Pricing Audit</DialogTitle>
                         <DialogDescription>Full screen immersive auditing workspace for Highfield pricing strategies.</DialogDescription>
                     </DialogHeader>
-                    <MatrixContent isFocus={true} />
+                    <MatrixContent {...commonProps} isFocus={true} />
                 </DialogContent>
             </Dialog>
 

@@ -61,12 +61,6 @@
     z-index: 1; 
   }
 
-  /* Sticky backgrounds must be solid to prevent bleed */
-  .pricing-matrix-table td.sticky,
-  .pricing-matrix-table th.sticky {
-    @apply bg-inherit;
-  }
-
   /* Ensure text remains readable above the highlight layer */
   .pricing-matrix-cell > div,
   .pricing-matrix-cell > span,
@@ -86,6 +80,6 @@
     @apply bg-primary/50;
   }
   .pricing-matrix-container ::-webkit-scrollbar-track {
-    @apply bg-slate-100/50 rounded-full;
+    @apply bg-slate-100 rounded-full;
   }
 }
