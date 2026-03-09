@@ -473,7 +473,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         }
     }, [organisation, form]);
 
-    async function onAddUserSubmit() {
+    const onAddUserSubmit = async () => {
         if (!organisation) return;
         const values = addUserForm.getValues();
         setIsAddingUser(true);
@@ -895,7 +895,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                     <CardContent>
                                         <p className="text-xs text-muted-foreground uppercase font-black tracking-widest mb-6">Master Profitability Overrides</p>
                                         <div className="grid md:grid-cols-2 gap-8">
-                                            {/* Margin management UI would go here */}
                                             <div className="flex flex-col items-center justify-center py-20 text-center opacity-20 gap-3 border-2 border-dashed rounded-3xl">
                                                 <TrendingUp className="h-10 w-10" />
                                                 <p className="text-[10px] font-black uppercase tracking-widest">Pricing Matrix Initialized</p>
