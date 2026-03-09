@@ -675,8 +675,8 @@ export default function TemplateEditorPage() {
     ];
 
     return (
-        <div className="flex flex-col h-screen overflow-hidden bg-slate-900 text-slate-100">
-            <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-8 flex items-center justify-between shrink-0 z-[150] shadow-2xl">
+        <div className="flex-1 flex overflow-hidden">
+            <header className="fixed top-0 left-0 right-0 h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-8 flex items-center justify-between shrink-0 z-[150] shadow-2xl">
                 <div className="flex items-center gap-6">
                     <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-white transition-colors" onClick={() => router.back()}>
                         <ChevronLeft className="h-5 w-5" />
@@ -709,7 +709,7 @@ export default function TemplateEditorPage() {
                 </div>
             </header>
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden mt-16">
                 <aside className="w-72 border-r border-slate-800 bg-slate-900 flex flex-col shrink-0">
                     <div className="p-6 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Component Factory</h3>
@@ -935,7 +935,7 @@ export default function TemplateEditorPage() {
                                                     </Label>
                                                     <Input 
                                                         type="number" 
-                                                        value={activePage.headerHeight} 
+                                                        value={activePage.headerHeight || 0} 
                                                         onChange={(e) => updatePage(activePage.id, { headerHeight: parseInt(e.target.value) || 0 })}
                                                         className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
                                                     />
@@ -947,7 +947,7 @@ export default function TemplateEditorPage() {
                                                     </Label>
                                                     <Input 
                                                         type="number" 
-                                                        value={activePage.footerHeight} 
+                                                        value={activePage.footerHeight || 0} 
                                                         onChange={(e) => updatePage(activePage.id, { footerHeight: parseInt(e.target.value) || 0 })}
                                                         className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
                                                     />
@@ -962,7 +962,7 @@ export default function TemplateEditorPage() {
                                                     </Label>
                                                     <Input 
                                                         type="number" 
-                                                        value={activePage.marginLeft} 
+                                                        value={activePage.marginLeft || 0} 
                                                         onChange={(e) => updatePage(activePage.id, { marginLeft: parseInt(e.target.value) || 0 })}
                                                         className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
                                                     />
@@ -974,7 +974,7 @@ export default function TemplateEditorPage() {
                                                     </Label>
                                                     <Input 
                                                         type="number" 
-                                                        value={activePage.marginRight} 
+                                                        value={activePage.marginRight || 0} 
                                                         onChange={(e) => updatePage(activePage.id, { marginRight: parseInt(e.target.value) || 0 })}
                                                         className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
                                                     />
@@ -994,7 +994,7 @@ export default function TemplateEditorPage() {
                                                     <div className="space-y-2">
                                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Text Content</Label>
                                                         <Textarea 
-                                                            value={selectedBlock.block.content}
+                                                            value={selectedBlock.block.content || ''}
                                                             onChange={(e) => updateBlock(selectedBlockId!, { content: e.target.value })}
                                                             className="min-h-[120px] bg-slate-900 border-slate-700 text-white font-medium text-xs rounded-xl"
                                                         />
@@ -1045,7 +1045,7 @@ export default function TemplateEditorPage() {
                                                     </div>
 
                                                     <ColorSelector 
-                                                        value={selectedBlock.block.style?.color} 
+                                                        value={selectedBlock.block.style?.color || '#000000'} 
                                                         onChange={(color) => updateBlock(selectedBlockId!, { style: { color } })}
                                                         recentColors={allUsedColors}
                                                     />
@@ -1202,7 +1202,7 @@ export default function TemplateEditorPage() {
                                                 <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Display Order</Label>
                                                 <Input 
                                                     type="number" 
-                                                    value={selectedBlock.block.order} 
+                                                    value={selectedBlock.block.order || 0} 
                                                     onChange={(e) => updateBlock(selectedBlockId!, { order: parseInt(e.target.value) || 0 })}
                                                     className="h-11 bg-slate-800 border-slate-700 font-black text-center rounded-xl text-white" 
                                                 />

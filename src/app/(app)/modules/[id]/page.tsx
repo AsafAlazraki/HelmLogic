@@ -187,7 +187,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
                 pages: [
-                    { id: 'page-1', blocks: [], headerHeight: 20, footerHeight: 20, order: 1 }
+                    { id: 'page-1', blocks: [], headerHeight: 20, footerHeight: 20, marginLeft: 20, marginRight: 20, order: 1 }
                 ]
             };
             await setDoc(templateRef, templateData);
