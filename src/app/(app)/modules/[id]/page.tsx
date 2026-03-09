@@ -10,7 +10,7 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useMemoFirebase, useStorage } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { 
     collection, 
@@ -87,7 +87,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
   useSortable,
-} from '@nd-kit/sortable';
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
@@ -677,7 +677,7 @@ export default function ModuleDetailsPage() {
         setIsQuoteInitializationOpen(false);
         setIsTransitioning(true);
         
-        // We don't set isTransitioning(false) here. The overlay will unmount naturally with navigation.
+        // Navigation hand-off. Target page matches the loading visual.
         router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
     };
 

@@ -3,7 +3,7 @@
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { Loader2, Ship, Zap } from 'lucide-react';
 import { useMemo } from 'react';
@@ -26,7 +26,7 @@ export default function QuoteFlowPage() {
 
     // 1. Resolve User Context for Organisation Overrides
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, isLoading: profileLoading } = useDoc<any>(userProfileRef);
+    const { data: userProfile, loading: profileLoading } = useDoc<any>(userProfileRef);
     const orgId = userProfile?.organisationId;
 
     // 2. Fetch Module Context
