@@ -34,6 +34,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useRouter } from 'next/navigation';
 import {
     Carousel,
     CarouselContent,
@@ -96,6 +97,7 @@ export function HighfieldQuoteFlow({
     rangeId: string 
 }) {
     const firestore = useFirestore();
+    const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const colorsSectionRef = useRef<HTMLDivElement>(null);
@@ -241,23 +243,43 @@ export function HighfieldQuoteFlow({
     }, [model.optionalFeatures, activeVariant]);
 
     const groupedOptions = useMemo(() => {
-        const groups = relevantFeatures.reduce((acc: any, opt: any) => {
+        const features = relevantFeatures;
+        
+        // Find selected console
+        const consoleCategory = features.filter((f: any) => f.category === 'Consoles');
+        const selectedConsoleId = selectedOptionIds.find(id => consoleCategory.some((f: any) => f.id === id));
+        const selectedConsole = features.find((f: any) => f.id === selectedConsoleId);
+
+        const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
+            
+            // Logic for Seats: 
+            // 1. If a console is selected, only show Seats category if it's the associated seat
+            // 2. If no console is selected, show all compatible seats
+            if (cat === 'Seats') {
+                if (selectedConsole) {
+                    if (opt.id !== selectedConsole.associatedSeatId) return acc;
+                }
+            }
+
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;
         }, {});
 
-        const sortedEntries = Object.entries(groups).sort(([a], [b]) => {
-            if (a === 'Consoles') return -1;
-            if (b === 'Consoles') return 1;
-            if (a === 'Seats') return -1;
-            if (b === 'Seats') return 1;
-            return a.localeCompare(b);
-        });
+        // Sort entries by hierarchy: Consoles -> Seats -> General
+        const sortedEntries = Object.entries(groups)
+            .filter(([_, opts]: [string, any]) => opts.length > 0)
+            .sort(([a], [b]) => {
+                if (a === 'Consoles') return -1;
+                if (b === 'Consoles') return 1;
+                if (a === 'Seats') return -1;
+                if (b === 'Seats') return 1;
+                return a.localeCompare(b);
+            });
 
         return sortedEntries;
-    }, [relevantFeatures]);
+    }, [relevantFeatures, selectedOptionIds]);
 
     const toggleOption = (id: string) => {
         setSelectedOptionIds(prev => {
@@ -282,7 +304,20 @@ export function HighfieldQuoteFlow({
         setSelectedColor(null);
     };
 
-    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
+    const nextStep = () => {
+        setCurrentStep(prev => {
+            const next = Math.min(prev + 1, STEPS.length);
+            // Reset scroll position to top
+            if (scrollAreaRef.current) {
+                const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+                if (viewport) {
+                    viewport.scrollTo({ top: 0, behavior: 'auto' });
+                }
+            }
+            return next;
+        });
+    };
+    
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
     const rangePart = range?.name || '';
@@ -325,7 +360,7 @@ export function HighfieldQuoteFlow({
                             </div>
                         ))}
                     </div>
-                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[10px]" onClick={() => window.history.back()}>Exit Build</button>
+                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[10px]" onClick={() => router.push(`/modules/${module.id}`)}>Exit Build</button>
                 </div>
             </div>
 
@@ -374,7 +409,7 @@ export function HighfieldQuoteFlow({
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Total (Excl. GST)</span>
                                 </div>
                                 <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-3 text-4xl tracking-tight min-0 truncate">
+                                    <div className="flex items-center gap-3 text-2xl sm:text-3xl tracking-tight min-0 truncate">
                                         {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
                                         <span className="text-slate-950 font-black whitespace-nowrap">{displayedModelName}</span>
                                     </div>
@@ -424,7 +459,7 @@ export function HighfieldQuoteFlow({
                                                             </p>
                                                         </div>
 
-                                                        {/* Warranty Feature - Simplified as per request */}
+                                                        {/* Warranty Feature */}
                                                         <div className="mt-auto flex items-center gap-2">
                                                             <Check className={cn("h-4 w-4 shrink-0", isSelected ? "text-white" : "text-green-500")} />
                                                             <span className="text-[10px] font-black uppercase tracking-[0.15em] leading-none">
