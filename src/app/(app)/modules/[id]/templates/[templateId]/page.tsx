@@ -93,7 +93,7 @@ function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: Templat
                 {isBound && (
                     <div className="mb-4 flex items-center gap-2">
                         <Badge className="bg-primary text-white border-none text-[8px] font-black uppercase tracking-[0.2em] px-2.5 h-5 shadow-lg">
-                            <Zap className="h-2.5 w-2.5 mr-1.5 fill-current" /> Bound: {block.dataSource.replace('.', ' • ').toUpperCase()}
+                            <Zap className="h-2.5 w-2.5 mr-1.5 fill-current" /> Bound: {block.dataSource?.replace('.', ' • ').toUpperCase()}
                         </Badge>
                     </div>
                 )}
@@ -126,7 +126,7 @@ function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: Templat
                 {block.type === 'variable' && (
                     <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-primary/5 border-2 border-primary/20 text-primary shadow-sm">
                         <Variable className="h-4 w-4" />
-                        <span className="text-[11px] font-black uppercase tracking-[0.1em] italic">{isBound ? `{${block.dataSource.toUpperCase()}}` : '{UNMAPPED_VARIABLE}'}</span>
+                        <span className="text-[11px] font-black uppercase tracking-[0.1em] italic">{isBound ? `{${block.dataSource?.toUpperCase()}}` : '{UNMAPPED_VARIABLE}'}</span>
                     </div>
                 )}
                 {block.type === 'table' && (

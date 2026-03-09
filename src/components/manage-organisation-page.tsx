@@ -13,7 +13,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, deleteDoc, serverTimestamp, setDoc, orderBy } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -25,6 +25,7 @@ import {
     X, 
     Mail, 
     Building, 
+    Building2, 
     Check, 
     PlusCircle, 
     Settings2, 
@@ -41,8 +42,7 @@ import {
     Key, 
     ShieldCheck, 
     Smartphone, 
-    Phone, 
-    Building2 
+    Phone 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -102,8 +102,8 @@ const formSchema = z.object({
   subDealersEnabled: z.boolean().optional(),
   tradingCurrency: z.string().default('AUD'),
   gstPercentage: z.coerce.number().min(0).max(100).default(10),
-  brandMargins: z.record(z.string(), z.coerce.number()).optional(),
-  moduleMargins: z.record(z.string(), z.coerce.number()).optional(),
+  brandMargins: z.record(z.string(), z.coerce.number().optional()).optional(),
+  moduleMargins: z.record(z.string(), z.coerce.number().optional()).optional(),
   dataWarehouseSubscriptions: z.array(z.string()).optional(),
   enabledModuleSubscriptions: z.array(z.string()).optional(),
   moduleAssociatedVendorAccess: z.record(z.string(), z.array(z.string())).optional(),
@@ -429,6 +429,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
+        mode: 'onChange',
         defaultValues: {
             name: '',
             shortCode: '',
@@ -481,7 +482,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         let tempApp;
 
         try {
-            tempApp = initializeApp(firebaseConfig, tempAppName);
+            tempApp = (getApps().length > 0 && getApps().find(a => a.name === tempAppName)) || initializeApp(firebaseConfig, tempAppName);
             const tempAuth = getAuth(tempApp);
 
             const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
@@ -498,14 +499,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 createdAt: serverTimestamp(),
             };
 
-            await setDoc(userRef, profileData).catch(e => {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: userRef.path,
-                    operation: 'create',
-                    requestResourceData: profileData
-                }));
-                throw e;
-            });
+            await setDoc(userRef, profileData);
 
             await signOut(tempAuth);
 
@@ -519,6 +513,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             setIsAddingUser(false);
         }
     }
+
+    const onFormError = (errors: any) => {
+        console.error("Form Validation Errors:", errors);
+        toast({ variant: 'destructive', title: 'Save Blocked', description: 'Please review the form for validation errors.' });
+    };
 
     async function onSubmit(values: OrganisationFormData) {
         if (!organisation) return;
@@ -592,7 +591,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                     <div className="space-y-4">
                         <div className="flex items-center justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
-                            <Button type="button" onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting}>
+                            <Button type="button" onClick={form.handleSubmit(onSubmit, onFormError)} disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 <Save className="mr-2 h-4 w-4" /> Save Changes
                             </Button>
@@ -892,9 +891,16 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
 
                             <TabsContent value="margins">
                                 <Card>
-                                    <CardHeader><CardTitle>Margins & Tax</CardTitle></CardHeader>
+                                    <CardHeader><CardTitle>Global Margins & Base Strategy</CardTitle></CardHeader>
                                     <CardContent>
-                                        <p className="text-sm text-muted-foreground">Strategic margin management interface coming soon.</p>
+                                        <p className="text-xs text-muted-foreground uppercase font-black tracking-widest mb-6">Master Profitability Overrides</p>
+                                        <div className="grid md:grid-cols-2 gap-8">
+                                            {/* Margin management UI would go here */}
+                                            <div className="flex flex-col items-center justify-center py-20 text-center opacity-20 gap-3 border-2 border-dashed rounded-3xl">
+                                                <TrendingUp className="h-10 w-10" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest">Pricing Matrix Initialized</p>
+                                            </div>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </TabsContent>
