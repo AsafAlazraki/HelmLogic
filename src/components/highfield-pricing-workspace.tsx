@@ -406,12 +406,10 @@ function PricingTable({
                                         ))}
                                     </React.Fragment>
                                 ))}
-                            </React.Fragment>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-        </div>
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
     );
 }
 
@@ -458,7 +456,7 @@ function MatrixContent({
 
                 {/* RIGHT: Navigation & Actions */}
                 <div className="flex items-center gap-6">
-                    {/* Tabs moved to the right */}
+                    {/* Tabs on the right */}
                     <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)}>
                         <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
                             <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>

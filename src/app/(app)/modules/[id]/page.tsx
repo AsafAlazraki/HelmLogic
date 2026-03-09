@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -9,7 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useMemoFirebase, useStorage } from '@/firebase/provider';
-import { collection, query, where, orderBy, doc, updateDoc, writeBatch, getDocs, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, writeBatch, getDocs, deleteDoc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { 
     Loader2, 
@@ -39,7 +38,10 @@ import {
     Coins,
     Package,
     Settings,
-    Layout
+    Layout,
+    CheckCircle2,
+    FileSpreadsheet,
+    ScrollText
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -61,6 +63,7 @@ import { VesselMap } from '@/components/map';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import {
   DndContext,
@@ -118,6 +121,15 @@ interface Model {
   slug?: string;
   coverImageUrl?: string;
   order?: number;
+}
+
+interface Template {
+    id: string;
+    name: string;
+    type: 'Quote' | 'Invoice' | 'Contract';
+    moduleId: string;
+    createdByUserId: string;
+    createdAt: any;
 }
 
 function BuildTransitionOverlay({ organisation, model }: { organisation?: Organisation | null, model: Model | null }) {
@@ -491,6 +503,78 @@ function QuoteSelectorDialog({
     );
 }
 
+function CreateTemplateDialog({ isOpen, onOpenChange, moduleId }: { isOpen: boolean, onOpenChange: (open: boolean) => void, moduleId: string }) {
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+    const [name, setName] = useState('');
+    const [type, setType] = useState<'Quote' | 'Invoice' | 'Contract'>('Quote');
+
+    const handleCreate = async () => {
+        if (!user || !name.trim()) return;
+        setIsLoading(true);
+        try {
+            const templateRef = doc(collection(firestore, `users/${user.uid}/templates`));
+            const templateData = {
+                id: templateRef.id,
+                name,
+                type,
+                moduleId,
+                createdByUserId: user.uid,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+            await setDoc(templateRef, templateData);
+            
+            toast({ title: "Template Created" });
+            router.push(`/modules/${moduleId}/templates/${templateRef.id}`);
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Failed to create template" });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-8 border-b bg-muted/5">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">New Blueprint</DialogTitle>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Document Architecture</DialogDescription>
+                </DialogHeader>
+                <div className="p-8 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Template Name</Label>
+                        <Input placeholder="e.g. Premium Sales Proposal" value={name} onChange={e => setName(e.target.value)} className="h-12 font-bold border-2 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Document Class</Label>
+                        <Select value={type} onValueChange={(v: any) => setType(v)}>
+                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-2">
+                                <SelectItem value="Quote" className="text-[10px] font-bold uppercase py-2.5">Sales Quote</SelectItem>
+                                <SelectItem value="Invoice" className="text-[10px] font-bold uppercase py-2.5">Pro-Forma Invoice</SelectItem>
+                                <SelectItem value="Contract" className="text-[10px] font-bold uppercase py-2.5">Purchase Agreement</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
+                    <Button onClick={handleCreate} disabled={!name.trim() || isLoading} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
+                        Generate Editor
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function ModuleDetailsPage() {
     const router = useRouter();
     const params = useParams();
@@ -504,6 +588,7 @@ export default function ModuleDetailsPage() {
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [isNewQuoteOpen, setIsNewQuoteOpen] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [isCreateTemplateOpen, setIsCreateTemplateOpen] = useState(false);
     
     const { user } = useUser();
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -537,6 +622,12 @@ export default function ModuleDetailsPage() {
         if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return {};
         return currentMemberOrg.permissions[roleId];
     }, [userProfile, currentMemberOrg]);
+
+    const templatesQuery = useMemoFirebase(() => {
+        if (!user || !moduleData) return null;
+        return query(collection(firestore, `users/${user.uid}/templates`), where('moduleId', '==', moduleData.id));
+    }, [firestore, user, moduleData]);
+    const { data: templates } = useCollection<Template>(templatesQuery);
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
 
@@ -834,15 +925,49 @@ export default function ModuleDetailsPage() {
                                             variant="ghost" 
                                             size="icon" 
                                             className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
+                                            onClick={() => setIsCreateTemplateOpen(true)}
                                         >
                                             <PlusCircle className="h-4 w-4" />
                                         </Button>
                                     </CardHeader>
-                                    <CardContent className="flex-1 min-h-[200px] flex flex-col items-center justify-center p-8 text-center bg-slate-50/30">
-                                        <div className="space-y-2 opacity-20">
-                                            <ClipboardList className="h-12 w-12 mx-auto text-slate-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-4">Template Engine (Coming Soon)</p>
-                                        </div>
+                                    <CardContent className="flex-1 min-h-[200px] flex flex-col p-0 bg-slate-50/30">
+                                        {templates && templates.length > 0 ? (
+                                            <div className="divide-y divide-slate-200">
+                                                {templates.map(t => (
+                                                    <Link 
+                                                        key={t.id} 
+                                                        href={`/modules/${moduleData.id}/templates/${t.id}`}
+                                                        className="flex items-center justify-between px-8 py-4 hover:bg-white transition-colors group"
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="h-10 w-10 rounded-xl bg-white border flex items-center justify-center text-primary shadow-sm">
+                                                                <FileSpreadsheet className="h-5 w-5" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-black uppercase text-xs text-slate-900">{t.name}</p>
+                                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.type} Document</p>
+                                                            </div>
+                                                        </div>
+                                                        <ChevronRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                                                <div className="space-y-2 opacity-20">
+                                                    <ScrollText className="h-12 w-12 mx-auto text-slate-400" />
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-4">No Blueprints Defined</p>
+                                                </div>
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="mt-6 font-black uppercase text-[9px] tracking-widest border-2 rounded-xl"
+                                                    onClick={() => setIsCreateTemplateOpen(true)}
+                                                >
+                                                    Initialize First Template
+                                                </Button>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
 
@@ -911,6 +1036,12 @@ export default function ModuleDetailsPage() {
                     organisation={currentMemberOrg as any}
                 />
             )}
+
+            <CreateTemplateDialog 
+                isOpen={isCreateTemplateOpen} 
+                onOpenChange={setIsCreateTemplateOpen} 
+                moduleId={moduleData.id} 
+            />
         </div>
     );
 }
