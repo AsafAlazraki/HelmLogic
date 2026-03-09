@@ -220,8 +220,8 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-2">
                                 <SelectItem value="Quote" className="text-[10px] font-bold uppercase py-2.5">Sales Quote</SelectItem>
-                                <SelectItem value="Invoice" className="text-[10px] font-bold uppercase py-2.5">Pro-Forma Invoice</SelectItem>
-                                <SelectItem value="Contract" className="text-[10px] font-bold uppercase py-2.5">Purchase Agreement</SelectItem>
+                                <SelectItem value="Contract" className="text-[10px] font-bold uppercase py-2.5">Sales Contract</SelectItem>
+                                <SelectItem value="Invoice" className="text-[10px] font-bold uppercase py-2.5">Invoice</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
