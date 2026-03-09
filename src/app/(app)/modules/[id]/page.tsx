@@ -2,13 +2,28 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
+import { 
+    collection, 
+    query, 
+    where, 
+    orderBy, 
+    doc, 
+    setDoc, 
+    updateDoc,
+    serverTimestamp, 
+    writeBatch, 
+    getDocs 
+} from 'firebase/firestore';
 import { 
     Loader2, 
     ChevronRight, 
@@ -25,7 +40,10 @@ import {
     Package,
     Waves,
     ScrollText,
-    FileSpreadsheet
+    FileSpreadsheet,
+    GripVertical,
+    Pencil,
+    ImageIcon
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -36,7 +54,7 @@ import { ModelConfigurationEditor } from '@/components/model-configuration-edito
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, createSlug } from '@/lib/utils';
 import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
@@ -52,6 +70,24 @@ import {
     TableHeader, 
     TableRow 
 } from '@/components/ui/table';
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
     id: string;
@@ -91,6 +127,7 @@ interface Model {
   slug?: string;
   coverImageUrl?: string;
   order?: number;
+  rangeId: string;
 }
 
 interface Template {
@@ -248,12 +285,258 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId, allModule
     );
 }
 
+function EditItemDialog({ 
+    isOpen, 
+    onOpenChange, 
+    item, 
+    onSave 
+}: { 
+    isOpen: boolean, 
+    onOpenChange: (open: boolean) => void, 
+    item: any, 
+    onSave: (data: any) => Promise<void> 
+}) {
+    const [name, setName] = useState(item?.name || '');
+    const [image, setImage] = useState<File | null>(null);
+    const [preview, setPreview] = useState<string | null>(item?.imageUrl || item?.coverImageUrl || null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (item) {
+            setName(item.name || '');
+            setPreview(item.imageUrl || item.coverImageUrl || null);
+        }
+    }, [item]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        await onSave({ name, image });
+        setIsSaving(false);
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-8 border-b bg-muted/5">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic">Quick Edit</DialogTitle>
+                </DialogHeader>
+                <div className="p-8 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Display Name</Label>
+                        <Input value={name} onChange={e => setName(e.target.value)} className="h-12 font-bold border-2 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Primary Render</Label>
+                        <div className="relative aspect-video rounded-xl border-2 border-dashed bg-muted/20 overflow-hidden group/img">
+                            {preview ? (
+                                <Image src={preview} alt="Preview" fill className="object-contain p-4" unoptimized />
+                            ) : (
+                                <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground">
+                                    <ImageIcon className="h-8 w-8 mb-2 opacity-20" />
+                                    <span className="text-[10px] font-black uppercase">No Photo Set</span>
+                                </div>
+                            )}
+                            <label className="absolute inset-0 cursor-pointer bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                <Upload className="h-8 w-8 text-white" />
+                                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        setImage(file);
+                                        setPreview(URL.createObjectURL(file));
+                                    }
+                                }} />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button></DialogClose>
+                    <Button onClick={handleSave} disabled={isSaving} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl">
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Persist Changes
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: range.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="h-full">
+            <Card 
+                className={cn(
+                    "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                    isSelected 
+                        ? "border-primary shadow-2xl scale-[1.02]" 
+                        : "hover:border-primary/20 hover:shadow-xl"
+                )}
+                onClick={onClick}
+            >
+                {canEdit && (
+                    <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <Button 
+                            type="button"
+                            variant="secondary" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-full bg-white/90 shadow-md border hover:bg-white"
+                            onClick={(e) => { e.stopPropagation(); onEdit(range); }}
+                        >
+                            <Pencil className="h-4 w-4 text-slate-600" />
+                        </Button>
+                        <div 
+                            {...attributes} 
+                            {...listeners} 
+                            className="h-8 w-8 rounded-full bg-white/90 shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
+                        >
+                            <GripVertical className="h-4 w-4 text-slate-600" />
+                        </div>
+                    </div>
+                )}
+
+                <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {range.imageUrl ? (
+                        <Image 
+                            src={range.imageUrl} 
+                            alt={range.name} 
+                            fill 
+                            className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                            unoptimized 
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-full">
+                            <Ship className="h-12 w-12 text-muted-foreground/20" />
+                        </div>
+                    )}
+                </div>
+                
+                <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-4">
+                    <p className={cn(
+                        "font-black uppercase tracking-tighter text-sm transition-colors",
+                        isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
+                    )}>
+                        {range.name}
+                    </p>
+                </div>
+
+                <div className="flex items-center justify-between px-5 py-4 border-t bg-primary text-white">
+                    <span className="font-black uppercase text-[10px] tracking-[0.2em]">View Range</span>
+                    <ArrowRight className="h-4 w-4" />
+                </div>
+            </Card>
+        </div>
+    );
+}
+
+function SortableModelCard({ model, isSelected, onClick, onEdit, canEdit }: any) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: model.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="h-full">
+            <Card 
+                className={cn(
+                    "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                    isSelected 
+                        ? "border-primary shadow-2xl scale-[1.02]" 
+                        : "hover:border-primary/20 hover:shadow-xl"
+                )}
+                onClick={onClick}
+            >
+                {canEdit && (
+                    <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <Button 
+                            type="button"
+                            variant="secondary" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-full bg-white/90 shadow-md border hover:bg-white"
+                            onClick={(e) => { e.stopPropagation(); onEdit(model); }}
+                        >
+                            <Pencil className="h-4 w-4 text-slate-600" />
+                        </Button>
+                        <div 
+                            {...attributes} 
+                            {...listeners} 
+                            className="h-8 w-8 rounded-full bg-white/90 shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
+                        >
+                            <GripVertical className="h-4 w-4 text-slate-600" />
+                        </div>
+                    </div>
+                )}
+
+                <div className="aspect-[4/3] bg-muted/30 relative border-b overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {model.coverImageUrl ? (
+                        <Image 
+                            src={model.coverImageUrl} 
+                            alt={model.name} 
+                            fill 
+                            className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                            unoptimized 
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-full">
+                            <Ship className="h-12 w-12 text-muted-foreground/20" />
+                        </div>
+                    )}
+                </div>
+                <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
+                    <p className={cn(
+                        "font-black uppercase tracking-tighter text-xs transition-colors",
+                        isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
+                    )}>
+                        {model.name}
+                    </p>
+                    <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
+                </div>
+
+                <div className="flex items-center justify-between px-5 py-4 border-t bg-primary text-white">
+                    <span className="font-black uppercase text-[10px] tracking-[0.2em]">Build Model</span>
+                    <ArrowRight className="h-4 w-4" />
+                </div>
+            </Card>
+        </div>
+    );
+}
+
 export default function ModuleDetailsPage() {
     const router = useRouter();
     const params = useParams();
     const slugOrId = params.id as string;
     const { toast } = useToast();
     const firestore = useFirestore();
+    const storage = useStorage();
 
     const [activeTab, setActiveTab] = useState('dashboard');
     const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
@@ -262,6 +545,9 @@ export default function ModuleDetailsPage() {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isCreateTemplateOpen, setIsCreateTemplateOpen] = useState(false);
     
+    const [editingItem, setEditingItem] = useState<any>(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+
     const { user } = useUser();
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
@@ -342,6 +628,27 @@ export default function ModuleDetailsPage() {
             setView('ranges');
             setSelectedRange(null);
         }
+    };
+
+    const handleQuickSaveEdit = async (data: any) => {
+        if (!editingItem || !mainVendor) return;
+        const isRange = 'vendorId' in editingItem;
+        const path = isRange 
+            ? `data-warehouse/${mainVendor.id}/ranges/${editingItem.id}`
+            : `data-warehouse/${mainVendor.id}/ranges/${editingItem.rangeId}/models/${editingItem.id}`;
+        
+        const docRef = doc(firestore, path);
+        const updateData: any = { name: data.name };
+
+        if (data.image && storage) {
+            const fileName = isRange ? `cover-${Date.now()}` : `cover-${Date.now()}`;
+            const url = await uploadFileToStorage(storage, data.image, `${path}/${fileName}`);
+            if (isRange) updateData.imageUrl = url;
+            else updateData.coverImageUrl = url;
+        }
+
+        await updateDoc(docRef, updateData);
+        toast({ title: "Item Updated" });
     };
 
     const loading = slugLoading || idLoading || mainVendorLoading;
@@ -497,8 +804,25 @@ export default function ModuleDetailsPage() {
                                 </div>
 
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-                                    {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} canEdit={canEdit} selectedRangeId={selectedRange?.id} />}
-                                    {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} canEdit={canEdit} selectedModelId={selectedModel?.id} />}
+                                    {view === 'ranges' && (
+                                        <RangesGrid 
+                                            vendor={mainVendor as any} 
+                                            onRangeSelect={handleRangeSelect} 
+                                            canEdit={canEdit} 
+                                            selectedRangeId={selectedRange?.id} 
+                                            onEdit={(item: any) => { setEditingItem(item); setIsEditOpen(true); }}
+                                        />
+                                    )}
+                                    {view === 'models' && selectedRange && (
+                                        <ModelsGrid 
+                                            range={selectedRange} 
+                                            vendor={mainVendor as any} 
+                                            onModelSelect={handleModelSelect} 
+                                            canEdit={canEdit} 
+                                            selectedModelId={selectedModel?.id} 
+                                            onEdit={(item: any) => { setEditingItem(item); setIsEditOpen(true); }}
+                                        />
+                                    )}
                                     {view === 'bmt' && selectedModel && selectedRange && (
                                         <ModelConfigurationEditor 
                                             model={selectedModel}
@@ -656,111 +980,111 @@ export default function ModuleDetailsPage() {
                     allModules={allModules || []}
                 />
             )}
+
+            <EditItemDialog 
+                isOpen={isEditOpen} 
+                onOpenChange={setIsEditOpen} 
+                item={editingItem} 
+                onSave={handleQuickSaveEdit} 
+            />
         </div>
     );
 }
 
-function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId }: { vendor: Vendor; onRangeSelect: (range: Range) => void, canEdit: boolean, selectedRangeId?: string }) {
+function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }: { vendor: Vendor; onRangeSelect: (range: Range) => void, canEdit: boolean, selectedRangeId?: string, onEdit: (item: any) => void }) {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
     const { data: ranges, loading } = useCollection<Range>(rangesQuery);
 
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!ranges || !over || active.id === over.id) return;
+
+        const oldIndex = ranges.findIndex(r => r.id === active.id);
+        const newIndex = ranges.findIndex(r => r.id === over.id);
+        const newItems = arrayMove(ranges, oldIndex, newIndex);
+
+        const batch = writeBatch(firestore);
+        newItems.forEach((item, idx) => {
+            batch.update(doc(firestore, `data-warehouse/${vendor.id}/ranges`, item.id), { order: idx });
+        });
+        await batch.commit();
+        toast({ title: "Order Persisted" });
+    };
+
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+    
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
-            {ranges?.map(range => {
-                const isSelected = selectedRangeId === range.id;
-                return (
-                    <Card 
-                        key={range.id} 
-                        className={cn(
-                            "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white",
-                            isSelected 
-                                ? "border-primary shadow-2xl scale-[1.02]" 
-                                : "hover:border-primary/20 hover:shadow-xl"
-                        )}
-                        onClick={() => onRangeSelect(range)}
-                    >
-                        <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            {range.imageUrl ? (
-                                <Image 
-                                    src={range.imageUrl} 
-                                    alt={range.name} 
-                                    fill 
-                                    className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
-                                    unoptimized 
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full">
-                                    <Ship className="h-12 w-12 text-muted-foreground/20" />
-                                </div>
-                            )}
-                        </div>
-                        <div className="p-5 flex items-center justify-center bg-white mt-auto">
-                            <p className={cn(
-                                "font-black uppercase tracking-tighter text-sm transition-colors",
-                                isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
-                            )}>
-                                {range.name}
-                            </p>
-                        </div>
-                    </Card>
-                );
-            })}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
+                    {ranges?.map(range => (
+                        <SortableRangeCard 
+                            key={range.id} 
+                            range={range} 
+                            isSelected={selectedRangeId === range.id}
+                            onClick={() => onRangeSelect(range)}
+                            onEdit={onEdit}
+                            canEdit={canEdit}
+                        />
+                    ))}
+                </div>
+            </SortableContext>
+        </DndContext>
     );
 }
 
-function ModelsGrid({ range, vendor, onModelSelect, canEdit, selectedModelId }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; canEdit: boolean; selectedModelId?: string }) {
+function ModelsGrid({ range, vendor, onModelSelect, canEdit, selectedModelId, onEdit }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; canEdit: boolean; selectedModelId?: string, onEdit: (item: any) => void }) {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
     const { data: models, loading = false } = useCollection<Model>(modelsQuery);
 
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!models || !over || active.id === over.id) return;
+
+        const oldIndex = models.findIndex(m => m.id === active.id);
+        const newIndex = models.findIndex(m => m.id === over.id);
+        const newItems = arrayMove(models, oldIndex, newIndex);
+
+        const batch = writeBatch(firestore);
+        newItems.forEach((item, idx) => {
+            batch.update(doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, item.id), { order: idx });
+        });
+        await batch.commit();
+        toast({ title: "Sequence Updated" });
+    };
+
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+    
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
-            {models?.map(model => {
-                const isSelected = selectedModelId === model.id;
-                return (
-                    <Card 
-                        key={model.id} 
-                        className={cn(
-                            "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white",
-                            isSelected 
-                                ? "border-primary shadow-2xl scale-[1.02]" 
-                                : "hover:border-primary/20 hover:shadow-xl"
-                        )}
-                        onClick={() => onModelSelect(model)}
-                    >
-                        <div className="aspect-[4/3] bg-muted/30 relative border-b overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            {model.coverImageUrl ? (
-                                <Image 
-                                    src={model.coverImageUrl} 
-                                    alt={model.name} 
-                                    fill 
-                                    className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
-                                    unoptimized 
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full">
-                                    <Ship className="h-12 w-12 text-muted-foreground/20" />
-                                </div>
-                            )}
-                        </div>
-                        <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
-                            <p className={cn(
-                                "font-black uppercase tracking-tighter text-xs transition-colors",
-                                isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
-                            )}>
-                                {model.name}
-                            </p>
-                            <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
-                        </div>
-                    </Card>
-                );
-            })}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={models?.map(m => m.id) || []} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
+                    {models?.map(model => (
+                        <SortableModelCard 
+                            key={model.id} 
+                            model={model} 
+                            isSelected={selectedModelId === model.id}
+                            onClick={() => onModelSelect(model)}
+                            onEdit={onEdit}
+                            canEdit={canEdit}
+                        />
+                    ))}
+                </div>
+            </SortableContext>
+        </DndContext>
     );
 }
