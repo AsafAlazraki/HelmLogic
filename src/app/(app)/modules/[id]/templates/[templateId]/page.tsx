@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { 
     Loader2, 
     Save, 
@@ -31,7 +31,12 @@ import {
     PanelTop,
     X,
     Anchor,
-    BoxSelect
+    BoxSelect,
+    Columns,
+    LayoutGrid,
+    List,
+    CheckCircle2,
+    Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -48,12 +53,21 @@ import Image from 'next/image';
 
 interface TemplateBlock {
     id: string;
-    type: 'text' | 'image' | 'table' | 'variable';
+    type: 'text' | 'image' | 'table' | 'variable' | 'grid' | 'quoteItems';
     content: any;
     style?: any;
     order: number;
     dataSource?: string; 
     zone?: 'header' | 'body' | 'footer';
+    layoutConfig?: {
+        columns?: number;
+        spacing?: number;
+        displayStyle?: 'list' | 'grid' | 'table';
+        showImages?: boolean;
+        showSku?: boolean;
+        showDescription?: boolean;
+        showPrice?: boolean;
+    };
 }
 
 interface TemplatePage {
@@ -71,7 +85,7 @@ function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: Templat
         <div 
             onClick={(e) => { e.stopPropagation(); onSelect(); }}
             className={cn(
-                "group relative p-6 rounded-[2rem] transition-all cursor-pointer border-2 border-transparent",
+                "group relative p-6 rounded-2xl transition-all cursor-pointer border-2 border-transparent",
                 isSelected ? "ring-4 ring-primary/40 bg-primary/5 shadow-2xl border-primary/20 scale-[1.01]" : "hover:bg-slate-50 hover:border-slate-100"
             )}
         >
@@ -80,7 +94,7 @@ function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: Templat
             </div>
 
             {isSelected && (
-                <div className="absolute -right-3 -top-3 flex items-center gap-2 animate-in zoom-in-95">
+                <div className="absolute -right-3 -top-3 flex items-center gap-2 animate-in zoom-in-95 z-20">
                     <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-2xl border-2 border-white" onClick={(e) => { e.stopPropagation(); onDelete(); }}><Trash2 className="h-4 w-4" /></Button>
                 </div>
             )}
@@ -100,7 +114,7 @@ function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: Templat
                     </div>
                 )}
                 {block.type === 'image' && (
-                    <div className="aspect-video w-full bg-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center border-4 border-dashed border-slate-200 overflow-hidden relative group/asset">
+                    <div className="aspect-video w-full bg-slate-100 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200 overflow-hidden relative group/asset">
                         {isBound ? (
                             <div className="flex flex-col items-center justify-center gap-4 text-primary">
                                 <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
@@ -123,6 +137,52 @@ function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: Templat
                     <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-primary/5 border-2 border-primary/20 text-primary shadow-sm">
                         <Variable className="h-4 w-4" />
                         <span className="text-[11px] font-black uppercase tracking-[0.1em] italic">{isBound ? `{${block.dataSource?.toUpperCase()}}` : '{UNMAPPED_VARIABLE}'}</span>
+                    </div>
+                )}
+                {block.type === 'grid' && (
+                    <div className={cn("grid gap-6", `grid-cols-${block.layoutConfig?.columns || 2}`)}>
+                        {Array.from({ length: block.layoutConfig?.columns || 2 }).map((_, i) => (
+                            <div key={i} className="min-h-[80px] border-2 border-dashed border-slate-100 rounded-2xl flex items-center justify-center">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Column {i + 1}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {block.type === 'quoteItems' && (
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between border-b-2 border-slate-100 pb-4">
+                            <h4 className="font-black uppercase text-sm italic text-primary flex items-center gap-2">
+                                <Package className="h-4 w-4" />
+                                Dynamic Quote Product List
+                            </h4>
+                            <Badge variant="outline" className="text-[8px] font-black uppercase">{block.layoutConfig?.displayStyle || 'list'} Layout</Badge>
+                        </div>
+                        {block.layoutConfig?.displayStyle === 'grid' ? (
+                            <div className="grid grid-cols-2 gap-4">
+                                {[1, 2].map(i => (
+                                    <div key={i} className="border-2 rounded-2xl p-4 space-y-3 bg-slate-50/50">
+                                        {block.layoutConfig?.showImages && <div className="aspect-square bg-slate-200 rounded-xl animate-pulse" />}
+                                        <div className="space-y-1">
+                                            <div className="h-3 w-3/4 bg-slate-300 rounded" />
+                                            {block.layoutConfig?.showSku && <div className="h-2 w-1/2 bg-slate-200 rounded" />}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="flex items-center gap-4 p-4 border-2 rounded-xl bg-slate-50/50">
+                                        {block.layoutConfig?.showImages && <div className="h-12 w-12 bg-slate-200 rounded-lg animate-pulse shrink-0" />}
+                                        <div className="flex-1 space-y-1">
+                                            <div className="h-3 w-1/3 bg-slate-300 rounded" />
+                                            {block.layoutConfig?.showDescription && <div className="h-2 w-full bg-slate-200 rounded" />}
+                                        </div>
+                                        {block.layoutConfig?.showPrice && <div className="h-4 w-16 bg-primary/10 rounded animate-pulse" />}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
                 {block.type === 'table' && (
@@ -216,7 +276,12 @@ export default function TemplateEditorPage() {
                 content: type === 'text' ? 'Double click to edit text...' : 
                          type === 'image' ? { source: 'user', url: null } :
                          type === 'variable' ? { source: 'quote', field: '' } :
-                         { rows: 3, cols: 3, data: [] }
+                         type === 'grid' ? { columns: 2 } :
+                         type === 'quoteItems' ? { items: [] } :
+                         { rows: 3, cols: 3, data: [] },
+                layoutConfig: type === 'grid' ? { columns: 2 } : 
+                             type === 'quoteItems' ? { displayStyle: 'list', showImages: true, showSku: true, showDescription: true, showPrice: true } :
+                             undefined
             };
             return { ...p, blocks: [...p.blocks, newBlock] };
         }));
@@ -226,7 +291,15 @@ export default function TemplateEditorPage() {
     const updateBlock = (blockId: string, updates: Partial<TemplateBlock>) => {
         setPages(prev => prev.map(p => ({
             ...p,
-            blocks: p.blocks.map(b => b.id === blockId ? { ...b, ...updates } : b)
+            blocks: p.blocks.map(b => {
+                if (b.id !== blockId) return b;
+                const next = { ...b, ...updates };
+                // Deep merge layoutConfig if it exists in updates
+                if (updates.layoutConfig) {
+                    next.layoutConfig = { ...(b.layoutConfig || {}), ...updates.layoutConfig };
+                }
+                return next;
+            })
         })));
     };
 
@@ -316,7 +389,15 @@ export default function TemplateEditorPage() {
                     <ScrollArea className="flex-1">
                         <div className="p-6 space-y-8">
                             <div className="space-y-3">
-                                <Label className="text-[9px] font-black uppercase text-slate-600 tracking-widest">Structural Elements</Label>
+                                <Label className="text-[9px] font-black uppercase text-slate-600 tracking-widest">Layout Elements</Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <ToolButton icon={Columns} label="Columns" onClick={() => selectedPageId && addBlock(selectedPageId, 'grid')} />
+                                    <ToolButton icon={Package} label="Products" onClick={() => selectedPageId && addBlock(selectedPageId, 'quoteItems')} />
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label className="text-[9px] font-black uppercase text-slate-600 tracking-widest">Standard Elements</Label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <ToolButton icon={Type} label="Text" onClick={() => selectedPageId && addBlock(selectedPageId, 'text')} />
                                     <ToolButton icon={ImageIcon} label="Image" onClick={() => selectedPageId && addBlock(selectedPageId, 'image')} />
@@ -364,7 +445,7 @@ export default function TemplateEditorPage() {
                     </ScrollArea>
                 </aside>
 
-                <main className="flex-1 bg-slate-950 p-12 overflow-auto scrollbar-thin">
+                <main className="flex-1 bg-slate-950 p-12 overflow-auto scrollbar-thin pattern-dots">
                     <div 
                         className="flex flex-col items-center gap-16 pb-64 transition-transform origin-top duration-300"
                         style={{ transform: `scale(${zoom})` }}
@@ -473,89 +554,164 @@ export default function TemplateEditorPage() {
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Property Matrix</h3>
                         <Settings2 className="h-3 w-3 text-slate-600" />
                     </div>
-                    <div className="flex-1 flex flex-col p-6">
-                        {!selectedBlockId && activePage ? (
-                            <div className="w-full space-y-8 animate-in fade-in slide-in-from-right-2">
-                                <div className="space-y-4">
-                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Global Page Setup</h4>
-                                    <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-6">
-                                        <div className="space-y-3">
-                                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                                                <PanelTop className="h-3 w-3" />
-                                                Header Height (mm)
-                                            </Label>
-                                            <Input 
-                                                type="number" 
-                                                value={activePage.headerHeight} 
-                                                onChange={(e) => updatePage(activePage.id, { headerHeight: parseInt(e.target.value) || 0 })}
-                                                className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
-                                            />
-                                        </div>
-                                        <div className="space-y-3">
-                                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                                                <PanelBottom className="h-3 w-3" />
-                                                Footer Height (mm)
-                                            </Label>
-                                            <Input 
-                                                type="number" 
-                                                value={activePage.footerHeight} 
-                                                onChange={(e) => updatePage(activePage.id, { footerHeight: parseInt(e.target.value) || 0 })}
-                                                className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
-                                            />
+                    <ScrollArea className="flex-1">
+                        <div className="p-6">
+                            {!selectedBlockId && activePage ? (
+                                <div className="w-full space-y-8 animate-in fade-in slide-in-from-right-2">
+                                    <div className="space-y-4">
+                                        <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Global Page Setup</h4>
+                                        <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-6">
+                                            <div className="space-y-3">
+                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                    <PanelTop className="h-3 w-3" />
+                                                    Header Height (mm)
+                                                </Label>
+                                                <Input 
+                                                    type="number" 
+                                                    value={activePage.headerHeight} 
+                                                    onChange={(e) => updatePage(activePage.id, { headerHeight: parseInt(e.target.value) || 0 })}
+                                                    className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
+                                                />
+                                            </div>
+                                            <div className="space-y-3">
+                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                    <PanelBottom className="h-3 w-3" />
+                                                    Footer Height (mm)
+                                                </Label>
+                                                <Input 
+                                                    type="number" 
+                                                    value={activePage.footerHeight} 
+                                                    onChange={(e) => updatePage(activePage.id, { footerHeight: parseInt(e.target.value) || 0 })}
+                                                    className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                            ) : selectedBlock ? (
+                                <div className="w-full space-y-8 animate-in fade-in slide-in-from-right-2">
+                                    <div className="space-y-4">
+                                        <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Component Settings</h4>
+                                        
+                                        {selectedBlock.block.type === 'grid' && (
+                                            <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Column Density</Label>
+                                                    <Select 
+                                                        value={String(selectedBlock.block.layoutConfig?.columns || 2)} 
+                                                        onValueChange={(v) => updateBlock(selectedBlockId!, { layoutConfig: { columns: parseInt(v) } })}
+                                                    >
+                                                        <SelectTrigger className="h-12 bg-slate-900 border-slate-700 text-[10px] font-black uppercase rounded-xl text-white">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-slate-900 border-slate-700 text-white rounded-xl">
+                                                            <SelectItem value="1" className="text-[10px] font-black uppercase">1 Column (Full)</SelectItem>
+                                                            <SelectItem value="2" className="text-[10px] font-black uppercase">2 Columns (Split)</SelectItem>
+                                                            <SelectItem value="3" className="text-[10px] font-black uppercase">3 Columns (Dense)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedBlock.block.type === 'quoteItems' && (
+                                            <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-6">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Display Mode</Label>
+                                                    <Tabs 
+                                                        value={selectedBlock.block.layoutConfig?.displayStyle || 'list'} 
+                                                        onValueChange={(v: any) => updateBlock(selectedBlockId!, { layoutConfig: { displayStyle: v } })}
+                                                    >
+                                                        <TabsList className="bg-slate-950 p-1 rounded-lg w-full h-10">
+                                                            <TabsTrigger value="list" className="flex-1 text-[8px] font-black uppercase"><List className="h-3 w-3 mr-1" /> List</TabsTrigger>
+                                                            <TabsTrigger value="grid" className="flex-1 text-[8px] font-black uppercase"><LayoutGrid className="h-3 w-3 mr-1" /> Grid</TabsTrigger>
+                                                        </TabsList>
+                                                    </Tabs>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Visible Data Fields</Label>
+                                                    <div className="grid gap-2">
+                                                        <ToggleOption 
+                                                            label="Product Image" 
+                                                            checked={selectedBlock.block.layoutConfig?.showImages} 
+                                                            onChange={(v) => updateBlock(selectedBlockId!, { layoutConfig: { showImages: v } })}
+                                                        />
+                                                        <ToggleOption 
+                                                            label="Part Code / SKU" 
+                                                            checked={selectedBlock.block.layoutConfig?.showSku} 
+                                                            onChange={(v) => updateBlock(selectedBlockId!, { layoutConfig: { showSku: v } })}
+                                                        />
+                                                        <ToggleOption 
+                                                            label="Extended Description" 
+                                                            checked={selectedBlock.block.layoutConfig?.showDescription} 
+                                                            onChange={(v) => updateBlock(selectedBlockId!, { layoutConfig: { showDescription: v } })}
+                                                        />
+                                                        <ToggleOption 
+                                                            label="Unit Price" 
+                                                            checked={selectedBlock.block.layoutConfig?.showPrice} 
+                                                            onChange={(v) => updateBlock(selectedBlockId!, { layoutConfig: { showPrice: v } })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Dynamic Data Binding</Label>
+                                                <Select 
+                                                    value={selectedBlock.block.dataSource || 'manual'} 
+                                                    onValueChange={(v) => updateBlock(selectedBlockId!, { dataSource: v })}
+                                                >
+                                                    <SelectTrigger className="h-12 bg-slate-900 border-slate-700 text-[10px] font-black uppercase tracking-tighter rounded-xl text-white">
+                                                        <SelectValue placeholder="Manual Entry Only" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-slate-900 border-slate-700 text-white rounded-xl shadow-2xl">
+                                                        <SelectItem value="manual" className="text-[10px] font-black uppercase py-3">Static / Manual Value</SelectItem>
+                                                        {dataSources.map(ds => (
+                                                            <SelectItem key={ds.id} value={ds.id} className="text-[10px] font-black uppercase py-3">{ds.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <Separator className="bg-slate-800" />
+
+                                    <div className="space-y-4">
+                                        <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Positional Meta</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Display Order</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    value={selectedBlock.block.order} 
+                                                    onChange={(e) => updateBlock(selectedBlockId!, { order: parseInt(e.target.value) || 0 })}
+                                                    className="h-11 bg-slate-800 border-slate-700 font-black text-center rounded-xl text-white" 
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
                                 <div className="flex flex-col items-center justify-center text-center opacity-30 gap-4 py-12 border-2 border-dashed border-slate-800 rounded-3xl">
                                     <BoxSelect className="h-8 w-8 text-white" />
                                     <p className="text-[9px] font-black uppercase tracking-widest leading-relaxed px-8 text-white">Select a canvas element to modify positional meta</p>
                                 </div>
-                            </div>
-                        ) : selectedBlock ? (
-                            <div className="w-full space-y-8 animate-in fade-in slide-in-from-right-2">
-                                <div className="space-y-4">
-                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Component Source</h4>
-                                    <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Dynamic Data Binding</Label>
-                                            <Select 
-                                                value={selectedBlock.block.dataSource || 'manual'} 
-                                                onValueChange={(v) => updateBlock(selectedBlockId!, { dataSource: v })}
-                                            >
-                                                <SelectTrigger className="h-12 bg-slate-900 border-slate-700 text-[10px] font-black uppercase tracking-tighter rounded-xl text-white">
-                                                    <SelectValue placeholder="Manual Entry Only" />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-slate-900 border-slate-700 text-white rounded-xl shadow-2xl">
-                                                    <SelectItem value="manual" className="text-[10px] font-black uppercase py-3">Static / Manual Value</SelectItem>
-                                                    {dataSources.map(ds => (
-                                                        <SelectItem key={ds.id} value={ds.id} className="text-[10px] font-black uppercase py-3">{ds.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <Separator className="bg-slate-800" />
-
-                                <div className="space-y-4">
-                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Positional Meta</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Display Order</Label>
-                                            <Input 
-                                                type="number" 
-                                                value={selectedBlock.block.order} 
-                                                onChange={(e) => updateBlock(selectedBlockId!, { order: parseInt(e.target.value) || 0 })}
-                                                className="h-11 bg-slate-800 border-slate-700 font-black text-center rounded-xl text-white" 
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : null}
-                    </div>
+                            )}
+                        </div>
+                    </ScrollArea>
                 </aside>
             </div>
+            
+            <style jsx global>{`
+                .pattern-dots {
+                    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+                    background-size: 20px 20px;
+                }
+            `}</style>
         </div>
     );
 }
@@ -570,5 +726,20 @@ function ToolButton({ icon: Icon, label, onClick }: any) {
             <Icon className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-primary-foreground">{label}</span>
         </button>
+    );
+}
+
+function ToggleOption({ label, checked, onChange }: { label: string, checked?: boolean, onChange: (v: boolean) => void }) {
+    return (
+        <div 
+            onClick={() => onChange(!checked)}
+            className={cn(
+                "flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all",
+                checked ? "bg-primary/10 border-primary/40" : "bg-slate-900 border-slate-800 hover:border-slate-700"
+            )}
+        >
+            <span className={cn("text-[9px] font-black uppercase tracking-widest", checked ? "text-primary" : "text-slate-500")}>{label}</span>
+            {checked ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <div className="h-3 w-3 rounded-full border-2 border-slate-700" />}
+        </div>
     );
 }
