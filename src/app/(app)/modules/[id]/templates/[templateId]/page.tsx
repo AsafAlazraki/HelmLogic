@@ -582,3 +582,15 @@ function ToolButton({ icon: Icon, label, onClick }: any) {
         </button>
     );
 }
+
+function ToolButtonWithIcon({ icon: Icon, label, onClick }: any) {
+    return (
+        <button 
+            onClick={onClick}
+            className="flex flex-col items-center justify-center gap-3 p-5 rounded-3xl bg-slate-800/50 border-2 border-slate-700/50 hover:bg-primary/10 hover:border-primary/50 transition-all group active:scale-95"
+        >
+            <Icon className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-primary-foreground">{label}</span>
+        </button>
+    );
+}
