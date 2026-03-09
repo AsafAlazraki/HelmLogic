@@ -72,6 +72,25 @@ import { cn, createSlug } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useUser } from '@/firebase/auth/use-user';
 
+/**
+ * Robust utility to recursively strip undefined values before Firestore updates.
+ */
+function sanitizeDataForFirestore(data: any): any {
+  if (data === undefined) return null;
+  if (data === null || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(item => sanitizeDataForFirestore(item));
+  const sanitizedData: { [key: string]: any } = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      if (value !== undefined) {
+        sanitizedData[key] = sanitizeDataForFirestore(value);
+      }
+    }
+  }
+  return sanitizedData;
+}
+
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
 }).optional().or(z.literal(''));
@@ -82,7 +101,6 @@ const roleSchema = z.object({
   parent: z.preprocess((val) => val ?? '', z.string()),
 });
 
-// Permissive schema for prototype UI updates to prevent validation blocking
 const formSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
@@ -525,25 +543,28 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         setIsSubmitting(true);
         
         try {
+            // CRITICAL: Sanitize data to strip undefined values before Firestore update
+            const sanitizedValues = sanitizeDataForFirestore(values);
+
             const dataToUpdate: { [key: string]: any } = {
-                name: values.name,
-                slug: createSlug(values.name),
-                shortCode: values.shortCode || '',
-                address: values.address || '',
-                phoneNumber: values.phoneNumber || '',
-                abn: values.abn || '',
-                primaryColor: values.primaryColor || '',
-                accentColor: values.accentColor || '',
-                secondaryColor: values.secondaryColor || '',
-                roles: values.roles || [],
-                permissions: values.permissions || {},
-                tradingCurrency: values.tradingCurrency,
-                gstPercentage: values.gstPercentage,
-                brandMargins: values.brandMargins || {},
-                moduleMargins: values.moduleMargins || {},
-                dataWarehouseSubscriptions: values.dataWarehouseSubscriptions || organisation.dataWarehouseSubscriptions || [],
-                enabledModuleSubscriptions: values.enabledModuleSubscriptions || organisation.enabledModuleSubscriptions || [],
-                dealerFitCategories: values.dealerFitCategories || organisation.dealerFitCategories || [],
+                name: sanitizedValues.name,
+                slug: createSlug(sanitizedValues.name),
+                shortCode: sanitizedValues.shortCode || '',
+                address: sanitizedValues.address || '',
+                phoneNumber: sanitizedValues.phoneNumber || '',
+                abn: sanitizedValues.abn || '',
+                primaryColor: sanitizedValues.primaryColor || '',
+                accentColor: sanitizedValues.accentColor || '',
+                secondaryColor: sanitizedValues.secondaryColor || '',
+                roles: sanitizedValues.roles || [],
+                permissions: sanitizedValues.permissions || {},
+                tradingCurrency: sanitizedValues.tradingCurrency,
+                gstPercentage: sanitizedValues.gstPercentage,
+                brandMargins: sanitizedValues.brandMargins || {},
+                moduleMargins: sanitizedValues.moduleMargins || {},
+                dataWarehouseSubscriptions: sanitizedValues.dataWarehouseSubscriptions || organisation.dataWarehouseSubscriptions || [],
+                enabledModuleSubscriptions: sanitizedValues.enabledModuleSubscriptions || organisation.enabledModuleSubscriptions || [],
+                dealerFitCategories: sanitizedValues.dealerFitCategories || organisation.dealerFitCategories || [],
             };
             
             if (values.primaryLogo instanceof File && storage) {
@@ -559,29 +580,14 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             await updateDoc(orgDocRef, dataToUpdate);
             toast({ title: 'Organisation updated' });
         } catch (error: any) {
+            console.error("Update failed:", error);
             toast({ variant: 'destructive', title: 'Update failed', description: error.message });
         } finally {
             setIsSubmitting(false);
         }
     }
 
-    const ColorFormField = ({ name, label, description }: { name: "primaryColor" | "accentColor" | "secondaryColor", label: string, description: string }) => (
-        <FormField control={form.control} name={name} render={({ field }) => (
-            <FormItem>
-              <FormLabel>{label}</FormLabel>
-              <div className="flex items-center gap-2">
-                <FormControl>
-                    <Input type="color" className="h-10 w-14 p-1" {...field} value={field.value ?? ''} />
-                </FormControl>
-                <FormControl>
-                    <Input placeholder="#RRGGBB" {...field} value={field.value ?? ''} />
-                </FormControl>
-              </div>
-              <FormDescription>{description}</FormDescription>
-              <FormMessage />
-            </FormItem>
-        )} />
-    );
+    if (orgLoading) return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
 
     return (
         <>
@@ -720,7 +726,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                         </div>
                                                         <Button 
                                                             type="button"
-                                                            onClick={addUserForm.handleSubmit(onAddUserSubmit)}
+                                                            onClick={onAddUserSubmit}
                                                             disabled={isAddingUser} 
                                                             className="h-11 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
                                                         >
