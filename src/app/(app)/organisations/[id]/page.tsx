@@ -41,6 +41,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn, createSlug } from '@/lib/utils';
 import { ModuleVendorAccessDialog } from '@/components/module-vendor-access-dialog';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
+import { Badge } from '@/components/ui/badge';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",

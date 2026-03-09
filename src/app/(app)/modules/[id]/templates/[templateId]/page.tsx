@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
@@ -33,7 +33,8 @@ import {
     ZoomOut,
     Columns,
     PanelBottom,
-    PanelTop
+    PanelTop,
+    X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -75,7 +76,6 @@ export default function TemplateEditorPage() {
     const moduleId = params.id as string;
     const templateId = params.templateId as string;
 
-    // We need to resolve the organization ID first to find the template
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
     const orgId = userProfile?.organisationId;
@@ -92,13 +92,15 @@ export default function TemplateEditorPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
     const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+    const isInitialLoad = useRef(true);
 
     useEffect(() => {
-        if (template?.pages) {
+        if (template?.pages && isInitialLoad.current) {
             setPages(template.pages);
             if (template.pages.length > 0) {
                 setSelectedPageId(template.pages[0].id);
             }
+            isInitialLoad.current = false;
         }
     }, [template]);
 
@@ -120,23 +122,27 @@ export default function TemplateEditorPage() {
     };
 
     const addPage = () => {
-        const nextOrder = pages.length + 1;
-        const newPage: TemplatePage = {
-            id: `page-${Date.now()}`,
-            blocks: [],
-            headerHeight: 20,
-            footerHeight: 20,
-            order: nextOrder
-        };
-        setPages(prev => [...prev, newPage]);
-        setSelectedPageId(newPage.id);
+        setPages(prev => {
+            const nextOrder = prev.length + 1;
+            const newPageId = `page-${Date.now()}`;
+            const newPage: TemplatePage = {
+                id: newPageId,
+                blocks: [],
+                headerHeight: 20,
+                footerHeight: 20,
+                order: nextOrder
+            };
+            setSelectedPageId(newPageId);
+            return [...prev, newPage];
+        });
     };
 
     const addBlock = (pageId: string, type: TemplateBlock['type'], zone: TemplateBlock['zone'] = 'body') => {
+        const newBlockId = `block-${Date.now()}`;
         setPages(prev => prev.map(p => {
             if (p.id !== pageId) return p;
             const newBlock: TemplateBlock = {
-                id: `block-${Date.now()}`,
+                id: newBlockId,
                 type,
                 zone,
                 order: p.blocks.length + 1,
@@ -147,7 +153,7 @@ export default function TemplateEditorPage() {
             };
             return { ...p, blocks: [...p.blocks, newBlock] };
         }));
-        setSelectedBlockId(`block-${Date.now()}`); // Approx for UI feedback
+        setSelectedBlockId(newBlockId);
     };
 
     const updateBlock = (blockId: string, updates: Partial<TemplateBlock>) => {
@@ -166,6 +172,7 @@ export default function TemplateEditorPage() {
             if (p.id !== pageId) return p;
             return { ...p, blocks: p.blocks.filter(b => b.id !== blockId) };
         }));
+        if (selectedBlockId === blockId) setSelectedBlockId(null);
     };
 
     const selectedBlock = useMemo(() => {
