@@ -42,6 +42,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -175,8 +176,8 @@ function CanvasBlock({
                                                     key={child.id} 
                                                     block={child} 
                                                     isSelected={selectedBlockId === child.id}
-                                                    onSelect={() => onSelect()} // Parent selection handled by caller
-                                                    onDelete={() => onDelete()} // Specific nested delete could be added
+                                                    onSelect={() => onSelect()} 
+                                                    onDelete={() => onDelete()} 
                                                     selectedBlockId={selectedBlockId}
                                                     pageId={pageId}
                                                 />
@@ -646,7 +647,7 @@ export default function TemplateEditorPage() {
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="absolute bottom-1 right-1 h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity bg-primary text-white"
+                                        className="absolute bottom-1 right-1 opacity-0 group-hover/header:opacity-100 transition-opacity bg-primary text-white"
                                         onClick={(e) => { e.stopPropagation(); addBlock(page.id, 'text', 'header'); }}
                                     >
                                         <Plus className="h-3 w-3" />
@@ -704,7 +705,7 @@ export default function TemplateEditorPage() {
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/footer:opacity-100 transition-opacity bg-primary text-white"
+                                        className="absolute top-1 right-1 opacity-0 group-hover/footer:opacity-100 transition-opacity bg-primary text-white"
                                         onClick={(e) => { e.stopPropagation(); addBlock(page.id, 'text', 'footer'); }}
                                     >
                                         <Plus className="h-3 w-3" />
