@@ -434,7 +434,7 @@ function EditItemDialog({
                             )}
                             <label className="absolute inset-0 cursor-pointer bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
                                 <Upload className="h-8 w-8 text-white" />
-                                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                <input type="file" className="hidden" border-none accept="image/*" onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
                                         setImage(file);
@@ -665,7 +665,6 @@ export default function ModuleDetailsPage() {
     const handleModelSelect = (model: Model) => { 
         setSelectedModel(model); 
         setIsTransitioning(true);
-        // Persistence handled by redirect logic
     };
 
     const handleQuoteInitialization = (model: Model, range: Range) => {
@@ -743,7 +742,7 @@ export default function ModuleDetailsPage() {
                         </div>
                         <Button 
                             variant="ghost" 
-                            size="sm" 
+                            size="icon" 
                             className="h-8 sm:h-10 px-4 sm:px-6 font-black uppercase tracking-widest text-[9px] sm:text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl"
                             onClick={() => router.push('/dashboard')}
                         >

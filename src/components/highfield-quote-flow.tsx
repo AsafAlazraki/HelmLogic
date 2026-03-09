@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -412,38 +412,24 @@ export function HighfieldQuoteFlow({
                                                         type="button"
                                                         onClick={() => handleMaterialSelect(mat as any)}
                                                         className={cn(
-                                                            "group relative flex flex-col items-start p-10 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[300px] text-left",
+                                                            "group relative flex flex-col items-start p-8 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[220px] text-left",
                                                             isSelected ? "bg-primary border-primary text-white shadow-2xl scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
                                                         )}
                                                     >
-                                                        {/* Icon Row */}
-                                                        <div className="w-full flex justify-end mb-8">
-                                                            {isPvc ? (
-                                                                <Waves className={cn("h-8 w-8", isSelected ? "text-white" : "text-primary")} />
-                                                            ) : (
-                                                                <ShieldCheck className={cn("h-8 w-8", isSelected ? "text-white" : "text-primary")} />
-                                                            )}
-                                                        </div>
-
                                                         {/* Info Stack */}
-                                                        <div className="space-y-1.5">
+                                                        <div className="space-y-1.5 mb-6">
                                                             <span className="text-4xl font-black uppercase tracking-tight leading-none">{mat}</span>
                                                             <p className={cn("text-[11px] font-black uppercase tracking-[0.2em] opacity-60", isSelected ? "text-white" : "text-muted-foreground")}>
                                                                 {isPvc ? 'Standard PVC' : 'ORCA® Hypalon'}
                                                             </p>
                                                         </div>
 
-                                                        {/* Warranty Feature */}
-                                                        <div className="mt-auto pt-8 w-full">
-                                                            <div className={cn(
-                                                                "flex items-center gap-3 px-5 py-3 rounded-2xl border-2 transition-all",
-                                                                isSelected ? "bg-white/10 border-white/20" : "bg-slate-50 border-slate-100"
-                                                            )}>
-                                                                <Check className={cn("h-4 w-4 shrink-0", isSelected ? "text-white" : "text-green-500")} />
-                                                                <span className="text-[10px] font-black uppercase tracking-[0.15em] leading-none">
-                                                                    {isPvc ? '5yr Tube Warranty' : '10yr Tube Warranty'}
-                                                                </span>
-                                                            </div>
+                                                        {/* Warranty Feature - Simplified as per request */}
+                                                        <div className="mt-auto flex items-center gap-2">
+                                                            <Check className={cn("h-4 w-4 shrink-0", isSelected ? "text-white" : "text-green-500")} />
+                                                            <span className="text-[10px] font-black uppercase tracking-[0.15em] leading-none">
+                                                                {isPvc ? '5yr Tube Warranty' : '10yr Tube Warranty'}
+                                                            </span>
                                                         </div>
                                                     </button>
                                                 );
