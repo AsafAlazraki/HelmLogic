@@ -164,7 +164,7 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
     );
 }
 
-function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpen: boolean, onOpenChange: (open: boolean) => void, moduleId: string, orgId: string }) {
+function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId, allModules }: { isOpen: boolean, onOpenChange: (open: boolean) => void, moduleId: string, orgId: string, allModules: any[] }) {
     const firestore = useFirestore();
     const { user } = useUser();
     const router = useRouter();
@@ -172,9 +172,14 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
     const [isLoading, setIsLoading] = useState(false);
     const [name, setName] = useState('');
     const [type, setType] = useState<'Quote' | 'Invoice' | 'Contract'>('Quote');
+    const [targetModuleId, setTargetModuleId] = useState(moduleId);
+
+    useEffect(() => {
+        if (moduleId) setTargetModuleId(moduleId);
+    }, [moduleId]);
 
     const handleCreate = async () => {
-        if (!user || !name.trim() || !orgId) return;
+        if (!user || !name.trim() || !orgId || !targetModuleId) return;
         setIsLoading(true);
         try {
             const templateRef = doc(collection(firestore, `organisations/${orgId}/templates`));
@@ -182,7 +187,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
                 id: templateRef.id,
                 name,
                 type,
-                moduleId,
+                moduleId: targetModuleId,
                 createdByUserId: user.uid,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
@@ -193,7 +198,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
             await setDoc(templateRef, templateData);
             
             toast({ title: "Template Created" });
-            router.push(`/modules/${moduleId}/templates/${templateRef.id}`);
+            router.push(`/modules/${targetModuleId}/templates/${templateRef.id}`);
         } catch (e) {
             toast({ variant: 'destructive', title: "Failed to create template" });
         } finally {
@@ -214,6 +219,19 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
                         <Input placeholder="e.g. Premium Sales Proposal" value={name} onChange={e => setName(e.target.value)} className="h-12 font-bold border-2 rounded-xl" />
                     </div>
                     <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Linked Module</Label>
+                        <Select value={targetModuleId} onValueChange={setTargetModuleId}>
+                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
+                                <SelectValue placeholder="Select target module..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-2">
+                                {allModules.map(m => (
+                                    <SelectItem key={m.id} value={m.id} className="text-[10px] font-bold uppercase py-2.5">{m.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Document Class</Label>
                         <Select value={type} onValueChange={(v: any) => setType(v)}>
                             <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
@@ -229,7 +247,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
                 </div>
                 <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
                     <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
-                    <Button onClick={handleCreate} disabled={!name.trim() || isLoading} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
+                    <Button onClick={handleCreate} disabled={!name.trim() || !targetModuleId || isLoading} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
                         Generate Editor
                     </Button>
@@ -269,6 +287,9 @@ export default function ModuleDetailsPage() {
     
     const organisationsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
     const { data: allOrganisations } = useCollection<Organisation>(organisationsQuery);
+
+    const allModulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
+    const { data: allModules } = useCollection<any>(allModulesQuery);
     
     const currentMemberOrg = useMemo(() => 
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
@@ -635,13 +656,15 @@ export default function ModuleDetailsPage() {
                 </Tabs>
             </main>
 
-            <CreateTemplateDialog 
-                isOpen={isCreateTemplateOpen} 
-                onOpenChange={setIsCreateTemplateOpen} 
-                moduleId={moduleData.id} 
-                orgId={currentMemberOrg?.id || ''}
-                allModules={allModules || []}
-            />
+            {moduleData && (
+                <CreateTemplateDialog 
+                    isOpen={isCreateTemplateOpen} 
+                    onOpenChange={setIsCreateTemplateOpen} 
+                    moduleId={moduleData.id} 
+                    orgId={currentMemberOrg?.id || ''}
+                    allModules={allModules || []}
+                />
+            )}
         </div>
     );
 }
