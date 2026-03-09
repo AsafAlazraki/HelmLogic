@@ -173,7 +173,16 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model]);
 
-    // Independent Panel Scrolling
+    // Independent Panel Scrolling & Reset
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) {
+                viewport.scrollTo({ top: 0, behavior: 'auto' });
+            }
+        }
+    }, [currentStep]);
+
     useEffect(() => {
         if (selectedMaterial && currentStep === 1 && scrollAreaRef.current && colorsSectionRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -184,7 +193,7 @@ export function HighfieldQuoteFlow({
                 }, 600);
             }
         }
-    }, [currentStep, selectedMaterial]);
+    }, [selectedMaterial]);
 
     // Data Derivations
     const activeVariant = useMemo(() => {
@@ -254,12 +263,18 @@ export function HighfieldQuoteFlow({
             const cat = opt.category || 'General Options';
             
             // Logic for Seats: 
-            // 1. If a console is selected, only show Seats category if it's the associated seat
-            // 2. If no console is selected, show all compatible seats
+            // 1. If a console is selected, ONLY show the seat tied to it.
+            // 2. If console has no associated seat, hide the category entirely.
             if (cat === 'Seats') {
                 if (selectedConsole) {
-                    if (opt.id !== selectedConsole.associatedSeatId) return acc;
+                    if (selectedConsole.associatedSeatId) {
+                        if (opt.id !== selectedConsole.associatedSeatId) return acc;
+                    } else {
+                        // Console exists but no associated seat -> hide seats category
+                        return acc;
+                    }
                 }
+                // 3. If no console selected, show all (Open Deck mode)
             }
 
             if (!acc[cat]) acc[cat] = [];
@@ -304,20 +319,7 @@ export function HighfieldQuoteFlow({
         setSelectedColor(null);
     };
 
-    const nextStep = () => {
-        setCurrentStep(prev => {
-            const next = Math.min(prev + 1, STEPS.length);
-            // Reset scroll position to top
-            if (scrollAreaRef.current) {
-                const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-                if (viewport) {
-                    viewport.scrollTo({ top: 0, behavior: 'auto' });
-                }
-            }
-            return next;
-        });
-    };
-    
+    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
     const rangePart = range?.name || '';
@@ -360,7 +362,13 @@ export function HighfieldQuoteFlow({
                             </div>
                         ))}
                     </div>
-                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[10px]" onClick={() => router.push(`/modules/${module.id}`)}>Exit Build</button>
+                    <button 
+                        type="button" 
+                        className="font-black text-destructive uppercase tracking-widest text-[10px] hover:opacity-70 transition-opacity" 
+                        onClick={() => router.push(`/modules/${module.slug || module.id}`)}
+                    >
+                        Exit Build
+                    </button>
                 </div>
             </div>
 
@@ -409,7 +417,7 @@ export function HighfieldQuoteFlow({
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Total (Excl. GST)</span>
                                 </div>
                                 <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-3 text-2xl sm:text-3xl tracking-tight min-0 truncate">
+                                    <div className="flex items-center gap-3 text-xl sm:text-2xl tracking-tight min-0 truncate">
                                         {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
                                         <span className="text-slate-950 font-black whitespace-nowrap">{displayedModelName}</span>
                                     </div>
@@ -451,7 +459,6 @@ export function HighfieldQuoteFlow({
                                                             isSelected ? "bg-primary border-primary text-white shadow-2xl scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
                                                         )}
                                                     >
-                                                        {/* Info Stack */}
                                                         <div className="space-y-1.5 mb-6">
                                                             <span className="text-4xl font-black uppercase tracking-tight leading-none">{mat}</span>
                                                             <p className={cn("text-[11px] font-black uppercase tracking-[0.2em] opacity-60", isSelected ? "text-white" : "text-muted-foreground")}>
@@ -459,7 +466,6 @@ export function HighfieldQuoteFlow({
                                                             </p>
                                                         </div>
 
-                                                        {/* Warranty Feature */}
                                                         <div className="mt-auto flex items-center gap-2">
                                                             <Check className={cn("h-4 w-4 shrink-0", isSelected ? "text-white" : "text-green-500")} />
                                                             <span className="text-[10px] font-black uppercase tracking-[0.15em] leading-none">
