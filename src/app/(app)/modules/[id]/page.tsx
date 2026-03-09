@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -88,7 +87,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
   useSortable,
-} from '@dnd-kit/sortable';
+} from '@nd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
@@ -191,6 +190,100 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                 }
             `}</style>
         </div>
+    );
+}
+
+function QuoteInitializationDialog({ 
+    isOpen, 
+    onOpenChange, 
+    vendor, 
+    onModelSelect 
+}: { 
+    isOpen: boolean, 
+    onOpenChange: (open: boolean) => void, 
+    vendor: Vendor | null,
+    onModelSelect: (model: Model, range: Range) => void
+}) {
+    const firestore = useFirestore();
+    const [selectedRange, setSelectedRange] = useState<Range | null>(null);
+
+    const rangesQuery = useMemoFirebase(() => 
+        vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, 
+    [firestore, vendor?.id]);
+    const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
+
+    const modelsQuery = useMemoFirebase(() => 
+        vendor?.id && selectedRange?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${selectedRange.id}/models`), orderBy('order')) : null, 
+    [firestore, vendor?.id, selectedRange?.id]);
+    const { data: models, loading: modelsLoading } = useCollection<Model>(modelsQuery);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedRange(null);
+        }
+    }, [isOpen]);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-5xl rounded-[3rem] border-4 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-10 border-b bg-muted/5 flex flex-row items-center justify-between">
+                    <div>
+                        <DialogTitle className="text-3xl font-black uppercase tracking-tight italic text-primary">Initialize Quotation</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">Select a series to begin precision build</DialogDescription>
+                    </div>
+                    {selectedRange && (
+                        <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl border-2" onClick={() => setSelectedRange(null)}>
+                            <ChevronLeft className="mr-2 h-4 w-4" /> Change Range
+                        </Button>
+                    )}
+                </DialogHeader>
+                
+                <div className="p-10 min-h-[500px]">
+                    {!selectedRange ? (
+                        <div className="space-y-8">
+                            <h3 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">1. Select Product Range</h3>
+                            {rangesLoading ? (
+                                <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                    {ranges?.map(range => (
+                                        <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm" onClick={() => setSelectedRange(range)}>
+                                            <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden">
+                                                {range.imageUrl && <Image src={range.imageUrl} alt={range.name} fill className="object-cover group-hover:scale-105 transition-transform" unoptimized />}
+                                            </div>
+                                            <div className="p-4 bg-white text-center">
+                                                <span className="font-black uppercase text-[11px] tracking-tight">{range.name}</span>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+                            <h3 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">2. Choose Boat Series: {selectedRange.name}</h3>
+                            {modelsLoading ? (
+                                <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                    {models?.map(model => (
+                                        <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm" onClick={() => onModelSelect(model, selectedRange)}>
+                                            <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
+                                                {model.coverImageUrl && <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover group-hover:scale-105 transition-transform" unoptimized />}
+                                            </div>
+                                            <div className="p-4 bg-white text-center flex flex-col gap-1">
+                                                <span className="font-black uppercase text-[11px] tracking-tight text-primary">{model.name}</span>
+                                                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{model.modelCode}</span>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -501,6 +594,7 @@ export default function ModuleDetailsPage() {
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isCreateTemplateOpen, setIsCreateTemplateOpen] = useState(false);
+    const [isQuoteInitializationOpen, setIsQuoteInitializationOpen] = useState(false);
     
     const [editingItem, setEditingItem] = useState<any>(null);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -574,6 +668,18 @@ export default function ModuleDetailsPage() {
         setTimeout(() => {
             setView('bmt');
             setIsTransitioning(false);
+        }, 2200);
+    };
+
+    const handleQuoteInitialization = (model: Model, range: Range) => {
+        setSelectedModel(model);
+        setSelectedRange(range);
+        setIsQuoteInitializationOpen(false);
+        setIsTransitioning(true);
+        
+        setTimeout(() => {
+            setIsTransitioning(false);
+            router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
         }, 2200);
     };
 
@@ -715,7 +821,7 @@ export default function ModuleDetailsPage() {
                                                 <h2 className="text-4xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
                                             </div>
                                             <Button 
-                                                onClick={() => setActiveTab('bmt')}
+                                                onClick={() => setIsQuoteInitializationOpen(true)}
                                                 className="h-14 px-10 rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-2xl transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none group"
                                             >
                                                 <PlusCircle className="mr-3 h-5 w-5 transition-transform group-hover:rotate-90" />
@@ -728,7 +834,7 @@ export default function ModuleDetailsPage() {
                                             </div>
                                             <div className="space-y-4">
                                                 <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
-                                                <Button variant="outline" onClick={() => setActiveTab('bmt')} className="font-black uppercase text-[10px] tracking-widest rounded-xl border-2">Select a boat to start</Button>
+                                                <Button variant="outline" onClick={() => setIsQuoteInitializationOpen(true)} className="font-black uppercase text-[10px] tracking-widest rounded-xl border-2">Select a boat to start</Button>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -927,13 +1033,21 @@ export default function ModuleDetailsPage() {
             </main>
 
             {moduleData && (
-                <CreateTemplateDialog 
-                    isOpen={isCreateTemplateOpen} 
-                    onOpenChange={setIsCreateTemplateOpen} 
-                    moduleId={moduleData.id} 
-                    orgId={currentMemberOrg?.id || ''}
-                    allModules={allModules || []}
-                />
+                <>
+                    <CreateTemplateDialog 
+                        isOpen={isCreateTemplateOpen} 
+                        onOpenChange={setIsCreateTemplateOpen} 
+                        moduleId={moduleData.id} 
+                        orgId={currentMemberOrg?.id || ''}
+                        allModules={allModules || []}
+                    />
+                    <QuoteInitializationDialog
+                        isOpen={isQuoteInitializationOpen}
+                        onOpenChange={setIsQuoteInitializationOpen}
+                        vendor={mainVendor}
+                        onModelSelect={handleQuoteInitialization}
+                    />
+                </>
             )}
 
             <EditItemDialog 
