@@ -18,7 +18,32 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { firebaseConfig } from '@/firebase/config';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp, Hash, FileSpreadsheet, ChevronRight, Waves, Zap, ScrollText, Pencil, UserPlus, Key, ShieldCheck, Smartphone, Phone, Building2 } from 'lucide-react';
+import { 
+    Loader2, 
+    Trash2, 
+    Save, 
+    X, 
+    Mail, 
+    Building, 
+    Check, 
+    PlusCircle, 
+    Settings2, 
+    Percent, 
+    TrendingUp, 
+    Hash, 
+    FileSpreadsheet, 
+    ChevronRight, 
+    Waves, 
+    Zap, 
+    ScrollText, 
+    Pencil, 
+    UserPlus, 
+    Key, 
+    ShieldCheck, 
+    Smartphone, 
+    Phone, 
+    Building2 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -30,7 +55,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -59,8 +83,9 @@ const roleSchema = z.object({
 });
 
 const formSchema = z.object({
-  id: z.string(),
+  id: z.string().optional(),
   name: z.string().min(1, { message: 'Organisation name is required.' }),
+  slug: z.string().nullable().optional(),
   shortCode: z.string().max(10).nullable().optional(),
   address: z.string().nullable().optional(),
   phoneNumber: z.string().nullable().optional(),
@@ -81,6 +106,8 @@ const formSchema = z.object({
   moduleMargins: z.record(z.string(), z.coerce.number()).optional(),
   dataWarehouseSubscriptions: z.array(z.string()).optional(),
   enabledModuleSubscriptions: z.array(z.string()).optional(),
+  moduleAssociatedVendorAccess: z.record(z.string(), z.array(z.string())).optional(),
+  dealerFitCategories: z.array(z.string()).optional(),
   parentOrganisationId: z.string().nullable().optional(),
 });
 
@@ -514,6 +541,9 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 gstPercentage: values.gstPercentage,
                 brandMargins: values.brandMargins || {},
                 moduleMargins: values.moduleMargins || {},
+                dataWarehouseSubscriptions: values.dataWarehouseSubscriptions || organisation.dataWarehouseSubscriptions || [],
+                enabledModuleSubscriptions: values.enabledModuleSubscriptions || organisation.enabledModuleSubscriptions || [],
+                dealerFitCategories: values.dealerFitCategories || organisation.dealerFitCategories || [],
             };
             
             if (values.primaryLogo instanceof File && storage) {
@@ -864,7 +894,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 <Card>
                                     <CardHeader><CardTitle>Margins & Tax</CardTitle></CardHeader>
                                     <CardContent>
-                                        <p>Margin management interface coming soon.</p>
+                                        <p className="text-sm text-muted-foreground">Strategic margin management interface coming soon.</p>
                                     </CardContent>
                                 </Card>
                             </TabsContent>

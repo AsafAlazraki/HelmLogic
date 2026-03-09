@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -27,10 +26,18 @@ service cloud.firestore {
     }
 
     match /organisations/{organisationId} {
-      allow read, write: if isSignedIn();
+      // Allow global read for organization details
+      allow read: if isSignedIn();
+      // Allow write for any authenticated user for prototype purposes
+      allow write: if isSignedIn();
       
-      // Explicit recursive wildcard for all sub-data in organisations
-      // Includes templates, price levels, pricing strategies, model overrides, etc.
+      match /templates/{templateId} {
+        allow read, write: if isSignedIn();
+        match /{allPaths=**} {
+          allow read, write: if isSignedIn();
+        }
+      }
+      
       match /{allPaths=**} {
         allow read, write: if isSignedIn();
       }
@@ -54,14 +61,15 @@ service cloud.firestore {
     // --- User Data & Notifications ---
 
     match /users/{userId} {
-      // Allow global read for member lists and profile resolution
       allow read: if isSignedIn();
-      // Allow creation for enrollment and updates for profile management
-      allow create, update: if isSignedIn();
+      // Allow creation for signup and enrollment
+      allow create: if isSignedIn();
+      // Allow update for profile management
+      allow update: if isSignedIn();
       allow delete: if isSignedIn();
 
       match /notifications/{notificationId} {
-        allow get, list, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isSignedIn();
       }
       
       match /{allPaths=**} {

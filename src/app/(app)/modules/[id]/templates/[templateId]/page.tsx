@@ -278,7 +278,6 @@ export default function TemplateEditorPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-slate-900 text-slate-100">
-            {/* Precision Header */}
             <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-8 flex items-center justify-between shrink-0 z-50 shadow-2xl">
                 <div className="flex items-center gap-6">
                     <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-white transition-colors" onClick={() => router.back()}>
@@ -295,7 +294,6 @@ export default function TemplateEditorPage() {
                 </div>
 
                 <div className="flex items-center gap-8">
-                    {/* Zoom Controls */}
                     <div className="flex items-center bg-slate-800/50 rounded-xl p-1 border border-slate-700 shadow-inner">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}><ZoomOut className="h-4 w-4" /></Button>
                         <span className="text-[10px] font-black w-14 text-center uppercase tracking-tighter text-slate-300">{Math.round(zoom * 100)}%</span>
@@ -314,7 +312,6 @@ export default function TemplateEditorPage() {
             </header>
 
             <div className="flex-1 flex overflow-hidden">
-                {/* Component Factory Sidebar */}
                 <aside className="w-72 border-r border-slate-800 bg-slate-900 flex flex-col shrink-0">
                     <div className="p-6 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Component Factory</h3>
@@ -371,7 +368,6 @@ export default function TemplateEditorPage() {
                     </ScrollArea>
                 </aside>
 
-                {/* Main A4 Workspace */}
                 <main className="flex-1 bg-slate-950 p-12 overflow-auto scrollbar-thin">
                     <div 
                         className="flex flex-col items-center gap-16 pb-64 transition-transform origin-top duration-300"
@@ -390,7 +386,6 @@ export default function TemplateEditorPage() {
                                     <Badge variant="secondary" className="bg-slate-800 text-white border-none font-black h-10 w-10 rounded-2xl flex items-center justify-center p-0 shadow-2xl text-lg">{page.order}</Badge>
                                 </div>
 
-                                {/* Dynamic Header Zone */}
                                 <div 
                                     className="w-full border-b border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/header overflow-hidden px-[20mm]"
                                     style={{ height: `${page.headerHeight}mm` }}
@@ -443,7 +438,6 @@ export default function TemplateEditorPage() {
                                     )}
                                 </div>
 
-                                {/* Dynamic Footer Zone */}
                                 <div 
                                     className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/footer overflow-hidden px-[20mm]"
                                     style={{ height: `${page.footerHeight}mm` }}
@@ -478,7 +472,6 @@ export default function TemplateEditorPage() {
                     </div>
                 </main>
 
-                {/* Property Matrix Inspector */}
                 <aside className="w-80 border-l border-slate-800 bg-slate-900 flex flex-col shrink-0 shadow-2xl">
                     <div className="p-6 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Property Matrix</h3>

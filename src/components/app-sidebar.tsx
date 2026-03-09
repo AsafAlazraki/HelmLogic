@@ -100,7 +100,6 @@ export function AppSidebar() {
     }
   };
 
-  const northsideMarineOrg = organisations?.find((o: any) => o.name === 'Northside Marine');
   const currentRole = isAdmin ? 'admin' : (userProfile?.organisationId ? 'employee' : '');
 
   const checkActive = (href: string) => pathname.startsWith(href);
@@ -214,7 +213,7 @@ export function AppSidebar() {
                     </SelectTrigger>
                     <SelectContent>
                     <SelectItem value="admin" className="text-[10px] font-bold uppercase">System Admin</SelectItem>
-                    <SelectItem value="employee" disabled={!northsideMarineOrg} className="text-[10px] font-bold uppercase">Marine Employee</SelectItem>
+                    <SelectItem value="employee" className="text-[10px] font-bold uppercase">Marine Employee</SelectItem>
                     </SelectContent>
                 </Select>
                 )}
