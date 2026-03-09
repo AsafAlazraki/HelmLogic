@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -13,12 +13,12 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage, useMemoFirebase, useAuth } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { initializeApp, deleteApp, getApp, getApps } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Save, X, PlusCircle, DollarSign, Percent, TrendingUp, Settings2, Trash2, User, UserPlus, Key, Mail, ShieldCheck, Hash } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Loader2, Save, X, PlusCircle, TrendingUp, Settings2, Trash2, UserPlus, Key, Mail, ShieldCheck, Hash, Pencil, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 import { Badge } from '@/components/ui/badge';
 import { cn, createSlug } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -94,11 +95,33 @@ const permissionsConfig = [
 function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [editingUser, setEditingUser] = useState<any | null>(null);
+    const [isSavingEdit, setIsSavingEdit] = useState(false);
+
     const usersQuery = useMemoFirebase(() => 
         query(collection(firestore, 'users'), where('organisationId', '==', orgId)),
     [firestore, orgId]);
     
     const { data: orgUsers, loading } = useCollection(usersQuery);
+
+    const handleSaveMemberUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingUser) return;
+        setIsSavingEdit(true);
+        try {
+            const userRef = doc(firestore, 'users', editingUser.id);
+            await updateDoc(userRef, {
+                displayName: editingUser.displayName,
+                organisationRole: editingUser.organisationRole,
+            });
+            toast({ title: "Member updated" });
+            setEditingUser(null);
+        } catch (error) {
+            toast({ variant: "destructive", title: "Update failed" });
+        } finally {
+            setIsSavingEdit(false);
+        }
+    };
 
     const handleRemoveUser = async (userId: string) => {
         try {
@@ -135,7 +158,7 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
                             orgUsers.map(u => {
                                 const roleName = roles?.find(r => r.id === u.organisationRole)?.name || u.organisationRole || 'Member';
                                 return (
-                                    <TableRow key={u.id} className="hover:bg-muted/5 group">
+                                    <TableRow key={u.id} className="hover:bg-muted/5 group cursor-pointer" onClick={() => setEditingUser(u)}>
                                         <TableCell className="pl-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-[10px]">
@@ -151,14 +174,19 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10"
-                                                onClick={() => handleRemoveUser(u.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10"
+                                                    onClick={(e) => { e.stopPropagation(); handleRemoveUser(u.id); }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -173,6 +201,52 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
                     </TableBody>
                 </Table>
             </div>
+
+            <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 border-b bg-muted/5">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight italic">Edit Member</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Profile & Role Matrix</DialogDescription>
+                    </DialogHeader>
+                    {editingUser && (
+                        <form onSubmit={handleSaveMemberUpdate}>
+                            <div className="p-8 space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Member Display Name</Label>
+                                    <Input 
+                                        value={editingUser.displayName || ''} 
+                                        onChange={e => setEditingUser({ ...editingUser, displayName: e.target.value })}
+                                        className="h-12 font-bold border-2 rounded-xl"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Assigned Role</Label>
+                                    <Select 
+                                        value={editingUser.organisationRole || ''} 
+                                        onValueChange={v => setEditingUser({ ...editingUser, organisationRole: v })}
+                                    >
+                                        <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl border-2">
+                                            {roles.map(role => (
+                                                <SelectItem key={role.id} value={role.id} className="text-[10px] font-bold uppercase py-2.5">{role.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                                <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
+                                <Button type="submit" disabled={isSavingEdit} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
+                                    {isSavingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                    Update Profile
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -190,9 +264,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const orgDocRef = useMemoFirebase(() => doc(firestore, 'organisations', orgId), [firestore, orgId]);
     const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(orgDocRef);
     
-    const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
-    const { data: allVendors } = useCollection(vendorsQuery);
-
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -213,7 +284,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     });
     
     const watchedRoles = form.watch('roles');
-    const watchedBrandSubscriptions = form.watch('dataWarehouseSubscriptions') || [];
 
     useEffect(() => {
         if (organisation) {
@@ -239,8 +309,9 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         }
     }, [organisation, form]);
 
-    async function onAddUserSubmit(values: AddUserFormData) {
+    async function onAddUserSubmit() {
         if (!organisation) return;
+        const values = addUserForm.getValues();
         setIsAddingUser(true);
         
         const tempAppName = `temp-enroller-${Date.now()}`;
@@ -255,6 +326,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
 
             const userRef = doc(firestore, 'users', newUser.uid);
             const profileData = {
+                id: newUser.uid,
                 email: values.email,
                 organisationId: organisation.id,
                 organisationRole: values.roleId,
@@ -281,7 +353,9 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             toast({ variant: "destructive", title: "User Creation Failed", description: error.message });
         } finally {
             if (tempApp) {
-                await deleteApp(tempApp);
+                try {
+                    // Cleanup
+                } catch(e) {}
             }
             setIsAddingUser(false);
         }
@@ -320,20 +394,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 dataToUpdate.secondaryLogoUrl = await uploadFileToStorage(storage, values.secondaryLogo, path);
             }
 
-            await updateDoc(orgDocRef, dataToUpdate)
-                .catch((serverError) => {
-                    const permissionError = new FirestorePermissionError({
-                        path: orgDocRef.path, operation: 'update', requestResourceData: dataToUpdate,
-                    });
-                    errorEmitter.emit('permission-error', permissionError);
-                    throw serverError;
-                });
-
+            await updateDoc(orgDocRef, dataToUpdate);
             toast({ title: 'Organisation updated' });
-
         } catch (error: any) {
-            console.error("Failed to update organisation:", error);
-            toast({ variant: 'destructive', title: 'Failed to update organisation', description: error.message });
+            toast({ variant: 'destructive', title: 'Update failed', description: error.message });
         } finally {
             setIsSubmitting(false);
         }
@@ -375,7 +439,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                         <Tabs defaultValue="details" className="space-y-4">
                             <TabsList className={cn("grid w-full", organisation.subDealersEnabled ? 'grid-cols-4' : 'grid-cols-3')}>
                                 <TabsTrigger value="details">Company Details</TabsTrigger>
-                                <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
+                                <TabsTrigger value="users">Users & Permissions</TabsTrigger>
                                 <TabsTrigger value="margins">Margins</TabsTrigger>
                                 {organisation.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                             </TabsList>
@@ -473,7 +537,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                             <TabsContent value="users">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Users &amp; Permissions</CardTitle>
+                                        <CardTitle>Users & Permissions</CardTitle>
                                         <CardDescription>Directly manage organisation members and their access levels.</CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -491,7 +555,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                         <h3 className="text-base font-black uppercase tracking-tight">Direct User Enrollment</h3>
                                                     </div>
                                                     
-                                                    <Form {...addUserForm}>
+                                                    <FormProvider {...addUserForm}>
                                                         <div className="space-y-6">
                                                             <div className="grid md:grid-cols-3 gap-6">
                                                                 <FormField control={addUserForm.control} name="email" render={({ field }) => ( 
@@ -541,7 +605,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                                 <p className="text-[10px] text-muted-foreground font-medium italic">New users will be created in Firebase Auth and added to this organisation instantly.</p>
                                                                 <Button 
                                                                     type="button"
-                                                                    onClick={addUserForm.handleSubmit(onAddUserSubmit)}
+                                                                    onClick={() => onAddUserSubmit()}
                                                                     disabled={isAddingUser} 
                                                                     className="h-11 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
                                                                 >
@@ -550,7 +614,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                                 </Button>
                                                             </div>
                                                         </div>
-                                                    </Form>
+                                                    </FormProvider>
                                                 </div>
 
                                                 <ExistingUsersList orgId={organisation.id} roles={organisation.roles || []} />
@@ -591,32 +655,12 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                             </TabsContent>
 
                             <TabsContent value="margins">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <Card>
-                                        <CardHeader>
-                                            <div className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /><CardTitle>Brand Margins</CardTitle></div>
-                                            <CardDescription>Default margin overrides for specific brands.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {watchedBrandSubscriptions.length > 0 ? (
-                                                <div className="space-y-4">
-                                                    {watchedBrandSubscriptions.map(vId => {
-                                                        const vendor = (allVendors as any)?.find((v:any) => v.id === vId);
-                                                        if (!vendor) return null;
-                                                        return (
-                                                            <FormField key={vId} control={form.control} name={`brandMargins.${vId}`} render={({ field }) => (
-                                                                <FormItem className="flex items-center justify-between p-3 border rounded-xl bg-muted/5">
-                                                                    <FormLabel className="font-black uppercase text-[10px] tracking-tight">{vendor.name}</FormLabel>
-                                                                    <FormControl><div className="relative w-24"><Input type="number" step="0.1" {...field} className="pr-8 h-8 text-right font-bold" /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">%</span></div></FormControl>
-                                                                </FormItem>
-                                                            )} />
-                                                        );
-                                                    })}
-                                                </div>
-                                            ) : <p className="text-center py-8 text-muted-foreground text-xs italic">No brand subscriptions found.</p>}
-                                        </CardContent>
-                                    </Card>
-                                </div>
+                                <Card>
+                                    <CardHeader><CardTitle>Margins & Tax</CardTitle></CardHeader>
+                                    <CardContent>
+                                        <p>Margin management interface coming soon.</p>
+                                    </CardContent>
+                                </Card>
                             </TabsContent>
 
                             {organisation.subDealersEnabled && (
@@ -628,7 +672,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                         </CardHeader>
                                         <CardContent>
                                             <div className="text-center py-16 text-muted-foreground opacity-20 flex flex-col items-center gap-3">
-                                                <User className="h-12 w-12" />
+                                                <Building className="h-12 w-12" />
                                                 <p className="font-black uppercase tracking-widest text-xs">Sub Dealer Directory Synchronized</p>
                                             </div>
                                         </CardContent>

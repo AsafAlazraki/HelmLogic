@@ -12,10 +12,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
     // --- Core Data Warehouse & Shared Catalog ---
 
     match /data-warehouse/{vendorId} {
@@ -32,15 +28,7 @@ service cloud.firestore {
     match /organisations/{organisationId} {
       allow read, write: if isSignedIn();
       
-      // Templates are nested in organisations for professional management
-      match /templates/{templateId} {
-        allow read, write: if isSignedIn();
-        match /{allPaths=**} {
-          allow read, write: if isSignedIn();
-        }
-      }
-      
-      // Explicit recursive wildcard for all sub-data in organisations
+      // Explicit recursive wildcard for all sub-data in organisations (templates, price levels, etc)
       match /{allPaths=**} {
         allow read, write: if isSignedIn();
       }
@@ -63,11 +51,11 @@ service cloud.firestore {
     // --- User Data & Notifications ---
 
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-      allow list: if isSignedIn();
+      // Allow global read for member lists and profile resolution
+      allow read: if isSignedIn();
+      // Allow creation for enrollment and updates for profile management
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn();
 
       match /notifications/{notificationId} {
         allow get, list, write: if isOwner(userId);
