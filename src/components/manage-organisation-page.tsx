@@ -18,7 +18,7 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { firebaseConfig } from '@/firebase/config';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Save, X, PlusCircle, TrendingUp, Settings2, Trash2, UserPlus, Key, Mail, ShieldCheck, Hash, Pencil, CheckCircle2 } from 'lucide-react';
+import { Loader2, Save, X, PlusCircle, TrendingUp, Settings2, Trash2, UserPlus, Key, Mail, ShieldCheck, Hash, Pencil, CheckCircle2, Building2, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -548,11 +548,22 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                             </TabsList>
                                             <TabsContent value="manage-users" className="pt-6 space-y-8">
                                                 <div className="p-6 border-2 border-dashed rounded-2xl bg-muted/5 shadow-inner">
-                                                    <div className="flex items-center gap-3 mb-6">
-                                                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                                            <UserPlus className="h-5 w-5" />
+                                                    <div className="flex items-center justify-between mb-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                                <UserPlus className="h-5 w-5" />
+                                                            </div>
+                                                            <h3 className="text-base font-black uppercase tracking-tight">Direct User Enrollment</h3>
                                                         </div>
-                                                        <h3 className="text-base font-black uppercase tracking-tight">Direct User Enrollment</h3>
+                                                        <Button 
+                                                            type="button"
+                                                            onClick={addUserForm.handleSubmit(onAddUserSubmit)}
+                                                            disabled={isAddingUser} 
+                                                            className="h-11 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                                        >
+                                                            {isAddingUser ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                                                            Enroll Member
+                                                        </Button>
                                                     </div>
                                                     
                                                     <FormProvider {...addUserForm}>
@@ -603,15 +614,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                             </div>
                                                             <div className="flex items-center justify-between pt-4 border-t border-dashed">
                                                                 <p className="text-[10px] text-muted-foreground font-medium italic">New users will be created in Firebase Auth and added to this organisation instantly.</p>
-                                                                <Button 
-                                                                    type="button"
-                                                                    onClick={() => onAddUserSubmit()}
-                                                                    disabled={isAddingUser} 
-                                                                    className="h-11 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                                                >
-                                                                    {isAddingUser ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                                                                    Enroll Member
-                                                                </Button>
                                                             </div>
                                                         </div>
                                                     </FormProvider>
