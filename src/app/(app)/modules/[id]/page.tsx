@@ -1041,7 +1041,21 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     );
 }
 
-function ModelsGrid({ range, vendor, onModelSelect, canEdit, selectedModelId, onEdit }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; canEdit: boolean; selectedModelId?: string, onEdit: (item: any) => void }) {
+function ModelsGrid({ 
+    range, 
+    vendor, 
+    onModelSelect, 
+    canEdit, 
+    selectedModelId, 
+    onEdit 
+}: { 
+    range: Range; 
+    vendor: Vendor; 
+    onModelSelect: (model: Model) => void; 
+    canEdit: boolean; 
+    selectedModelId?: string, 
+    onEdit: (item: any) => void 
+}) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
@@ -1087,4 +1101,5 @@ function ModelsGrid({ range, vendor, onModelSelect, canEdit, selectedModelId, on
                 </div>
             </SortableContext>
         </DndContext>
+    );
 }
