@@ -556,19 +556,19 @@ export default function ModuleDetailsPage() {
     const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
     const moduleQueryBySlug = useMemoFirebase(() => slugOrId ? query(collection(firestore, 'modules'), where('slug', '==', slugOrId)) : null, [firestore, slugOrId]);
-    const { data: modulesBySlug, loading: slugLoading } = useCollection<any>(moduleQueryBySlug);
+    const { data: modulesBySlug, isLoading: slugLoading } = useCollection<any>(moduleQueryBySlug);
     const moduleByIdRef = useMemoFirebase(() => slugOrId ? doc(firestore, 'modules', slugOrId) : null, [firestore, slugOrId]);
-    const { data: moduleById, loading: idLoading } = useDoc<any>(moduleByIdRef);
+    const { data: moduleById, isLoading: idLoading } = useDoc<any>(moduleByIdRef);
     const moduleData = useMemo(() => moduleById || modulesBySlug?.[0], [modulesBySlug, moduleById]);
 
     const mainVendorRef = useMemoFirebase(() => moduleData ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null, [firestore, moduleData]);
-    const { data: mainVendor, loading: mainVendorLoading } = useDoc<Vendor>(mainVendorRef);
+    const { data: mainVendor, isLoading: mainVendorLoading } = useDoc<Vendor>(mainVendorRef);
     
     const organisationsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
     const { data: allOrganisations } = useCollection<Organisation>(organisationsQuery);
 
     const allModulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
-    const { data: allModules } = useCollection<any>(allModulesQuery);
+    const { data: allModules, isLoading: modulesLoading } = useCollection<any>(allModulesQuery);
     
     const currentMemberOrg = useMemo(() => 
         userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
@@ -997,7 +997,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     const firestore = useFirestore();
     const { toast } = useToast();
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
-    const { data: ranges, loading } = useCollection<Range>(rangesQuery);
+    const { data: ranges, isLoading: loading } = useCollection<Range>(rangesQuery);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -1046,7 +1046,7 @@ function ModelsGrid({ range, vendor, onModelSelect, canEdit, selectedModelId, on
     const firestore = useFirestore();
     const { toast } = useToast();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
-    const { data: models, loading = false } = useCollection<Model>(modelsQuery);
+    const { data: models, isLoading: loading } = useCollection<Model>(modelsQuery);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
