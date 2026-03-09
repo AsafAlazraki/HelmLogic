@@ -43,7 +43,9 @@ import {
     FileSpreadsheet,
     GripVertical,
     Pencil,
-    ImageIcon
+    ImageIcon,
+    Upload,
+    Save
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -352,7 +354,7 @@ function EditItemDialog({
                 </div>
                 <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
                     <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button></DialogClose>
-                    <Button onClick={handleSave} disabled={isSaving} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl">
+                    <Button onClick={handleSave} disabled={isSaving} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                         Persist Changes
                     </Button>
@@ -864,7 +866,7 @@ export default function ModuleDetailsPage() {
                                     <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-primary">
-                                                <Waves className="h-3 w-3" />
+                                                <Waves className="h-3.3" />
                                                 <span>Template Studio</span>
                                             </div>
                                             <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Document Templates</h3>
