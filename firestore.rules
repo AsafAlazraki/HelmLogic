@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * FIRESTORE SECURITY RULES - PROTOTYPING MODE
+     * FIRESTORE SECURITY RULES - MARITIME OPERATIONAL MODE
      */
 
     // --- Helper Functions ---
@@ -65,11 +65,6 @@ service cloud.firestore {
 
     match /vessels/{vesselId} {
       allow read, write: if isSignedIn();
-    }
-
-    match /dealerFitCategories/{id} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Prototype admin
     }
 
     // --- User Data & Templates ---

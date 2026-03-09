@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -184,7 +183,7 @@ function PricingRow({
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 hover:bg-primary/10 relative"><span className="relative z-10">{formatCurrency(baseCostAudIn, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' && (
-                <React.Fragment key="boats-freight">
+                <React.Fragment>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_sea_freight_cost_usd'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_cost_usd', val)} align="right" /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(seaFreightAudConv, orgCurrency)}</span></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_sea_freight_cost_aud'] || seaFreightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_cost_aud', val)} align="right" /></TableCell>
@@ -205,7 +204,7 @@ function PricingRow({
             <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(handlingGP, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' && (
-                <React.Fragment key="boats-predel">
+                <React.Fragment>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(preDelSell, orgCurrency)}</span></TableCell>
@@ -231,14 +230,14 @@ function PricingRow({
                     );
                 })
             ) : (
-                <React.Fragment key="opt-retail-cells">
+                <React.Fragment>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" /></TableCell>
                     {(() => {
                         const sellEx = parseFloat(itemValues['hull_cash_price'] || '0');
                         const sellIn = sellEx * gstMultiplier;
                         const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                         return (
-                            <React.Fragment key="opt-retail-v">
+                            <React.Fragment>
                                 <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
                                 <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
                             </React.Fragment>
@@ -284,7 +283,7 @@ function PricingTable({
                             <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Exchange Rate</span></TableHead>
                             <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
                             {!isOptions && (
-                                <React.Fragment key="h-international">
+                                <React.Fragment>
                                     <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Sea Freight (Intl.)</span></TableHead>
                                     <TableHead colSpan={4} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Road Freight (Dom.)</span></TableHead>
                                 </React.Fragment>
@@ -307,7 +306,7 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white font-bold text-primary w-[120px] sticky top-[52px] z-[90]">Landed AUD {exclLabel}</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 font-bold text-primary w-[120px] sticky top-[52px] z-[90]">Landed AUD {inclLabel}</TableHead>
                             {!isOptions && (
-                                <React.Fragment key="h-international-sub">
+                                <React.Fragment>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost USD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">AUD Conv</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
@@ -325,7 +324,7 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                             {!isOptions && (
-                                <React.Fragment key="h-handling-sub">
+                                <React.Fragment>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
@@ -336,7 +335,7 @@ function PricingTable({
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[80px] sticky top-[52px] z-[90]">{isOptions ? 'Opt' : 'Hull'} Margin %</TableHead>
                             <TableHead className="border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-green-600 w-[100px] sticky top-[52px] z-[90]">Total GP $</TableHead>
                             {!isOptions ? (
-                                <React.Fragment key="h-price-levels">
+                                <React.Fragment>
                                     {[
                                         { id: 'cash', label: `${shortCode} SELL PRICE ${exclLabel}` },
                                         { id: 'trade', label: `TRADE PRICE ${exclLabel}` },
@@ -362,7 +361,7 @@ function PricingTable({
                                     ))}
                                 </React.Fragment>
                             ) : (
-                                <React.Fragment key="opt-head-row">
+                                <React.Fragment>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[120px] sticky top-[52px] z-[90]">{`${shortCode} SELL PRICE ${exclLabel}`}</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 w-[120px] sticky top-[52px] z-[90]">{inclLabel}</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[60px] sticky top-[52px] z-[90]">GP %</TableHead>
@@ -625,6 +624,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     }, [exchangeRates, vendor.currency]);
 
     const onUpdateValue = async (itemId: string, colId: string, value: any) => {
+        if (!strategyRef) return;
         const currentValues = strategy?.itemValues || {};
         const updated = { ...currentValues, [itemId]: { ...(currentValues[itemId] || {}), [colId]: value } };
         updateDoc(strategyRef, { itemValues: updated, lastUpdateAt: serverTimestamp() });
