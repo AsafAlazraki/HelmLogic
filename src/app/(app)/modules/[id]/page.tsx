@@ -87,7 +87,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
   useSortable,
-} from '@dnd-kit/sortable';
+} from '@radix-ui/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
@@ -384,7 +384,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
         <div ref={setNodeRef} style={style} className="h-full">
             <Card 
                 className={cn(
-                    "cursor-pointer transition-all rounded-[2rem] overflow-hidden group border-2 hover:-translate-y-1 flex flex-col h-full bg-white relative",
+                    "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1 flex flex-col h-full bg-white relative",
                     isSelected 
                         ? "border-primary shadow-2xl scale-[1.02]" 
                         : "hover:border-primary/20 hover:shadow-xl"
@@ -451,7 +451,7 @@ function ModelCard({ model, isSelected, onClick }: any) {
     return (
         <Card 
             className={cn(
-                "cursor-pointer transition-all rounded-[2rem] overflow-hidden group border-2 hover:-translate-y-1 flex flex-col h-full bg-white relative",
+                "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1 flex flex-col h-full bg-white relative",
                 isSelected 
                     ? "border-primary shadow-2xl scale-[1.02]" 
                     : "hover:border-primary/20 hover:shadow-xl"
@@ -949,7 +949,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     const firestore = useFirestore();
     const { toast } = useToast();
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
-    const { data: ranges, loading } = useCollection<Range>(rangesQuery);
+    const { data: ranges, isLoading: rangesLoading } = useCollection<Range>(rangesQuery);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -972,7 +972,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
         toast({ title: "Order Persisted" });
     };
 
-    if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+    if (rangesLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1007,9 +1007,9 @@ function ModelsGrid({
 }) {
     const firestore = useFirestore();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
-    const { data: models, loading } = useCollection<Model>(modelsQuery);
+    const { data: models, isLoading: modelsLoading } = useCollection<Model>(modelsQuery);
 
-    if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+    if (modelsLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-4 px-1">
