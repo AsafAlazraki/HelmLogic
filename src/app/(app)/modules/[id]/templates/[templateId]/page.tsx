@@ -235,7 +235,8 @@ function CanvasBlock({
                                                 >
                                                     <Variable className="h-3.5 w-3.5" />
                                                 </Button>
-                                            </>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             );
