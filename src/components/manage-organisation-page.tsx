@@ -38,7 +38,8 @@ import {
     Smartphone, 
     ClipboardList, 
     Clock,
-    TrendingUp
+    TrendingUp,
+    ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -529,7 +530,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     }
 
     const onFormError = (errors: any) => {
-        console.error("Form Validation Errors:", errors);
+        console.error("Form Validation Errors:", JSON.stringify(errors, null, 2));
         toast({ variant: 'destructive', title: 'Save Blocked', description: 'Please review the form for validation errors.' });
     };
 

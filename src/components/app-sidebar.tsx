@@ -201,6 +201,7 @@ export function AppSidebar() {
             <UserMenu />
           </div>
           
+          {/* Role Switcher Restricted to Admins */}
           {isAdmin && (
             <div className="group-data-[collapsible=icon]:hidden animate-in fade-in slide-in-from-bottom-2">
                 <SidebarGroupLabel className="px-0 h-6 font-black uppercase text-[9px] tracking-widest text-muted-foreground/60">Session Context</SidebarGroupLabel>

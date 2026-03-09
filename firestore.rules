@@ -25,10 +25,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
-    // --- Organisation Tree (Highly Permissive for Prototype) ---
+    // --- Organisation Tree (Permissive for Prototype Speed) ---
 
     match /organisations/{organisationId} {
-      // Allow broad read/write for any signed-in user within the org tree for prototype speed
+      // Allow broad read/write for any signed-in user for prototype testing
       allow read, write: if isSignedIn();
       
       match /{allPaths=**} {
