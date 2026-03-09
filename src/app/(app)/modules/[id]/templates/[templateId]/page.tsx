@@ -36,7 +36,15 @@ import {
     LayoutGrid,
     List,
     CheckCircle2,
-    Package
+    Package,
+    Bold,
+    Italic,
+    Underline as UnderlineIcon,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    Type as TypeIcon,
+    Baseline
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -57,11 +65,20 @@ interface TemplateBlock {
     id: string;
     type: 'text' | 'image' | 'table' | 'variable' | 'grid' | 'quoteItems';
     content: any;
-    style?: any;
+    style?: {
+        bold?: boolean;
+        italic?: boolean;
+        underline?: boolean;
+        textAlign?: 'left' | 'center' | 'right';
+        fontFamily?: string;
+        fontSize?: string;
+        color?: string;
+    };
     order: number;
     dataSource?: string; 
     zone?: 'header' | 'body' | 'footer';
     layoutConfig?: {
+        variant?: 'h1' | 'h2' | 'h3' | 'p';
         columns?: number;
         spacing?: number;
         displayStyle?: 'list' | 'grid' | 'table';
@@ -127,7 +144,22 @@ function CanvasBlock({
                 )}
 
                 {block.type === 'text' && (
-                    <div className="text-base text-slate-900 leading-relaxed font-medium">
+                    <div 
+                        style={{
+                            fontWeight: block.style?.bold ? 'bold' : 'normal',
+                            fontStyle: block.style?.italic ? 'italic' : 'normal',
+                            textDecoration: block.style?.underline ? 'underline' : 'none',
+                            textAlign: block.style?.textAlign || 'left',
+                            fontFamily: block.style?.fontFamily || 'inherit',
+                        }}
+                        className={cn(
+                            "text-slate-900 leading-relaxed",
+                            block.layoutConfig?.variant === 'h1' && "text-4xl font-black tracking-tighter uppercase italic",
+                            block.layoutConfig?.variant === 'h2' && "text-2xl font-black tracking-tight uppercase italic",
+                            block.layoutConfig?.variant === 'h3' && "text-lg font-bold uppercase tracking-widest",
+                            (!block.layoutConfig?.variant || block.layoutConfig?.variant === 'p') && "text-base font-medium"
+                        )}
+                    >
                         {block.content}
                     </div>
                 )}
@@ -171,7 +203,7 @@ function CanvasBlock({
                                 >
                                     {slotBlocks.length > 0 ? (
                                         <div className="w-full flex flex-col gap-4">
-                                            {slotBlocks.map((child) => (
+                                            {slotBlocks.sort((a,b) => a.order - b.order).map((child) => (
                                                 <CanvasBlock 
                                                     key={child.id} 
                                                     block={child} 
@@ -203,8 +235,7 @@ function CanvasBlock({
                                                 >
                                                     <Variable className="h-3.5 w-3.5" />
                                                 </Button>
-                                            </div>
-                                        </>
+                                            </>
                                     )}
                                 </div>
                             );
@@ -355,9 +386,11 @@ export default function TemplateEditorPage() {
                      type === 'grid' ? { slots: {} } :
                      type === 'quoteItems' ? { items: [] } :
                      { rows: 3, cols: 3, data: [] },
-            layoutConfig: type === 'grid' ? { columns: 2 } : 
+            layoutConfig: type === 'text' ? { variant: 'p' } :
+                         type === 'grid' ? { columns: 2 } : 
                          type === 'quoteItems' ? { displayStyle: 'list', columns: 2, showImages: true, showSku: true, showDescription: true, showPrice: true } :
-                         undefined
+                         undefined,
+            style: type === 'text' ? { bold: false, italic: false, underline: false, textAlign: 'left', fontFamily: 'Inter' } : undefined
         };
 
         setPages(prev => prev.map(p => {
@@ -391,6 +424,9 @@ export default function TemplateEditorPage() {
                     const next = { ...b, ...updates };
                     if (updates.layoutConfig) {
                         next.layoutConfig = { ...(b.layoutConfig || {}), ...updates.layoutConfig };
+                    }
+                    if (updates.style) {
+                        next.style = { ...(b.style || {}), ...updates.style };
                     }
                     return next;
                 }
@@ -598,7 +634,7 @@ export default function TemplateEditorPage() {
                         className="flex flex-col items-center gap-16 pb-64 transition-transform origin-top duration-300"
                         style={{ transform: `scale(${zoom})` }}
                     >
-                        {pages.map((page) => (
+                        {pages.sort((a,b) => a.order - b.order).map((page) => (
                             <div 
                                 key={page.id} 
                                 onClick={() => setSelectedPageId(page.id)}
@@ -761,14 +797,96 @@ export default function TemplateEditorPage() {
                                         <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Component Settings</h4>
                                         
                                         {selectedBlock.block.type === 'text' && (
-                                            <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-4">
-                                                <div className="space-y-2">
-                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Text Content</Label>
-                                                    <Textarea 
-                                                        value={selectedBlock.block.content}
-                                                        onChange={(e) => updateBlock(selectedBlockId!, { content: e.target.value })}
-                                                        className="min-h-[120px] bg-slate-900 border-slate-700 text-white font-medium text-xs rounded-xl"
-                                                    />
+                                            <div className="space-y-6">
+                                                <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Text Content</Label>
+                                                        <Textarea 
+                                                            value={selectedBlock.block.content}
+                                                            onChange={(e) => updateBlock(selectedBlockId!, { content: e.target.value })}
+                                                            className="min-h-[120px] bg-slate-900 border-slate-700 text-white font-medium text-xs rounded-xl"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-6">
+                                                    <div className="space-y-3">
+                                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                            <TypeIcon className="h-3 w-3" />
+                                                            Typography Strategy
+                                                        </Label>
+                                                        <Select 
+                                                            value={selectedBlock.block.layoutConfig?.variant || 'p'} 
+                                                            onValueChange={(v: any) => updateBlock(selectedBlockId!, { layoutConfig: { variant: v } })}
+                                                        >
+                                                            <SelectTrigger className="h-11 bg-slate-900 border-slate-700 text-[10px] font-black uppercase rounded-xl text-white">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="bg-slate-900 border-slate-700 text-white rounded-xl">
+                                                                <SelectItem value="h1" className="text-[10px] font-black uppercase">Heading 1 (Hero)</SelectItem>
+                                                                <SelectItem value="h2" className="text-[10px] font-black uppercase">Heading 2 (Section)</SelectItem>
+                                                                <SelectItem value="h3" className="text-[10px] font-black uppercase">Sub-Header</SelectItem>
+                                                                <SelectItem value="p" className="text-[10px] font-black uppercase">Standard Paragraph</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    <div className="space-y-3">
+                                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                            <Baseline className="h-3 w-3" />
+                                                            Font Matrix
+                                                        </Label>
+                                                        <Select 
+                                                            value={selectedBlock.block.style?.fontFamily || 'Inter'} 
+                                                            onValueChange={(v: any) => updateBlock(selectedBlockId!, { style: { fontFamily: v } })}
+                                                        >
+                                                            <SelectTrigger className="h-11 bg-slate-900 border-slate-700 text-[10px] font-black uppercase rounded-xl text-white">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="bg-slate-900 border-slate-700 text-white rounded-xl">
+                                                                <SelectItem value="Inter" className="text-[10px] font-black uppercase">Modern Inter</SelectItem>
+                                                                <SelectItem value="monospace" className="text-[10px] font-black uppercase">Precision Mono</SelectItem>
+                                                                <SelectItem value="serif" className="text-[10px] font-black uppercase">Classic Serif</SelectItem>
+                                                                <SelectItem value="sans-serif" className="text-[10px] font-black uppercase">System Sans</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <FormatButton 
+                                                            active={!!selectedBlock.block.style?.bold} 
+                                                            onClick={() => updateBlock(selectedBlockId!, { style: { bold: !selectedBlock.block.style?.bold } })}
+                                                            icon={Bold}
+                                                        />
+                                                        <FormatButton 
+                                                            active={!!selectedBlock.block.style?.italic} 
+                                                            onClick={() => updateBlock(selectedBlockId!, { style: { italic: !selectedBlock.block.style?.italic } })}
+                                                            icon={Italic}
+                                                        />
+                                                        <FormatButton 
+                                                            active={!!selectedBlock.block.style?.underline} 
+                                                            onClick={() => updateBlock(selectedBlockId!, { style: { underline: !selectedBlock.block.style?.underline } })}
+                                                            icon={UnderlineIcon}
+                                                        />
+                                                    </div>
+
+                                                    <div className="grid grid-cols-3 gap-2 border-t border-slate-700 pt-4">
+                                                        <FormatButton 
+                                                            active={selectedBlock.block.style?.textAlign === 'left'} 
+                                                            onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'left' } })}
+                                                            icon={AlignLeft}
+                                                        />
+                                                        <FormatButton 
+                                                            active={selectedBlock.block.style?.textAlign === 'center'} 
+                                                            onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'center' } })}
+                                                            icon={AlignCenter}
+                                                        />
+                                                        <FormatButton 
+                                                            active={selectedBlock.block.style?.textAlign === 'right'} 
+                                                            onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'right' } })}
+                                                            icon={AlignRight}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -925,6 +1043,23 @@ function ToolButton({ icon: Icon, label, onClick }: any) {
             <Icon className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-primary-foreground">{label}</span>
         </button>
+    );
+}
+
+function FormatButton({ active, onClick, icon: Icon }: { active: boolean, onClick: () => void, icon: any }) {
+    return (
+        <Button 
+            type="button"
+            variant="ghost" 
+            size="icon" 
+            onClick={(e) => { e.preventDefault(); onClick(); }}
+            className={cn(
+                "h-10 w-full rounded-xl border-2 transition-all",
+                active ? "bg-primary text-white border-primary shadow-lg" : "bg-slate-900 border-slate-800 text-slate-500 hover:text-white"
+            )}
+        >
+            <Icon className="h-4 w-4" />
+        </Button>
     );
 }
 
