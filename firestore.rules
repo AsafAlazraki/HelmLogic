@@ -32,6 +32,14 @@ service cloud.firestore {
     match /organisations/{organisationId} {
       allow read, write: if isSignedIn();
       
+      // Templates are nested in organisations for professional management
+      match /templates/{templateId} {
+        allow read, write: if isSignedIn();
+        match /{allPaths=**} {
+          allow read, write: if isSignedIn();
+        }
+      }
+      
       // Explicit recursive wildcard for all sub-data in organisations
       match /{allPaths=**} {
         allow read, write: if isSignedIn();

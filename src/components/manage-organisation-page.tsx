@@ -492,7 +492,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                     </div>
                                                     
                                                     <Form {...addUserForm}>
-                                                        <form onSubmit={addUserForm.handleSubmit(onAddUserSubmit)} className="space-y-6">
+                                                        <div className="space-y-6">
                                                             <div className="grid md:grid-cols-3 gap-6">
                                                                 <FormField control={addUserForm.control} name="email" render={({ field }) => ( 
                                                                     <FormItem>
@@ -539,12 +539,17 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                             </div>
                                                             <div className="flex items-center justify-between pt-4 border-t border-dashed">
                                                                 <p className="text-[10px] text-muted-foreground font-medium italic">New users will be created in Firebase Auth and added to this organisation instantly.</p>
-                                                                <Button type="submit" disabled={isAddingUser} className="h-11 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                                                <Button 
+                                                                    type="button"
+                                                                    onClick={addUserForm.handleSubmit(onAddUserSubmit)}
+                                                                    disabled={isAddingUser} 
+                                                                    className="h-11 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                                                >
                                                                     {isAddingUser ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                                                                     Enroll Member
                                                                 </Button>
                                                             </div>
-                                                        </form>
+                                                        </div>
                                                     </Form>
                                                 </div>
 
