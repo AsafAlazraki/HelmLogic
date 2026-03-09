@@ -370,20 +370,30 @@ export function HighfieldQuoteFlow({
                                     <div className="space-y-6">
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">1. Tube Material</span>
                                         <div className="grid grid-cols-2 gap-6">
-                                            {availableMaterials.map((mat) => (
-                                                <button
-                                                    key={mat}
-                                                    type="button"
-                                                    onClick={() => handleMaterialSelect(mat as any)}
-                                                    className={cn(
-                                                        "group relative flex flex-col items-start p-8 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[200px] text-left",
-                                                        selectedMaterial === mat ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/40"
-                                                    )}
-                                                >
-                                                    <span className="text-xl font-black uppercase tracking-tight">{mat}</span>
-                                                    <p className={cn("text-[10px] font-bold mt-2 uppercase tracking-widest", selectedMaterial === mat ? "text-white/60" : "text-muted-foreground")}>{mat === 'PVC' ? 'Standard PVC' : 'ORCA® Hypalon'}</p>
-                                                </button>
-                                            ))}
+                                            {availableMaterials.map((mat) => {
+                                                const isSelected = selectedMaterial === mat;
+                                                return (
+                                                    <button
+                                                        key={mat}
+                                                        type="button"
+                                                        onClick={() => handleMaterialSelect(mat as any)}
+                                                        className={cn(
+                                                            "group relative flex flex-col items-start p-8 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[200px] text-left",
+                                                            isSelected ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/40"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center justify-between w-full">
+                                                            <span className="text-2xl font-black uppercase tracking-tight">{mat}</span>
+                                                            {mat === 'PVC' ? (
+                                                                <Waves className={cn("h-6 w-6", isSelected ? "text-white" : "text-primary")} />
+                                                            ) : (
+                                                                <ShieldCheck className={cn("h-6 w-6", isSelected ? "text-white" : "text-primary")} />
+                                                            )}
+                                                        </div>
+                                                        <p className={cn("text-[10px] font-bold mt-2 uppercase tracking-widest", isSelected ? "text-white/60" : "text-muted-foreground")}>{mat === 'PVC' ? 'Standard PVC' : 'ORCA® Hypalon'}</p>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
 

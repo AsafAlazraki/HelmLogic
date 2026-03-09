@@ -677,10 +677,9 @@ export default function ModuleDetailsPage() {
         setIsQuoteInitializationOpen(false);
         setIsTransitioning(true);
         
-        setTimeout(() => {
-            setIsTransitioning(false);
-            router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
-        }, 2200);
+        // Push the route and keep transition true. 
+        // The overlay will unmount naturally with the page when navigation completes.
+        router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
     };
 
     const handleBackToCatalog = () => {
