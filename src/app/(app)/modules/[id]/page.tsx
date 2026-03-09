@@ -506,7 +506,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                     </div>
                 )}
 
-                <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6">
+                <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6 text-center">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     {range.imageUrl ? (
                         <Image 
@@ -665,10 +665,7 @@ export default function ModuleDetailsPage() {
     const handleModelSelect = (model: Model) => { 
         setSelectedModel(model); 
         setIsTransitioning(true);
-        setTimeout(() => {
-            setView('bmt');
-            setIsTransitioning(false);
-        }, 2200);
+        // Persistence handled by redirect logic
     };
 
     const handleQuoteInitialization = (model: Model, range: Range) => {
@@ -676,8 +673,6 @@ export default function ModuleDetailsPage() {
         setSelectedRange(range);
         setIsQuoteInitializationOpen(false);
         setIsTransitioning(true);
-        
-        // Navigation hand-off. Target page matches the loading visual.
         router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
     };
 

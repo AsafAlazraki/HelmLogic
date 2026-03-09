@@ -117,7 +117,7 @@ export function HighfieldQuoteFlow({
         query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
     [firestore, vendor.id, rangeId, model.id]);
     
-    const { data: variants, loading: variantsLoading } = useCollection<Variant>(variantsQuery);
+    const { data: variants, isLoading: variantsLoading } = useCollection<Variant>(variantsQuery);
 
     // 2. Fetch Compatible Motors
     const [motors, setMotors] = useState<any[]>([]);
@@ -230,12 +230,9 @@ export function HighfieldQuoteFlow({
         return total;
     }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor]);
 
-    // Enhanced Grouping with Logical Sorting & Filtering
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
         if (!activeVariant) return features;
-        
-        // Filter by SKU compatibility
         return features.filter((f: any) => 
             !f.applicableVariantIds || 
             f.applicableVariantIds.length === 0 || 
@@ -251,7 +248,6 @@ export function HighfieldQuoteFlow({
             return acc;
         }, {});
 
-        // Explicit Sort: Consoles -> Seats -> Everything else alphabetically
         const sortedEntries = Object.entries(groups).sort(([a], [b]) => {
             if (a === 'Consoles') return -1;
             if (b === 'Consoles') return 1;
@@ -270,7 +266,6 @@ export function HighfieldQuoteFlow({
                 return prev.filter(i => i !== id);
             } else {
                 const next = [...prev, id];
-                // Auto-select paired seat when console is selected
                 const feature = relevantFeatures.find((f: any) => f.id === id);
                 if (feature?.category === 'Consoles' && feature.associatedSeatId) {
                     if (!next.includes(feature.associatedSeatId)) {
@@ -410,25 +405,46 @@ export function HighfieldQuoteFlow({
                                         <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => {
                                                 const isSelected = selectedMaterial === mat;
+                                                const isPvc = mat === 'PVC';
                                                 return (
                                                     <button
                                                         key={mat}
                                                         type="button"
                                                         onClick={() => handleMaterialSelect(mat as any)}
                                                         className={cn(
-                                                            "group relative flex flex-col items-start p-8 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[200px] text-left",
-                                                            isSelected ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/40"
+                                                            "group relative flex flex-col items-start p-10 border-2 rounded-[2.5rem] transition-all duration-500 min-h-[300px] text-left",
+                                                            isSelected ? "bg-primary border-primary text-white shadow-2xl scale-[1.02]" : "bg-white border-slate-100 hover:border-primary/40"
                                                         )}
                                                     >
-                                                        <div className="flex items-center justify-between w-full">
-                                                            <span className="text-2xl font-black uppercase tracking-tight">{mat}</span>
-                                                            {mat === 'PVC' ? (
-                                                                <Waves className={cn("h-6 w-6", isSelected ? "text-white" : "text-primary")} />
+                                                        {/* Icon Row */}
+                                                        <div className="w-full flex justify-end mb-8">
+                                                            {isPvc ? (
+                                                                <Waves className={cn("h-8 w-8", isSelected ? "text-white" : "text-primary")} />
                                                             ) : (
-                                                                <ShieldCheck className={cn("h-6 w-6", isSelected ? "text-white" : "text-primary")} />
+                                                                <ShieldCheck className={cn("h-8 w-8", isSelected ? "text-white" : "text-primary")} />
                                                             )}
                                                         </div>
-                                                        <p className={cn("text-[10px] font-bold mt-2 uppercase tracking-widest", isSelected ? "text-white/60" : "text-muted-foreground")}>{mat === 'PVC' ? 'Standard PVC' : 'ORCA® Hypalon'}</p>
+
+                                                        {/* Info Stack */}
+                                                        <div className="space-y-1.5">
+                                                            <span className="text-4xl font-black uppercase tracking-tight leading-none">{mat}</span>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-[0.2em] opacity-60", isSelected ? "text-white" : "text-muted-foreground")}>
+                                                                {isPvc ? 'Standard PVC' : 'ORCA® Hypalon'}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Warranty Feature */}
+                                                        <div className="mt-auto pt-8 w-full">
+                                                            <div className={cn(
+                                                                "flex items-center gap-3 px-5 py-3 rounded-2xl border-2 transition-all",
+                                                                isSelected ? "bg-white/10 border-white/20" : "bg-slate-50 border-slate-100"
+                                                            )}>
+                                                                <Check className={cn("h-4 w-4 shrink-0", isSelected ? "text-white" : "text-green-500")} />
+                                                                <span className="text-[10px] font-black uppercase tracking-[0.15em] leading-none">
+                                                                    {isPvc ? '5yr Tube Warranty' : '10yr Tube Warranty'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                     </button>
                                                 );
                                             })}
