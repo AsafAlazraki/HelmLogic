@@ -79,7 +79,23 @@ interface TemplatePage {
     order: number;
 }
 
-function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: TemplateBlock, isSelected: boolean, onSelect: () => void, onDelete: () => void }) {
+function CanvasBlock({ 
+    block, 
+    isSelected, 
+    onSelect, 
+    onDelete,
+    onAddNested,
+    selectedBlockId,
+    pageId
+}: { 
+    block: TemplateBlock, 
+    isSelected: boolean, 
+    onSelect: () => void, 
+    onDelete: () => void,
+    onAddNested?: (type: TemplateBlock['type'], slotIndex: number) => void,
+    selectedBlockId: string | null,
+    pageId: string
+}) {
     const isBound = !!block.dataSource && block.dataSource !== 'manual';
 
     return (
@@ -142,11 +158,56 @@ function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: Templat
                 )}
                 {block.type === 'grid' && (
                     <div className={cn("grid gap-6", `grid-cols-${block.layoutConfig?.columns || 2}`)}>
-                        {Array.from({ length: block.layoutConfig?.columns || 2 }).map((_, i) => (
-                            <div key={i} className="min-h-[80px] border-2 border-dashed border-slate-100 rounded-2xl flex items-center justify-center">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Column {i + 1}</span>
-                            </div>
-                        ))}
+                        {Array.from({ length: block.layoutConfig?.columns || 2 }).map((_, i) => {
+                            const slotBlocks = (block.content?.slots?.[i] || []) as TemplateBlock[];
+                            return (
+                                <div 
+                                    key={i} 
+                                    className={cn(
+                                        "min-h-[120px] border-2 border-dashed rounded-3xl flex flex-col items-center justify-center p-4 transition-all relative group/slot",
+                                        slotBlocks.length > 0 ? "bg-slate-50/30 border-slate-100" : "bg-primary/[0.02] border-primary/10 hover:border-primary/30 hover:bg-primary/[0.04]"
+                                    )}
+                                >
+                                    {slotBlocks.length > 0 ? (
+                                        <div className="w-full flex flex-col gap-4">
+                                            {slotBlocks.map((child) => (
+                                                <CanvasBlock 
+                                                    key={child.id} 
+                                                    block={child} 
+                                                    isSelected={selectedBlockId === child.id}
+                                                    onSelect={() => onSelect()} // Parent selection handled by caller
+                                                    onDelete={() => onDelete()} // Specific nested delete could be added
+                                                    selectedBlockId={selectedBlockId}
+                                                    pageId={pageId}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Column {i + 1}</span>
+                                            <div className="flex items-center gap-2 opacity-0 group-hover/slot:opacity-100 transition-opacity">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 rounded-full bg-white shadow-md border text-primary hover:bg-primary hover:text-white"
+                                                    onClick={(e) => { e.stopPropagation(); onAddNested?.('text', i); }}
+                                                >
+                                                    <Type className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 rounded-full bg-white shadow-md border text-primary hover:bg-primary hover:text-white"
+                                                    onClick={(e) => { e.stopPropagation(); onAddNested?.('variable', i); }}
+                                                >
+                                                    <Variable className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
                 {block.type === 'quoteItems' && (
@@ -280,41 +341,72 @@ export default function TemplateEditorPage() {
         setSelectedBlockId(null);
     };
 
-    const addBlock = (pageId: string, type: TemplateBlock['type'], zone: TemplateBlock['zone'] = 'body') => {
+    const addBlock = (pageId: string, type: TemplateBlock['type'], zone: TemplateBlock['zone'] = 'body', parentId?: string, slotIndex?: number) => {
         const newBlockId = `block-${Date.now()}`;
+        const newBlock: TemplateBlock = {
+            id: newBlockId,
+            type,
+            zone,
+            order: 0,
+            content: type === 'text' ? 'New text content...' : 
+                     type === 'image' ? { source: 'user', url: null } :
+                     type === 'variable' ? { source: 'quote', field: '' } :
+                     type === 'grid' ? { slots: {} } :
+                     type === 'quoteItems' ? { items: [] } :
+                     { rows: 3, cols: 3, data: [] },
+            layoutConfig: type === 'grid' ? { columns: 2 } : 
+                         type === 'quoteItems' ? { displayStyle: 'list', columns: 2, showImages: true, showSku: true, showDescription: true, showPrice: true } :
+                         undefined
+        };
+
         setPages(prev => prev.map(p => {
             if (p.id !== pageId) return p;
-            const newBlock: TemplateBlock = {
-                id: newBlockId,
-                type,
-                zone,
-                order: p.blocks.length + 1,
-                content: type === 'text' ? 'Double click to edit text...' : 
-                         type === 'image' ? { source: 'user', url: null } :
-                         type === 'variable' ? { source: 'quote', field: '' } :
-                         type === 'grid' ? { columns: 2 } :
-                         type === 'quoteItems' ? { items: [] } :
-                         { rows: 3, cols: 3, data: [] },
-                layoutConfig: type === 'grid' ? { columns: 2 } : 
-                             type === 'quoteItems' ? { displayStyle: 'list', columns: 2, showImages: true, showSku: true, showDescription: true, showPrice: true } :
-                             undefined
-            };
-            return { ...p, blocks: [...p.blocks, newBlock] };
+            
+            if (parentId) {
+                const updateNested = (blocks: TemplateBlock[]): TemplateBlock[] => {
+                    return blocks.map(b => {
+                        if (b.id === parentId) {
+                            const content = { ...(b.content || {}) };
+                            if (!content.slots) content.slots = {};
+                            if (!content.slots[slotIndex!]) content.slots[slotIndex!] = [];
+                            content.slots[slotIndex!].push({ ...newBlock, order: content.slots[slotIndex!].length + 1 });
+                            return { ...b, content };
+                        }
+                        return b;
+                    });
+                };
+                return { ...p, blocks: updateNested(p.blocks) };
+            }
+            
+            return { ...p, blocks: [...p.blocks, { ...newBlock, order: p.blocks.length + 1 }] };
         }));
         setSelectedBlockId(newBlockId);
     };
 
     const updateBlock = (blockId: string, updates: Partial<TemplateBlock>) => {
+        const recursiveUpdate = (blocks: TemplateBlock[]): TemplateBlock[] => {
+            return blocks.map(b => {
+                if (b.id === blockId) {
+                    const next = { ...b, ...updates };
+                    if (updates.layoutConfig) {
+                        next.layoutConfig = { ...(b.layoutConfig || {}), ...updates.layoutConfig };
+                    }
+                    return next;
+                }
+                if (b.type === 'grid' && b.content?.slots) {
+                    const newSlots = { ...b.content.slots };
+                    Object.keys(newSlots).forEach(key => {
+                        newSlots[key] = recursiveUpdate(newSlots[key]);
+                    });
+                    return { ...b, content: { ...b.content, slots: newSlots } };
+                }
+                return b;
+            });
+        };
+
         setPages(prev => prev.map(p => ({
             ...p,
-            blocks: p.blocks.map(b => {
-                if (b.id !== blockId) return b;
-                const next = { ...b, ...updates };
-                if (updates.layoutConfig) {
-                    next.layoutConfig = { ...(b.layoutConfig || {}), ...updates.layoutConfig };
-                }
-                return next;
-            })
+            blocks: recursiveUpdate(p.blocks)
         })));
     };
 
@@ -323,16 +415,44 @@ export default function TemplateEditorPage() {
     };
 
     const removeBlock = (pageId: string, blockId: string) => {
+        const recursiveRemove = (blocks: TemplateBlock[]): TemplateBlock[] => {
+            return blocks
+                .filter(b => b.id !== blockId)
+                .map(b => {
+                    if (b.type === 'grid' && b.content?.slots) {
+                        const newSlots = { ...b.content.slots };
+                        Object.keys(newSlots).forEach(key => {
+                            newSlots[key] = recursiveRemove(newSlots[key]);
+                        });
+                        return { ...b, content: { ...b.content, slots: newSlots } };
+                    }
+                    return b;
+                });
+        };
+
         setPages(prev => prev.map(p => {
             if (p.id !== pageId) return p;
-            return { ...p, blocks: p.blocks.filter(b => b.id !== blockId) };
+            return { ...p, blocks: recursiveRemove(p.blocks) };
         }));
         if (selectedBlockId === blockId) setSelectedBlockId(null);
     };
 
     const selectedBlock = useMemo(() => {
+        const findBlock = (blocks: TemplateBlock[]): TemplateBlock | null => {
+            for (const b of blocks) {
+                if (b.id === selectedBlockId) return b;
+                if (b.type === 'grid' && b.content?.slots) {
+                    for (const slot of Object.values(b.content.slots)) {
+                        const found = findBlock(slot as TemplateBlock[]);
+                        if (found) return found;
+                    }
+                }
+            }
+            return null;
+        };
+
         for (const p of pages) {
-            const b = p.blocks.find(block => block.id === selectedBlockId);
+            const b = findBlock(p.blocks);
             if (b) return { block: b, pageId: p.id };
         }
         return null;
@@ -516,6 +636,9 @@ export default function TemplateEditorPage() {
                                                     isSelected={selectedBlockId === block.id}
                                                     onSelect={() => { setSelectedBlockId(block.id); setSelectedPageId(page.id); }}
                                                     onDelete={() => removeBlock(page.id, block.id)}
+                                                    onAddNested={(type, slotIdx) => addBlock(page.id, type, 'header', block.id, slotIdx)}
+                                                    selectedBlockId={selectedBlockId}
+                                                    pageId={page.id}
                                                 />
                                             ))}
                                         </div>
@@ -547,6 +670,9 @@ export default function TemplateEditorPage() {
                                                 isSelected={selectedBlockId === block.id}
                                                 onSelect={() => { setSelectedBlockId(block.id); setSelectedPageId(page.id); }}
                                                 onDelete={() => removeBlock(page.id, block.id)}
+                                                onAddNested={(type, slotIdx) => addBlock(page.id, type, 'body', block.id, slotIdx)}
+                                                selectedBlockId={selectedBlockId}
+                                                pageId={page.id}
                                             />
                                         ))
                                     )}
@@ -568,6 +694,9 @@ export default function TemplateEditorPage() {
                                                     isSelected={selectedBlockId === block.id}
                                                     onSelect={() => { setSelectedBlockId(block.id); setSelectedPageId(page.id); }}
                                                     onDelete={() => removeBlock(page.id, block.id)}
+                                                    onAddNested={(type, slotIdx) => addBlock(page.id, type, 'footer', block.id, slotIdx)}
+                                                    selectedBlockId={selectedBlockId}
+                                                    pageId={page.id}
                                                 />
                                             ))}
                                         </div>
@@ -630,6 +759,19 @@ export default function TemplateEditorPage() {
                                     <div className="space-y-4">
                                         <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Component Settings</h4>
                                         
+                                        {selectedBlock.block.type === 'text' && (
+                                            <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Text Content</Label>
+                                                    <Textarea 
+                                                        value={selectedBlock.block.content}
+                                                        onChange={(e) => updateBlock(selectedBlockId!, { content: e.target.value })}
+                                                        className="min-h-[120px] bg-slate-900 border-slate-700 text-white font-medium text-xs rounded-xl"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {selectedBlock.block.type === 'grid' && (
                                             <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-4">
                                                 <div className="space-y-2">
