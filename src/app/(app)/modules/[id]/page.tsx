@@ -8,39 +8,25 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useMemoFirebase, useStorage } from '@/firebase/provider';
-import { collection, query, where, orderBy, doc, updateDoc, writeBatch, getDocs, deleteDoc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { uploadFileToStorage } from '@/firebase/storage';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { collection, query, where, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { 
     Loader2, 
     ChevronRight, 
     ChevronLeft,
-    Wrench, 
     FileText, 
     PlusCircle,
     Navigation,
     Anchor,
     Ship,
-    LayoutGrid,
     X,
     Zap,
-    Trash2,
-    Map as MapIcon,
-    ClipboardList,
     Building,
-    Pencil,
-    GripVertical,
-    Upload,
-    ImageIcon,
-    Save,
     ArrowRight,
-    Hammer,
-    Coins,
     Package,
-    Settings,
-    FileSpreadsheet,
+    Waves,
     ScrollText,
-    Waves
+    FileSpreadsheet
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -51,15 +37,13 @@ import { ModelConfigurationEditor } from '@/components/model-configuration-edito
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn, createSlug } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { VesselMap } from '@/components/map';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Vendor {
@@ -506,8 +490,8 @@ export default function ModuleDetailsPage() {
                                 </div>
 
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-                                    {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} canEdit={canEdit} />}
-                                    {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} canEdit={canEdit} />}
+                                    {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} canEdit={canEdit} selectedRangeId={selectedRange?.id} />}
+                                    {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} canEdit={canEdit} selectedModelId={selectedModel?.id} />}
                                     {view === 'bmt' && selectedModel && selectedRange && (
                                         <ModelConfigurationEditor 
                                             model={selectedModel}
@@ -669,7 +653,7 @@ export default function ModuleDetailsPage() {
     );
 }
 
-function RangesGrid({ vendor, onRangeSelect, canEdit }: { vendor: Vendor; onRangeSelect: (range: Range) => void, canEdit: boolean }) {
+function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId }: { vendor: Vendor; onRangeSelect: (range: Range) => void, canEdit: boolean, selectedRangeId?: string }) {
     const firestore = useFirestore();
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
     const { data: ranges, loading } = useCollection<Range>(rangesQuery);
@@ -677,40 +661,51 @@ function RangesGrid({ vendor, onRangeSelect, canEdit }: { vendor: Vendor; onRang
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
-            {ranges?.map(range => (
-                <Card 
-                    key={range.id} 
-                    className="cursor-pointer hover:border-primary transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 hover:shadow-2xl flex flex-col h-full bg-white"
-                    onClick={() => onRangeSelect(range)}
-                >
-                    <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        {range.imageUrl ? (
-                            <Image 
-                                src={range.imageUrl} 
-                                alt={range.name} 
-                                fill 
-                                className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
-                                unoptimized 
-                            />
-                        ) : (
-                            <div className="flex items-center justify-center h-full">
-                                <Ship className="h-12 w-12 text-muted-foreground/20" />
-                            </div>
+            {ranges?.map(range => {
+                const isSelected = selectedRangeId === range.id;
+                return (
+                    <Card 
+                        key={range.id} 
+                        className={cn(
+                            "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white",
+                            isSelected 
+                                ? "border-primary shadow-2xl scale-[1.02]" 
+                                : "hover:border-primary/20 hover:shadow-xl"
                         )}
-                    </div>
-                    <div className="p-5 flex items-center justify-center bg-white mt-auto">
-                        <p className="font-black uppercase tracking-tighter text-sm text-slate-900 group-hover:text-primary transition-colors">
-                            {range.name}
-                        </p>
-                    </div>
-                </Card>
-            ))}
+                        onClick={() => onRangeSelect(range)}
+                    >
+                        <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {range.imageUrl ? (
+                                <Image 
+                                    src={range.imageUrl} 
+                                    alt={range.name} 
+                                    fill 
+                                    className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                                    unoptimized 
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full">
+                                    <Ship className="h-12 w-12 text-muted-foreground/20" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-5 flex items-center justify-center bg-white mt-auto">
+                            <p className={cn(
+                                "font-black uppercase tracking-tighter text-sm transition-colors",
+                                isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
+                            )}>
+                                {range.name}
+                            </p>
+                        </div>
+                    </Card>
+                );
+            })}
         </div>
     );
 }
 
-function ModelsGrid({ range, vendor, onModelSelect, canEdit }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; canEdit: boolean }) {
+function ModelsGrid({ range, vendor, onModelSelect, canEdit, selectedModelId }: { range: Range; vendor: Vendor; onModelSelect: (model: Model) => void; canEdit: boolean; selectedModelId?: string }) {
     const firestore = useFirestore();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
     const { data: models, loading = false } = useCollection<Model>(modelsQuery);
@@ -718,36 +713,47 @@ function ModelsGrid({ range, vendor, onModelSelect, canEdit }: { range: Range; v
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
-            {models?.map(model => (
-                <Card 
-                    key={model.id} 
-                    className="cursor-pointer hover:border-primary transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 hover:shadow-2xl flex flex-col h-full bg-white"
-                    onClick={() => onModelSelect(model)}
-                >
-                    <div className="aspect-[4/3] bg-muted/30 relative border-b overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        {model.coverImageUrl ? (
-                            <Image 
-                                src={model.coverImageUrl} 
-                                alt={model.name} 
-                                fill 
-                                className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
-                                unoptimized 
-                            />
-                        ) : (
-                            <div className="flex items-center justify-center h-full">
-                                <Ship className="h-12 w-12 text-muted-foreground/20" />
-                            </div>
+            {models?.map(model => {
+                const isSelected = selectedModelId === model.id;
+                return (
+                    <Card 
+                        key={model.id} 
+                        className={cn(
+                            "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white",
+                            isSelected 
+                                ? "border-primary shadow-2xl scale-[1.02]" 
+                                : "hover:border-primary/20 hover:shadow-xl"
                         )}
-                    </div>
-                    <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
-                        <p className="font-black uppercase tracking-tighter text-xs text-slate-900 group-hover:text-primary transition-colors">
-                            {model.name}
-                        </p>
-                        <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
-                    </div>
-                </Card>
-            ))}
+                        onClick={() => onModelSelect(model)}
+                    >
+                        <div className="aspect-[4/3] bg-muted/30 relative border-b overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {model.coverImageUrl ? (
+                                <Image 
+                                    src={model.coverImageUrl} 
+                                    alt={model.name} 
+                                    fill 
+                                    className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                                    unoptimized 
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full">
+                                    <Ship className="h-12 w-12 text-muted-foreground/20" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
+                            <p className={cn(
+                                "font-black uppercase tracking-tighter text-xs transition-colors",
+                                isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
+                            )}>
+                                {model.name}
+                            </p>
+                            <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
+                        </div>
+                    </Card>
+                );
+            })}
         </div>
     );
 }
