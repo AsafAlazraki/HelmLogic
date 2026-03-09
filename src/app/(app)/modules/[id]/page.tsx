@@ -254,7 +254,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId, allModule
                                 <SelectValue placeholder="Select target module..." />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-2">
-                                {allModules.map(m => (
+                                {allModules?.map(m => (
                                     <SelectItem key={m.id} value={m.id} className="text-[10px] font-bold uppercase py-2.5">{m.name}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -354,7 +354,7 @@ function EditItemDialog({
                 <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
                     <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button></DialogClose>
                     <Button onClick={handleSave} disabled={isSaving} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="mr-2 h-4 w-4 mr-2" />}
                         Persist Changes
                     </Button>
                 </DialogFooter>
@@ -384,7 +384,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
         <div ref={setNodeRef} style={style} className="h-full">
             <Card 
                 className={cn(
-                    "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                    "cursor-pointer transition-all rounded-[2rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
                     isSelected 
                         ? "border-primary shadow-2xl scale-[1.02]" 
                         : "hover:border-primary/20 hover:shadow-xl"
@@ -412,7 +412,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                     </div>
                 )}
 
-                <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
+                <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     {range.imageUrl ? (
                         <Image 
@@ -424,23 +424,23 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">
-                            <Ship className="h-12 w-12 text-muted-foreground/20" />
+                            <Ship className="h-16 w-16 text-muted-foreground/20" />
                         </div>
                     )}
                 </div>
                 
-                <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-4">
+                <div className="p-8 flex flex-col items-center justify-center bg-white mt-auto gap-4">
                     <p className={cn(
-                        "font-black uppercase tracking-tighter text-sm transition-colors",
+                        "font-black uppercase tracking-tighter text-lg transition-colors",
                         isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
                     )}>
                         {range.name}
                     </p>
                 </div>
 
-                <div className="flex items-center justify-between px-5 py-4 border-t border-dashed bg-white mt-auto">
-                    <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">View Range</span>
-                    <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
+                <div className="flex items-center justify-between px-8 py-5 border-t border-dashed bg-white mt-auto">
+                    <span className="font-black uppercase text-[11px] tracking-[0.2em] text-primary">View Range</span>
+                    <ArrowRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-1.5" />
                 </div>
             </Card>
         </div>
@@ -451,14 +451,14 @@ function ModelCard({ model, isSelected, onClick }: any) {
     return (
         <Card 
             className={cn(
-                "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                "cursor-pointer transition-all rounded-[2rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
                 isSelected 
                     ? "border-primary shadow-2xl scale-[1.02]" 
                     : "hover:border-primary/20 hover:shadow-xl"
             )}
             onClick={onClick}
         >
-            <div className="aspect-[4/3] bg-muted/30 relative border-b overflow-hidden">
+            <div className="aspect-square bg-muted/30 relative border-b overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 {model.coverImageUrl ? (
                     <Image 
@@ -470,18 +470,18 @@ function ModelCard({ model, isSelected, onClick }: any) {
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full">
-                        <Ship className="h-12 w-12 text-muted-foreground/20" />
+                        <Ship className="h-16 w-16 text-muted-foreground/20" />
                     </div>
                 )}
             </div>
-            <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
+            <div className="p-8 flex flex-col items-center justify-center bg-white mt-auto gap-2">
                 <p className={cn(
-                    "font-black uppercase tracking-tighter text-sm transition-colors",
+                    "font-black uppercase tracking-tighter text-xl transition-colors",
                     "text-primary"
                 )}>
                     {model.name}
                 </p>
-                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
+                <p className="text-[11px] font-black text-slate-300 uppercase tracking-[0.2em]">{model.modelCode}</p>
             </div>
         </Card>
     );
@@ -739,7 +739,7 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
-                            <div className="p-6 md:p-8 flex flex-col gap-4 pb-32">
+                            <div className="p-6 md:p-12 flex flex-col gap-8 pb-32">
                                 <div className="shrink-0 px-1 mb-0">
                                     {view === 'ranges' ? (
                                         <div className="relative inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] overflow-hidden group">
@@ -978,7 +978,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 py-4 px-1">
                     {ranges?.map(range => (
                         <SortableRangeCard 
                             key={range.id} 
@@ -1013,7 +1013,7 @@ function ModelsGrid({
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 py-4 px-1">
             {models?.map(model => (
                 <ModelCard 
                     key={model.id} 
