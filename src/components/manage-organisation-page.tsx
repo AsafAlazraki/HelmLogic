@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -137,7 +138,7 @@ function ColorFormField({ name, label, description }: { name: "primaryColor" | "
                     <FormLabel className="text-xs font-semibold uppercase tracking-wider">{label}</FormLabel>
                     <div className="flex items-center gap-2 mt-1">
                         <FormControl>
-                            <Input type="color" className="h-10 w-14 p-1 cursor-pointer border-2" {...field} value={field.value ?? '#000000'} />
+                            <input type="color" className="h-10 w-14 p-1 cursor-pointer border-2 rounded-md bg-background" {...field} value={field.value ?? '#000000'} />
                         </FormControl>
                         <FormControl>
                             <Input placeholder="#RRGGBB" {...field} value={field.value ?? ''} className="h-10 font-mono" />
@@ -498,7 +499,7 @@ export function ManageOrganisationPage({ orgId }: { orgId: string }) {
                     <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-5' : 'grid-cols-4')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
-                        <TabsTrigger value="blueprints">Blueprints</TabsTrigger>
+                        <TabsTrigger value="templates">Document Templates</TabsTrigger>
                         <TabsTrigger value="margins">Margins</TabsTrigger>
                         {organisation?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                     </TabsList>
@@ -674,7 +675,7 @@ export function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                                         </SelectTrigger>
                                                                     </FormControl>
                                                                     <SelectContent>
-                                                                        {organisation.roles?.map(role => (
+                                                                        {organisation?.roles?.map(role => (
                                                                             <SelectItem key={role.id} value={role.id} className="font-bold">{role.name}</SelectItem>
                                                                         ))}
                                                                     </SelectContent>
@@ -727,22 +728,22 @@ export function ManageOrganisationPage({ orgId }: { orgId: string }) {
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="blueprints">
+                    <TabsContent value="templates">
                         <Card className="border-2 rounded-[2.5rem] overflow-hidden shadow-sm">
                             <CardHeader className="p-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
                                         <Waves className="h-3.5 w-3.5" />
-                                        <span>Architectural Assets</span>
+                                        <span>Template Studio</span>
                                     </div>
-                                    <CardTitle className="text-2xl font-black uppercase tracking-tight italic">Company Blueprints</CardTitle>
+                                    <CardTitle className="text-2xl font-black uppercase tracking-tight italic">Company Templates</CardTitle>
                                     <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Universal document architecture for {organisation?.name}.</CardDescription>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="py-20 text-center flex flex-col items-center justify-center gap-4 text-muted-foreground opacity-20">
                                     <FileSpreadsheet className="h-16 w-16" />
-                                    <p className="font-black uppercase tracking-[0.2em] text-sm">Synchronize Document Logic in Module settings</p>
+                                    <p className="font-black uppercase tracking-[0.2em] text-sm">Document Templates Managed per Module</p>
                                 </div>
                             </CardContent>
                         </Card>

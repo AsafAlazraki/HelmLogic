@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -191,7 +192,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
             };
             await setDoc(templateRef, templateData);
             
-            toast({ title: "Blueprint Created" });
+            toast({ title: "Template Created" });
             router.push(`/modules/${moduleId}/templates/${templateRef.id}`);
         } catch (e) {
             toast({ variant: 'destructive', title: "Failed to create template" });
@@ -204,7 +205,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpe
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
                 <DialogHeader className="p-8 border-b bg-muted/5">
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">New Blueprint</DialogTitle>
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">New Template</DialogTitle>
                     <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Document Architecture</DialogDescription>
                 </DialogHeader>
                 <div className="p-8 space-y-6">
@@ -287,7 +288,6 @@ export default function ModuleDetailsPage() {
 
     const templatesQuery = useMemoFirebase(() => {
         if (!currentMemberOrg?.id || !moduleData) return null;
-        // Simplified query to avoid index requirements
         return query(collection(firestore, `organisations/${currentMemberOrg.id}/templates`), where('moduleId', '==', moduleData.id));
     }, [firestore, currentMemberOrg?.id, moduleData]);
     
@@ -519,9 +519,9 @@ export default function ModuleDetailsPage() {
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-primary">
                                                 <Waves className="h-3 w-3" />
-                                                <span>Architectural Studio</span>
+                                                <span>Template Studio</span>
                                             </div>
-                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Blueprints</h3>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Document Templates</h3>
                                         </div>
                                         <Button 
                                             variant="ghost" 
@@ -561,7 +561,7 @@ export default function ModuleDetailsPage() {
                                             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
                                                 <div className="space-y-2 opacity-20">
                                                     <ScrollText className="h-12 w-12 mx-auto text-slate-400" />
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-4">No Blueprints Defined</p>
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-4">No Document Templates Defined</p>
                                                 </div>
                                                 <Button variant="outline" size="sm" className="mt-6 font-black uppercase text-[9px] tracking-widest border-2 rounded-xl" onClick={() => setIsCreateTemplateOpen(true)}>Initialize First Template</Button>
                                             </div>

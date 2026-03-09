@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -114,7 +115,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, orgId, allModules }: { isO
             };
             await setDoc(templateRef, templateData);
             
-            toast({ title: "Blueprint Created" });
+            toast({ title: "Template Created" });
             router.push(`/modules/${moduleId}/templates/${templateRef.id}`);
         } catch (e) {
             toast({ variant: 'destructive', title: "Failed to create template" });
@@ -127,7 +128,7 @@ function CreateTemplateDialog({ isOpen, onOpenChange, orgId, allModules }: { isO
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
                 <DialogHeader className="p-8 border-b bg-muted/5">
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">New Blueprint</DialogTitle>
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">New Template</DialogTitle>
                     <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Document Architecture</DialogDescription>
                 </DialogHeader>
                 <div className="p-8 space-y-6">
@@ -349,19 +350,19 @@ export default function OrganisationDetailsPage() {
                             <TabsTrigger value="details">Details</TabsTrigger>
                             <TabsTrigger value="access">Access</TabsTrigger>
                             <TabsTrigger value="margins">Margins</TabsTrigger>
-                            <TabsTrigger value="blueprints">Blueprints</TabsTrigger>
+                            <TabsTrigger value="templates">Templates</TabsTrigger>
                             {watchedSubDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                         </TabsList>
                         
-                        <TabsContent value="blueprints">
+                        <TabsContent value="templates">
                             <Card className="border-2 rounded-[2.5rem] overflow-hidden shadow-sm">
                                 <CardHeader className="p-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
                                             <Waves className="h-3.5 w-3.5" />
-                                            <span>Architectural Assets</span>
+                                            <span>Template Assets</span>
                                         </div>
-                                        <CardTitle className="text-2xl font-black uppercase tracking-tight italic">Company Blueprints</CardTitle>
+                                        <CardTitle className="text-2xl font-black uppercase tracking-tight italic">Company Templates</CardTitle>
                                         <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Universal document architecture for {organisation?.name}.</CardDescription>
                                     </div>
                                     <Button 
@@ -403,7 +404,7 @@ export default function OrganisationDetailsPage() {
                                     ) : (
                                         <div className="py-20 text-center flex flex-col items-center justify-center gap-4 text-muted-foreground opacity-20">
                                             <FileSpreadsheet className="h-16 w-16" />
-                                            <p className="font-black uppercase tracking-[0.2em] text-sm">No Blueprints Synchronized</p>
+                                            <p className="font-black uppercase tracking-[0.2em] text-sm">No Document Templates Synchronized</p>
                                         </div>
                                     )}
                                 </CardContent>

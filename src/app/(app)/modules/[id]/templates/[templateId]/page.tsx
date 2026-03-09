@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -181,7 +182,7 @@ export default function TemplateEditorPage() {
                 updatedAt: serverTimestamp() 
             }, { merge: true });
             
-            toast({ title: "Blueprint Persisted", description: "All structural changes have been synchronized." });
+            toast({ title: "Template Persisted", description: "All structural changes have been synchronized." });
         } catch (e) {
             toast({ variant: 'destructive', title: "Save Failed" });
         } finally {
@@ -284,7 +285,7 @@ export default function TemplateEditorPage() {
                             <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-primary/20 text-primary bg-primary/10 tracking-widest">{template.type}</Badge>
                             <h1 className="font-black uppercase tracking-tight text-sm italic">{template.name}</h1>
                         </div>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-0.5">ARCHITECTURAL DESIGNER</p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-0.5">TEMPLATE DESIGNER</p>
                     </div>
                 </div>
 
@@ -301,7 +302,7 @@ export default function TemplateEditorPage() {
                         className="h-10 px-8 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl bg-primary text-white hover:scale-[1.03] transition-all"
                     >
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                        Persist Blueprint
+                        Persist Template
                     </Button>
                 </div>
             </header>
@@ -328,7 +329,7 @@ export default function TemplateEditorPage() {
 
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between mb-1">
-                                    <Label className="text-[9px] font-black uppercase text-slate-600 tracking-widest">Blueprint Flow</Label>
+                                    <Label className="text-[9px] font-black uppercase text-slate-600 tracking-widest">Template Flow</Label>
                                     <Badge variant="outline" className="h-4 text-[7px] font-black border-slate-700 text-slate-500 uppercase">{pages.length} Pages</Badge>
                                 </div>
                                 <div className="space-y-2">
@@ -487,7 +488,7 @@ export default function TemplateEditorPage() {
                                                 type="number" 
                                                 value={activePage.headerHeight} 
                                                 onChange={(e) => updatePage(activePage.id, { headerHeight: parseInt(e.target.value) || 0 })}
-                                                className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl" 
+                                                className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
                                             />
                                         </div>
                                         <div className="space-y-3">
@@ -499,14 +500,14 @@ export default function TemplateEditorPage() {
                                                 type="number" 
                                                 value={activePage.footerHeight} 
                                                 onChange={(e) => updatePage(activePage.id, { footerHeight: parseInt(e.target.value) || 0 })}
-                                                className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl" 
+                                                className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
                                             />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-center justify-center text-center opacity-30 gap-4 py-12 border-2 border-dashed border-slate-800 rounded-3xl">
-                                    <BoxSelect className="h-8 w-8" />
-                                    <p className="text-[9px] font-black uppercase tracking-widest leading-relaxed px-8">Select a canvas element to modify positional meta</p>
+                                    <BoxSelect className="h-8 w-8 text-white" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest leading-relaxed px-8 text-white">Select a canvas element to modify positional meta</p>
                                 </div>
                             </div>
                         ) : selectedBlock ? (
@@ -520,7 +521,7 @@ export default function TemplateEditorPage() {
                                                 value={selectedBlock.block.dataSource || 'manual'} 
                                                 onValueChange={(v) => updateBlock(selectedBlockId!, { dataSource: v })}
                                             >
-                                                <SelectTrigger className="h-12 bg-slate-900 border-slate-700 text-[10px] font-black uppercase tracking-tighter rounded-xl">
+                                                <SelectTrigger className="h-12 bg-slate-900 border-slate-700 text-[10px] font-black uppercase tracking-tighter rounded-xl text-white">
                                                     <SelectValue placeholder="Manual Entry Only" />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-slate-900 border-slate-700 text-white rounded-xl shadow-2xl">
@@ -545,7 +546,7 @@ export default function TemplateEditorPage() {
                                                 type="number" 
                                                 value={selectedBlock.block.order} 
                                                 onChange={(e) => updateBlock(selectedBlockId!, { order: parseInt(e.target.value) || 0 })}
-                                                className="h-11 bg-slate-800 border-slate-700 font-black text-center rounded-xl" 
+                                                className="h-11 bg-slate-800 border-slate-700 font-black text-center rounded-xl text-white" 
                                             />
                                         </div>
                                     </div>
@@ -562,6 +563,7 @@ export default function TemplateEditorPage() {
 function ToolButton({ icon: Icon, label, onClick }: any) {
     return (
         <button 
+            type="button"
             onClick={onClick}
             className="flex flex-col items-center justify-center gap-3 p-5 rounded-3xl bg-slate-800/50 border-2 border-slate-700/50 hover:bg-primary/10 hover:border-primary/50 transition-all group active:scale-95"
         >
