@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -22,7 +22,11 @@ import {
     FileText,
     ArrowUp,
     ArrowDown,
-    Palette
+    Palette,
+    Layers,
+    Waves,
+    Zap,
+    CircleDashed
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -84,7 +88,7 @@ export default function TemplateEditorPage() {
             
             await setDoc(templateRef!, { updatedAt: serverTimestamp() }, { merge: true });
             
-            toast({ title: "Blueprint Saved" });
+            toast({ title: "Blueprint Saved", description: "Universal document architecture persisted." });
         } catch (e) {
             toast({ variant: 'destructive', title: "Save Failed" });
         } finally {
@@ -251,7 +255,17 @@ export default function TemplateEditorPage() {
                         ) : (
                             <div className="w-full text-left space-y-6">
                                 <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Block Configuration</h4>
-                                <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Properties will synchronize here.</p>
+                                <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Type</p>
+                                    <p className="text-xs font-black uppercase text-white mt-1">{selectedBlockId.split('-')[0]}</p>
+                                </div>
+                                <div className="p-4 space-y-4">
+                                    <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Staged Overrides</Label>
+                                    <div className="space-y-2 opacity-40">
+                                        <div className="h-8 bg-slate-800 rounded border border-slate-700" />
+                                        <div className="h-8 bg-slate-800 rounded border border-slate-700" />
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
