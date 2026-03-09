@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -13,6 +14,10 @@
           "type": "string",
           "format": "email",
           "description": "The user's email address."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The user's mobile or contact number."
         },
         "appRole": {
           "type": "string",
@@ -166,8 +171,7 @@
         "moduleId": { "type": "string" },
         "createdByUserId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "pages": { "type": "array" }
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "name", "type", "moduleId", "createdByUserId"]
     },
@@ -303,13 +307,13 @@
       },
       "description": "User profile documents."
     },
-    "/organisations/{organisationId}/templates/{templateId}": {
+    "/users/{userId}/templates/{templateId}": {
       "schema": {
         "$ref": "#/backend/entities/Template"
       },
-      "description": "Organisation-wide document templates."
+      "description": "User-specific document templates."
     },
-    "/organisations/{organisationId}/templates/{templateId}/documentTemplateContent/document": {
+    "/users/{userId}/templates/{templateId}/documentTemplateContent/document": {
       "schema": {
         "$ref": "#/backend/entities/DocumentTemplateContent"
       },
@@ -320,6 +324,12 @@
         "$ref": "#/backend/entities/Organisation"
       },
       "description": "Organisation documents."
+    },
+    "/organisations/{organisationId}/templates/{templateId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Template"
+      },
+      "description": "Organisation-level document templates."
     },
     "/organisations/{organisationId}/exchangeRates/{currencyCode}": {
       "schema": {

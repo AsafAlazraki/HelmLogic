@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -28,13 +29,19 @@ service cloud.firestore {
     match /organisations/{organisationId} {
       allow read, write: if isSignedIn();
       
-      // Explicit recursive wildcard for all sub-data in organisations (templates, price levels, etc)
+      // Explicit recursive wildcard for all sub-data in organisations
+      // Includes templates, price levels, pricing strategies, model overrides, etc.
       match /{allPaths=**} {
         allow read, write: if isSignedIn();
       }
     }
 
-    // --- Dashboard & Operational Logic ---
+    match /dealerFitCategories/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // --- Operational Logic ---
 
     match /inventory/{itemId} {
       allow read, write: if isSignedIn();
@@ -42,10 +49,6 @@ service cloud.firestore {
 
     match /vessels/{vesselId} {
       allow read, write: if isSignedIn();
-    }
-
-    match /dealerFitCategories/{id} {
-      allow read: if isSignedIn();
     }
 
     // --- User Data & Notifications ---
@@ -62,7 +65,7 @@ service cloud.firestore {
       }
       
       match /{allPaths=**} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isSignedIn();
       }
     }
   }

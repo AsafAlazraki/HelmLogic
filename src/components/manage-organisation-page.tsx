@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -10,15 +11,15 @@ import Link from 'next/link';
 
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useFirestore, useStorage, useMemoFirebase, useAuth } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, deleteDoc, serverTimestamp, setDoc, orderBy } from 'firebase/firestore';
-import { initializeApp, deleteApp } from 'firebase/app';
+import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp, Hash, FileSpreadsheet, ChevronRight, Waves, Zap, ScrollText, Pencil, UserPlus, Key, ShieldCheck } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp, Hash, FileSpreadsheet, ChevronRight, Waves, Zap, ScrollText, Pencil, UserPlus, Key, ShieldCheck, Smartphone, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -90,6 +91,7 @@ const addUserFormSchema = z.object({
     email: z.string().email({ message: 'Please enter a valid email address.' }),
     password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
     roleId: z.string().min(1, { message: 'Please select a role for the user.' }),
+    phoneNumber: z.string().optional(),
 });
 
 type AddUserFormData = z.infer<typeof addUserFormSchema>;
@@ -213,6 +215,7 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
             const userRef = doc(firestore, 'users', editingUser.id);
             await updateDoc(userRef, {
                 displayName: editingUser.displayName || '',
+                phoneNumber: editingUser.phoneNumber || '',
                 organisationRole: editingUser.organisationRole,
             });
             toast({ title: "Member updated" });
@@ -249,7 +252,7 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
                     <TableHeader className="bg-muted/30">
                         <TableRow>
                             <TableHead className="font-black uppercase text-[10px] tracking-widest pl-6 py-4">User</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Email</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Email & Contact</TableHead>
                             <TableHead className="font-black uppercase text-[10px] tracking-widest">Role</TableHead>
                             <TableHead className="text-right pr-6"></TableHead>
                         </TableRow>
@@ -268,7 +271,17 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
                                                 <span className="font-bold text-sm">{u.displayName || 'N/A'}</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-xs font-medium text-muted-foreground">{u.email}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-xs font-medium text-muted-foreground">{u.email}</span>
+                                                {u.phoneNumber && (
+                                                    <span className="text-[9px] font-mono font-bold text-primary flex items-center gap-1">
+                                                        <Smartphone className="h-2.5 w-2.5" />
+                                                        {u.phoneNumber}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="font-black uppercase text-[9px] border-primary/20 text-primary bg-primary/5">
                                                 {roleName}
@@ -319,6 +332,18 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
                                         onChange={e => setEditingUser({ ...editingUser, displayName: e.target.value })}
                                         className="h-12 font-bold border-2 rounded-xl"
                                     />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Mobile Number (Optional)</Label>
+                                    <div className="relative">
+                                        <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                                        <Input 
+                                            value={editingUser.phoneNumber || ''} 
+                                            onChange={e => setEditingUser({ ...editingUser, phoneNumber: e.target.value })}
+                                            className="h-12 pl-10 font-bold border-2 rounded-xl"
+                                            placeholder="e.g. +61 400 000 000"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Assigned Role</Label>
@@ -392,7 +417,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
 
     const addUserForm = useForm<AddUserFormData>({
         resolver: zodResolver(addUserFormSchema),
-        defaultValues: { email: '', password: '', roleId: '' },
+        defaultValues: { email: '', password: '', roleId: '', phoneNumber: '' },
     });
     
     const watchedRoles = form.watch('roles');
@@ -440,6 +465,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             const profileData = {
                 id: newUser.uid,
                 email: values.email,
+                phoneNumber: values.phoneNumber || null,
                 organisationId: organisation.id,
                 organisationRole: values.roleId,
                 appRole: 'General User',
@@ -458,17 +484,12 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             await signOut(tempAuth);
 
             toast({ title: "User Created", description: `${values.email} has been added to ${organisation.name}.` });
-            addUserForm.reset({ email: '', password: '', roleId: values.roleId });
+            addUserForm.reset({ email: '', password: '', roleId: values.roleId, phoneNumber: '' });
 
         } catch (error: any) {
             console.error("Failed to add user:", error);
             toast({ variant: "destructive", title: "User Creation Failed", description: error.message });
         } finally {
-            if (tempApp) {
-                try {
-                    // Cleanup
-                } catch(e) {}
-            }
             setIsAddingUser(false);
         }
     }
@@ -538,11 +559,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             {orgLoading ? (
                 <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
             ) : organisation ? (
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormProvider {...form}>
+                    <div className="space-y-4">
                         <div className="flex items-center justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="button" onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 <Save className="mr-2 h-4 w-4" /> Save Changes
                             </Button>
@@ -681,7 +702,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                     
                                                     <FormProvider {...addUserForm}>
                                                         <div className="space-y-6">
-                                                            <div className="grid md:grid-cols-3 gap-6">
+                                                            <div className="grid md:grid-cols-4 gap-6">
                                                                 <FormField control={addUserForm.control} name="email" render={({ field }) => ( 
                                                                     <FormItem>
                                                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Log-in Email</FormLabel>
@@ -701,6 +722,18 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                                                             <div className="relative">
                                                                                 <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
                                                                                 <Input type="password" placeholder="••••••••" {...field} className="h-11 pl-10 font-bold bg-background border-2 transition-all focus-visible:ring-primary/20" />
+                                                                            </div>
+                                                                        </FormControl>
+                                                                        <FormMessage />
+                                                                    </FormItem> 
+                                                                )} />
+                                                                <FormField control={addUserForm.control} name="phoneNumber" render={({ field }) => ( 
+                                                                    <FormItem>
+                                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mobile (Optional)</FormLabel>
+                                                                        <FormControl>
+                                                                            <div className="relative">
+                                                                                <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                                                                                <Input placeholder="+61 400 000 000" {...field} className="h-11 pl-10 font-bold bg-background border-2 transition-all focus-visible:ring-primary/20" />
                                                                             </div>
                                                                         </FormControl>
                                                                         <FormMessage />
@@ -854,8 +887,8 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 </TabsContent>
                             )}
                         </Tabs>
-                    </form>
-                </Form>
+                    </div>
+                </FormProvider>
             ) : null}
 
             {organisation && (
