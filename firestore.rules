@@ -25,11 +25,9 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
-    // --- Organisation Tree (Permissive for Prototype Speed) ---
+    // --- Organisation Tree (Recursive for Prototype Speed) ---
 
     match /organisations/{organisationId} {
-      // Allow broad read/write for any signed-in user for prototype testing
-      // This is necessary to allow 'list' operations on subcollections like 'templates'
       allow read, write: if isSignedIn();
       
       match /{allPaths=**} {
