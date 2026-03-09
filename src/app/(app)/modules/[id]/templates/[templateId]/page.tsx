@@ -45,7 +45,8 @@ import {
     AlignRight,
     Type as TypeIcon,
     Baseline,
-    Palette
+    Palette,
+    ArrowLeftRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -101,6 +102,8 @@ interface TemplatePage {
     blocks: TemplateBlock[];
     headerHeight: number; // in mm
     footerHeight: number; // in mm
+    marginLeft: number;   // in mm
+    marginRight: number;  // in mm
     order: number;
 }
 
@@ -242,7 +245,7 @@ function CanvasBlock({
                     </div>
                 )}
                 {block.type === 'grid' && (
-                    <div className={cn("grid gap-6", `grid-cols-${block.layoutConfig?.columns || 2}`)}>
+                    <div className={cn("grid gap-6 w-full", `grid-cols-${block.layoutConfig?.columns || 2}`)}>
                         {Array.from({ length: block.layoutConfig?.columns || 2 }).map((_, i) => {
                             const slotBlocks = (block.content?.slots?.[i] || []) as TemplateBlock[];
                             return (
@@ -292,7 +295,7 @@ function CanvasBlock({
                     </div>
                 )}
                 {block.type === 'quoteItems' && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 w-full">
                         <div className="flex items-center justify-between border-b-2 border-slate-100 pb-4">
                             <h4 className="font-black uppercase text-sm italic text-primary flex items-center gap-2">
                                 <Package className="h-4 w-4" />
@@ -301,7 +304,7 @@ function CanvasBlock({
                             <Badge variant="outline" className="text-[8px] font-black uppercase">{block.layoutConfig?.displayStyle || 'list'} Layout</Badge>
                         </div>
                         {block.layoutConfig?.displayStyle === 'grid' ? (
-                            <div className={cn("grid gap-4", `grid-cols-${block.layoutConfig?.columns || 2}`)}>
+                            <div className={cn("grid gap-4 w-full", `grid-cols-${block.layoutConfig?.columns || 2}`)}>
                                 {[1, 2, 3, 4].slice(0, block.layoutConfig?.columns || 2).map(i => (
                                     <div key={i} className="border-2 rounded-2xl p-4 space-y-3 bg-slate-50/50">
                                         {block.layoutConfig?.showImages && <div className="aspect-square bg-slate-200 rounded-xl animate-pulse" />}
@@ -313,7 +316,7 @@ function CanvasBlock({
                                 ))}
                             </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-3 w-full">
                                 {[1, 2, 3].map(i => (
                                     <div key={i} className="flex items-center gap-4 p-4 border-2 rounded-xl bg-slate-50/50">
                                         {block.layoutConfig?.showImages && <div className="h-12 w-12 bg-slate-200 rounded-lg animate-pulse shrink-0" />}
@@ -329,7 +332,7 @@ function CanvasBlock({
                     </div>
                 )}
                 {block.type === 'table' && (
-                    <div className="grid grid-cols-3 gap-px bg-slate-200 border-2 rounded-2xl overflow-hidden shadow-inner">
+                    <div className="grid grid-cols-3 gap-px bg-slate-200 border-2 rounded-2xl overflow-hidden shadow-inner w-full">
                         {[1,2,3,4,5,6,7,8,9].map(i => (
                             <div key={i} className="h-10 bg-white" />
                         ))}
@@ -384,6 +387,51 @@ function ColorSelector({ value, onChange, recentColors }: { value?: string, onCh
     );
 }
 
+function ToolButton({ icon: Icon, label, onClick }: any) {
+    return (
+        <button 
+            type="button"
+            onClick={onClick}
+            className="flex flex-col items-center justify-center gap-3 p-5 rounded-3xl bg-slate-800/50 border-2 border-slate-700/50 hover:bg-primary/10 hover:border-primary/50 transition-all group active:scale-95"
+        >
+            <Icon className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-primary-foreground">{label}</span>
+        </button>
+    );
+}
+
+function FormatButton({ active, onClick, icon: Icon }: { active: boolean, onClick: () => void, icon: any }) {
+    return (
+        <Button 
+            type="button"
+            variant="ghost" 
+            size="icon" 
+            onClick={(e) => { e.preventDefault(); onClick(); }}
+            className={cn(
+                "h-10 w-full rounded-xl border-2 transition-all",
+                active ? "bg-primary text-white border-primary shadow-lg" : "bg-slate-900 border-slate-800 text-slate-500 hover:text-white"
+            )}
+        >
+            <Icon className="h-4 w-4" />
+        </Button>
+    );
+}
+
+function ToggleOption({ label, checked, onChange }: { label: string, checked?: boolean, onChange: (v: boolean) => void }) {
+    return (
+        <div 
+            onClick={() => onChange(!checked)}
+            className={cn(
+                "flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all",
+                checked ? "bg-primary/10 border-primary/40" : "bg-slate-900 border-slate-800 hover:border-slate-700"
+            )}
+        >
+            <span className={cn("text-[9px] font-black uppercase tracking-widest", checked ? "text-primary" : "text-slate-500")}>{label}</span>
+            {checked ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <div className="h-3 w-3 rounded-full border-2 border-slate-700" />}
+        </div>
+    );
+}
+
 export default function TemplateEditorPage() {
     const params = useParams();
     const router = useRouter();
@@ -404,7 +452,7 @@ export default function TemplateEditorPage() {
     const { data: template, loading: templateLoading } = useDoc<any>(templateRef);
 
     const [pages, setPages] = useState<TemplatePage[]>([]);
-    const [zoom, setZoom] = useState(0.85);
+    const [zoom, setZoom] = useState(0.8);
     const [isSaving, setIsSaving] = useState(false);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
     const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
@@ -445,6 +493,8 @@ export default function TemplateEditorPage() {
             blocks: [],
             headerHeight: 20,
             footerHeight: 20,
+            marginLeft: 20,
+            marginRight: 20,
             order: nextOrder
         };
         setPages(prev => [...prev, newPage]);
@@ -643,7 +693,7 @@ export default function TemplateEditorPage() {
 
                 <div className="flex items-center gap-8">
                     <div className="flex items-center bg-slate-800/50 rounded-xl p-1 border border-slate-700 shadow-inner">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}><ZoomOut className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => setZoom(Math.max(0.3, zoom - 0.1))}><ZoomOut className="h-4 w-4" /></Button>
                         <span className="text-[10px] font-black w-14 text-center uppercase tracking-tighter text-slate-300">{Math.round(zoom * 100)}%</span>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}><ZoomIn className="h-4 w-4" /></Button>
                     </div>
@@ -765,8 +815,12 @@ export default function TemplateEditorPage() {
                                 </div>
 
                                 <div 
-                                    className="w-full border-b border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/header px-[20mm] z-40"
-                                    style={{ height: `${page.headerHeight}mm` }}
+                                    className="w-full border-b border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/header z-40 overflow-visible"
+                                    style={{ 
+                                        height: `${page.headerHeight}mm`,
+                                        paddingLeft: `${page.marginLeft}mm`,
+                                        paddingRight: `${page.marginRight}mm`
+                                    }}
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/header:border-primary/20 transition-all pointer-events-none" />
                                     {page.blocks.filter(b => b.zone === 'header').length === 0 ? (
@@ -792,7 +846,15 @@ export default function TemplateEditorPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 flex flex-col gap-8 p-[20mm] text-slate-900 z-30">
+                                <div 
+                                    className="flex-1 flex flex-col gap-8 text-slate-900 z-30 overflow-visible"
+                                    style={{ 
+                                        paddingLeft: `${page.marginLeft}mm`,
+                                        paddingRight: `${page.marginRight}mm`,
+                                        paddingTop: '10mm',
+                                        paddingBottom: '10mm'
+                                    }}
+                                >
                                     {page.blocks.filter(b => !b.zone || b.zone === 'body').length === 0 ? (
                                         <div className="flex-1 border-2 border-dashed border-slate-100 rounded-[3rem] flex flex-col items-center justify-center text-center gap-6 opacity-20 hover:opacity-40 transition-opacity">
                                             <Layout className="h-16 w-16" />
@@ -818,8 +880,12 @@ export default function TemplateEditorPage() {
                                 </div>
 
                                 <div 
-                                    className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/footer px-[20mm] z-40"
-                                    style={{ height: `${page.footerHeight}mm` }}
+                                    className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/footer z-40 overflow-visible"
+                                    style={{ 
+                                        height: `${page.footerHeight}mm`,
+                                        paddingLeft: `${page.marginLeft}mm`,
+                                        paddingRight: `${page.marginRight}mm`
+                                    }}
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/footer:border-primary/20 transition-all pointer-events-none" />
                                     {page.blocks.filter(b => b.zone === 'footer').length === 0 ? (
@@ -861,29 +927,58 @@ export default function TemplateEditorPage() {
                                     <div className="space-y-4">
                                         <h4 className="text-[11px] font-black uppercase tracking-widest text-primary border-l-4 border-primary pl-3">Global Page Setup</h4>
                                         <div className="p-5 rounded-2xl bg-slate-800/50 border border-slate-700 space-y-6">
-                                            <div className="space-y-3">
-                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                                                    <PanelTop className="h-3 w-3" />
-                                                    Header Height (mm)
-                                                </Label>
-                                                <Input 
-                                                    type="number" 
-                                                    value={activePage.headerHeight} 
-                                                    onChange={(e) => updatePage(activePage.id, { headerHeight: parseInt(e.target.value) || 0 })}
-                                                    className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
-                                                />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-3">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                        <PanelTop className="h-3 w-3" />
+                                                        Header (mm)
+                                                    </Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        value={activePage.headerHeight} 
+                                                        onChange={(e) => updatePage(activePage.id, { headerHeight: parseInt(e.target.value) || 0 })}
+                                                        className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
+                                                    />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                        <PanelBottom className="h-3 w-3" />
+                                                        Footer (mm)
+                                                    </Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        value={activePage.footerHeight} 
+                                                        onChange={(e) => updatePage(activePage.id, { footerHeight: parseInt(e.target.value) || 0 })}
+                                                        className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="space-y-3">
-                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                                                    <PanelBottom className="h-3 w-3" />
-                                                    Footer Height (mm)
-                                                </Label>
-                                                <Input 
-                                                    type="number" 
-                                                    value={activePage.footerHeight} 
-                                                    onChange={(e) => updatePage(activePage.id, { footerHeight: parseInt(e.target.value) || 0 })}
-                                                    className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
-                                                />
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-3">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                        <ArrowLeftRight className="h-3 w-3" />
+                                                        Left (mm)
+                                                    </Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        value={activePage.marginLeft} 
+                                                        onChange={(e) => updatePage(activePage.id, { marginLeft: parseInt(e.target.value) || 0 })}
+                                                        className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
+                                                    />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                                        <ArrowLeftRight className="h-3 w-3" />
+                                                        Right (mm)
+                                                    </Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        value={activePage.marginRight} 
+                                                        onChange={(e) => updatePage(activePage.id, { marginRight: parseInt(e.target.value) || 0 })}
+                                                        className="h-11 bg-slate-900 border-slate-700 font-black text-primary text-center rounded-xl text-white" 
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1132,51 +1227,6 @@ export default function TemplateEditorPage() {
                     background-size: 30px 30px;
                 }
             `}</style>
-        </div>
-    );
-}
-
-function ToolButton({ icon: Icon, label, onClick }: any) {
-    return (
-        <button 
-            type="button"
-            onClick={onClick}
-            className="flex flex-col items-center justify-center gap-3 p-5 rounded-3xl bg-slate-800/50 border-2 border-slate-700/50 hover:bg-primary/10 hover:border-primary/50 transition-all group active:scale-95"
-        >
-            <Icon className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-primary-foreground">{label}</span>
-        </button>
-    );
-}
-
-function FormatButton({ active, onClick, icon: Icon }: { active: boolean, onClick: () => void, icon: any }) {
-    return (
-        <Button 
-            type="button"
-            variant="ghost" 
-            size="icon" 
-            onClick={(e) => { e.preventDefault(); onClick(); }}
-            className={cn(
-                "h-10 w-full rounded-xl border-2 transition-all",
-                active ? "bg-primary text-white border-primary shadow-lg" : "bg-slate-900 border-slate-800 text-slate-500 hover:text-white"
-            )}
-        >
-            <Icon className="h-4 w-4" />
-        </Button>
-    );
-}
-
-function ToggleOption({ label, checked, onChange }: { label: string, checked?: boolean, onChange: (v: boolean) => void }) {
-    return (
-        <div 
-            onClick={() => onChange(!checked)}
-            className={cn(
-                "flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all",
-                checked ? "bg-primary/10 border-primary/40" : "bg-slate-900 border-slate-800 hover:border-slate-700"
-            )}
-        >
-            <span className={cn("text-[9px] font-black uppercase tracking-widest", checked ? "text-primary" : "text-slate-500")}>{label}</span>
-            {checked ? <CheckCircle2 className="h-3 w-3 text-primary" /> : <div className="h-3 w-3 rounded-full border-2 border-slate-700" />}
         </div>
     );
 }
