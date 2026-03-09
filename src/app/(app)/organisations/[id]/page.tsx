@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -12,9 +11,9 @@ import Link from 'next/link';
 import { BreadcrumbNav, type BreadcrumbPart } from '@/components/breadcrumb-nav';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp, Hash } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp, Hash, FileSpreadsheet, ChevronRight, Waves } from 'lucide-react';
 import AdminGuard from '@/components/admin-guard';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -116,7 +115,6 @@ const permissionsConfig = [
     { id: 'can_create_quotes', label: 'Create Quotes' },
     { id: 'can_edit_boat_data', label: 'Edit Boat Data' },
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
-    { id: 'can_see_parent_inventory', label: 'Access Parent Inventory' },
     { id: 'can_access_settings', label: 'Access Settings' },
 ];
 
@@ -167,6 +165,12 @@ export default function OrganisationDetailsPage() {
     }, [firestore, organisation]);
 
     const { data: subDealers } = useCollection<OrganisationFormData>(subDealersQuery);
+
+    const templatesQuery = useMemoFirebase(() => {
+        if (!organisation?.id) return null;
+        return query(collection(firestore, `organisations/${organisation.id}/templates`), orderBy('createdAt', 'desc'));
+    }, [firestore, organisation?.id]);
+    const { data: templates } = useCollection<any>(templatesQuery);
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
@@ -385,11 +389,12 @@ export default function OrganisationDetailsPage() {
                         </div>
 
                         <Tabs defaultValue="details" className="space-y-4">
-                            <TabsList className={cn("grid w-full", watchedSubDealersEnabled ? 'grid-cols-5' : 'grid-cols-4')}>
+                            <TabsList className={cn("grid w-full", watchedSubDealersEnabled ? 'grid-cols-6' : 'grid-cols-5')}>
                                 <TabsTrigger value="details">Company Details</TabsTrigger>
                                 <TabsTrigger value="users">Users &amp; Permissions</TabsTrigger>
                                 <TabsTrigger value="access">Access</TabsTrigger>
                                 <TabsTrigger value="margins">Margins</TabsTrigger>
+                                <TabsTrigger value="blueprints">Blueprints</TabsTrigger>
                                 {watchedSubDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                             </TabsList>
                             
@@ -442,7 +447,7 @@ export default function OrganisationDetailsPage() {
                                                             <FormLabel className="flex items-center gap-2">
                                                                 <Percent className="h-4 w-4 text-muted-foreground" />
                                                                 GST / Tax Percentage
-                                                            </FormLabel>
+                                                            </Label>
                                                             <FormControl>
                                                                 <div className="relative">
                                                                     <Input type="number" step="0.1" {...field} className="pr-8" />
@@ -862,12 +867,62 @@ export default function OrganisationDetailsPage() {
                                 </div>
                             </TabsContent>
 
+                            <TabsContent value="blueprints">
+                                <Card className="border-2 rounded-[2.5rem] overflow-hidden shadow-sm">
+                                    <CardHeader className="p-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
+                                                <Waves className="h-3.5 w-3.5" />
+                                                <span>Architectural Assets</span>
+                                            </div>
+                                            <CardTitle className="text-2xl font-black uppercase tracking-tight italic">Company Blueprints</CardTitle>
+                                            <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Universal document architecture for {organisation.name}.</CardDescription>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="p-0">
+                                        {templates && templates.length > 0 ? (
+                                            <div className="divide-y border-b">
+                                                {templates.map(t => (
+                                                    <Link 
+                                                        key={t.id} 
+                                                        href={`/modules/${t.moduleId}/templates/${t.id}`}
+                                                        className="flex items-center justify-between px-8 py-6 hover:bg-slate-50 transition-colors group"
+                                                    >
+                                                        <div className="flex items-center gap-6">
+                                                            <div className="h-12 w-12 rounded-2xl bg-white border-2 flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+                                                                <FileSpreadsheet className="h-6 w-6" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge variant="outline" className="h-4 text-[7px] font-black uppercase tracking-widest border-primary/20 text-primary">{t.type}</Badge>
+                                                                    <p className="font-black uppercase text-sm text-slate-900">{t.name}</p>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Linked to Module: {allModules?.find(m => m.id === t.moduleId)?.name || t.moduleId}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity">Launch Designer</Button>
+                                                            <ChevronRight className="h-5 w-5 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+                                                        </div>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-20 text-center flex flex-col items-center justify-center gap-4 text-muted-foreground opacity-20">
+                                                <FileSpreadsheet className="h-16 w-16" />
+                                                <p className="font-black uppercase tracking-[0.2em] text-sm">No Blueprints Synchronized</p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
                             {watchedSubDealersEnabled && (
                                 <TabsContent value="sub-dealers">
                                     <Card>
                                         <CardHeader className="flex-row items-center justify-between">
                                             <div><CardTitle>Sub Dealers</CardTitle></div>
-                                            <Button asChild><Link href={`/organisations/${organisation.slug || organisation.id}/add-sub-dealer`}><PlusCircle className="mr-2 h-4 w-4" />Add Sub Dealer</Link></Button>
+                                            <Button asChild><Link href={`/organisations/${organisation.id}/add-sub-dealer`}><PlusCircle className="mr-2 h-4 w-4" />Add Sub Dealer</Link></Button>
                                         </CardHeader>
                                         <CardContent>
                                             {subDealers && subDealers.length > 0 ? (

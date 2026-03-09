@@ -51,6 +51,10 @@ service cloud.firestore {
       match /modelOverrides/{modelId} {
         allow read, write: if isSignedIn();
       }
+
+      match /templates/{templateId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // --- Dashboard & Operational Logic ---
@@ -70,7 +74,7 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
-      allow list: if false;
+      allow list: if isSignedIn();
 
       match /notifications/{notificationId} {
         allow get, list, write: if isOwner(userId);

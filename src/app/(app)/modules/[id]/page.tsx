@@ -38,7 +38,8 @@ import {
     Package,
     Settings,
     FileSpreadsheet,
-    ScrollText
+    ScrollText,
+    Waves
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -180,7 +181,7 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
     );
 }
 
-function CreateTemplateDialog({ isOpen, onOpenChange, moduleId }: { isOpen: boolean, onOpenChange: (open: boolean) => void, moduleId: string }) {
+function CreateTemplateDialog({ isOpen, onOpenChange, moduleId, orgId }: { isOpen: boolean, onOpenChange: (open: boolean) => void, moduleId: string, orgId: string }) {
     const firestore = useFirestore();
     const { user } = useUser();
     const router = useRouter();
@@ -190,10 +191,10 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId }: { isOpen: bool
     const [type, setType] = useState<'Quote' | 'Invoice' | 'Contract'>('Quote');
 
     const handleCreate = async () => {
-        if (!user || !name.trim()) return;
+        if (!user || !name.trim() || !orgId) return;
         setIsLoading(true);
         try {
-            const templateRef = doc(collection(firestore, `users/${user.uid}/templates`));
+            const templateRef = doc(collection(firestore, `organisations/${orgId}/templates`));
             const templateData = {
                 id: templateRef.id,
                 name,
@@ -201,11 +202,14 @@ function CreateTemplateDialog({ isOpen, onOpenChange, moduleId }: { isOpen: bool
                 moduleId,
                 createdByUserId: user.uid,
                 createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
+                updatedAt: serverTimestamp(),
+                pages: [
+                    { id: 'page-1', blocks: [], headerHeight: 20, footerHeight: 20, order: 1 }
+                ]
             };
             await setDoc(templateRef, templateData);
             
-            toast({ title: "Template Created" });
+            toast({ title: "Blueprint Created" });
             router.push(`/modules/${moduleId}/templates/${templateRef.id}`);
         } catch (e) {
             toast({ variant: 'destructive', title: "Failed to create template" });
@@ -301,9 +305,9 @@ export default function ModuleDetailsPage() {
     }, [userProfile, currentMemberOrg]);
 
     const templatesQuery = useMemoFirebase(() => {
-        if (!user || !moduleData) return null;
-        return query(collection(firestore, `users/${user.uid}/templates`), where('moduleId', '==', moduleData.id));
-    }, [firestore, user, moduleData]);
+        if (!currentMemberOrg?.id || !moduleData) return null;
+        return query(collection(firestore, `organisations/${currentMemberOrg.id}/templates`), where('moduleId', '==', moduleData.id), orderBy('createdAt', 'desc'));
+    }, [firestore, currentMemberOrg?.id, moduleData]);
     const { data: templates } = useCollection<Template>(templatesQuery);
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
@@ -527,17 +531,20 @@ export default function ModuleDetailsPage() {
                             <div className="p-8 grid md:grid-cols-2 gap-8 pb-32">
                                 <Card className="border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden flex flex-col">
                                     <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
-                                        <div className="flex items-center gap-3 shrink-0">
-                                            <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Blueprint</Badge>
-                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Templates</h3>
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-primary">
+                                                <Waves className="h-3 w-3" />
+                                                <span>Architectural Studio</span>
+                                            </div>
+                                            <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Blueprints</h3>
                                         </div>
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
-                                            className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
+                                            className="h-10 w-10 text-primary hover:bg-primary hover:text-white rounded-2xl transition-all active:scale-90 border-2 border-primary/10 shadow-sm"
                                             onClick={() => setIsCreateTemplateOpen(true)}
                                         >
-                                            <PlusCircle className="h-4 w-4" />
+                                            <PlusCircle className="h-5 w-5" />
                                         </Button>
                                     </CardHeader>
                                     <CardContent className="flex-1 min-h-[200px] flex flex-col p-0 bg-slate-50/30">
@@ -547,15 +554,18 @@ export default function ModuleDetailsPage() {
                                                     <Link 
                                                         key={t.id} 
                                                         href={`/modules/${moduleData.id}/templates/${t.id}`}
-                                                        className="flex items-center justify-between px-8 py-4 hover:bg-white transition-colors group"
+                                                        className="flex items-center justify-between px-8 py-5 hover:bg-white transition-all group"
                                                     >
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="h-10 w-10 rounded-xl bg-white border flex items-center justify-center text-primary shadow-sm">
-                                                                <FileSpreadsheet className="h-5 w-5" />
+                                                        <div className="flex items-center gap-5">
+                                                            <div className="h-12 w-12 rounded-2xl bg-white border-2 flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+                                                                <FileSpreadsheet className="h-6 w-6" />
                                                             </div>
                                                             <div>
-                                                                <p className="font-black uppercase text-xs text-slate-900">{t.name}</p>
-                                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.type} Document</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge variant="outline" className="h-4 text-[7px] font-black uppercase border-primary/20 text-primary px-1.5">{t.type}</Badge>
+                                                                    <p className="font-black uppercase text-[11px] tracking-tight text-slate-900">{t.name}</p>
+                                                                </div>
+                                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Universal Template Definition</p>
                                                             </div>
                                                         </div>
                                                         <ChevronRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-primary" />
@@ -634,6 +644,7 @@ export default function ModuleDetailsPage() {
                 isOpen={isCreateTemplateOpen} 
                 onOpenChange={setIsCreateTemplateOpen} 
                 moduleId={moduleData.id} 
+                orgId={currentMemberOrg?.id || ''}
             />
         </div>
     );
