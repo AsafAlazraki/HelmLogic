@@ -37,7 +37,8 @@ import {
     ShieldCheck, 
     Smartphone, 
     ClipboardList, 
-    Clock 
+    Clock,
+    TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -153,95 +154,6 @@ function ColorFormField({ name, label, description }: { name: "primaryColor" | "
                 </FormItem>
             )}
         />
-    );
-}
-
-function CreateBlueprintDialog({ isOpen, onOpenChange, orgId, allModules }: { isOpen: boolean, onOpenChange: (open: boolean) => void, orgId: string, allModules: any[] }) {
-    const firestore = useFirestore();
-    const { user } = useUser();
-    const router = useRouter();
-    const { toast } = useToast();
-    const [isLoading, setIsLoading] = useState(false);
-    const [name, setName] = useState('');
-    const [type, setType] = useState<'Quote' | 'Invoice' | 'Contract'>('Quote');
-    const [moduleId, setModuleId] = useState('');
-
-    const handleCreate = async () => {
-        if (!user || !name.trim() || !orgId || !moduleId) return;
-        setIsLoading(true);
-        try {
-            const templateRef = doc(collection(firestore, `organisations/${orgId}/templates`));
-            const templateData = {
-                id: templateRef.id,
-                name,
-                type,
-                moduleId,
-                createdByUserId: user.uid,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                pages: [
-                    { id: 'page-1', blocks: [], headerHeight: 20, footerHeight: 20, order: 1 }
-                ]
-            };
-            await setDoc(templateRef, templateData);
-            
-            toast({ title: "Blueprint Created" });
-            router.push(`/modules/${moduleId}/templates/${templateRef.id}`);
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Failed to create template" });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
-                <DialogHeader className="p-8 border-b bg-muted/5">
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">New Blueprint</DialogTitle>
-                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Document Architecture</DialogDescription>
-                </DialogHeader>
-                <div className="p-8 space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Template Name</Label>
-                        <Input placeholder="e.g. Premium Sales Proposal" value={name} onChange={e => setName(e.target.value)} className="h-12 font-bold border-2 rounded-xl" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Linked Module</Label>
-                        <Select value={moduleId} onValueChange={setModuleId}>
-                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
-                                <SelectValue placeholder="Select target module..." />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-2">
-                                {allModules.map(m => (
-                                    <SelectItem key={m.id} value={m.id} className="text-[10px] font-bold uppercase py-2.5">{m.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Document Class</Label>
-                        <Select value={type} onValueChange={(v: any) => setType(v)}>
-                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-2">
-                                <SelectItem value="Quote" className="text-[10px] font-bold uppercase py-2.5">Sales Quote</SelectItem>
-                                <SelectItem value="Invoice" className="text-[10px] font-bold uppercase py-2.5">Pro-Forma Invoice</SelectItem>
-                                <SelectItem value="Contract" className="text-[10px] font-bold uppercase py-2.5">Purchase Agreement</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
-                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
-                    <Button onClick={handleCreate} disabled={!name.trim() || !moduleId || isLoading} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
-                        Generate Editor
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     );
 }
 
@@ -424,6 +336,95 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
                 </DialogContent>
             </Dialog>
         </div>
+    );
+}
+
+function CreateBlueprintDialog({ isOpen, onOpenChange, orgId, allModules }: { isOpen: boolean, onOpenChange: (open: boolean) => void, orgId: string, allModules: any[] }) {
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+    const [name, setName] = useState('');
+    const [type, setType] = useState<'Quote' | 'Invoice' | 'Contract'>('Quote');
+    const [moduleId, setModuleId] = useState('');
+
+    const handleCreate = async () => {
+        if (!user || !name.trim() || !orgId || !moduleId) return;
+        setIsLoading(true);
+        try {
+            const templateRef = doc(collection(firestore, `organisations/${orgId}/templates`));
+            const templateData = {
+                id: templateRef.id,
+                name,
+                type,
+                moduleId,
+                createdByUserId: user.uid,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                pages: [
+                    { id: 'page-1', blocks: [], headerHeight: 20, footerHeight: 20, order: 1 }
+                ]
+            };
+            await setDoc(templateRef, templateData);
+            
+            toast({ title: "Blueprint Created" });
+            router.push(`/modules/${moduleId}/templates/${templateRef.id}`);
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Failed to create template" });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md rounded-[2rem] border-4 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-8 border-b bg-muted/5">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">New Blueprint</DialogTitle>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Universal Document Architecture</DialogDescription>
+                </DialogHeader>
+                <div className="p-8 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Template Name</Label>
+                        <Input placeholder="e.g. Premium Sales Proposal" value={name} onChange={e => setName(e.target.value)} className="h-12 font-bold border-2 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Linked Module</Label>
+                        <Select value={moduleId} onValueChange={setModuleId}>
+                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
+                                <SelectValue placeholder="Select target module..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-2">
+                                {allModules.map(m => (
+                                    <SelectItem key={m.id} value={m.id} className="text-[10px] font-bold uppercase py-2.5">{m.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Document Class</Label>
+                        <Select value={type} onValueChange={(v: any) => setType(v)}>
+                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-2">
+                                <SelectItem value="Quote" className="text-[10px] font-bold uppercase py-2.5">Sales Quote</SelectItem>
+                                <SelectItem value="Invoice" className="text-[10px] font-bold uppercase py-2.5">Pro-Forma Invoice</SelectItem>
+                                <SelectItem value="Contract" className="text-[10px] font-bold uppercase py-2.5">Purchase Agreement</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
+                    <Button onClick={handleCreate} disabled={!name.trim() || !moduleId || isLoading} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
+                        Generate Editor
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 
