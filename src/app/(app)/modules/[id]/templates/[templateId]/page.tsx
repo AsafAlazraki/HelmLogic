@@ -49,6 +49,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
 
 interface TemplateBlock {
@@ -158,8 +159,8 @@ function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: Templat
                             <Badge variant="outline" className="text-[8px] font-black uppercase">{block.layoutConfig?.displayStyle || 'list'} Layout</Badge>
                         </div>
                         {block.layoutConfig?.displayStyle === 'grid' ? (
-                            <div className="grid grid-cols-2 gap-4">
-                                {[1, 2].map(i => (
+                            <div className={cn("grid gap-4", `grid-cols-${block.layoutConfig?.columns || 2}`)}>
+                                {[1, 2, 3, 4].slice(0, block.layoutConfig?.columns || 2).map(i => (
                                     <div key={i} className="border-2 rounded-2xl p-4 space-y-3 bg-slate-50/50">
                                         {block.layoutConfig?.showImages && <div className="aspect-square bg-slate-200 rounded-xl animate-pulse" />}
                                         <div className="space-y-1">
@@ -264,6 +265,21 @@ export default function TemplateEditorPage() {
         setSelectedPageId(newPageId);
     };
 
+    const removePage = (pageId: string) => {
+        if (pages.length <= 1) {
+            toast({ variant: 'destructive', title: "Action Blocked", description: "A template must have at least one page." });
+            return;
+        }
+        setPages(prev => {
+            const filtered = prev.filter(p => p.id !== pageId);
+            return filtered.map((p, idx) => ({ ...p, order: idx + 1 }));
+        });
+        if (selectedPageId === pageId) {
+            setSelectedPageId(pages.find(p => p.id !== pageId)?.id || null);
+        }
+        setSelectedBlockId(null);
+    };
+
     const addBlock = (pageId: string, type: TemplateBlock['type'], zone: TemplateBlock['zone'] = 'body') => {
         const newBlockId = `block-${Date.now()}`;
         setPages(prev => prev.map(p => {
@@ -280,7 +296,7 @@ export default function TemplateEditorPage() {
                          type === 'quoteItems' ? { items: [] } :
                          { rows: 3, cols: 3, data: [] },
                 layoutConfig: type === 'grid' ? { columns: 2 } : 
-                             type === 'quoteItems' ? { displayStyle: 'list', showImages: true, showSku: true, showDescription: true, showPrice: true } :
+                             type === 'quoteItems' ? { displayStyle: 'list', columns: 2, showImages: true, showSku: true, showDescription: true, showPrice: true } :
                              undefined
             };
             return { ...p, blocks: [...p.blocks, newBlock] };
@@ -294,7 +310,6 @@ export default function TemplateEditorPage() {
             blocks: p.blocks.map(b => {
                 if (b.id !== blockId) return b;
                 const next = { ...b, ...updates };
-                // Deep merge layoutConfig if it exists in updates
                 if (updates.layoutConfig) {
                     next.layoutConfig = { ...(b.layoutConfig || {}), ...updates.layoutConfig };
                 }
@@ -429,7 +444,19 @@ export default function TemplateEditorPage() {
                                                 </div>
                                                 <span className={cn("text-[10px] font-black uppercase", selectedPageId === p.id ? "text-primary" : "text-slate-400")}>Page {idx + 1}</span>
                                             </div>
-                                            <Badge className="h-4 px-1.5 text-[8px] font-black opacity-50">{p.blocks.length} Items</Badge>
+                                            <div className="flex items-center gap-2">
+                                                <Badge className="h-4 px-1.5 text-[8px] font-black opacity-50">{p.blocks.length} Items</Badge>
+                                                {pages.length > 1 && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-6 w-6 text-slate-500 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={(e) => { e.stopPropagation(); removePage(p.id); }}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                     <Button 
@@ -445,7 +472,7 @@ export default function TemplateEditorPage() {
                     </ScrollArea>
                 </aside>
 
-                <main className="flex-1 bg-slate-950 p-12 overflow-auto scrollbar-thin pattern-dots">
+                <main className="flex-1 bg-slate-950 p-12 overflow-auto scrollbar-thin pattern-dots-dark">
                     <div 
                         className="flex flex-col items-center gap-16 pb-64 transition-transform origin-top duration-300"
                         style={{ transform: `scale(${zoom})` }}
@@ -455,12 +482,22 @@ export default function TemplateEditorPage() {
                                 key={page.id} 
                                 onClick={() => setSelectedPageId(page.id)}
                                 className={cn(
-                                    "relative bg-white w-[210mm] min-h-[297mm] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col transition-all",
+                                    "relative bg-white w-[210mm] min-h-[297mm] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] border border-slate-200 flex flex-col transition-all",
                                     selectedPageId === page.id ? "ring-4 ring-primary ring-offset-8 ring-offset-slate-950" : ""
                                 )}
                             >
                                 <div className="absolute -left-16 top-0 flex flex-col gap-3">
                                     <Badge variant="secondary" className="bg-slate-800 text-white border-none font-black h-10 w-10 rounded-2xl flex items-center justify-center p-0 shadow-2xl text-lg">{page.order}</Badge>
+                                    {pages.length > 1 && (
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="bg-slate-800 text-white hover:bg-destructive hover:text-white h-10 w-10 rounded-2xl shadow-2xl opacity-0 hover:opacity-100 transition-opacity"
+                                            onClick={(e) => { e.stopPropagation(); removePage(page.id); }}
+                                        >
+                                            <Trash2 className="h-5 w-5" />
+                                        </Button>
+                                    )}
                                 </div>
 
                                 <div 
@@ -629,6 +666,25 @@ export default function TemplateEditorPage() {
                                                     </Tabs>
                                                 </div>
 
+                                                {selectedBlock.block.layoutConfig?.displayStyle === 'grid' && (
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Grid Columns</Label>
+                                                        <Select 
+                                                            value={String(selectedBlock.block.layoutConfig?.columns || 2)} 
+                                                            onValueChange={(v) => updateBlock(selectedBlockId!, { layoutConfig: { columns: parseInt(v) } })}
+                                                        >
+                                                            <SelectTrigger className="h-10 bg-slate-900 border-slate-700 text-[10px] font-black uppercase rounded-xl text-white">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="bg-slate-900 border-slate-700 text-white rounded-xl">
+                                                                <SelectItem value="2" className="text-[10px] font-black uppercase">2 Columns</SelectItem>
+                                                                <SelectItem value="3" className="text-[10px] font-black uppercase">3 Columns</SelectItem>
+                                                                <SelectItem value="4" className="text-[10px] font-black uppercase">4 Columns</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
                                                 <div className="space-y-3">
                                                     <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Visible Data Fields</Label>
                                                     <div className="grid gap-2">
@@ -707,9 +763,9 @@ export default function TemplateEditorPage() {
             </div>
             
             <style jsx global>{`
-                .pattern-dots {
-                    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
-                    background-size: 20px 20px;
+                .pattern-dots-dark {
+                    background-image: radial-gradient(rgba(255,255,255,0.1) 1.5px, transparent 1.5px);
+                    background-size: 30px 30px;
                 }
             `}</style>
         </div>
