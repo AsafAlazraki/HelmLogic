@@ -22,7 +22,6 @@ import {
     updateDoc,
     serverTimestamp, 
     writeBatch, 
-    getDocs 
 } from 'firebase/firestore';
 import { 
     Loader2, 
@@ -35,7 +34,6 @@ import {
     Ship,
     X,
     Zap,
-    Building,
     ArrowRight,
     Package,
     Waves,
@@ -45,9 +43,10 @@ import {
     Pencil,
     ImageIcon,
     Upload,
-    Save
+    Save,
+    Building
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -482,7 +481,7 @@ function SortableModelCard({ model, isSelected, onClick, onEdit, canEdit }: any)
                             type="button"
                             variant="secondary" 
                             size="icon" 
-                            className="h-8 w-8 rounded-full bg-white/90 shadow-md border hover:bg-white"
+                            className="h-8 w-8 rounded-full bg-white shadow-md border hover:bg-white"
                             onClick={(e) => { e.stopPropagation(); onEdit(model); }}
                         >
                             <Pencil className="h-4 w-4 text-slate-600" />
@@ -490,7 +489,7 @@ function SortableModelCard({ model, isSelected, onClick, onEdit, canEdit }: any)
                         <div 
                             {...attributes} 
                             {...listeners} 
-                            className="h-8 w-8 rounded-full bg-white/90 shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
+                            className="h-8 w-8 rounded-full bg-white shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
                         >
                             <GripVertical className="h-4 w-4 text-slate-600" />
                         </div>
@@ -515,17 +514,17 @@ function SortableModelCard({ model, isSelected, onClick, onEdit, canEdit }: any)
                 </div>
                 <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
                     <p className={cn(
-                        "font-black uppercase tracking-tighter text-xs transition-colors",
-                        isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
+                        "font-black uppercase tracking-tighter text-sm transition-colors",
+                        isSelected ? "text-primary" : "text-primary group-hover:text-primary"
                     )}>
                         {model.name}
                     </p>
-                    <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
                 </div>
 
-                <div className="flex items-center justify-between px-5 py-4 border-t border-dashed bg-white mt-auto">
-                    <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Build Model</span>
-                    <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
+                <div className="flex items-center justify-between px-5 py-4 bg-primary mt-auto text-white">
+                    <span className="font-black uppercase text-[10px] tracking-[0.2em]">Build Model</span>
+                    <ArrowRight className="h-4 w-4 text-white transition-transform group-hover:translate-x-1" />
                 </div>
             </Card>
         </div>
@@ -1088,5 +1087,4 @@ function ModelsGrid({ range, vendor, onModelSelect, canEdit, selectedModelId, on
                 </div>
             </SortableContext>
         </DndContext>
-    );
 }
