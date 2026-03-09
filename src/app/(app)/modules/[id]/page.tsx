@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -419,7 +419,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                             src={range.imageUrl} 
                             alt={range.name} 
                             fill 
-                            className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                            className="object-cover group-hover:scale-105 transition-transform duration-500" 
                             unoptimized 
                         />
                     ) : (
@@ -465,7 +465,7 @@ function ModelCard({ model, isSelected, onClick }: any) {
                         src={model.coverImageUrl} 
                         alt={model.name} 
                         fill 
-                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                        className="object-cover group-hover:scale-105 transition-transform duration-500" 
                         unoptimized 
                     />
                 ) : (
@@ -1010,7 +1010,7 @@ function ModelsGrid({
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
     const { data: models, isLoading: loading } = useCollection<Model>(modelsQuery);
 
-    if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+    if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
