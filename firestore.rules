@@ -59,6 +59,14 @@ service cloud.firestore {
           allow get, list, write: if isSignedIn();
         }
       }
+      
+      // Price Level Definitions & Product Prices
+      match /priceLevelDefinitions/{id} {
+        allow read, write: if isSignedIn();
+      }
+      match /productPrices/{id} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // --- Dashboard & Operational Logic ---

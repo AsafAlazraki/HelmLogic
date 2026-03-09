@@ -122,19 +122,17 @@ export default function TemplateEditorPage() {
     };
 
     const addPage = () => {
-        setPages(prev => {
-            const nextOrder = prev.length + 1;
-            const newPageId = `page-${Date.now()}`;
-            const newPage: TemplatePage = {
-                id: newPageId,
-                blocks: [],
-                headerHeight: 20,
-                footerHeight: 20,
-                order: nextOrder
-            };
-            setSelectedPageId(newPageId);
-            return [...prev, newPage];
-        });
+        const nextOrder = pages.length + 1;
+        const newPageId = `page-${Date.now()}`;
+        const newPage: TemplatePage = {
+            id: newPageId,
+            blocks: [],
+            headerHeight: 20,
+            footerHeight: 20,
+            order: nextOrder
+        };
+        setPages(prev => [...prev, newPage]);
+        setSelectedPageId(newPageId);
     };
 
     const addBlock = (pageId: string, type: TemplateBlock['type'], zone: TemplateBlock['zone'] = 'body') => {
