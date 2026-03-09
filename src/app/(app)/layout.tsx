@@ -1,4 +1,3 @@
-
 'use client';
 
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -39,7 +38,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isModulePage = pathname?.includes('/modules/');
+  // Module and Blueprint pages manage their own precision scrolling
+  const isImmersivePage = pathname?.includes('/modules/') || pathname?.includes('/blueprint/');
   
   return (
       <SidebarProvider defaultOpen={false}>
@@ -47,7 +47,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
         <SidebarInset className="overflow-hidden flex flex-col h-screen max-w-full relative bg-background">
           <main className={cn(
             "flex-1 min-w-0 min-h-0",
-            !isModulePage ? "p-8 overflow-y-auto" : "p-0 overflow-hidden"
+            !isImmersivePage ? "p-8 overflow-y-auto" : "p-0 overflow-hidden"
           )}>
             {children}
           </main>

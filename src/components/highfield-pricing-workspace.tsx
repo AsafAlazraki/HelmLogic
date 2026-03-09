@@ -87,7 +87,7 @@ const calculateBaseCostAudEx = (itemValues: Record<string, any>, baseCostUsd: nu
     return withDuty;
 };
 
-// --- STABLE SUB-COMPONENTS (OUTSIDE RENDER) ---
+// --- STABLE SUB-COMPONENTS (OUTSIDE RENDER TO PREVENT JUMPING) ---
 
 function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
     const [localValue, setLocalValue] = useState(value || '');
