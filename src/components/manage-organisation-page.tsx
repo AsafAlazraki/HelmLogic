@@ -58,6 +58,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * Utility to recursively scrub undefined values from an object before sending to Firestore.
+ */
 function sanitizeDataForFirestore(data: any): any {
   if (data === undefined) return null;
   if (data === null || typeof data !== 'object') return data;

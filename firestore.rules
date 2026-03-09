@@ -29,6 +29,7 @@ service cloud.firestore {
 
     match /organisations/{organisationId} {
       // Allow broad read/write for any signed-in user for prototype testing
+      // This is necessary to allow 'list' operations on subcollections like 'templates'
       allow read, write: if isSignedIn();
       
       match /{allPaths=**} {

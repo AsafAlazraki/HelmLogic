@@ -49,7 +49,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { isMobile, setOpenMobile, state } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
   const { user, loading: userLoading } = useUser();
   
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -202,12 +202,9 @@ export function AppSidebar() {
           </div>
           
           {/* Role Switcher Restricted to Admins */}
-          {isAdmin && (
+          {!isLoading && isAdmin && (
             <div className="group-data-[collapsible=icon]:hidden animate-in fade-in slide-in-from-bottom-2">
                 <SidebarGroupLabel className="px-0 h-6 font-black uppercase text-[9px] tracking-widest text-muted-foreground/60">Session Context</SidebarGroupLabel>
-                {isLoading ? (
-                <Skeleton className="h-9 w-full rounded-lg" />
-                ) : (
                 <Select onValueChange={handleRoleChange} value={currentRole}>
                     <SelectTrigger className="h-9 bg-background border-2 font-bold text-[10px] uppercase shadow-sm">
                     <SelectValue placeholder="Role" />
@@ -217,7 +214,6 @@ export function AppSidebar() {
                     <SelectItem value="employee" className="text-[10px] font-bold uppercase">Marine Employee</SelectItem>
                     </SelectContent>
                 </Select>
-                )}
             </div>
           )}
         </SidebarGroup>
