@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -22,7 +23,6 @@ import {
     Ship,
     LayoutGrid,
     X,
-    Waves,
     Zap,
     Trash2,
     Map as MapIcon,
@@ -38,8 +38,6 @@ import {
     Coins,
     Package,
     Settings,
-    Layout,
-    CheckCircle2,
     FileSpreadsheet,
     ScrollText
 } from 'lucide-react';
@@ -61,8 +59,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { VesselMap } from '@/components/map';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import {
@@ -182,324 +178,6 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                 }
             `}</style>
         </div>
-    );
-}
-
-function EditItemDialog({ 
-    isOpen, 
-    setIsOpen, 
-    item, 
-    onSave, 
-    type 
-}: { 
-    isOpen: boolean, 
-    setIsOpen: (open: boolean) => void, 
-    item: any, 
-    onSave: (data: any) => Promise<void>, 
-    type: 'range' | 'model' 
-}) {
-    const [name, setName] = useState('');
-    const [image, setImage] = useState<File | null>(null);
-    const [preview, setPreview] = useState<string | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const storage = useStorage();
-
-    useEffect(() => {
-        if (item) {
-            setName(item.name || '');
-            setPreview(item.imageUrl || item.coverImageUrl || null);
-        }
-    }, [item]);
-
-    const handleSave = async () => {
-        setIsSaving(true);
-        try {
-            const data: any = { name };
-            if (image && storage) {
-                const path = `catalog/${type}s/${item.id}/${Date.now()}-${image.name}`;
-                data[type === 'range' ? 'imageUrl' : 'coverImageUrl'] = await uploadFileToStorage(storage, image, path);
-            }
-            await onSave(data);
-            setIsOpen(false);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="rounded-3xl border-4 shadow-2xl">
-                <DialogHeader>
-                    <DialogTitle className="text-xl font-black uppercase tracking-tight">Edit {type === 'range' ? 'Range' : 'Model'}</DialogTitle>
-                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-primary">Master Content Update</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-6 py-4">
-                    <div className="flex justify-center">
-                        <div className="relative h-32 w-48 bg-muted rounded-2xl border-2 border-dashed overflow-hidden group">
-                            {preview ? (
-                                <>
-                                    <Image src={preview} alt="Preview" fill className="object-contain p-2" unoptimized />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <label className="cursor-pointer">
-                                            <Upload className="h-6 w-6 text-white" />
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) { setImage(file); setPreview(URL.createObjectURL(file)); }
-                                            }} />
-                                        </label>
-                                    </div>
-                                </>
-                            ) : (
-                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-muted/80 transition-all">
-                                    <ImageIcon className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                                    <span className="text-[10px] font-black uppercase text-muted-foreground">Upload Render</span>
-                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) { setImage(file); setPreview(URL.createObjectURL(file)); }
-                                    }} />
-                                </label>
-                            )}
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Display Name</Label>
-                        <Input value={name} onChange={e => setName(e.target.value)} className="h-12 font-bold text-lg rounded-xl border-2" />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)} className="rounded-xl font-black uppercase text-[10px]">Cancel</Button>
-                    <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-black uppercase text-[10px] shadow-lg">
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="mr-2 h-4 w-4 mr-2" />}
-                        Commit Changes
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function SortableItemCard({ 
-    id, 
-    name, 
-    imageUrl, 
-    code, 
-    onClick, 
-    onEdit, 
-    canEdit,
-    viewLabel = "VIEW RANGE"
-}: { 
-    id: string, 
-    name: string, 
-    imageUrl?: string, 
-    code?: string, 
-    onClick: () => void, 
-    onEdit: () => void, 
-    canEdit: boolean,
-    viewLabel?: string
-}) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        zIndex: isDragging ? 50 : 'auto',
-        opacity: isDragging ? 0.5 : 1,
-    };
-
-    const isModelView = viewLabel === "VIEW MODEL";
-
-    return (
-        <div ref={setNodeRef} style={style} className="group relative h-full">
-            <Card 
-                className="cursor-pointer hover:border-primary shadow-sm rounded-3xl overflow-hidden border-2 transition-all hover:-translate-y-1 flex flex-col bg-white h-full" 
-                onClick={onClick}
-            >
-                <div className={cn(
-                    "aspect-[4/3] relative border-b flex items-center justify-center overflow-hidden transition-all",
-                    isModelView ? "p-0 bg-white" : "p-6 bg-white"
-                )}>
-                    {imageUrl ? (
-                        <div className="relative h-full w-full">
-                            <Image 
-                                src={imageUrl} 
-                                alt={name} 
-                                fill 
-                                className={cn(
-                                    "transition-transform group-hover:scale-105",
-                                    isModelView ? "object-cover" : "object-contain"
-                                )}
-                                unoptimized 
-                            />
-                        </div>
-                    ) : <div className="flex h-full w-full items-center justify-center"><Ship className="h-12 w-12 opacity-10" /></div>}
-                </div>
-                
-                <CardContent className="p-5 flex-grow flex flex-col justify-between gap-4">
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-black uppercase tracking-tight leading-tight">{name}</CardTitle>
-                            {code && <Badge variant="secondary" className="font-mono text-[8px] uppercase px-1.5 h-4 shrink-0 ml-2">{code}</Badge>}
-                        </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between pt-4 border-t border-dashed">
-                        <span className="text-[10px] font-black uppercase tracking-tighter text-primary">{viewLabel}</span>
-                        <ArrowRight className="h-4 w-4 text-primary transform -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {canEdit && (
-                <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                    <Button 
-                        type="button"
-                        variant="secondary" 
-                        size="icon" 
-                        className="h-8 w-8 rounded-xl bg-white/90 backdrop-blur-md shadow-md border hover:bg-white"
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                    >
-                        <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <div 
-                        {...attributes} 
-                        {...listeners} 
-                        className="h-8 w-8 rounded-xl bg-white/90 backdrop-blur-md shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
-                    >
-                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function QuoteSelectorDialog({ 
-    isOpen, 
-    setIsOpen, 
-    vendor, 
-    moduleSlug,
-    organisation
-}: { 
-    isOpen: boolean, 
-    setIsOpen: (open: boolean) => void, 
-    vendor: Vendor,
-    moduleSlug: string,
-    organisation?: Organisation | null
-}) {
-    const firestore = useFirestore();
-    const router = useRouter();
-    const [selectedRange, setSelectedRange] = useState<Range | null>(null);
-    const [isInitializing, setIsInitializing] = useState(false);
-    const [initializingModel, setInitializingModel] = useState<Model | null>(null);
-
-    const rangesQuery = useMemoFirebase(() => {
-        if (!vendor?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
-    }, [firestore, vendor?.id]);
-    const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
-
-    const modelsQuery = useMemoFirebase(() => {
-        if (!vendor?.id || !selectedRange?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${selectedRange.id}/models`), orderBy('order'));
-    }, [firestore, vendor?.id, selectedRange]);
-    const { data: models, loading: modelsLoading } = useCollection<Model>(modelsQuery);
-
-    const handleModelSelect = (model: Model) => {
-        setInitializingModel(model);
-        setIsInitializing(true);
-        setTimeout(() => {
-            router.push(`/modules/${moduleSlug}/quote/${model.id}?range=${selectedRange?.id}&vendor=${vendor.id}`);
-        }, 2200);
-    };
-
-    return (
-        <>
-            {isInitializing && <BuildTransitionOverlay organisation={organisation} model={initializingModel} />}
-            
-            <Dialog open={isOpen && !isInitializing} onOpenChange={(open) => { if (!isInitializing) { setIsOpen(open); if (!open) setSelectedRange(null); } }}>
-                <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-[2rem] border-4 shadow-2xl">
-                    <DialogHeader className="p-8 border-b bg-muted/5">
-                        <DialogTitle className="text-3xl font-black uppercase tracking-tight italic text-primary">Initiate Proposal</DialogTitle>
-                        <DialogDescription className="text-sm font-bold uppercase text-muted-foreground/60 tracking-widest mt-1">
-                            {selectedRange ? `Target: ${selectedRange.name}` : 'Select range to begin configuration'}
-                        </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="flex-1 min-h-0 bg-background">
-                        <ScrollArea className="h-full p-8">
-                            {rangesLoading ? (
-                                <div className="flex h-64 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
-                            ) : !selectedRange ? (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 pb-10">
-                                    {ranges?.map(range => (
-                                        <Card 
-                                            key={range.id} 
-                                            className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1"
-                                            onClick={() => setSelectedRange(range)}
-                                        >
-                                            <div className="aspect-video bg-muted/30 relative border-b">
-                                                {range.imageUrl ? (
-                                                    <div className="relative h-full w-full">
-                                                        <Image src={range.imageUrl} alt={range.name} fill className="object-cover" unoptimized />
-                                                    </div>
-                                                ) : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
-                                            </div>
-                                            <div className="p-4 text-center">
-                                                <p className="font-black uppercase tracking-tighter text-sm">{range.name}</p>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    <Button 
-                                        variant="outline" 
-                                        onClick={() => setSelectedRange(null)} 
-                                        className="h-10 px-6 rounded-xl font-black uppercase text-[10px] tracking-widest border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                    >
-                                        <ChevronLeft className="mr-2 h-4 w-4" /> Back to Ranges
-                                    </Button>
-                                    {modelsLoading ? (
-                                        <div className="flex h-64 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
-                                    ) : (
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 pb-10">
-                                            {models?.map(model => (
-                                                <Card 
-                                                    key={model.id} 
-                                                    className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1"
-                                                    onClick={() => handleModelSelect(model)}
-                                                >
-                                                    <div className="aspect-video bg-muted/30 relative border-b">
-                                                        {model.coverImageUrl ? (
-                                                            <div className="relative h-full w-full">
-                                                                <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized />
-                                                            </div>
-                                                        ) : <div className="flex items-center justify-center h-full"><Ship className="opacity-10" /></div>}
-                                                    </div>
-                                                    <div className="p-4 text-center space-y-1">
-                                                        <p className="font-black uppercase tracking-tighter text-xs">{model.name}</p>
-                                                        {model.modelCode && <Badge variant="secondary" className="font-mono text-[8px] h-4 px-1.5">{model.modelCode}</Badge>}
-                                                    </div>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </>
     );
 }
 
@@ -638,18 +316,6 @@ export default function ModuleDetailsPage() {
         return !!userPermissions.can_access_pricing_manager || isMD;
     }, [isAdmin, userPermissions, userProfile, currentMemberOrg]);
 
-    // Override Sync Logic
-    const overrideRef = useMemoFirebase(() => 
-        currentMemberOrg?.id && selectedModel?.id ? doc(firestore, 'organisations', currentMemberOrg.id, 'modelOverrides', selectedModel.id) : null,
-    [firestore, currentMemberOrg?.id, selectedModel?.id]);
-    const { data: modelOverride } = useDoc<any>(overrideRef);
-
-    const effectiveModel = useMemo(() => {
-        if (!selectedModel) return null;
-        if (!modelOverride) return selectedModel;
-        return { ...selectedModel, ...modelOverride };
-    }, [selectedModel, modelOverride]);
-
     const handleRangeSelect = (range: Range) => { setSelectedRange(range); setView('models'); };
     
     const handleModelSelect = (model: Model) => { 
@@ -688,7 +354,6 @@ export default function ModuleDetailsPage() {
         <div className="flex flex-col h-screen overflow-hidden bg-background">
             {isTransitioning && <BuildTransitionOverlay organisation={currentMemberOrg as any} model={selectedModel} />}
 
-            {/* Immersive Cinematic Hero */}
             <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
                     <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
@@ -719,7 +384,6 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
 
-            {/* Premium Navigation Ribbon */}
             <div className="bg-white border-b shrink-0 z-10 px-10">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${navTabs.length}`)}>
@@ -736,7 +400,6 @@ export default function ModuleDetailsPage() {
                 </Tabs>
             </div>
 
-            {/* Operational Workspace */}
             <main className="flex-1 overflow-hidden relative">
                 <Tabs value={activeTab} className="h-full">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
@@ -750,14 +413,7 @@ export default function ModuleDetailsPage() {
                                                     <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
                                                     <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
                                                 </div>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    onClick={() => setActiveTab('stock')} 
-                                                    className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
-                                                >
-                                                    <ArrowRight className="h-4 w-4" />
-                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
                                                 <StockList organisation={currentMemberOrg as any} subDealers={subDealers || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
@@ -770,14 +426,7 @@ export default function ModuleDetailsPage() {
                                                     <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
                                                     <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
                                                 </div>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    onClick={() => setActiveTab('stock')} 
-                                                    className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"
-                                                >
-                                                    <ArrowRight className="h-4 w-4" />
-                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
                                                 <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
@@ -840,9 +489,9 @@ export default function ModuleDetailsPage() {
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
                                     {view === 'ranges' && <RangesGrid vendor={mainVendor as any} onRangeSelect={handleRangeSelect} canEdit={canEdit} />}
                                     {view === 'models' && selectedRange && <ModelsGrid range={selectedRange} vendor={mainVendor as any} onModelSelect={handleModelSelect} canEdit={canEdit} />}
-                                    {view === 'bmt' && effectiveModel && selectedRange && (
+                                    {view === 'bmt' && selectedModel && selectedRange && (
                                         <ModelConfigurationEditor 
-                                            model={effectiveModel}
+                                            model={selectedModel}
                                             docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel!.id}`}
                                             vendor={mainVendor}
                                             module={moduleData}
@@ -858,63 +507,25 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
-                                <div className="grid grid-cols-12 gap-8 flex-1">
-                                    <Card className="col-span-8 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm flex flex-col">
-                                        <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                                <MapIcon className="h-4 w-4 text-primary" />
-                                                Fleet Live Positions
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="p-0 flex-1 relative">
-                                            <div className="absolute inset-0">
-                                                <VesselMap />
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                    <Card className="col-span-4 border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-sm flex flex-col">
-                                        <CardHeader className="py-4 px-8 border-b bg-muted/5 shrink-0">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                                <ClipboardList className="h-4 w-4 text-primary" />
-                                                Inventory Audit Log
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="p-0 flex-1 flex items-center justify-center">
-                                            <div className="p-12 text-center text-muted-foreground italic text-[10px] uppercase font-black tracking-widest opacity-20">
-                                                Metrics Synchronized with Fleet
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </div>
-                        </ScrollArea>
+                    <TabsContent value="pricing" className="m-0 h-full overflow-hidden">
+                        <div className="h-full flex flex-col">
+                            {currentMemberOrg && mainVendor && (
+                                mainVendor.slug === 'highfield' ? (
+                                    <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                                ) : (
+                                    <ScrollArea className="flex-1">
+                                        <div className="p-8">
+                                            <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
+                                        </div>
+                                    </ScrollArea>
+                                )
+                            )}
+                        </div>
                     </TabsContent>
-
-                    {canAccessPricing && (
-                        <TabsContent value="pricing" className="m-0 h-full overflow-hidden">
-                            <div className="h-full flex flex-col">
-                                {currentMemberOrg && mainVendor && (
-                                    mainVendor.slug === 'highfield' ? (
-                                        <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
-                                    ) : (
-                                        <ScrollArea className="flex-1">
-                                            <div className="p-8">
-                                                <ModulePricingDashboard module={moduleData} organisation={currentMemberOrg as any} vendor={mainVendor} />
-                                            </div>
-                                        </ScrollArea>
-                                    )
-                                )}
-                            </div>
-                        </TabsContent>
-                    )}
 
                     <TabsContent value="settings" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
                             <div className="p-8 grid md:grid-cols-2 gap-8 pb-32">
-                                {/* Templates Card */}
                                 <Card className="border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden flex flex-col">
                                     <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                         <div className="flex items-center gap-3 shrink-0">
@@ -958,14 +569,7 @@ export default function ModuleDetailsPage() {
                                                     <ScrollText className="h-12 w-12 mx-auto text-slate-400" />
                                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-4">No Blueprints Defined</p>
                                                 </div>
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    className="mt-6 font-black uppercase text-[9px] tracking-widest border-2 rounded-xl"
-                                                    onClick={() => setIsCreateTemplateOpen(true)}
-                                                >
-                                                    Initialize First Template
-                                                </Button>
+                                                <Button variant="outline" size="sm" className="mt-6 font-black uppercase text-[9px] tracking-widest border-2 rounded-xl" onClick={() => setIsCreateTemplateOpen(true)}>Initialize First Template</Button>
                                             </div>
                                         )}
                                     </CardContent>
@@ -1027,16 +631,6 @@ export default function ModuleDetailsPage() {
                 </Tabs>
             </main>
 
-            {mainVendor && (
-                <QuoteSelectorDialog 
-                    isOpen={isNewQuoteOpen} 
-                    setIsOpen={setIsNewQuoteOpen} 
-                    vendor={mainVendor} 
-                    moduleSlug={moduleData.slug || moduleData.id}
-                    organisation={currentMemberOrg as any}
-                />
-            )}
-
             <CreateTemplateDialog 
                 isOpen={isCreateTemplateOpen} 
                 onOpenChange={setIsCreateTemplateOpen} 
@@ -1051,74 +645,18 @@ function RangesGrid({ vendor, onRangeSelect, canEdit }: { vendor: Vendor; onRang
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
     const { data: ranges, loading } = useCollection<Range>(rangesQuery);
 
-    const [editingItem, setEditingItem] = useState<Range | null>(null);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
-
-    const handleDragEnd = async (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id && ranges) {
-            const oldIndex = ranges.findIndex(i => i.id === active.id);
-            const newIndex = ranges.findIndex(i => i.id === over.id);
-            const newItems = arrayMove(ranges, oldIndex, newIndex);
-            
-            const batch = writeBatch(firestore);
-            newItems.forEach((item, index) => {
-                batch.update(doc(firestore, `data-warehouse/${vendor.id}/ranges`, item.id), { order: index });
-            });
-            await batch.commit();
-        }
-    };
-
-    const handleUpdateRange = async (data: any) => {
-        if (!editingItem) return;
-        const docRef = doc(firestore, `data-warehouse/${vendor.id}/ranges`, editingItem.id);
-        updateDoc(docRef, data).catch(async (serverError) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: docRef.path,
-                operation: 'update',
-                requestResourceData: data
-            } satisfies SecurityRuleContext));
-        });
-    };
-
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-    
     return (
-        <>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
-                        {ranges?.map(range => (
-                            <SortableItemCard 
-                                key={range.id}
-                                id={range.id}
-                                name={range.name}
-                                imageUrl={range.imageUrl}
-                                canEdit={canEdit}
-                                onClick={() => onRangeSelect(range)}
-                                onEdit={() => { setEditingItem(range); setIsEditDialogOpen(true); }}
-                                viewLabel="VIEW RANGE"
-                            />
-                        ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
+            {ranges?.map(range => (
+                <Card key={range.id} className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1" onClick={() => onRangeSelect(range)}>
+                    <div className="aspect-video bg-muted/30 relative border-b">
+                        {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
                     </div>
-                </SortableContext>
-            </DndContext>
-
-            <EditItemDialog 
-                isOpen={isEditDialogOpen} 
-                setIsOpen={setIsEditDialogOpen} 
-                item={editingItem} 
-                type="range" 
-                onSave={handleUpdateRange} 
-            />
-        </>
+                    <div className="p-4 text-center"><p className="font-black uppercase tracking-tighter text-sm">{range.name}</p></div>
+                </Card>
+            ))}
+        </div>
     );
 }
 
@@ -1127,74 +665,20 @@ function ModelsGrid({ range, vendor, onModelSelect, canEdit }: { range: Range; v
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
     const { data: models, loading = false } = useCollection<Model>(modelsQuery);
 
-    const [editingItem, setEditingItem] = useState<Model | null>(null);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
-
-    const handleDragEnd = async (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id && models) {
-            const oldIndex = models.findIndex(i => i.id === active.id);
-            const newIndex = models.findIndex(i => i.id === over.id);
-            const newItems = arrayMove(models, oldIndex, newIndex);
-            
-            const batch = writeBatch(firestore);
-            newItems.forEach((item, index) => {
-                batch.update(doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, item.id), { order: index });
-            });
-            await batch.commit();
-        }
-    };
-
-    const handleUpdateModel = async (data: any) => {
-        if (!editingItem) return;
-        const docRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, editingItem.id);
-        updateDoc(docRef, data).catch(async (serverError) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: docRef.path,
-                operation: 'update',
-                requestResourceData: data
-            } satisfies SecurityRuleContext));
-        });
-    };
-
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-
     return (
-        <>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={models?.map(m => m.id) || []} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
-                        {models?.map(model => (
-                            <SortableItemCard 
-                                key={model.id}
-                                id={model.id}
-                                name={model.name}
-                                code={model.modelCode}
-                                imageUrl={model.coverImageUrl}
-                                canEdit={canEdit}
-                                onClick={() => onModelSelect(model)}
-                                onEdit={() => { setEditingItem(model); setIsEditDialogOpen(true); }}
-                                viewLabel="VIEW MODEL"
-                            />
-                        ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
+            {models?.map(model => (
+                <Card key={model.id} className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1" onClick={() => onModelSelect(model)}>
+                    <div className="aspect-video bg-muted/30 relative border-b">
+                        {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="opacity-10" /></div>}
                     </div>
-                </SortableContext>
-            </DndContext>
-
-            <EditItemDialog 
-                isOpen={isEditDialogOpen} 
-                setIsOpen={setIsEditDialogOpen} 
-                item={editingItem} 
-                type="model" 
-                onSave={handleUpdateModel} 
-            />
-        </>
+                    <div className="p-4 text-center space-y-1">
+                        <p className="font-black uppercase tracking-tighter text-xs">{model.name}</p>
+                        {model.modelCode && <Badge variant="secondary" className="font-mono text-[8px] h-4 px-1.5">{model.modelCode}</Badge>}
+                    </div>
+                </Card>
+            ))}
+        </div>
     );
 }

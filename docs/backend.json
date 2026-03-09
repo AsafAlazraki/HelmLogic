@@ -1,132 +1,349 @@
+
 {
   "entities": {
-    "Template": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Template",
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile information.",
       "type": "object",
-      "description": "Represents a user-defined document template, categorized by type (e.g., Quote, Invoice, Contract), used to generate dynamic documents.",
       "properties": {
-        "id": {
+        "displayName": {
           "type": "string",
-          "description": "Unique identifier for the Template entity."
+          "description": "The user's display name."
         },
-        "name": {
+        "email": {
           "type": "string",
-          "description": "The user-defined name for the template."
+          "format": "email",
+          "description": "The user's email address."
         },
-        "type": {
+        "appRole": {
           "type": "string",
-          "description": "The type of the template, indicating its purpose (e.g., 'Quote', 'Invoice', 'Contract')."
+          "description": "The user's role within the application."
         },
-        "createdAt": {
+        "organisationId": {
           "type": "string",
-          "description": "Timestamp indicating when the template was first created.",
-          "format": "date-time"
+          "description": "The ID of the organisation the user belongs to."
         },
-        "updatedAt": {
+        "organisationRole": {
           "type": "string",
-          "description": "Timestamp indicating when the template was last updated.",
-          "format": "date-time"
+          "description": "The ID of the user's role within their organisation."
         },
-        "createdByUserId": {
-          "type": "string",
-          "description": "Reference to the unique identifier of the user who created this template. (Relationship: User 1:N Template)"
+        "moduleOrder": {
+          "type": "array",
+          "description": "User-specific order of dashboard modules.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
-        "id",
-        "name",
-        "type",
-        "createdAt",
-        "updatedAt",
-        "createdByUserId"
+        "email"
       ]
     },
-    "DocumentTemplateContent": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DocumentTemplateContent",
+    "Organisation": {
+      "title": "Organisation",
+      "description": "Represents an organisation within the application.",
       "type": "object",
-      "description": "Stores the structured content and layout definition for a specific Template, enabling 'word document'-like functionality with dynamic data bindings.",
       "properties": {
-        "id": {
+        "name": {
           "type": "string",
-          "description": "Unique identifier for the DocumentTemplateContent entity."
+          "description": "The name of the organisation."
         },
-        "templateId": {
+        "slug": {
           "type": "string",
-          "description": "Reference to the Template this content definition belongs to. (Relationship: Template 1:1 DocumentTemplateContent)"
+          "description": "A URL-friendly version of the organisation name."
         },
-        "documentLayoutJson": {
+        "address": {
           "type": "string",
-          "description": "A serialized JSON string representing the entire layout and content structure of the document template. This includes pages, sections, elements (text, images, tables), their styling, positions, and data binding specifications to external 'module' fields."
+          "description": "The physical address of the organisation."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The contact phone number for the organisation."
+        },
+        "abn": {
+          "type": "string",
+          "description": "The Australian Business Number for the organisation."
+        },
+        "primaryColor": {
+          "type": "string",
+          "description": "The primary branding color in hex format."
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "The accent branding color in hex format."
+        },
+        "secondaryColor": {
+          "type": "string",
+          "description": "The secondary branding color in hex format."
+        },
+        "primaryLogoUrl": {
+          "type": "string",
+          "description": "URL for the primary company logo."
+        },
+        "secondaryLogoUrl": {
+          "type": "string",
+          "description": "URL for the secondary company logo or icon."
+        },
+        "subDealersEnabled": {
+          "type": "boolean",
+          "description": "Indicates if the Sub Dealers module is enabled for the organisation."
+        },
+        "parentOrganisationId": {
+          "type": "string",
+          "description": "The ID of the parent organisation, if this is a sub-dealer."
+        },
+        "tradingCurrency": {
+          "type": "string",
+          "description": "The primary currency used for local pricing."
+        },
+        "gstPercentage": {
+          "type": "number",
+          "description": "Applicable tax percentage."
+        },
+        "roles": {
+          "type": "array",
+          "description": "A list of roles within the organisation, forming a hierarchy.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A unique identifier for the role."
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the role."
+              },
+              "parent": {
+                "type": "string",
+                "description": "The ID of the parent role. Empty for top-level roles."
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "description": "Defines permissions for each role ID.",
+          "additionalProperties": {
+            "type": "object",
+            "description": "A map of permission keys to boolean values.",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "dataWarehouseSubscriptions": {
+          "type": "array",
+          "description": "A list of vendor IDs from the data warehouse that this organisation is subscribed to.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabledModuleSubscriptions": {
+          "type": "array",
+          "description": "A list of module IDs that this organisation has access to.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
-        "id",
-        "templateId",
-        "documentLayoutJson"
+        "name",
+        "slug"
+      ]
+    },
+    "Template": {
+      "title": "Template",
+      "description": "User-defined document templates (Quote, Invoice, Contract).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["Quote", "Invoice", "Contract"] },
+        "moduleId": { "type": "string" },
+        "createdByUserId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "type", "moduleId", "createdByUserId"]
+    },
+    "DocumentTemplateContent": {
+      "title": "DocumentTemplateContent",
+      "description": "Stores the detailed layout JSON for a specific Template.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "templateId": { "type": "string" },
+        "pages": { "type": "array" }
+      },
+      "required": ["id", "templateId", "pages"]
+    },
+    "ExchangeRate": {
+      "title": "Exchange Rate",
+      "description": "Organisation-specific manual exchange rate settings.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Currency code (e.g. USD)" },
+        "rate": { "type": "number", "description": "Exchange rate relative to base currency." },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "rate"]
+    },
+    "Vendor": {
+      "title": "Vendor",
+      "description": "Represents a vendor for data connection.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the vendor."
+        },
+        "slug": {
+          "type": "string",
+          "description": "A URL-friendly version of the vendor name."
+        },
+        "vendorType": {
+          "type": "string",
+          "description": "The type of the vendor.",
+          "enum": [
+            "Boat Brand",
+            "Motor Brand",
+            "Trailer Brand",
+            "Electronics Brand",
+            "Electronics Supplier",
+            "Parts Wholesaler",
+            "Other"
+          ]
+        },
+        "dataSource": {
+          "type": "string",
+          "description": "The source of the data connection.",
+          "enum": [
+            "Business Central",
+            "Direct API",
+            "Document Upload",
+            "Other"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ]
+    },
+    "Range": {
+      "title": "Range",
+      "description": "Represents a product range for a vendor.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "vendorId": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "order": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "slug",
+        "vendorId"
+      ]
+    },
+    "Model": {
+      "title": "Model",
+      "description": "Represents a specific model within a product range.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "rangeId": {
+          "type": "string"
+        },
+        "vendorId": {
+          "type": "string"
+        },
+        "order": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "slug",
+        "rangeId",
+        "vendorId"
       ]
     }
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "email"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}/templates",
-        "definition": {
-          "entityName": "Template",
-          "schema": {
-            "$ref": "#/backend/entities/Template"
-          },
-          "description": "Collection for storing user-specific document templates (Quote, Invoice, Contract types). Each document represents a template created by the user identified by '{userId}'. This collection enforces path-based ownership, with 'createdByUserId' matching the '{userId}' wildcard. Includes 'createdByUserId' for authorization."
-        }
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UserProfile"
       },
-      {
-        "path": "/users/{userId}/templates/{templateId}",
-        "definition": {
-          "entityName": "Template",
-          "schema": {
-            "$ref": "#/backend/entities/Template"
-          },
-          "description": "A specific document representing a template owned by the user '{userId}'. Contains the template's name, type, and metadata. The 'createdByUserId' field in the document must match '{userId}' in the path. Includes 'createdByUserId' for authorization.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns this template."
-            },
-            {
-              "name": "templateId",
-              "description": "The unique identifier for the specific template."
-            }
-          ]
-        }
+      "description": "User profile documents."
+    },
+    "/users/{userId}/templates/{templateId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Template"
       },
-      {
-        "path": "/users/{userId}/templates/{templateId}/documentTemplateContent/document",
-        "definition": {
-          "entityName": "DocumentTemplateContent",
-          "schema": {
-            "$ref": "#/backend/entities/DocumentTemplateContent"
-          },
-          "description": "A single document storing the detailed layout and content definition for the parent Template. This is a 1:1 relationship with the Template. It includes denormalized 'createdByUserId' (from the parent Template) for authorization independence, ensuring access is tied to the parent Template's owner.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns the parent template and this content."
-            },
-            {
-              "name": "templateId",
-              "description": "The unique identifier of the parent template to which this content belongs."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The proposed Firestore structure prioritizes robust security, scalability, and debuggability by strictly adhering to the core design principles and mandates. User-created templates and their associated content are stored in a hierarchical structure under the user's specific path, ensuring clear ownership and simplified authorization.\n\n**Authorization Independence (CRITICAL):**\n1.  **Template Document (`/users/{userId}/templates/{templateId}`):** The `Template` document inherently contains `createdByUserId`. For access control, security rules will directly compare `request.auth.uid` against the `userId` in the path and the `resource.data.createdByUserId` field. This eliminates any need for `get()` calls to infer ownership.\n2.  **Document Template Content (`/users/{userId}/templates/{templateId}/documentTemplateContent/document`):** The `DocumentTemplateContent` entity, being a 1:1 child of `Template`, will denormalize the `createdByUserId` field from its parent `Template`. This critical denormalization allows security rules to evaluate access to the content document solely based on its own fields and the path parameters (`userId`), without needing to perform a `get()` operation on the parent `Template` document. This design choice directly fulfills the Authorization Independence mandate, making atomic operations simpler and rules easier to write and debug.\n\n**QAPs (Rules are not Filters):**\n1.  **Structural Segregation:** By placing user-specific templates and their content under `/users/{userId}/...`, the structure naturally segregates data by owner. This means that a `list` operation on `/users/{userId}/templates` will only return templates belonging to `request.auth.uid` when rules are correctly written (e.g., `allow list: if request.auth.uid == userId;`). The security rules enforce access based on the path, rather than filtering a larger, insecure collection post-query. This ensures that the client-side queries will only ever receive data they are authorized to see, preventing accidental data leakage and adhering to the QAP principle."
+      "description": "User-specific document templates."
+    },
+    "/users/{userId}/templates/{templateId}/documentTemplateContent/document": {
+      "schema": {
+        "$ref": "#/backend/entities/DocumentTemplateContent"
+      },
+      "description": "The heavy content definition for a template."
+    },
+    "/organisations/{organisationId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Organisation"
+      },
+      "description": "Organisation documents."
+    },
+    "/organisations/{organisationId}/exchangeRates/{currencyCode}": {
+      "schema": {
+        "$ref": "#/backend/entities/ExchangeRate"
+      },
+      "description": "Organisation-specific manual exchange rate settings."
+    },
+    "/data-warehouse/{vendorId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Vendor"
+      },
+      "description": "Vendor documents."
+    },
+    "/data-warehouse/{vendorId}/ranges/{rangeId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Range"
+      },
+      "description": "Product ranges."
+    },
+    "/data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Model"
+      },
+      "description": "Specific boat models."
+    }
   }
 }

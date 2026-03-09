@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -12,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import NextImage from "next/image";
-import { ExchangeRateManager } from "@/components/exchange-rate-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -673,20 +673,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     if (loadingModels || strategyLoading || orgLoading) return <div className="flex-1 flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
     const commonProps = {
-        activeView,
-        setActiveView,
-        setIsFocusMode,
-        setIsGlobalUpdateOpen,
-        vendor,
-        organisation,
-        filteredRanges,
-        expandedRanges,
-        toggleRange,
-        allModels,
-        allVariants,
-        strategy,
-        onUpdateValue,
-        activeExchangeRate
+        filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, setActiveView, setIsFocusMode, setIsGlobalUpdateOpen
     };
 
     return (
