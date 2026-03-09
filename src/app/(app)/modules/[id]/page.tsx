@@ -87,7 +87,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
   useSortable,
-} from '@nd-kit/sortable';
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
@@ -210,12 +210,12 @@ function QuoteInitializationDialog({
     const rangesQuery = useMemoFirebase(() => 
         vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, 
     [firestore, vendor?.id]);
-    const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
+    const { data: ranges, isLoading: rangesLoading } = useCollection<Range>(rangesQuery);
 
     const modelsQuery = useMemoFirebase(() => 
         vendor?.id && selectedRange?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${selectedRange.id}/models`), orderBy('order')) : null, 
     [firestore, vendor?.id, selectedRange?.id]);
-    const { data: models, loading: modelsLoading } = useCollection<Model>(modelsQuery);
+    const { data: models, isLoading: modelsLoading } = useCollection<Model>(modelsQuery);
 
     useEffect(() => {
         if (!isOpen) {
