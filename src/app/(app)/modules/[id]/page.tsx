@@ -384,7 +384,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
         <div ref={setNodeRef} style={style} className="h-full">
             <Card 
                 className={cn(
-                    "cursor-pointer transition-all rounded-[2.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                    "cursor-pointer transition-all rounded-[2rem] overflow-hidden group border-2 hover:-translate-y-1 flex flex-col h-full bg-white relative",
                     isSelected 
                         ? "border-primary shadow-2xl scale-[1.02]" 
                         : "hover:border-primary/20 hover:shadow-xl"
@@ -392,27 +392,27 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                 onClick={onClick}
             >
                 {canEdit && (
-                    <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                         <Button 
                             type="button"
                             variant="secondary" 
                             size="icon" 
-                            className="h-8 w-8 rounded-full bg-white/90 shadow-md border hover:bg-white"
+                            className="h-7 w-7 rounded-full bg-white/90 shadow-md border hover:bg-white"
                             onClick={(e) => { e.stopPropagation(); onEdit(range); }}
                         >
-                            <Pencil className="h-4 w-4 text-slate-600" />
+                            <Pencil className="h-3.5 w-3.5 text-slate-600" />
                         </Button>
                         <div 
                             {...attributes} 
                             {...listeners} 
-                            className="h-8 w-8 rounded-full bg-white/90 shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
+                            className="h-7 w-7 rounded-full bg-white/90 shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
                         >
-                            <GripVertical className="h-4 w-4 text-slate-600" />
+                            <GripVertical className="h-3.5 w-3.5 text-slate-600" />
                         </div>
                     </div>
                 )}
 
-                <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
+                <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     {range.imageUrl ? (
                         <Image 
@@ -424,23 +424,23 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">
-                            <Ship className="h-16 w-16 text-muted-foreground/20" />
+                            <Ship className="h-12 w-12 text-muted-foreground/20" />
                         </div>
                     )}
                 </div>
                 
-                <div className="p-8 flex flex-col items-center justify-center bg-white mt-auto gap-4">
+                <div className="p-6 flex flex-col items-center justify-center bg-white mt-auto">
                     <p className={cn(
-                        "font-black uppercase tracking-tighter text-lg transition-colors",
+                        "font-black uppercase tracking-tight text-base transition-colors",
                         isSelected ? "text-primary" : "text-slate-900 group-hover:text-primary"
                     )}>
                         {range.name}
                     </p>
                 </div>
 
-                <div className="flex items-center justify-between px-8 py-5 border-t border-dashed bg-white mt-auto">
-                    <span className="font-black uppercase text-[11px] tracking-[0.2em] text-primary">View Range</span>
-                    <ArrowRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-1.5" />
+                <div className="flex items-center justify-between px-6 py-4 border-t border-dashed bg-white mt-auto">
+                    <span className="font-black uppercase text-[9px] tracking-[0.2em] text-primary">View Range</span>
+                    <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
                 </div>
             </Card>
         </div>
@@ -451,7 +451,7 @@ function ModelCard({ model, isSelected, onClick }: any) {
     return (
         <Card 
             className={cn(
-                "cursor-pointer transition-all rounded-[2.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                "cursor-pointer transition-all rounded-[2rem] overflow-hidden group border-2 hover:-translate-y-1 flex flex-col h-full bg-white relative",
                 isSelected 
                     ? "border-primary shadow-2xl scale-[1.02]" 
                     : "hover:border-primary/20 hover:shadow-xl"
@@ -470,17 +470,17 @@ function ModelCard({ model, isSelected, onClick }: any) {
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full">
-                        <Ship className="h-16 w-16 text-muted-foreground/20" />
+                        <Ship className="h-12 w-12 text-muted-foreground/20" />
                     </div>
                 )}
             </div>
-            <div className="p-8 flex flex-col items-center justify-center bg-white mt-auto gap-2">
+            <div className="p-6 flex flex-col items-center justify-center bg-white mt-auto gap-1">
                 <p className={cn(
-                    "font-black uppercase tracking-tighter text-xl transition-colors text-primary"
+                    "font-black uppercase tracking-tight text-base transition-colors text-primary"
                 )}>
                     {model.name}
                 </p>
-                <p className="text-[11px] font-black text-slate-300 uppercase tracking-[0.2em]">{model.modelCode}</p>
+                <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">{model.modelCode}</p>
             </div>
         </Card>
     );
@@ -977,7 +977,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 py-4 px-1">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-4 px-1">
                     {ranges?.map(range => (
                         <SortableRangeCard 
                             key={range.id} 
@@ -1012,7 +1012,7 @@ function ModelsGrid({
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 py-4 px-1">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 py-4 px-1">
             {models?.map(model => (
                 <ModelCard 
                     key={model.id} 
