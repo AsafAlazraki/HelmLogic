@@ -60,6 +60,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Image from 'next/image';
 
 interface TemplateBlock {
@@ -96,6 +102,50 @@ interface TemplatePage {
     headerHeight: number; // in mm
     footerHeight: number; // in mm
     order: number;
+}
+
+function ComponentSelectorMenu({ onAdd, trigger }: { onAdd: (type: TemplateBlock['type']) => void, trigger?: React.ReactNode }) {
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                {trigger || (
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-full bg-primary text-white shadow-xl hover:scale-110 transition-transform active:scale-95"
+                    >
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl border-2 shadow-2xl p-2 bg-white z-[300]">
+                <DropdownMenuItem onClick={() => onAdd('text')} className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors focus:bg-primary/5 focus:text-primary">
+                    <Type className="h-4 w-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Text Block</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAdd('variable')} className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors focus:bg-primary/5 focus:text-primary">
+                    <Variable className="h-4 w-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Dynamic Variable</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAdd('grid')} className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors focus:bg-primary/5 focus:text-primary">
+                    <Columns className="h-4 w-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Column Grid</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAdd('quoteItems')} className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors focus:bg-primary/5 focus:text-primary">
+                    <Package className="h-4 w-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Product List</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAdd('image')} className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors focus:bg-primary/5 focus:text-primary">
+                    <ImageIcon className="h-4 w-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Image Asset</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAdd('table')} className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors focus:bg-primary/5 focus:text-primary">
+                    <TableIcon className="h-4 w-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Data Table</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 }
 
 function CanvasBlock({ 
@@ -221,22 +271,18 @@ function CanvasBlock({
                                         <>
                                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Column {i + 1}</span>
                                             <div className="flex items-center gap-2 opacity-0 group-hover/slot:opacity-100 transition-opacity">
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 rounded-full bg-white shadow-md border text-primary hover:bg-primary hover:text-white"
-                                                    onClick={(e) => { e.stopPropagation(); onAddNested?.('text', i); }}
-                                                >
-                                                    <Type className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 rounded-full bg-white shadow-md border text-primary hover:bg-primary hover:text-white"
-                                                    onClick={(e) => { e.stopPropagation(); onAddNested?.('variable', i); }}
-                                                >
-                                                    <Variable className="h-3.5 w-3.5" />
-                                                </Button>
+                                                <ComponentSelectorMenu 
+                                                    onAdd={(type) => onAddNested?.(type, i)}
+                                                    trigger={
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 rounded-full bg-white shadow-md border text-primary hover:bg-primary hover:text-white"
+                                                        >
+                                                            <Plus className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    }
+                                                />
                                             </div>
                                         </>
                                     )}
@@ -719,7 +765,7 @@ export default function TemplateEditorPage() {
                                 </div>
 
                                 <div 
-                                    className="w-full border-b border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/header overflow-hidden px-[20mm]"
+                                    className="w-full border-b border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/header px-[20mm]"
                                     style={{ height: `${page.headerHeight}mm` }}
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/header:border-primary/20 transition-all pointer-events-none" />
@@ -741,14 +787,9 @@ export default function TemplateEditorPage() {
                                             ))}
                                         </div>
                                     )}
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="absolute bottom-1 right-1 opacity-0 group-hover/header:opacity-100 transition-opacity bg-primary text-white"
-                                        onClick={(e) => { e.stopPropagation(); addBlock(page.id, 'text', 'header'); }}
-                                    >
-                                        <Plus className="h-3 w-3" />
-                                    </Button>
+                                    <div className="absolute bottom-1 right-1 opacity-0 group-hover/header:opacity-100 transition-opacity">
+                                        <ComponentSelectorMenu onAdd={(type) => addBlock(page.id, type, 'header')} />
+                                    </div>
                                 </div>
 
                                 <div className="flex-1 flex flex-col gap-8 p-[20mm] text-slate-900">
@@ -777,7 +818,7 @@ export default function TemplateEditorPage() {
                                 </div>
 
                                 <div 
-                                    className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/footer overflow-hidden px-[20mm]"
+                                    className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/footer px-[20mm]"
                                     style={{ height: `${page.footerHeight}mm` }}
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/footer:border-primary/20 transition-all pointer-events-none" />
@@ -799,14 +840,9 @@ export default function TemplateEditorPage() {
                                             ))}
                                         </div>
                                     )}
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="absolute top-1 right-1 opacity-0 group-hover/footer:opacity-100 transition-opacity bg-primary text-white"
-                                        onClick={(e) => { e.stopPropagation(); addBlock(page.id, 'text', 'footer'); }}
-                                    >
-                                        <Plus className="h-3 w-3" />
-                                    </Button>
+                                    <div className="absolute top-1 right-1 opacity-0 group-hover/footer:opacity-100 transition-opacity">
+                                        <ComponentSelectorMenu onAdd={(type) => addBlock(page.id, type, 'footer')} />
+                                    </div>
                                 </div>
                             </div>
                         ))}
