@@ -30,41 +30,10 @@ service cloud.firestore {
     }
 
     match /organisations/{organisationId} {
-      allow get, list: if isSignedIn();
+      allow read, write: if isSignedIn();
       
-      match /exchangeRates/{code} {
-        allow read, write: if isSignedIn();
-      }
-      
-      match /pricingStrategies/{vendorId} {
-        allow read, write: if isSignedIn();
-      }
-
-      match /dealerFitSelections/{id} {
-        allow read, write: if isSignedIn();
-      }
-
-      match /dealerFitCategories/{id} {
-        allow read, write: if isSignedIn();
-      }
-      
-      match /modelOverrides/{modelId} {
-        allow read, write: if isSignedIn();
-      }
-
-      match /templates/{templateId} {
-        allow get, list, create, update, delete: if isSignedIn();
-        
-        match /documentTemplateContent/document {
-          allow get, list, write: if isSignedIn();
-        }
-      }
-      
-      // Price Level Definitions & Product Prices
-      match /priceLevelDefinitions/{id} {
-        allow read, write: if isSignedIn();
-      }
-      match /productPrices/{id} {
+      // Explicit recursive wildcard for all sub-data in organisations
+      match /{allPaths=**} {
         allow read, write: if isSignedIn();
       }
     }
@@ -83,7 +52,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
-    // --- User Data, Templates & Notifications ---
+    // --- User Data & Notifications ---
 
     match /users/{userId} {
       allow get: if isOwner(userId);
@@ -95,17 +64,9 @@ service cloud.firestore {
       match /notifications/{notificationId} {
         allow get, list, write: if isOwner(userId);
       }
-
-      match /templates/{templateId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.createdByUserId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.createdByUserId == resource.data.createdByUserId;
-        allow delete: if isExistingOwner(userId);
-
-        match /documentTemplateContent/document {
-          allow get, list: if isOwner(userId);
-          allow write: if isOwner(userId);
-        }
+      
+      match /{allPaths=**} {
+        allow read, write: if isOwner(userId);
       }
     }
   }

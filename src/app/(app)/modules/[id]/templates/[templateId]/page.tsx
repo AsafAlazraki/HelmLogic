@@ -34,7 +34,8 @@ import {
     Columns,
     PanelBottom,
     PanelTop,
-    X
+    X,
+    Anchor
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -47,6 +48,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Image from 'next/image';
 
 interface TemplateBlock {
     id: string;
@@ -64,6 +66,79 @@ interface TemplatePage {
     headerHeight: number; // in mm
     footerHeight: number; // in mm
     order: number;
+}
+
+function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: TemplateBlock, isSelected: boolean, onSelect: () => void, onDelete: () => void }) {
+    const isBound = !!block.dataSource && block.dataSource !== 'manual';
+
+    return (
+        <div 
+            onClick={(e) => { e.stopPropagation(); onSelect(); }}
+            className={cn(
+                "group relative p-6 rounded-[2rem] transition-all cursor-pointer border-2 border-transparent",
+                isSelected ? "ring-4 ring-primary/40 bg-primary/5 shadow-2xl border-primary/20 scale-[1.01]" : "hover:bg-slate-50 hover:border-slate-100"
+            )}
+        >
+            <div className="absolute -left-10 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                <Button variant="ghost" size="icon" className="h-8 w-8 bg-white shadow-xl border-2 text-slate-400 hover:text-primary rounded-xl"><GripVertical className="h-4 w-4" /></Button>
+            </div>
+
+            {isSelected && (
+                <div className="absolute -right-3 -top-3 flex items-center gap-2 animate-in zoom-in-95">
+                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-2xl border-2 border-white" onClick={(e) => { e.stopPropagation(); onDelete(); }}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+            )}
+
+            <div className="min-h-[32px]">
+                {isBound && (
+                    <div className="mb-4 flex items-center gap-2">
+                        <Badge className="bg-primary text-white border-none text-[8px] font-black uppercase tracking-[0.2em] px-2.5 h-5 shadow-lg">
+                            <Zap className="h-2.5 w-2.5 mr-1.5 fill-current" /> Bound: {block.dataSource.replace('.', ' • ').toUpperCase()}
+                        </Badge>
+                    </div>
+                )}
+
+                {block.type === 'text' && (
+                    <div className="text-base text-slate-900 leading-relaxed font-medium">
+                        {block.content}
+                    </div>
+                )}
+                {block.type === 'image' && (
+                    <div className="aspect-video w-full bg-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center border-4 border-dashed border-slate-200 overflow-hidden relative group/asset">
+                        {isBound ? (
+                            <div className="flex flex-col items-center justify-center gap-4 text-primary">
+                                <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
+                                    <Ship className="h-8 w-8" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-primary">Dynamic Asset Proxy</p>
+                                    <p className="text-[9px] font-bold text-primary/40 uppercase mt-1">Resolution confirmed at runtime</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center gap-3">
+                                <ImageIcon className="h-10 w-10 text-slate-300" />
+                                <p className="text-[10px] font-black uppercase text-slate-300 tracking-widest">Static Image Component</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {block.type === 'variable' && (
+                    <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-primary/5 border-2 border-primary/20 text-primary shadow-sm">
+                        <Variable className="h-4 w-4" />
+                        <span className="text-[11px] font-black uppercase tracking-[0.1em] italic">{isBound ? `{${block.dataSource.toUpperCase()}}` : '{UNMAPPED_VARIABLE}'}</span>
+                    </div>
+                )}
+                {block.type === 'table' && (
+                    <div className="grid grid-cols-3 gap-px bg-slate-200 border-2 rounded-2xl overflow-hidden shadow-inner">
+                        {[1,2,3,4,5,6,7,8,9].map(i => (
+                            <div key={i} className="h-10 bg-white" />
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }
 
 export default function TemplateEditorPage() {
@@ -85,9 +160,7 @@ export default function TemplateEditorPage() {
     [firestore, orgId, templateId]);
     const { data: template, loading: templateLoading } = useDoc<any>(templateRef);
 
-    const [pages, setPages] = useState<TemplatePage[]>([
-        { id: 'page-1', blocks: [], headerHeight: 20, footerHeight: 20, order: 1 }
-    ]);
+    const [pages, setPages] = useState<TemplatePage[]>([]);
     const [zoom, setZoom] = useState(0.85);
     const [isSaving, setIsSaving] = useState(false);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -507,78 +580,5 @@ function ToolButton({ icon: Icon, label, onClick }: any) {
             <Icon className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-primary-foreground">{label}</span>
         </button>
-    );
-}
-
-function CanvasBlock({ block, isSelected, onSelect, onDelete }: { block: TemplateBlock, isSelected: boolean, onSelect: () => void, onDelete: () => void }) {
-    const isBound = !!block.dataSource && block.dataSource !== 'manual';
-
-    return (
-        <div 
-            onClick={(e) => { e.stopPropagation(); onSelect(); }}
-            className={cn(
-                "group relative p-6 rounded-[2rem] transition-all cursor-pointer border-2 border-transparent",
-                isSelected ? "ring-4 ring-primary/40 bg-primary/5 shadow-2xl border-primary/20 scale-[1.01]" : "hover:bg-slate-50 hover:border-slate-100"
-            )}
-        >
-            <div className="absolute -left-10 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                <Button variant="ghost" size="icon" className="h-8 w-8 bg-white shadow-xl border-2 text-slate-400 hover:text-primary rounded-xl"><GripVertical className="h-4 w-4" /></Button>
-            </div>
-
-            {isSelected && (
-                <div className="absolute -right-3 -top-3 flex items-center gap-2 animate-in zoom-in-95">
-                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-2xl border-2 border-white" onClick={(e) => { e.stopPropagation(); onDelete(); }}><Trash2 className="h-4 w-4" /></Button>
-                </div>
-            )}
-
-            <div className="min-h-[32px]">
-                {isBound && (
-                    <div className="mb-4 flex items-center gap-2">
-                        <Badge className="bg-primary text-white border-none text-[8px] font-black uppercase tracking-[0.2em] px-2.5 h-5 shadow-lg">
-                            <Zap className="h-2.5 w-2.5 mr-1.5 fill-current" /> Bound: {block.dataSource.replace('.', ' • ').toUpperCase()}
-                        </Badge>
-                    </div>
-                )}
-
-                {block.type === 'text' && (
-                    <div className="text-base text-slate-900 leading-relaxed font-medium">
-                        {block.content}
-                    </div>
-                )}
-                {block.type === 'image' && (
-                    <div className="aspect-video w-full bg-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center border-4 border-dashed border-slate-200 overflow-hidden relative group/asset">
-                        {isBound ? (
-                            <div className="flex flex-col items-center justify-center gap-4 text-primary">
-                                <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
-                                    <Ship className="h-8 w-8" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-primary">Dynamic Asset Proxy</p>
-                                    <p className="text-[9px] font-bold text-primary/40 uppercase mt-1">Resolution confirmed at runtime</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center gap-3">
-                                <ImageIcon className="h-10 w-10 text-slate-300" />
-                                <p className="text-[10px] font-black uppercase text-slate-300 tracking-widest">Static Image Component</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-                {block.type === 'variable' && (
-                    <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-primary/5 border-2 border-primary/20 text-primary shadow-sm">
-                        <Variable className="h-4 w-4" />
-                        <span className="text-[11px] font-black uppercase tracking-[0.1em] italic">{isBound ? `{${block.dataSource.toUpperCase()}}` : '{UNMAPPED_VARIABLE}'}</span>
-                    </div>
-                )}
-                {block.type === 'table' && (
-                    <div className="grid grid-cols-3 gap-px bg-slate-200 border-2 rounded-2xl overflow-hidden shadow-inner">
-                        {[1,2,3,4,5,6,7,8,9].map(i => (
-                            <div key={i} className="h-10 bg-white" />
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
     );
 }

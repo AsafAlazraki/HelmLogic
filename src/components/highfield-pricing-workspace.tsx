@@ -23,30 +23,6 @@ import { formatCurrency } from "@/lib/currency-utils";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-interface Vendor {
-    id: string;
-    name: string;
-    logoUrl?: string;
-    vendorType: string;
-    slug?: string;
-    currency?: string;
-}
-
-interface Organisation {
-    id: string;
-    name: string;
-    roles?: any[];
-    tradingCurrency?: string;
-    dataWarehouseSubscriptions?: string[];
-    permissions?: Record<string, Record<string, boolean>>;
-    gstPercentage?: number;
-    shortCode?: string;
-}
-
-interface PricingStrategy {
-    itemValues?: Record<string, Record<string, any>>;
-}
-
 interface Range {
     id: string;
     name: string;
@@ -593,7 +569,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [loadingModels, setLoadingModels] = useState(false);
 
     const strategyRef = useMemoFirebase(() => doc(firestore, `organisations/${organisationId}/pricingStrategies/${vendor.id}`), [firestore, organisationId, vendor.id]);
-    const { data: strategy, isLoading: strategyLoading } = useDoc<PricingStrategy>(strategyRef);
+    const { data: strategy, isLoading: strategyLoading } = useDoc<any>(strategyRef);
 
     useEffect(() => {
         const fetchDeepData = async () => {
