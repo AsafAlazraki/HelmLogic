@@ -61,24 +61,6 @@ import { VesselMap } from '@/components/map';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  rectSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
 interface Vendor {
     id: string;
     name: string;
@@ -267,7 +249,6 @@ export default function ModuleDetailsPage() {
     const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-    const [isNewQuoteOpen, setIsNewQuoteOpen] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isCreateTemplateOpen, setIsCreateTemplateOpen] = useState(false);
     
@@ -306,9 +287,20 @@ export default function ModuleDetailsPage() {
 
     const templatesQuery = useMemoFirebase(() => {
         if (!currentMemberOrg?.id || !moduleData) return null;
-        return query(collection(firestore, `organisations/${currentMemberOrg.id}/templates`), where('moduleId', '==', moduleData.id), orderBy('createdAt', 'desc'));
+        // Simplified query to avoid index requirements
+        return query(collection(firestore, `organisations/${currentMemberOrg.id}/templates`), where('moduleId', '==', moduleData.id));
     }, [firestore, currentMemberOrg?.id, moduleData]);
-    const { data: templates } = useCollection<Template>(templatesQuery);
+    
+    const { data: rawTemplates } = useCollection<Template>(templatesQuery);
+
+    const templates = useMemo(() => {
+        if (!rawTemplates) return null;
+        return [...rawTemplates].sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateB - dateA;
+        });
+    }, [rawTemplates]);
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
 
@@ -446,13 +438,6 @@ export default function ModuleDetailsPage() {
                                                 </div>
                                                 <h2 className="text-4xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
                                             </div>
-                                            <Button 
-                                                className="h-16 px-10 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl hover:scale-[1.03] transition-all bg-primary text-white"
-                                                onClick={() => setIsNewQuoteOpen(true)}
-                                            >
-                                                <PlusCircle className="mr-2 h-4 w-4" />
-                                                Draft New Quote
-                                            </Button>
                                         </CardHeader>
                                         <CardContent className="flex-1 p-10 flex flex-col items-center justify-center text-center gap-8">
                                             <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
@@ -685,7 +670,6 @@ function ModelsGrid({ range, vendor, onModelSelect, canEdit }: { range: Range; v
                     </div>
                     <div className="p-4 text-center space-y-1">
                         <p className="font-black uppercase tracking-tighter text-xs">{model.name}</p>
-                        {model.modelCode && <Badge variant="secondary" className="font-mono text-[8px] h-4 px-1.5">{model.modelCode}</Badge>}
                     </div>
                 </Card>
             ))}
