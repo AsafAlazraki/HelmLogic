@@ -439,9 +439,9 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                     </p>
                 </div>
 
-                <div className="flex items-center justify-between px-5 py-4 border-t bg-primary text-white">
-                    <span className="font-black uppercase text-[10px] tracking-[0.2em]">View Range</span>
-                    <ArrowRight className="h-4 w-4" />
+                <div className="flex items-center justify-between px-5 py-4 border-t border-dashed bg-white mt-auto">
+                    <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">View Range</span>
+                    <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
                 </div>
             </Card>
         </div>
@@ -523,9 +523,9 @@ function SortableModelCard({ model, isSelected, onClick, onEdit, canEdit }: any)
                     <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
                 </div>
 
-                <div className="flex items-center justify-between px-5 py-4 border-t bg-primary text-white">
-                    <span className="font-black uppercase text-[10px] tracking-[0.2em]">Build Model</span>
-                    <ArrowRight className="h-4 w-4" />
+                <div className="flex items-center justify-between px-5 py-4 border-t border-dashed bg-white mt-auto">
+                    <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Build Model</span>
+                    <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
                 </div>
             </Card>
         </div>
@@ -653,7 +653,7 @@ export default function ModuleDetailsPage() {
         toast({ title: "Item Updated" });
     };
 
-    const loading = slugLoading || idLoading || mainVendorLoading;
+    const loading = slugLoading || idLoading || mainVendorLoading || modulesLoading;
 
     if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
