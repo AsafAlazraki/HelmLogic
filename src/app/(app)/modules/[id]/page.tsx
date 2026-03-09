@@ -245,11 +245,11 @@ function QuoteInitializationDialog({
                             {rangesLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                     {ranges?.map(range => (
                                         <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm" onClick={() => setSelectedRange(range)}>
-                                            <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden">
-                                                {range.imageUrl && <Image src={range.imageUrl} alt={range.name} fill className="object-cover group-hover:scale-105 transition-transform" unoptimized />}
+                                            <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6">
+                                                {range.imageUrl && <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-6 group-hover:scale-105 transition-transform" unoptimized />}
                                             </div>
                                             <div className="p-4 bg-white text-center">
                                                 <span className="font-black uppercase text-[11px] tracking-tight">{range.name}</span>
@@ -265,7 +265,7 @@ function QuoteInitializationDialog({
                             {modelsLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                     {models?.map(model => (
                                         <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm" onClick={() => onModelSelect(model, selectedRange)}>
                                             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
@@ -506,14 +506,14 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                     </div>
                 )}
 
-                <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden">
+                <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     {range.imageUrl ? (
                         <Image 
                             src={range.imageUrl} 
                             alt={range.name} 
                             fill 
-                            className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                            className="object-contain p-6 group-hover:scale-105 transition-transform duration-500" 
                             unoptimized 
                         />
                     ) : (
