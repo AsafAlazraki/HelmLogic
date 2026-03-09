@@ -249,7 +249,15 @@ function QuoteInitializationDialog({
                                     {ranges?.map(range => (
                                         <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm" onClick={() => setSelectedRange(range)}>
                                             <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6">
-                                                {range.imageUrl && <Image src={range.imageUrl} alt={range.name} fill className="object-contain p-6 group-hover:scale-105 transition-transform" unoptimized />}
+                                                {range.imageUrl && (
+                                                    <Image 
+                                                        src={range.imageUrl} 
+                                                        alt={range.name} 
+                                                        fill 
+                                                        className="object-contain p-6 group-hover:scale-105 transition-transform" 
+                                                        unoptimized 
+                                                    />
+                                                )}
                                             </div>
                                             <div className="p-4 bg-white text-center">
                                                 <span className="font-black uppercase text-[11px] tracking-tight">{range.name}</span>
@@ -434,7 +442,7 @@ function EditItemDialog({
                             )}
                             <label className="absolute inset-0 cursor-pointer bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
                                 <Upload className="h-8 w-8 text-white" />
-                                <input type="file" className="hidden" border-none accept="image/*" onChange={(e) => {
+                                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
                                         setImage(file);
@@ -665,6 +673,11 @@ export default function ModuleDetailsPage() {
     const handleModelSelect = (model: Model) => { 
         setSelectedModel(model); 
         setIsTransitioning(true);
+        // Tactical architectural hand-off to immersive editor
+        setTimeout(() => {
+            setView('bmt');
+            setIsTransitioning(false);
+        }, 1200);
     };
 
     const handleQuoteInitialization = (model: Model, range: Range) => {

@@ -262,19 +262,18 @@ export function HighfieldQuoteFlow({
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
-            // Logic for Seats: 
-            // 1. If a console is selected, ONLY show the seat tied to it.
-            // 2. If console has no associated seat, hide the category entirely.
+            // Intelligent Seats logic:
+            // 1. If console selected -> Only show tied seat
+            // 2. If console selected but no seat tied -> Hide seats category
+            // 3. If no console selected -> Show all standalone seats
             if (cat === 'Seats') {
                 if (selectedConsole) {
                     if (selectedConsole.associatedSeatId) {
                         if (opt.id !== selectedConsole.associatedSeatId) return acc;
                     } else {
-                        // Console exists but no associated seat -> hide seats category
                         return acc;
                     }
                 }
-                // 3. If no console selected, show all (Open Deck mode)
             }
 
             if (!acc[cat]) acc[cat] = [];
@@ -282,8 +281,8 @@ export function HighfieldQuoteFlow({
             return acc;
         }, {});
 
-        // Sort entries by hierarchy: Consoles -> Seats -> General
-        const sortedEntries = Object.entries(groups)
+        // Precision Hierarchy: Consoles -> Seats -> General
+        return Object.entries(groups)
             .filter(([_, opts]: [string, any]) => opts.length > 0)
             .sort(([a], [b]) => {
                 if (a === 'Consoles') return -1;
@@ -292,8 +291,6 @@ export function HighfieldQuoteFlow({
                 if (b === 'Seats') return 1;
                 return a.localeCompare(b);
             });
-
-        return sortedEntries;
     }, [relevantFeatures, selectedOptionIds]);
 
     const toggleOption = (id: string) => {
