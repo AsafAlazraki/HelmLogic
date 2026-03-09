@@ -30,7 +30,7 @@ service cloud.firestore {
     }
 
     match /organisations/{organisationId} {
-      allow read: if isSignedIn();
+      allow get, list: if isSignedIn();
       
       match /exchangeRates/{code} {
         allow read, write: if isSignedIn();
@@ -53,7 +53,11 @@ service cloud.firestore {
       }
 
       match /templates/{templateId} {
-        allow read, write: if isSignedIn();
+        allow get, list, create, update, delete: if isSignedIn();
+        
+        match /documentTemplateContent/document {
+          allow get, list, write: if isSignedIn();
+        }
       }
     }
 
@@ -65,6 +69,10 @@ service cloud.firestore {
 
     match /vessels/{vesselId} {
       allow read, write: if isSignedIn();
+    }
+
+    match /dealerFitCategories/{id} {
+      allow read: if isSignedIn();
     }
 
     // --- User Data, Templates & Notifications ---

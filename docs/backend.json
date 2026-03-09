@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -167,7 +166,8 @@
         "moduleId": { "type": "string" },
         "createdByUserId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "pages": { "type": "array" }
       },
       "required": ["id", "name", "type", "moduleId", "createdByUserId"]
     },
@@ -303,13 +303,13 @@
       },
       "description": "User profile documents."
     },
-    "/users/{userId}/templates/{templateId}": {
+    "/organisations/{organisationId}/templates/{templateId}": {
       "schema": {
         "$ref": "#/backend/entities/Template"
       },
-      "description": "User-specific document templates."
+      "description": "Organisation-wide document templates."
     },
-    "/users/{userId}/templates/{templateId}/documentTemplateContent/document": {
+    "/organisations/{organisationId}/templates/{templateId}/documentTemplateContent/document": {
       "schema": {
         "$ref": "#/backend/entities/DocumentTemplateContent"
       },

@@ -54,6 +54,7 @@ interface TemplateBlock {
     style?: any;
     order: number;
     dataSource?: string; 
+    zone?: 'header' | 'body' | 'footer';
 }
 
 interface TemplatePage {
@@ -90,11 +91,14 @@ export default function TemplateEditorPage() {
     const [zoom, setZoom] = useState(0.85);
     const [isSaving, setIsSaving] = useState(false);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
-    const [selectedPageId, setSelectedPageId] = useState<string | null>('page-1');
+    const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
     useEffect(() => {
         if (template?.pages) {
             setPages(template.pages);
+            if (template.pages.length > 0) {
+                setSelectedPageId(template.pages[0].id);
+            }
         }
     }, [template]);
 
@@ -124,16 +128,17 @@ export default function TemplateEditorPage() {
             footerHeight: 20,
             order: nextOrder
         };
-        setPages([...pages, newPage]);
+        setPages(prev => [...prev, newPage]);
         setSelectedPageId(newPage.id);
     };
 
-    const addBlock = (pageId: string, type: TemplateBlock['type']) => {
+    const addBlock = (pageId: string, type: TemplateBlock['type'], zone: TemplateBlock['zone'] = 'body') => {
         setPages(prev => prev.map(p => {
             if (p.id !== pageId) return p;
             const newBlock: TemplateBlock = {
                 id: `block-${Date.now()}`,
                 type,
+                zone,
                 order: p.blocks.length + 1,
                 content: type === 'text' ? 'Double click to edit text...' : 
                          type === 'image' ? { source: 'user', url: null } :
@@ -309,15 +314,37 @@ export default function TemplateEditorPage() {
 
                                 {/* Dynamic Header Zone */}
                                 <div 
-                                    className="w-full border-b border-slate-100 bg-slate-50/30 flex items-center justify-center relative group/header overflow-hidden"
+                                    className="w-full border-b border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/header overflow-hidden px-[20mm]"
                                     style={{ height: `${page.headerHeight}mm` }}
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/header:border-primary/20 transition-all pointer-events-none" />
-                                    <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 opacity-0 group-hover/header:opacity-100 transition-opacity">Precision Header Zone: {page.headerHeight}mm</span>
+                                    {page.blocks.filter(b => b.zone === 'header').length === 0 ? (
+                                        <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 opacity-0 group-hover/header:opacity-100 transition-opacity">Header Zone ({page.headerHeight}mm)</span>
+                                    ) : (
+                                        <div className="w-full flex flex-col gap-4">
+                                            {page.blocks.filter(b => b.zone === 'header').sort((a,b) => a.order - b.order).map((block) => (
+                                                <CanvasBlock 
+                                                    key={block.id} 
+                                                    block={block} 
+                                                    isSelected={selectedBlockId === block.id}
+                                                    onSelect={() => { setSelectedBlockId(block.id); setSelectedPageId(page.id); }}
+                                                    onDelete={() => removeBlock(page.id, block.id)}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="absolute bottom-1 right-1 h-6 w-6 opacity-0 group-hover/header:opacity-100 transition-opacity bg-primary text-white"
+                                        onClick={(e) => { e.stopPropagation(); addBlock(page.id, 'text', 'header'); }}
+                                    >
+                                        <Plus className="h-3 w-3" />
+                                    </Button>
                                 </div>
 
                                 <div className="flex-1 flex flex-col gap-8 p-[20mm] text-slate-900">
-                                    {page.blocks.length === 0 ? (
+                                    {page.blocks.filter(b => !b.zone || b.zone === 'body').length === 0 ? (
                                         <div className="flex-1 border-2 border-dashed border-slate-100 rounded-[3rem] flex flex-col items-center justify-center text-center gap-6 opacity-20 hover:opacity-40 transition-opacity">
                                             <Layout className="h-16 w-16" />
                                             <div className="space-y-1">
@@ -326,7 +353,7 @@ export default function TemplateEditorPage() {
                                             </div>
                                         </div>
                                     ) : (
-                                        page.blocks.sort((a,b) => a.order - b.order).map((block) => (
+                                        page.blocks.filter(b => !b.zone || b.zone === 'body').sort((a,b) => a.order - b.order).map((block) => (
                                             <CanvasBlock 
                                                 key={block.id} 
                                                 block={block} 
@@ -340,11 +367,33 @@ export default function TemplateEditorPage() {
 
                                 {/* Dynamic Footer Zone */}
                                 <div 
-                                    className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex items-center justify-center relative group/footer overflow-hidden"
+                                    className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/footer overflow-hidden px-[20mm]"
                                     style={{ height: `${page.footerHeight}mm` }}
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/footer:border-primary/20 transition-all pointer-events-none" />
-                                    <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 opacity-0 group-hover/footer:opacity-100 transition-opacity">Precision Footer Zone: {page.footerHeight}mm</span>
+                                    {page.blocks.filter(b => b.zone === 'footer').length === 0 ? (
+                                        <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 opacity-0 group-hover/footer:opacity-100 transition-opacity">Footer Zone ({page.footerHeight}mm)</span>
+                                    ) : (
+                                        <div className="w-full flex flex-col gap-4">
+                                            {page.blocks.filter(b => b.zone === 'footer').sort((a,b) => a.order - b.order).map((block) => (
+                                                <CanvasBlock 
+                                                    key={block.id} 
+                                                    block={block} 
+                                                    isSelected={selectedBlockId === block.id}
+                                                    onSelect={() => { setSelectedBlockId(block.id); setSelectedPageId(page.id); }}
+                                                    onDelete={() => removeBlock(page.id, block.id)}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/footer:opacity-100 transition-opacity bg-primary text-white"
+                                        onClick={(e) => { e.stopPropagation(); addBlock(page.id, 'text', 'footer'); }}
+                                    >
+                                        <Plus className="h-3 w-3" />
+                                    </Button>
                                 </div>
                             </div>
                         ))}
