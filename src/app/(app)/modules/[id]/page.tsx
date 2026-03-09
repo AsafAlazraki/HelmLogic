@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -87,7 +88,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
   useSortable,
-} from '@radix-ui/sortable';
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
