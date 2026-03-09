@@ -703,7 +703,7 @@ export default function TemplateEditorPage() {
                         disabled={isSaving}
                         className="h-10 px-8 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl bg-primary text-white hover:scale-[1.03] transition-all"
                     >
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="mr-2 h-4 w-4 mr-2" />}
                         Persist Template
                     </Button>
                 </div>
@@ -824,7 +824,7 @@ export default function TemplateEditorPage() {
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/header:border-primary/20 transition-all pointer-events-none" />
                                     {page.blocks.filter(b => b.zone === 'header').length === 0 ? (
-                                        <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 opacity-0 group-hover/header:opacity-100 transition-opacity">Header Zone ({page.headerHeight}mm)</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 opacity-0 group-hover/header:opacity-100 transition-opacity">Header Zone ({page.headerHeight}mm)</span>
                                     ) : (
                                         <div className="w-full flex flex-col gap-4">
                                             {page.blocks.filter(b => b.zone === 'header').sort((a,b) => a.order - b.order).map((block) => (
@@ -889,7 +889,7 @@ export default function TemplateEditorPage() {
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/footer:border-primary/20 transition-all pointer-events-none" />
                                     {page.blocks.filter(b => b.zone === 'footer').length === 0 ? (
-                                        <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 opacity-0 group-hover/footer:opacity-100 transition-opacity">Footer Zone ({page.footerHeight}mm)</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 opacity-0 group-hover/footer:opacity-100 transition-opacity">Footer Zone ({page.footerHeight}mm)</span>
                                     ) : (
                                         <div className="w-full flex flex-col gap-4">
                                             {page.blocks.filter(b => b.zone === 'footer').sort((a,b) => a.order - b.order).map((block) => (

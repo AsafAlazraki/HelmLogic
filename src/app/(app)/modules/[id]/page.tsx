@@ -438,12 +438,22 @@ export default function ModuleDetailsPage() {
                                                 </div>
                                                 <h2 className="text-4xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
                                             </div>
+                                            <Button 
+                                                onClick={() => setActiveTab('bmt')}
+                                                className="h-14 px-10 rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-2xl transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none group"
+                                            >
+                                                <PlusCircle className="mr-3 h-5 w-5 transition-transform group-hover:rotate-90" />
+                                                Generate New Quote
+                                            </Button>
                                         </CardHeader>
                                         <CardContent className="flex-1 p-10 flex flex-col items-center justify-center text-center gap-8">
                                             <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
                                                 <FileText className="h-12 w-12 text-slate-200" />
                                             </div>
-                                            <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
+                                            <div className="space-y-4">
+                                                <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
+                                                <Button variant="outline" onClick={() => setActiveTab('bmt')} className="font-black uppercase text-[10px] tracking-widest rounded-xl border-2">Select a boat to start</Button>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </div>
