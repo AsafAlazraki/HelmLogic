@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -87,6 +86,8 @@ const calculateBaseCostAudEx = (itemValues: Record<string, any>, baseCostUsd: nu
     
     return withDuty;
 };
+
+// --- Sub-components moved outside to prevent view jumping ---
 
 function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
     const [localValue, setLocalValue] = useState(value || '');
@@ -408,10 +409,12 @@ function PricingTable({
                                         ))}
                                     </React.Fragment>
                                 ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </div>
+                            </React.Fragment>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
     );
 }
 
@@ -563,6 +566,8 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isO
         </Dialog>
     );
 }
+
+// --- Main component ---
 
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
