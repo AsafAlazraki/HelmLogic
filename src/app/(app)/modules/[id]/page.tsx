@@ -87,7 +87,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
   useSortable,
-} from '@dnd-kit/sortable';
+} from '@nd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface Vendor {
@@ -677,8 +677,7 @@ export default function ModuleDetailsPage() {
         setIsQuoteInitializationOpen(false);
         setIsTransitioning(true);
         
-        // Push the route and keep transition true. 
-        // The overlay will unmount naturally with the page when navigation completes.
+        // We don't set isTransitioning(false) here. The overlay will unmount naturally with navigation.
         router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
     };
 

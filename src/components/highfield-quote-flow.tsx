@@ -230,23 +230,61 @@ export function HighfieldQuoteFlow({
         return total;
     }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor]);
 
+    // Enhanced Grouping with Logical Sorting & Filtering
+    const relevantFeatures = useMemo(() => {
+        const features = model.optionalFeatures || [];
+        if (!activeVariant) return features;
+        
+        // Filter by SKU compatibility
+        return features.filter((f: any) => 
+            !f.applicableVariantIds || 
+            f.applicableVariantIds.length === 0 || 
+            f.applicableVariantIds.includes(activeVariant.id)
+        );
+    }, [model.optionalFeatures, activeVariant]);
+
     const groupedOptions = useMemo(() => {
-        const groups = (model.optionalFeatures || []).reduce((acc: any, opt: any) => {
+        const groups = relevantFeatures.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;
         }, {});
-        return groups;
-    }, [model.optionalFeatures]);
+
+        // Explicit Sort: Consoles -> Seats -> Everything else alphabetically
+        const sortedEntries = Object.entries(groups).sort(([a], [b]) => {
+            if (a === 'Consoles') return -1;
+            if (b === 'Consoles') return 1;
+            if (a === 'Seats') return -1;
+            if (b === 'Seats') return 1;
+            return a.localeCompare(b);
+        });
+
+        return sortedEntries;
+    }, [relevantFeatures]);
 
     const toggleOption = (id: string) => {
-        setSelectedOptionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+        setSelectedOptionIds(prev => {
+            const isSelected = prev.includes(id);
+            if (isSelected) {
+                return prev.filter(i => i !== id);
+            } else {
+                const next = [...prev, id];
+                // Auto-select paired seat when console is selected
+                const feature = relevantFeatures.find((f: any) => f.id === id);
+                if (feature?.category === 'Consoles' && feature.associatedSeatId) {
+                    if (!next.includes(feature.associatedSeatId)) {
+                        next.push(feature.associatedSeatId);
+                    }
+                }
+                return next;
+            }
+        });
     };
 
     const handleMaterialSelect = (mat: 'PVC' | 'HYP') => {
         setSelectedMaterial(mat);
-        setSelectedColor(null); // Reset color when material changes
+        setSelectedColor(null);
     };
 
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
@@ -428,7 +466,7 @@ export function HighfieldQuoteFlow({
 
                             {currentStep === 2 && (
                                 <div className="space-y-12 animate-in slide-in-from-right-4 duration-500">
-                                    {Object.entries(groupedOptions).map(([category, options]: [string, any]) => (
+                                    {groupedOptions.map(([category, options]: [string, any]) => (
                                         <div key={category} className="space-y-5">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest text-foreground border-l-4 border-primary pl-3">{category}</h3>
                                             <div className="grid gap-3">

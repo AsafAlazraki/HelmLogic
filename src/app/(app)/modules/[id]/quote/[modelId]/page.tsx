@@ -5,11 +5,12 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc, collection, query, where } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Ship, Zap } from 'lucide-react';
 import { useMemo } from 'react';
 import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase/auth/use-user';
+import Image from 'next/image';
 
 export default function QuoteFlowPage() {
     const params = useParams();
@@ -25,7 +26,7 @@ export default function QuoteFlowPage() {
 
     // 1. Resolve User Context for Organisation Overrides
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, loading: profileLoading } = useDoc<any>(userProfileRef);
+    const { data: userProfile, isLoading: profileLoading } = useDoc<any>(userProfileRef);
     const orgId = userProfile?.organisationId;
 
     // 2. Fetch Module Context
@@ -33,12 +34,12 @@ export default function QuoteFlowPage() {
         if (!slugOrId) return null;
         return query(collection(firestore, 'modules'), where('slug', '==', slugOrId));
     }, [firestore, slugOrId]);
-    const { data: modulesBySlug, loading: slugLoading } = useCollection<any>(moduleQueryBySlug);
+    const { data: modulesBySlug, isLoading: slugLoading } = useCollection<any>(moduleQueryBySlug);
 
     const moduleByIdRef = useMemoFirebase(() => 
         slugOrId ? doc(firestore, 'modules', slugOrId) : null,
     [firestore, slugOrId]);
-    const { data: moduleById, loading: idLoading } = useDoc<any>(moduleByIdRef);
+    const { data: moduleById, isLoading: idLoading } = useDoc<any>(moduleByIdRef);
 
     const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
     const moduleLoading = slugLoading || idLoading;
@@ -47,13 +48,13 @@ export default function QuoteFlowPage() {
     const modelRef = useMemoFirebase(() => 
         vendorId && rangeId && modelId ? doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models`, modelId) : null,
     [firestore, vendorId, rangeId, modelId]);
-    const { data: masterModel, loading: modelDetailsLoading } = useDoc<any>(modelRef);
+    const { data: masterModel, isLoading: modelDetailsLoading } = useDoc<any>(modelRef);
 
     // 4. Fetch Organisation Overrides
     const modelOverrideRef = useMemoFirebase(() => 
         orgId && modelId ? doc(firestore, `organisations/${orgId}/modelOverrides`, modelId) : null,
     [firestore, orgId, modelId]);
-    const { data: modelOverride, loading: overrideLoading } = useDoc<any>(modelOverrideRef);
+    const { data: modelOverride, isLoading: overrideLoading } = useDoc<any>(modelOverrideRef);
 
     // 5. Merge Data
     const effectiveModel = useMemo(() => {
@@ -66,19 +67,52 @@ export default function QuoteFlowPage() {
     const vendorRef = useMemoFirebase(() => 
         vendorId ? doc(firestore, 'data-warehouse', vendorId) : null,
     [firestore, vendorId]);
-    const { data: vendor, loading: vendorLoading } = useDoc<any>(vendorRef);
+    const { data: vendor, isLoading: vendorLoading } = useDoc<any>(vendorRef);
 
     const rangeRef = useMemoFirebase(() => 
         vendorId && rangeId ? doc(firestore, `data-warehouse/${vendorId}/ranges`, rangeId) : null,
     [firestore, vendorId, rangeId]);
-    const { data: range, loading: rangeLoading } = useDoc<any>(rangeRef);
+    const { data: range, isLoading: rangeLoading } = useDoc<any>(rangeRef);
 
     const loading = moduleLoading || modelDetailsLoading || vendorLoading || rangeLoading || profileLoading || overrideLoading;
 
     if (loading) {
         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            <div className="fixed inset-0 z-[100] bg-primary flex flex-col items-center justify-center text-white overflow-hidden animate-in fade-in duration-500">
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute top-20 right-20 w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-3xl animate-pulse duration-[4000ms]" />
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center gap-12 max-w-2xl text-center">
+                    <div className="relative h-64 w-64 bg-white/10 backdrop-blur-xl rounded-[3.5rem] p-10 border border-white/20 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700">
+                        <Ship className="h-full w-full text-white/40" />
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-center gap-3 text-[12px] font-black uppercase tracking-[0.5em] text-white/50 leading-none">
+                            <Zap className="h-4 w-4 fill-current" />
+                            <span>Initializing Precision Build</span>
+                        </div>
+                        <h2 className="text-6xl font-black italic uppercase tracking-tighter">
+                            {masterModel?.name || 'Loading'}
+                        </h2>
+                    </div>
+
+                    <div className="relative w-64 h-1.5 flex items-center justify-center bg-white/10 rounded-full overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-[shimmer_2s_infinite] w-1/2" />
+                    </div>
+
+                    <p className="text-[12px] font-bold uppercase tracking-widest text-white/60 animate-pulse">
+                        Synchronizing factory data sets...
+                    </p>
+                </div>
+                
+                <style jsx global>{`
+                    @keyframes shimmer {
+                        0% { transform: translateX(-200%); }
+                        100% { transform: translateX(200%); }
+                    }
+                `}</style>
             </div>
         );
     }
