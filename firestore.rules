@@ -1,172 +1,107 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * HelmLogic Security Rules
+     * FIRESTORE SECURITY RULES - PROTOTYPING MODE
+     *
+     * CORE PHILOSOPHY:
+     * This ruleset implements a strict User-Ownership model. Access to data is 
+     * primarily governed by the hierarchical path structure, ensuring that users 
+     * can only access and modify their own templates and associated content.
+     *
+     * DATA STRUCTURE:
+     * All application data is organized under the `/users/{userId}` root. 
+     * - Templates are stored at `/users/{userId}/templates/{templateId}`.
+     * - Template content/layouts are stored at `/users/{userId}/templates/{templateId}/documentTemplateContent/document`.
+     *
+     * KEY SECURITY DECISIONS:
+     * 1. Path-Based Authorization: The `{userId}` wildcard in the path is the 
+     *    primary source of truth for authorization.
+     * 2. Denormalization for Performance: The `createdByUserId` field is 
+     *    enforced on all documents. This allows rules to verify ownership 
+     *    independently without performing expensive `get()` lookups on parent documents.
+     * 3. Immutability: Critical relational fields (like `createdByUserId`) are 
+     *    made immutable after creation to prevent data hijacking or accidental 
+     *    orphaning of records.
+     * 4. Prototyping Flexibility: While authorization is strictly enforced, 
+     *    the schema of the document content (e.g., JSON layout strings, names, 
+     *    types) is not validated to allow for rapid UI/UX iteration.
      */
 
     // --- Helper Functions ---
 
+    /** Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isHelmLogicAdmin() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin';
-    }
-
+    /** Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isOrgMember(orgId) {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId;
+    /** 
+     * Combines ownership check with a check for the existence of the document.
+     * Essential for secure update and delete operations.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
 
-    function canEditBoatData() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             (
-               isHelmLogicAdmin() ||
-               (
-                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId != null &&
-                 get(/databases/$(database)/documents/organisations/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId)).data.permissions[get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationRole].can_edit_boat_data == true
-               )
-             );
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the Template collection, allowing users to manage their document types (Quote, Invoice, etc.).
+     * @path /users/{userId}/templates/{templateId}
+     * @allow (get) If the authenticated user matches the {userId} in the path.
+     * @deny (create) If the 'createdByUserId' in the data does not match the authenticated user.
+     * @principle Enforces path-based ownership and validates relational integrity on creation.
+     */
+    match /users/{userId}/templates/{templateId} {
+      allow get, list: if isOwner(userId);
+      
+      allow create: if isOwner(userId) 
+                    && request.resource.data.createdByUserId == userId;
+      
+      allow update: if isExistingOwner(userId) 
+                    && request.resource.data.createdByUserId == resource.data.createdByUserId;
+      
+      allow delete: if isExistingOwner(userId);
     }
 
-    // --- User Profiles ---
+    /**
+     * @description Rules for the specific document content/layout associated with a template.
+     * @path /users/{userId}/templates/{templateId}/documentTemplateContent/document
+     * @allow (list) If the authenticated user is the owner of the parent path.
+     * @deny (update) If the user attempts to change the 'createdByUserId' field.
+     * @principle Authorization Independence: Uses denormalized ownership fields to secure sub-resources without parent lookups.
+     */
+    match /users/{userId}/templates/{templateId}/documentTemplateContent/document {
+      allow get, list: if isOwner(userId);
+      
+      allow create: if isOwner(userId) 
+                    && request.resource.data.createdByUserId == userId;
+      
+      allow update: if isExistingOwner(userId) 
+                    && request.resource.data.createdByUserId == resource.data.createdByUserId;
+      
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Fallback rule to ensure the user's root document (if any) is protected.
+     * @path /users/{userId}
+     * @allow (create) If the user is creating their own profile document.
+     * @deny (write) Any attempt to modify another user's root document.
+     * @principle Self-creation and strict ownership at the root level.
+     */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isHelmLogicAdmin();
-      allow list: if isHelmLogicAdmin();
+      allow get: if isOwner(userId);
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isHelmLogicAdmin();
-      allow delete: if isHelmLogicAdmin();
-
-      match /notifications/{notificationId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /quotes/{quoteId} {
-        allow read, write: if isOwner(userId);
-      }
-    }
-
-    // --- Organisations ---
-    match /organisations/{organisationId} {
-      allow get, list: if isSignedIn();
-      allow create: if isHelmLogicAdmin();
-      allow update: if isHelmLogicAdmin() || isOrgMember(organisationId);
-      allow delete: if isHelmLogicAdmin();
-
-      match /exchangeRates/{currencyCode} {
-        allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-        
-        match /changeLog/{logId} {
-          allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-        }
-      }
-      
-      match /pricingStrategies/{vendorId} {
-        allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-        
-        match /freightContainers/{containerId} {
-          allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-        }
-
-        match /auditLog/{logId} {
-          allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-        }
-      }
-
-      match /dealerFitSelections/{selectionId} {
-        allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-      }
-      
-      match /modelOverrides/{modelId} {
-        allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-      }
-      
-      match /priceLevelDefinitions/{levelId} {
-        allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-      }
-      
-      match /productPrices/{priceId} {
-        allow read, write: if isOrgMember(organisationId) || isHelmLogicAdmin();
-      }
-    }
-
-    // --- Data Warehouse ---
-    match /data-warehouse/{vendorId} {
-      allow get, list: if isSignedIn();
-      allow create, delete: if isHelmLogicAdmin();
-      allow update: if canEditBoatData();
-
-      match /masterDataSet/{rowId} {
-        allow get, list: if isSignedIn();
-        allow write: if canEditBoatData();
-      }
-
-      match /ranges/{rangeId} {
-        allow get, list: if isSignedIn();
-        allow write: if canEditBoatData();
-
-        match /models/{modelId} {
-          allow get, list: if isSignedIn();
-          allow write: if canEditBoatData();
-
-          match /variants/{variantId} {
-            allow get, list: if isSignedIn();
-            allow write: if canEditBoatData();
-          }
-        }
-      }
-
-      match /dataSets/{dataSetId} {
-        allow get, list: if isSignedIn();
-        allow write: if canEditBoatData();
-
-        match /rows/{rowId} {
-          allow get, list: if isSignedIn();
-          allow write: if canEditBoatData();
-        }
-      }
-    }
-
-    // --- Modules ---
-    match /modules/{moduleId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isHelmLogicAdmin();
-    }
-
-    // --- Dealer Fit Categories ---
-    match /dealerFitCategories/{categoryId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isHelmLogicAdmin();
-    }
-
-    // --- Global Entities ---
-    match /inventory/{itemId} {
-      allow read, write: if isSignedIn();
-    }
-    match /vessels/{vesselId} {
-      allow read, write: if isSignedIn();
-    }
-    match /vesselReservations/{resId} {
-      allow read, write: if isSignedIn();
-    }
-    match /brands/{brandId} {
-      allow read: if isSignedIn();
-      allow write: if isHelmLogicAdmin();
-    }
-    match /products/{productId} {
-      allow read: if isSignedIn();
-      allow write: if isHelmLogicAdmin();
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+      allow list: if false; // Users cannot be listed for privacy.
     }
   }
 }
