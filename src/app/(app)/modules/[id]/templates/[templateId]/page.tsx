@@ -44,7 +44,8 @@ import {
     AlignCenter,
     AlignRight,
     Type as TypeIcon,
-    Baseline
+    Baseline,
+    Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -151,6 +152,7 @@ function CanvasBlock({
                             textDecoration: block.style?.underline ? 'underline' : 'none',
                             textAlign: block.style?.textAlign || 'left',
                             fontFamily: block.style?.fontFamily || 'inherit',
+                            color: block.style?.color || 'inherit',
                         }}
                         className={cn(
                             "text-slate-900 leading-relaxed",
@@ -292,6 +294,50 @@ function CanvasBlock({
     );
 }
 
+function ColorSelector({ value, onChange, recentColors }: { value?: string, onChange: (color: string) => void, recentColors: string[] }) {
+    const presets = ['#000000', '#334155', '#64748b', '#2563eb', '#16a34a', '#dc2626', '#7c3aed'];
+    const allSwatches = [...new Set([...presets, ...recentColors])].slice(0, 14);
+
+    return (
+        <div className="space-y-3">
+            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                <Palette className="h-3 w-3" />
+                Color Palette
+            </Label>
+            <div className="flex gap-2">
+                <div className="relative h-9 w-9 shrink-0 rounded-xl border-2 border-slate-700 overflow-hidden bg-slate-900 shadow-inner">
+                    <input 
+                        type="color" 
+                        value={value || '#000000'} 
+                        onChange={(e) => onChange(e.target.value)}
+                        className="absolute inset-[-5px] h-[calc(100%+10px)] w-[calc(100%+10px)] cursor-pointer bg-transparent"
+                    />
+                </div>
+                <Input 
+                    value={value || ''} 
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="#000000"
+                    className="h-9 font-mono text-[10px] bg-slate-900 border-slate-700 text-white uppercase"
+                />
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+                {allSwatches.map(color => (
+                    <button
+                        key={color}
+                        type="button"
+                        onClick={() => onChange(color)}
+                        className={cn(
+                            "h-5 w-5 rounded-md border border-slate-700 transition-all hover:scale-110",
+                            value === color ? "ring-2 ring-primary ring-offset-2 ring-offset-slate-900 scale-110" : ""
+                        )}
+                        style={{ backgroundColor: color }}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export default function TemplateEditorPage() {
     const params = useParams();
     const router = useRouter();
@@ -391,7 +437,7 @@ export default function TemplateEditorPage() {
                          type === 'grid' ? { columns: 2 } : 
                          type === 'quoteItems' ? { displayStyle: 'list', columns: 2, showImages: true, showSku: true, showDescription: true, showPrice: true } :
                          undefined,
-            style: type === 'text' ? { bold: false, italic: false, underline: false, textAlign: 'left', fontFamily: 'Inter' } : undefined
+            style: type === 'text' ? { bold: false, italic: false, underline: false, textAlign: 'left', fontFamily: 'Inter', color: '#000000' } : undefined
         };
 
         setPages(prev => prev.map(p => {
@@ -495,6 +541,20 @@ export default function TemplateEditorPage() {
         }
         return null;
     }, [pages, selectedBlockId]);
+
+    const allUsedColors = useMemo(() => {
+        const colors = new Set<string>();
+        const extractColors = (blocks: TemplateBlock[]) => {
+            blocks.forEach(b => {
+                if (b.style?.color) colors.add(b.style.color);
+                if (b.type === 'grid' && b.content?.slots) {
+                    Object.values(b.content.slots).forEach((slot: any) => extractColors(slot));
+                }
+            });
+        };
+        pages.forEach(p => extractColors(p.blocks));
+        return Array.from(colors).filter(c => c !== 'inherit' && c !== '').slice(0, 14);
+    }, [pages]);
 
     const activePage = useMemo(() => pages.find(p => p.id === selectedPageId), [pages, selectedPageId]);
 
@@ -852,6 +912,12 @@ export default function TemplateEditorPage() {
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
+
+                                                    <ColorSelector 
+                                                        value={selectedBlock.block.style?.color} 
+                                                        onChange={(color) => updateBlock(selectedBlockId!, { style: { color } })}
+                                                        recentColors={allUsedColors}
+                                                    />
 
                                                     <div className="grid grid-cols-3 gap-2">
                                                         <FormatButton 
