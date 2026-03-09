@@ -640,6 +640,7 @@ export default function ModuleDetailsPage() {
                 onOpenChange={setIsCreateTemplateOpen} 
                 moduleId={moduleData.id} 
                 orgId={currentMemberOrg?.id || ''}
+                allModules={allModules || []}
             />
         </div>
     );
@@ -654,11 +655,32 @@ function RangesGrid({ vendor, onRangeSelect, canEdit }: { vendor: Vendor; onRang
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
             {ranges?.map(range => (
-                <Card key={range.id} className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1" onClick={() => onRangeSelect(range)}>
-                    <div className="aspect-video bg-muted/30 relative border-b">
-                        {range.imageUrl ? <Image src={range.imageUrl} alt={range.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="h-8 w-8 opacity-10" /></div>}
+                <Card 
+                    key={range.id} 
+                    className="cursor-pointer hover:border-primary transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 hover:shadow-2xl flex flex-col h-full bg-white"
+                    onClick={() => onRangeSelect(range)}
+                >
+                    <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {range.imageUrl ? (
+                            <Image 
+                                src={range.imageUrl} 
+                                alt={range.name} 
+                                fill 
+                                className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                                unoptimized 
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-full">
+                                <Ship className="h-12 w-12 text-muted-foreground/20" />
+                            </div>
+                        )}
                     </div>
-                    <div className="p-4 text-center"><p className="font-black uppercase tracking-tighter text-sm">{range.name}</p></div>
+                    <div className="p-5 flex items-center justify-center bg-white mt-auto">
+                        <p className="font-black uppercase tracking-tighter text-sm text-slate-900 group-hover:text-primary transition-colors">
+                            {range.name}
+                        </p>
+                    </div>
                 </Card>
             ))}
         </div>
@@ -674,12 +696,32 @@ function ModelsGrid({ range, vendor, onModelSelect, canEdit }: { range: Range; v
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
             {models?.map(model => (
-                <Card key={model.id} className="cursor-pointer hover:border-primary hover:shadow-xl transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-1" onClick={() => onModelSelect(model)}>
-                    <div className="aspect-video bg-muted/30 relative border-b">
-                        {model.coverImageUrl ? <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full"><Ship className="opacity-10" /></div>}
+                <Card 
+                    key={model.id} 
+                    className="cursor-pointer hover:border-primary transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 hover:shadow-2xl flex flex-col h-full bg-white"
+                    onClick={() => onModelSelect(model)}
+                >
+                    <div className="aspect-[4/3] bg-muted/30 relative border-b overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {model.coverImageUrl ? (
+                            <Image 
+                                src={model.coverImageUrl} 
+                                alt={model.name} 
+                                fill 
+                                className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                                unoptimized 
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-full">
+                                <Ship className="h-12 w-12 text-muted-foreground/20" />
+                            </div>
+                        )}
                     </div>
-                    <div className="p-4 text-center space-y-1">
-                        <p className="font-black uppercase tracking-tighter text-xs">{model.name}</p>
+                    <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
+                        <p className="font-black uppercase tracking-tighter text-xs text-slate-900 group-hover:text-primary transition-colors">
+                            {model.name}
+                        </p>
+                        <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
                     </div>
                 </Card>
             ))}
