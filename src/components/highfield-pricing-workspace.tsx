@@ -87,7 +87,7 @@ const calculateBaseCostAudEx = (itemValues: Record<string, any>, baseCostUsd: nu
     return withDuty;
 };
 
-// --- Sub-components moved outside to prevent view jumping ---
+// --- STABLE SUB-COMPONENTS (OUTSIDE RENDER) ---
 
 function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
     const [localValue, setLocalValue] = useState(value || '');
@@ -567,7 +567,7 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isO
     );
 }
 
-// --- Main component ---
+// --- MAIN WORKSPACE ---
 
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
