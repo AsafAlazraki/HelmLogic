@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -447,87 +447,43 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
     );
 }
 
-function SortableModelCard({ model, isSelected, onClick, onEdit, canEdit }: any) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id: model.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        zIndex: isDragging ? 50 : 'auto',
-        opacity: isDragging ? 0.5 : 1,
-    };
-
+function ModelCard({ model, isSelected, onClick }: any) {
     return (
-        <div ref={setNodeRef} style={style} className="h-full">
-            <Card 
-                className={cn(
-                    "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
-                    isSelected 
-                        ? "border-primary shadow-2xl scale-[1.02]" 
-                        : "hover:border-primary/20 hover:shadow-xl"
-                )}
-                onClick={onClick}
-            >
-                {canEdit && (
-                    <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                        <Button 
-                            type="button"
-                            variant="secondary" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-full bg-white shadow-md border hover:bg-white"
-                            onClick={(e) => { e.stopPropagation(); onEdit(model); }}
-                        >
-                            <Pencil className="h-4 w-4 text-slate-600" />
-                        </Button>
-                        <div 
-                            {...attributes} 
-                            {...listeners} 
-                            className="h-8 w-8 rounded-full bg-white shadow-md border flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white"
-                        >
-                            <GripVertical className="h-4 w-4 text-slate-600" />
-                        </div>
+        <Card 
+            className={cn(
+                "cursor-pointer transition-all rounded-[1.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                isSelected 
+                    ? "border-primary shadow-2xl scale-[1.02]" 
+                    : "hover:border-primary/20 hover:shadow-xl"
+            )}
+            onClick={onClick}
+        >
+            <div className="aspect-[4/3] bg-muted/30 relative border-b overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                {model.coverImageUrl ? (
+                    <Image 
+                        src={model.coverImageUrl} 
+                        alt={model.name} 
+                        fill 
+                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
+                        unoptimized 
+                    />
+                ) : (
+                    <div className="flex items-center justify-center h-full">
+                        <Ship className="h-12 w-12 text-muted-foreground/20" />
                     </div>
                 )}
-
-                <div className="aspect-[4/3] bg-muted/30 relative border-b overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    {model.coverImageUrl ? (
-                        <Image 
-                            src={model.coverImageUrl} 
-                            alt={model.name} 
-                            fill 
-                            className="object-contain p-4 group-hover:scale-105 transition-transform duration-500" 
-                            unoptimized 
-                        />
-                    ) : (
-                        <div className="flex items-center justify-center h-full">
-                            <Ship className="h-12 w-12 text-muted-foreground/20" />
-                        </div>
-                    )}
-                </div>
-                <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
-                    <p className={cn(
-                        "font-black uppercase tracking-tighter text-sm transition-colors",
-                        isSelected ? "text-primary" : "text-primary group-hover:text-primary"
-                    )}>
-                        {model.name}
-                    </p>
-                    <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
-                </div>
-
-                <div className="flex items-center justify-between px-5 py-4 bg-primary mt-auto text-white">
-                    <span className="font-black uppercase text-[10px] tracking-[0.2em]">Build Model</span>
-                    <ArrowRight className="h-4 w-4 text-white transition-transform group-hover:translate-x-1" />
-                </div>
-            </Card>
-        </div>
+            </div>
+            <div className="p-5 flex flex-col items-center justify-center bg-white mt-auto gap-1">
+                <p className={cn(
+                    "font-black uppercase tracking-tighter text-sm transition-colors",
+                    "text-primary"
+                )}>
+                    {model.name}
+                </p>
+                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{model.modelCode}</p>
+            </div>
+        </Card>
     );
 }
 
@@ -642,7 +598,7 @@ export default function ModuleDetailsPage() {
         const updateData: any = { name: data.name };
 
         if (data.image && storage) {
-            const fileName = isRange ? `cover-${Date.now()}` : `cover-${Date.now()}`;
+            const fileName = `cover-${Date.now()}`;
             const url = await uploadFileToStorage(storage, data.image, `${path}/${fileName}`);
             if (isRange) updateData.imageUrl = url;
             else updateData.coverImageUrl = url;
@@ -819,9 +775,7 @@ export default function ModuleDetailsPage() {
                                             range={selectedRange} 
                                             vendor={mainVendor as any} 
                                             onModelSelect={handleModelSelect} 
-                                            canEdit={canEdit} 
                                             selectedModelId={selectedModel?.id} 
-                                            onEdit={(item: any) => { setEditingItem(item); setIsEditOpen(true); }}
                                         />
                                     )}
                                     {view === 'bmt' && selectedModel && selectedRange && (
@@ -1045,61 +999,29 @@ function ModelsGrid({
     range, 
     vendor, 
     onModelSelect, 
-    canEdit, 
-    selectedModelId, 
-    onEdit 
+    selectedModelId
 }: { 
     range: Range; 
     vendor: Vendor; 
     onModelSelect: (model: Model) => void; 
-    canEdit: boolean; 
-    selectedModelId?: string, 
-    onEdit: (item: any) => void 
+    selectedModelId?: string
 }) {
     const firestore = useFirestore();
-    const { toast } = useToast();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
     const { data: models, isLoading: loading } = useCollection<Model>(modelsQuery);
-
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
-
-    const handleDragEnd = async (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!models || !over || active.id === over.id) return;
-
-        const oldIndex = models.findIndex(m => m.id === active.id);
-        const newIndex = models.findIndex(m => m.id === over.id);
-        const newItems = arrayMove(models, oldIndex, newIndex);
-
-        const batch = writeBatch(firestore);
-        newItems.forEach((item, idx) => {
-            batch.update(doc(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`, item.id), { order: idx });
-        });
-        await batch.commit();
-        toast({ title: "Sequence Updated" });
-    };
 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
     
     return (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={models?.map(m => m.id) || []} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
-                    {models?.map(model => (
-                        <SortableModelCard 
-                            key={model.id} 
-                            model={model} 
-                            isSelected={selectedModelId === model.id}
-                            onClick={() => onModelSelect(model)}
-                            onEdit={onEdit}
-                            canEdit={canEdit}
-                        />
-                    ))}
-                </div>
-            </SortableContext>
-        </DndContext>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 py-2 px-1">
+            {models?.map(model => (
+                <ModelCard 
+                    key={model.id} 
+                    model={model} 
+                    isSelected={selectedModelId === model.id}
+                    onClick={() => onModelSelect(model)}
+                />
+            ))}
+        </div>
     );
 }
