@@ -25,37 +25,11 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
+    // --- Organisation Tree (Highly Permissive for Prototype) ---
+
     match /organisations/{organisationId} {
-      // Allow global read for organization details
-      allow read: if isSignedIn();
-      // Allow write for any authenticated user for prototype purposes
-      allow write: if isSignedIn();
-      
-      match /templates/{templateId} {
-        allow read, write: if isSignedIn();
-        match /{allPaths=**} {
-          allow read, write: if isSignedIn();
-        }
-      }
-      
-      match /dealerFitSelections/{selectionId} {
-        allow read, write: if isSignedIn();
-      }
-
-      match /exchangeRates/{currencyCode} {
-        allow read, write: if isSignedIn();
-        match /{allPaths=**} {
-          allow read, write: if isSignedIn();
-        }
-      }
-
-      match /pricingStrategies/{vendorId} {
-        allow read, write: if isSignedIn();
-      }
-
-      match /modelOverrides/{modelId} {
-        allow read, write: if isSignedIn();
-      }
+      // Allow broad read/write for any signed-in user within the org tree for prototype speed
+      allow read, write: if isSignedIn();
       
       match /{allPaths=**} {
         allow read, write: if isSignedIn();
@@ -81,9 +55,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      // Allow creation for signup and enrollment
       allow create: if isSignedIn();
-      // Allow update for profile management
       allow update: if isSignedIn();
       allow delete: if isSignedIn();
 

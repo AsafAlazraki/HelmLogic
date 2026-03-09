@@ -12,8 +12,8 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, doc, updateDoc, deleteDoc, serverTimestamp, setDoc, orderBy } from 'firebase/firestore';
-import { initializeApp, getApp, getApps } from 'firebase/app';
+import { collection, query, where, doc, updateDoc, serverTimestamp, setDoc, orderBy } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -57,9 +57,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 
-/**
- * Robust utility to recursively strip undefined values before Firestore updates.
- */
 function sanitizeDataForFirestore(data: any): any {
   if (data === undefined) return null;
   if (data === null || typeof data !== 'object') return data;
@@ -75,12 +72,6 @@ function sanitizeDataForFirestore(data: any): any {
   }
   return sanitizedData;
 }
-
-const roleSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, { message: "Role name is required." }),
-  parent: z.preprocess((val) => val ?? '', z.string()),
-});
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -106,9 +97,7 @@ const formSchema = z.object({
   moduleMargins: z.any().optional(),
   dataWarehouseSubscriptions: z.array(z.string()).optional(),
   enabledModuleSubscriptions: z.array(z.string()).optional(),
-  moduleAssociatedVendorAccess: z.any().optional(),
   dealerFitCategories: z.array(z.string()).optional(),
-  parentOrganisationId: z.string().nullable().optional(),
 });
 
 type OrganisationFormData = z.infer<typeof formSchema>;
@@ -549,7 +538,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
         setIsSubmitting(true);
         
         try {
-            // CRITICAL: Sanitize data to strip undefined values before Firestore update
             const sanitizedValues = sanitizeDataForFirestore(values);
 
             const dataToUpdate: { [key: string]: any } = {
