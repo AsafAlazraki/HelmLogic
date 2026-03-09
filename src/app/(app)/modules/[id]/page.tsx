@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
@@ -384,7 +384,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
         <div ref={setNodeRef} style={style} className="h-full">
             <Card 
                 className={cn(
-                    "cursor-pointer transition-all rounded-[2rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                    "cursor-pointer transition-all rounded-[2.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
                     isSelected 
                         ? "border-primary shadow-2xl scale-[1.02]" 
                         : "hover:border-primary/20 hover:shadow-xl"
@@ -412,7 +412,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                     </div>
                 )}
 
-                <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden">
+                <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     {range.imageUrl ? (
                         <Image 
@@ -451,14 +451,14 @@ function ModelCard({ model, isSelected, onClick }: any) {
     return (
         <Card 
             className={cn(
-                "cursor-pointer transition-all rounded-[2rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
+                "cursor-pointer transition-all rounded-[2.5rem] overflow-hidden group border-2 hover:-translate-y-2 flex flex-col h-full bg-white relative",
                 isSelected 
                     ? "border-primary shadow-2xl scale-[1.02]" 
                     : "hover:border-primary/20 hover:shadow-xl"
             )}
             onClick={onClick}
         >
-            <div className="aspect-square bg-muted/30 relative border-b overflow-hidden">
+            <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 {model.coverImageUrl ? (
                     <Image 
@@ -476,8 +476,7 @@ function ModelCard({ model, isSelected, onClick }: any) {
             </div>
             <div className="p-8 flex flex-col items-center justify-center bg-white mt-auto gap-2">
                 <p className={cn(
-                    "font-black uppercase tracking-tighter text-xl transition-colors",
-                    "text-primary"
+                    "font-black uppercase tracking-tighter text-xl transition-colors text-primary"
                 )}>
                     {model.name}
                 </p>
@@ -950,7 +949,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     const firestore = useFirestore();
     const { toast } = useToast();
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
-    const { data: ranges, isLoading: loading } = useCollection<Range>(rangesQuery);
+    const { data: ranges, loading } = useCollection<Range>(rangesQuery);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -978,7 +977,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 py-4 px-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 py-4 px-1">
                     {ranges?.map(range => (
                         <SortableRangeCard 
                             key={range.id} 
@@ -1008,12 +1007,12 @@ function ModelsGrid({
 }) {
     const firestore = useFirestore();
     const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
-    const { data: models, isLoading: loading } = useCollection<Model>(modelsQuery);
+    const { data: models, loading } = useCollection<Model>(modelsQuery);
 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 py-4 px-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 py-4 px-1">
             {models?.map(model => (
                 <ModelCard 
                     key={model.id} 
