@@ -154,7 +154,7 @@ function PricingRow({
     const preDelGP = preDelSell - preDelCost;
 
     // Baseline Summation
-    const totalStrategicLandedEx = baseCostAudEx + (activeView === 'boats' ? (seaFreightSell + roadFreightSell + preDelSell) : 0) + handlingSell;
+    const totalStrategicLandedEx = baseCostAudEx + (activeView === 'boats' ? (seaFreightSell + roadFreightSell + preDelSell) : 0) + (isOption ? 0 : handlingSell);
     const marginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
     const totalPackageSell = getSellPrice(totalStrategicLandedEx, marginPercent);
     const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
@@ -439,61 +439,65 @@ function MatrixContent({
     return (
         <div className="flex flex-col h-full bg-white overflow-hidden">
             <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
-                            <Calculator className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">HIGHFIELD PRICING MANAGER</h2>
-                            {isFocus && (
-                                <div className="flex items-center gap-2 mt-1.5 animate-in slide-in-from-left-2 duration-300">
-                                    <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">AUDIT MODE</Badge>
-                                    <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{(vendor?.currency || 'USD')} BASE</Badge>
-                                    <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
-                                </div>
-                            )}
-                        </div>
+                {/* LEFT: Brand & Context */}
+                <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
+                        <Calculator className="h-5 w-5" />
                     </div>
-                    
-                    <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="ml-4">
+                    <div>
+                        <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">HIGHFIELD PRICING MANAGER</h2>
+                        {isFocus && (
+                            <div className="flex items-center gap-2 mt-1.5 animate-in slide-in-from-left-2 duration-300">
+                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary text-white border-none px-2 shadow-sm">AUDIT MODE</Badge>
+                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-slate-100 text-slate-600 border-2 border-slate-300">{(vendor?.currency || 'USD')} BASE</Badge>
+                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-green-50 text-green-600 border-2 border-green-200">{organisation?.gstPercentage || 10}% GST</Badge>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* RIGHT: Navigation & Actions */}
+                <div className="flex items-center gap-6">
+                    {/* Tabs moved to the right */}
+                    <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)}>
                         <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
                             <TabsTrigger value="boats" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">HULL & SKUS</TabsTrigger>
                             <TabsTrigger value="options" className="px-6 font-black uppercase text-[9px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-lg">FACTORY OPTIONS</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Button 
-                        type="button"
-                        variant="default" 
-                        size="sm" 
-                        className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg bg-primary text-white hover:bg-primary/90 transition-all border-none"
-                        onClick={() => setIsGlobalUpdateOpen(true)}
-                    >
-                        <Zap className="h-4 w-4 mr-1.5" />
-                        Global Update
-                    </Button>
-                    {!isFocus ? (
+
+                    <div className="flex items-center gap-3 border-l-2 border-slate-200 pl-6 h-10">
                         <Button 
-                            onClick={() => setIsFocusMode(true)}
-                            className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 bg-primary text-white hover:scale-105 transition-all"
-                        >
-                            <Maximize2 className="h-4 w-4 mr-1.5" />
-                            FOCUS MODE
-                        </Button>
-                    ) : (
-                        <Button 
-                            type="button" 
-                            onClick={() => setIsFocusMode(false)} 
-                            variant="outline" 
+                            type="button"
+                            variant="default" 
                             size="sm" 
-                            className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"
+                            className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg bg-primary text-white hover:bg-primary/90 transition-all border-none"
+                            onClick={() => setIsGlobalUpdateOpen(true)}
                         >
-                            <Minimize2 className="h-4 w-4 mr-1.5" />
-                            EXIT FOCUS
+                            <Zap className="h-4 w-4 mr-1.5" />
+                            Global Update
                         </Button>
-                    )}
+                        {!isFocus ? (
+                            <Button 
+                                onClick={() => setIsFocusMode(true)}
+                                className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 bg-primary text-white hover:scale-105 transition-all"
+                            >
+                                <Maximize2 className="h-4 w-4 mr-1.5" />
+                                FOCUS MODE
+                            </Button>
+                        ) : (
+                            <Button 
+                                type="button" 
+                                onClick={() => setIsFocusMode(false)} 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"
+                            >
+                                <Minimize2 className="h-4 w-4 mr-1.5" />
+                                EXIT FOCUS
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
             <PricingTable {...commonProps} />
