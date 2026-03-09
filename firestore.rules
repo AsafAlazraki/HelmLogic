@@ -38,6 +38,25 @@ service cloud.firestore {
         }
       }
       
+      match /dealerFitSelections/{selectionId} {
+        allow read, write: if isSignedIn();
+      }
+
+      match /exchangeRates/{currencyCode} {
+        allow read, write: if isSignedIn();
+        match /{allPaths=**} {
+          allow read, write: if isSignedIn();
+        }
+      }
+
+      match /pricingStrategies/{vendorId} {
+        allow read, write: if isSignedIn();
+      }
+
+      match /modelOverrides/{modelId} {
+        allow read, write: if isSignedIn();
+      }
+      
       match /{allPaths=**} {
         allow read, write: if isSignedIn();
       }
