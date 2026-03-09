@@ -5,7 +5,7 @@ import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp, orderBy, addDoc } from "firebase/firestore";
+import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp, orderBy } from "firebase/firestore";
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck } from "lucide-react";
