@@ -19,23 +19,18 @@ import {
     GripVertical, 
     Maximize2,
     Settings2,
-    FileText,
     ArrowUp,
     ArrowDown,
-    Palette,
     Layers,
-    Waves,
     Zap,
-    CircleDashed,
-    BoxSelect,
     Ship,
     ZoomIn,
     ZoomOut,
-    Columns,
     PanelBottom,
     PanelTop,
     X,
-    Anchor
+    Anchor,
+    BoxSelect
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

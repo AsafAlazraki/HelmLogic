@@ -25,24 +25,19 @@ import {
     X, 
     Mail, 
     Building, 
-    Building2, 
     Check, 
     PlusCircle, 
-    Settings2, 
-    Percent, 
-    TrendingUp, 
     Hash, 
     FileSpreadsheet, 
     ChevronRight, 
     Waves, 
-    Zap, 
-    ScrollText, 
     Pencil, 
     UserPlus, 
     Key, 
     ShieldCheck, 
     Smartphone, 
-    Phone 
+    ClipboardList, 
+    Clock 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -50,18 +45,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -71,6 +54,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn, createSlug } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useUser } from '@/firebase/auth/use-user';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Robust utility to recursively strip undefined values before Firestore updates.
@@ -90,10 +74,6 @@ function sanitizeDataForFirestore(data: any): any {
   }
   return sanitizedData;
 }
-
-const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
-    message: "Must be a valid hex color code (e.g., #RRGGBB)",
-}).optional().or(z.literal(''));
 
 const roleSchema = z.object({
   id: z.string(),
@@ -150,6 +130,31 @@ const permissionsConfig = [
     { id: 'can_access_price_book', label: 'Access Price Book' },
     { id: 'can_access_settings', label: 'Access Settings' },
 ];
+
+function ColorFormField({ name, label, description }: { name: "primaryColor" | "accentColor" | "secondaryColor", label: string, description: string }) {
+    const { control } = useFormContext();
+    return (
+        <FormField
+            control={control}
+            name={name}
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>{label}</FormLabel>
+                    <div className="flex items-center gap-2">
+                        <FormControl>
+                            <Input type="color" className="h-10 w-14 p-1 cursor-pointer" {...field} value={field.value ?? '#000000'} />
+                        </FormControl>
+                        <FormControl>
+                            <Input placeholder="#RRGGBB" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                    </div>
+                    <FormDescription className="text-[10px]">{description}</FormDescription>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+    );
+}
 
 function CreateBlueprintDialog({ isOpen, onOpenChange, orgId, allModules }: { isOpen: boolean, onOpenChange: (open: boolean) => void, orgId: string, allModules: any[] }) {
     const firestore = useFirestore();
@@ -586,8 +591,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             setIsSubmitting(false);
         }
     }
-
-    if (orgLoading) return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
 
     return (
         <>
