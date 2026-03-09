@@ -172,15 +172,15 @@ function CanvasBlock({
             onClick={(e) => { e.stopPropagation(); onSelect(); }}
             className={cn(
                 "group relative p-6 rounded-2xl transition-all cursor-pointer border-2 border-transparent",
-                isSelected ? "ring-4 ring-primary/40 bg-primary/5 shadow-2xl border-primary/20 scale-[1.01]" : "hover:bg-slate-50 hover:border-slate-100"
+                isSelected ? "ring-4 ring-primary/40 bg-primary/5 shadow-2xl border-primary/20 scale-[1.01] z-[50]" : "hover:bg-slate-50 hover:border-slate-100 z-[10]"
             )}
         >
-            <div className="absolute -left-10 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
+            <div className="absolute -left-10 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all z-[60]">
                 <Button variant="ghost" size="icon" className="h-8 w-8 bg-white shadow-xl border-2 text-slate-400 hover:text-primary rounded-xl"><GripVertical className="h-4 w-4" /></Button>
             </div>
 
             {isSelected && (
-                <div className="absolute -right-3 -top-3 flex items-center gap-2 animate-in zoom-in-95 z-20">
+                <div className="absolute -right-3 -top-3 flex items-center gap-2 animate-in zoom-in-95 z-[70]">
                     <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-2xl border-2 border-white" onClick={(e) => { e.stopPropagation(); onDelete(); }}><Trash2 className="h-4 w-4" /></Button>
                 </div>
             )}
@@ -626,7 +626,7 @@ export default function TemplateEditorPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-slate-900 text-slate-100">
-            <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-8 flex items-center justify-between shrink-0 z-50 shadow-2xl">
+            <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl px-8 flex items-center justify-between shrink-0 z-[150] shadow-2xl">
                 <div className="flex items-center gap-6">
                     <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-white transition-colors" onClick={() => router.back()}>
                         <ChevronLeft className="h-5 w-5" />
@@ -746,11 +746,11 @@ export default function TemplateEditorPage() {
                                 key={page.id} 
                                 onClick={() => setSelectedPageId(page.id)}
                                 className={cn(
-                                    "relative bg-white w-[210mm] min-h-[297mm] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] border border-slate-200 flex flex-col transition-all",
+                                    "relative bg-white w-[210mm] min-h-[297mm] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] border border-slate-200 flex flex-col transition-all z-10",
                                     selectedPageId === page.id ? "ring-4 ring-primary ring-offset-8 ring-offset-slate-950" : ""
                                 )}
                             >
-                                <div className="absolute -left-16 top-0 flex flex-col gap-3">
+                                <div className="absolute -left-16 top-0 flex flex-col gap-3 z-50">
                                     <Badge variant="secondary" className="bg-slate-800 text-white border-none font-black h-10 w-10 rounded-2xl flex items-center justify-center p-0 shadow-2xl text-lg">{page.order}</Badge>
                                     {pages.length > 1 && (
                                         <Button 
@@ -765,7 +765,7 @@ export default function TemplateEditorPage() {
                                 </div>
 
                                 <div 
-                                    className="w-full border-b border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/header px-[20mm]"
+                                    className="w-full border-b border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/header px-[20mm] z-40"
                                     style={{ height: `${page.headerHeight}mm` }}
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/header:border-primary/20 transition-all pointer-events-none" />
@@ -787,12 +787,12 @@ export default function TemplateEditorPage() {
                                             ))}
                                         </div>
                                     )}
-                                    <div className="absolute bottom-1 right-1 opacity-0 group-hover/header:opacity-100 transition-opacity">
+                                    <div className="absolute bottom-1 right-1 opacity-0 group-hover/header:opacity-100 transition-opacity z-50">
                                         <ComponentSelectorMenu onAdd={(type) => addBlock(page.id, type, 'header')} />
                                     </div>
                                 </div>
 
-                                <div className="flex-1 flex flex-col gap-8 p-[20mm] text-slate-900">
+                                <div className="flex-1 flex flex-col gap-8 p-[20mm] text-slate-900 z-30">
                                     {page.blocks.filter(b => !b.zone || b.zone === 'body').length === 0 ? (
                                         <div className="flex-1 border-2 border-dashed border-slate-100 rounded-[3rem] flex flex-col items-center justify-center text-center gap-6 opacity-20 hover:opacity-40 transition-opacity">
                                             <Layout className="h-16 w-16" />
@@ -818,7 +818,7 @@ export default function TemplateEditorPage() {
                                 </div>
 
                                 <div 
-                                    className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/footer px-[20mm]"
+                                    className="mt-auto w-full border-t border-slate-100 bg-slate-50/30 flex flex-col items-center justify-center relative group/footer px-[20mm] z-40"
                                     style={{ height: `${page.footerHeight}mm` }}
                                 >
                                     <div className="absolute inset-0 border-2 border-transparent group-hover/footer:border-primary/20 transition-all pointer-events-none" />
@@ -840,7 +840,7 @@ export default function TemplateEditorPage() {
                                             ))}
                                         </div>
                                     )}
-                                    <div className="absolute top-1 right-1 opacity-0 group-hover/footer:opacity-100 transition-opacity">
+                                    <div className="absolute top-1 right-1 opacity-0 group-hover/footer:opacity-100 transition-opacity z-50">
                                         <ComponentSelectorMenu onAdd={(type) => addBlock(page.id, type, 'footer')} />
                                     </div>
                                 </div>
@@ -849,7 +849,7 @@ export default function TemplateEditorPage() {
                     </div>
                 </main>
 
-                <aside className="w-80 border-l border-slate-800 bg-slate-900 flex flex-col shrink-0 shadow-2xl">
+                <aside className="w-80 border-l border-slate-800 bg-slate-900 flex flex-col shrink-0 shadow-2xl z-[160]">
                     <div className="p-6 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Property Matrix</h3>
                         <Settings2 className="h-3 w-3 text-slate-600" />
