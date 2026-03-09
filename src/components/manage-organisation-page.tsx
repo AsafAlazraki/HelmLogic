@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -19,7 +18,7 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { firebaseConfig } from '@/firebase/config';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp, Hash, FileSpreadsheet, ChevronRight, Waves, Zap, ScrollText, Pencil, UserPlus, Key, ShieldCheck, Smartphone, Phone } from 'lucide-react';
+import { Loader2, Trash2, Save, X, Mail, Building, Check, PlusCircle, Settings2, Percent, TrendingUp, Hash, FileSpreadsheet, ChevronRight, Waves, Zap, ScrollText, Pencil, UserPlus, Key, ShieldCheck, Smartphone, Phone, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';

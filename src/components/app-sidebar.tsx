@@ -63,6 +63,7 @@ export function AppSidebar() {
   [userProfile, organisations]);
 
   const isLoading = userLoading || profileLoading || orgsLoading;
+  const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
   useEffect(() => {
     if (isMobile) {
@@ -100,7 +101,7 @@ export function AppSidebar() {
   };
 
   const northsideMarineOrg = organisations?.find((o: any) => o.name === 'Northside Marine');
-  const currentRole = userProfile?.appRole === 'HelmLogic Admin' ? 'admin' : (userProfile?.organisationId ? 'employee' : '');
+  const currentRole = isAdmin ? 'admin' : (userProfile?.organisationId ? 'employee' : '');
 
   const checkActive = (href: string) => pathname.startsWith(href);
   const checkSubLinksActive = (subLinks: typeof navLinks[0]['subLinks']) =>
@@ -108,7 +109,6 @@ export function AppSidebar() {
 
   const filteredNavLinks = useMemo(() => {
     if (isLoading) return [];
-    const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
     const isOrgMember = !!userProfile?.organisationId;
     const roleId = userProfile?.organisationRole;
     const userPermissions = roleId && organisation?.permissions?.[roleId] ? organisation.permissions[roleId] : {};
@@ -124,7 +124,7 @@ export function AppSidebar() {
       if (link.label === 'Settings') return isOrgMember && !!userPermissions.can_access_settings;
       return true;
     });
-  }, [userProfile, isLoading, organisation]);
+  }, [userProfile, isAdmin, isLoading, organisation]);
 
   return (
     <Sidebar collapsible="icon" className="border-r-0 shadow-2xl">
@@ -202,22 +202,24 @@ export function AppSidebar() {
             <UserMenu />
           </div>
           
-          <div className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel className="px-0 h-6 font-black uppercase text-[9px] tracking-widest text-muted-foreground/60">Session Context</SidebarGroupLabel>
-            {isLoading ? (
-              <Skeleton className="h-9 w-full rounded-lg" />
-            ) : (
-              <Select onValueChange={handleRoleChange} value={currentRole}>
-                <SelectTrigger className="h-9 bg-background border-2 font-bold text-[10px] uppercase shadow-sm">
-                  <SelectValue placeholder="Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin" className="text-[10px] font-bold uppercase">System Admin</SelectItem>
-                  <SelectItem value="employee" disabled={!northsideMarineOrg} className="text-[10px] font-bold uppercase">Marine Employee</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+          {isAdmin && (
+            <div className="group-data-[collapsible=icon]:hidden animate-in fade-in slide-in-from-bottom-2">
+                <SidebarGroupLabel className="px-0 h-6 font-black uppercase text-[9px] tracking-widest text-muted-foreground/60">Session Context</SidebarGroupLabel>
+                {isLoading ? (
+                <Skeleton className="h-9 w-full rounded-lg" />
+                ) : (
+                <Select onValueChange={handleRoleChange} value={currentRole}>
+                    <SelectTrigger className="h-9 bg-background border-2 font-bold text-[10px] uppercase shadow-sm">
+                    <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="admin" className="text-[10px] font-bold uppercase">System Admin</SelectItem>
+                    <SelectItem value="employee" disabled={!northsideMarineOrg} className="text-[10px] font-bold uppercase">Marine Employee</SelectItem>
+                    </SelectContent>
+                </Select>
+                )}
+            </div>
+          )}
         </SidebarGroup>
       </SidebarFooter>
     </Sidebar>
