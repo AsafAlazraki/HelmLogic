@@ -106,7 +106,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
         <div className="flex items-center gap-3">
             <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent transition-colors group-data-[state=open]:bg-muted">
                     <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </Button>
             </CollapsibleTrigger>
@@ -760,7 +760,7 @@ function MotorConfigurationsSection() {
                         <SelectValue placeholder="Add Scenario" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-2">
-                        {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2.5 uppercase text-[9px]">{opt.label}</SelectItem>)}
+                        {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>
@@ -945,30 +945,32 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                 </CollapsibleTrigger>
                                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Factory Configurator</CardTitle>
                             </div>
-                            <div className="p-1.5 bg-muted/30 rounded-full border-2 flex items-center gap-2 max-w-[200px]">
-                                <Input 
-                                    placeholder="New Category..." 
-                                    value={newCategoryName} 
-                                    onChange={e => setNewCategoryName(e.target.value)}
-                                    className="h-7 pl-3 font-bold text-[9px] border-none bg-transparent shadow-none uppercase tracking-widest" 
-                                />
-                                <Button 
-                                    type="button" 
-                                    size="sm"
-                                    className="h-7 px-3 rounded-full font-black uppercase text-[8px] tracking-widest bg-primary"
-                                    disabled={!newCategoryName.trim()}
-                                    onClick={() => {
-                                        if(newCategoryName.trim()) {
-                                            appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: newCategoryName, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false });
-                                            setNewCategoryName('');
-                                        }
-                                    }}
-                                >
-                                    REGISTER
-                                </Button>
-                            </div>
                         </div>
                         <CollapsibleContent>
+                            <div className="p-4 border-b bg-muted/10 flex justify-end">
+                                <div className="p-1.5 bg-background rounded-full border-2 flex items-center gap-2 w-full max-w-[240px] shadow-sm">
+                                    <Input 
+                                        placeholder="Register Category..." 
+                                        value={newCategoryName} 
+                                        onChange={e => setNewCategoryName(e.target.value)}
+                                        className="h-7 pl-3 font-bold text-[9px] border-none bg-transparent shadow-none uppercase tracking-widest" 
+                                    />
+                                    <Button 
+                                        type="button" 
+                                        size="sm"
+                                        className="h-7 px-3 rounded-full font-black uppercase text-[8px] tracking-widest bg-primary text-white"
+                                        disabled={!newCategoryName.trim()}
+                                        onClick={() => {
+                                            if(newCategoryName.trim()) {
+                                                appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: newCategoryName, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false });
+                                                setNewCategoryName('');
+                                            }
+                                        }}
+                                    >
+                                        REGISTER
+                                    </Button>
+                                </div>
+                            </div>
                             <ScrollArea className="h-[600px] w-full">
                                 <div className="p-6 space-y-6">
                                     {categorizedFeatures.map(([cat, items]) => (
