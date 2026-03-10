@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from "@/firebase/auth/use-user";
@@ -13,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { HelmLogicLoading } from "@/components/helmlogic-loading";
 
 import {
   DndContext,
@@ -27,9 +27,8 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
   rectSortingStrategy,
+  useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -185,11 +184,7 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
     const loading = orgLoading || modulesLoading;
 
     if (loading) {
-        return (
-            <div className="flex h-[400px] w-full items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        );
+        return <HelmLogicLoading label="Synchronizing Workspace" />;
     }
     
     return (
@@ -316,11 +311,7 @@ export default function Dashboard() {
     }, [isLoading, isAdmin, router]);
 
     if (isLoading || isAdmin) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        );
+        return <HelmLogicLoading label="Synchronizing Session" />;
     }
     
     return (

@@ -325,26 +325,26 @@ export function HighfieldQuoteFlow({
 
                     {/* Build Summary Overlay Card */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
-                        <div className="flex items-center justify-between px-1 mb-4">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Active Build Identity</span>
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Baseline Pricing (Excl. GST)</span>
-                            </div>
-                            <Badge className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest px-3 h-6">
-                                Professional Quote
-                            </Badge>
-                        </div>
-                        <div className="flex items-center justify-between px-1">
-                            <div className="flex items-center gap-4 truncate mr-12">
-                                <Badge className="bg-primary text-white border-none font-black text-[12px] uppercase h-10 px-5 rounded-xl shadow-lg shrink-0">
+                        <div className="flex items-end justify-between px-1">
+                            {/* Left Side: Model Name */}
+                            <div className="flex items-baseline gap-4 truncate mr-12 pb-1">
+                                <span className="text-primary text-3xl font-black uppercase tracking-tighter shrink-0">
                                     {range?.name?.toUpperCase() || 'HIGHFIELD'}
-                                </Badge>
-                                <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate leading-none">
+                                </span>
+                                <h2 className="text-5xl font-black uppercase tracking-tighter text-slate-950 truncate">
                                     {displayedModelName}
                                 </h2>
                             </div>
-                            <div className="text-6xl font-black text-slate-950 tracking-tighter shrink-0 leading-none">
-                                <span className="text-primary text-2xl mr-1">$</span>{totalPrice.toLocaleString()}
+
+                            {/* Right Side: Price */}
+                            <div className="flex flex-col items-end shrink-0">
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
+                                    Package Pricing (Excl. GST)
+                                </span>
+                                <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-start">
+                                    <span className="text-primary text-3xl mr-1 mt-1">$</span>
+                                    <span>{totalPrice.toLocaleString()}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -362,26 +362,32 @@ export function HighfieldQuoteFlow({
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="p-12 space-y-10">
                             {currentStep === 1 && (
-                                <div className="space-y-12 animate-in fade-in duration-500">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out">
                                     {/* Sub-Section 1: Tube Material */}
                                     <div className="space-y-6">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">1. Tube Material</span>
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
+                                            1. Tube Material
+                                        </h3>
                                         <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
                                                 <button 
                                                     key={mat} 
                                                     onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} 
                                                     className={cn(
-                                                        "group flex flex-col items-center justify-center p-10 border-2 rounded-[2.5rem] transition-all min-h-[220px] text-center", 
+                                                        "group flex flex-col items-center justify-center p-12 border-2 rounded-[2rem] transition-all bg-white", 
                                                         selectedMaterial === mat 
-                                                            ? "bg-primary border-primary text-white shadow-2xl scale-[1.02]" 
-                                                            : "bg-white border-slate-100 hover:border-primary/40 hover:-translate-y-1"
+                                                            ? "border-primary shadow-lg ring-1 ring-primary/20" 
+                                                            : "border-slate-100 hover:border-slate-200 hover:shadow-md"
                                                     )}
                                                 >
-                                                    <span className="text-5xl font-black uppercase mb-6 tracking-tighter">{mat}</span>
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <Check className={cn("h-4 w-4", selectedMaterial === mat ? "text-white" : "text-green-500")} />
-                                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{mat === 'PVC' ? '5yr' : '10yr'} Tube Warranty</span>
+                                                    <span className="text-6xl font-black text-slate-900 tracking-tight mb-6">
+                                                        {mat}
+                                                    </span>
+                                                    <div className="flex items-center gap-3">
+                                                        <Check className={cn("h-5 w-5 stroke-[3]", selectedMaterial === mat ? "text-emerald-500" : "text-emerald-500/50")} />
+                                                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest text-left leading-tight">
+                                                            {mat === 'PVC' ? '5yr' : '10yr'} Tube<br/>Warranty
+                                                        </span>
                                                     </div>
                                                 </button>
                                             ))}
@@ -392,30 +398,34 @@ export function HighfieldQuoteFlow({
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
-                                            className="mt-12 space-y-8 animate-in slide-in-from-bottom-4 duration-700"
+                                            className="mt-12 space-y-8 animate-in fade-in duration-700 ease-in-out"
                                         >
-                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-2xl shadow-xl shadow-primary/20">
-                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white">2. Select Hull & Tube Color</span>
-                                            </div>
+                                            <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
+                                                2. Select Hull & Tube Color
+                                            </h3>
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button 
                                                         key={color.id} 
                                                         onClick={() => setSelectedColor(color.id)} 
                                                         className={cn(
-                                                            "flex flex-col border-2 rounded-[2.5rem] overflow-hidden transition-all bg-white", 
-                                                            selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-slate-100 hover:border-primary/20 hover:-translate-y-1"
+                                                            "flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white", 
+                                                            selectedColor === color.id 
+                                                                ? "border-primary shadow-lg ring-1 ring-primary/20" 
+                                                                : "border-slate-100 hover:border-slate-200 hover:shadow-md"
                                                         )}
                                                     >
                                                         <div className="relative aspect-video w-full p-6 bg-slate-50/50">
                                                             <Image src={color.imageUrl || ''} alt="Color" fill className="object-contain" unoptimized />
                                                         </div>
                                                         <div className={cn(
-                                                            "p-6 text-center border-t", 
-                                                            selectedColor === color.id ? "bg-primary text-white border-primary" : "bg-white border-slate-100"
+                                                            "p-5 text-center border-t transition-colors", 
+                                                            selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-100"
                                                         )}>
-                                                            <p className="text-[11px] font-black uppercase tracking-widest">{color.name}</p>
+                                                            <p className={cn(
+                                                                "text-xs font-bold uppercase tracking-widest",
+                                                                selectedColor === color.id ? "text-primary" : "text-slate-600"
+                                                            )}>{color.name}</p>
                                                         </div>
                                                     </button>
                                                 ))}
@@ -426,7 +436,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-12 animate-in slide-in-from-right-4 duration-500">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div key={cat} className="space-y-4">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest border-l-4 border-primary pl-3">{cat}</h3>
@@ -458,7 +468,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out">
                                     <div className="grid gap-4">
                                         {motorsLoading ? (
                                             <div className="flex flex-col items-center py-20 gap-4">

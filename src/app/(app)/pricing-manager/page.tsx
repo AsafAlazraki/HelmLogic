@@ -7,7 +7,7 @@ import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where } from "firebase/firestore";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, TrendingUp, ArrowRightLeft, Maximize2, Minimize2 } from "lucide-react";
+import { Building, Search, Coins, ChevronRight, ShieldAlert, ArrowRightLeft, Minimize2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import { HighfieldPricingWorkspace } from "@/components/highfield-pricing-worksp
 import { ExchangeRateManager } from "@/components/exchange-rate-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { HelmLogicLoading } from "@/components/helmlogic-loading";
 
 interface Vendor {
     id: string;
@@ -90,11 +91,7 @@ export default function PricingManagerPage() {
     const isLoading = userLoading || profileLoading || orgLoading || vendorsLoading;
 
     if (isLoading) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        );
+        return <HelmLogicLoading label="Synchronizing Financials" />;
     }
 
     if (!hasPermission) {

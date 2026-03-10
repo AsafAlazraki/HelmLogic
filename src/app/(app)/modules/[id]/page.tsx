@@ -60,6 +60,7 @@ import { StockList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { HelmLogicLoading } from "@/components/helmlogic-loading";
 
 import {
   DndContext,
@@ -148,59 +149,6 @@ function getEffectiveModel(master: any, override: any) {
     }
 
     return merged;
-}
-
-function BuildTransitionOverlay({ organisation, modelName }: { organisation?: Organisation | null, modelName: string }) {
-    return (
-        <div className="fixed inset-0 z-[100] bg-primary flex flex-col items-center justify-center text-white overflow-hidden animate-in fade-in duration-500">
-            <div className="absolute inset-0 z-0">
-                <div className="absolute top-20 right-20 w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-3xl animate-pulse duration-[4000ms]" />
-            </div>
-
-            <div className="relative z-10 flex flex-col items-center gap-12 max-w-2xl text-center">
-                <div className="relative h-64 w-64 bg-white/10 backdrop-blur-xl rounded-[3.5rem] p-10 border border-white/20 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700">
-                    {organisation?.primaryLogoUrl ? (
-                        <div className="relative h-full w-full">
-                            <Image 
-                                src={organisation.primaryLogoUrl} 
-                                alt={organisation.name} 
-                                fill 
-                                className="object-contain p-2 brightness-0 invert" 
-                                unoptimized
-                            />
-                        </div>
-                    ) : (
-                        <Ship className="h-full w-full text-white/40" />
-                    )}
-                </div>
-
-                <div className="space-y-4">
-                    <div className="flex items-center justify-center gap-3 text-[12px] font-black uppercase tracking-[0.5em] text-white/50 leading-none">
-                        <Zap className="h-4 w-4 fill-current" />
-                        <span>Initializing Precision Build</span>
-                    </div>
-                    <h2 className="text-6xl font-black italic uppercase tracking-tighter">
-                        {modelName || 'Loading'}
-                    </h2>
-                </div>
-
-                <div className="relative w-64 h-1.5 flex items-center justify-center bg-white/10 rounded-full overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-[shimmer_2s_infinite] w-1/2" />
-                </div>
-
-                <p className="text-[12px] font-bold uppercase tracking-widest text-white/60 animate-pulse">
-                    Synchronizing factory data sets...
-                </p>
-            </div>
-            
-            <style jsx global>{`
-                @keyframes shimmer {
-                    0% { transform: translateX(-200%); }
-                    100% { transform: translateX(200%); }
-                }
-            `}</style>
-        </div>
-    );
 }
 
 function QuoteInitializationDialog({ 
@@ -422,7 +370,7 @@ export default function ModuleDetailsPage() {
 
     const loading = slugLoading || idLoading || mainVendorLoading;
 
-    if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>;
+    if (loading) return <HelmLogicLoading label="Synchronizing Module" />;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
 
     const navTabs = [
@@ -435,7 +383,13 @@ export default function ModuleDetailsPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {(isTransitioning || masterModelLoading || overrideLoading) && <BuildTransitionOverlay organisation={currentMemberOrg as any} modelName={masterModel?.name || ''} />}
+            {(isTransitioning || masterModelLoading || overrideLoading) && (
+                <HelmLogicLoading 
+                    title={masterModel?.name || 'Loading Precision Build'} 
+                    organisation={currentMemberOrg as any} 
+                    label="Initializing Precision Build"
+                />
+            )}
 
             <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">

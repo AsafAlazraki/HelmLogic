@@ -4,11 +4,12 @@ import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import ManageOrganisationPage from "@/components/manage-organisation-page";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { useMemo } from "react";
+import { HelmLogicLoading } from "@/components/helmlogic-loading";
 
 interface UserProfile {
     organisationId?: string;
@@ -42,15 +43,7 @@ export default function ManagePage() {
     }, [userProfile, organisation, isLoading]);
 
     if (isLoading) {
-        return (
-            <div className="space-y-4">
-                <div>
-                    <h1 className="text-2xl font-semibold">Manage Organisation</h1>
-                    <BreadcrumbNav />
-                </div>
-                <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>
-            </div>
-        );
+        return <HelmLogicLoading label="Synchronizing Settings" />;
     }
 
     if (!hasPermission) {

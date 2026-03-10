@@ -5,12 +5,11 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
-import { Loader2, Ship, Zap } from 'lucide-react';
 import { useMemo } from 'react';
 import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase/auth/use-user';
-import Image from 'next/image';
+import { HelmLogicLoading } from "@/components/helmlogic-loading";
 
 /**
  * Smart merge function for model configuration.
@@ -77,6 +76,7 @@ export default function QuoteFlowPage() {
     const moduleByIdRef = useMemoFirebase(() => 
         slugOrId ? doc(firestore, 'modules', slugOrId) : null,
     [firestore, slugOrId]);
+
     const { data: moduleById, isLoading: idLoading } = useDoc<any>(moduleByIdRef);
 
     const moduleData = useMemo(() => modulesBySlug?.[0] || moduleById, [modulesBySlug, moduleById]);
@@ -110,46 +110,21 @@ export default function QuoteFlowPage() {
     [firestore, vendorId, rangeId]);
     const { data: range, isLoading: rangeLoading } = useDoc<any>(rangeRef);
 
+    const currentMemberOrg = useMemo(() => {
+        if (!orgId) return null;
+        // In this context, we just need the org basic info for the loader
+        return { name: 'Organisation', primaryLogoUrl: userProfile?.organisationLogoUrl || null };
+    }, [orgId, userProfile]);
+
     const loading = moduleLoading || modelDetailsLoading || vendorLoading || rangeLoading || profileLoading || overrideLoading;
 
     if (loading) {
         return (
-            <div className="fixed inset-0 z-[100] bg-primary flex flex-col items-center justify-center text-white overflow-hidden animate-in fade-in duration-500">
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute top-20 right-20 w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-3xl animate-pulse duration-[4000ms]" />
-                </div>
-
-                <div className="relative z-10 flex flex-col items-center gap-12 max-w-2xl text-center">
-                    <div className="relative h-64 w-64 bg-white/10 backdrop-blur-xl rounded-[3.5rem] p-10 border border-white/20 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700">
-                        <Ship className="h-full w-full text-white/40" />
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-center gap-3 text-[12px] font-black uppercase tracking-[0.5em] text-white/50 leading-none">
-                            <Zap className="h-4 w-4 fill-current" />
-                            <span>Initializing Precision Build</span>
-                        </div>
-                        <h2 className="text-6xl font-black italic uppercase tracking-tighter">
-                            {masterModel?.name || 'Loading'}
-                        </h2>
-                    </div>
-
-                    <div className="relative w-64 h-1.5 flex items-center justify-center bg-white/10 rounded-full overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-[shimmer_2s_infinite] w-1/2" />
-                    </div>
-
-                    <p className="text-[12px] font-bold uppercase tracking-widest text-white/60 animate-pulse">
-                        Synchronizing factory data sets...
-                    </p>
-                </div>
-                
-                <style jsx global>{`
-                    @keyframes shimmer {
-                        0% { transform: translateX(-200%); }
-                        100% { transform: translateX(200%); }
-                    }
-                `}</style>
-            </div>
+            <HelmLogicLoading 
+                title={masterModel?.name || 'Loading Precision Build'} 
+                organisation={currentMemberOrg as any} 
+                label="Initializing Precision Build"
+            />
         );
     }
 

@@ -7,7 +7,7 @@ import { SidebarSkeleton } from "@/components/sidebar-skeleton";
 import { useUser } from "@/firebase/auth/use-user";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { HelmLogicLoading } from "@/components/helmlogic-loading";
 import { ChatBot } from "@/components/chat-bot";
 import { cn } from "@/lib/utils";
 
@@ -31,11 +31,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
+    return <HelmLogicLoading />;
   }
 
   // Module and Blueprint pages manage their own precision scrolling
