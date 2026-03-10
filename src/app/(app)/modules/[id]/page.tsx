@@ -205,10 +205,10 @@ function QuoteInitializationDialog({
                             {rangesLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-4 gap-6">
+                                <div className="grid grid-cols-5 gap-6">
                                     {ranges?.map(range => (
                                         <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => setSelectedRange(range)}>
-                                            <div className="aspect-square bg-muted/30 relative border-b overflow-hidden p-6 flex items-center justify-center">
+                                            <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6 flex items-center justify-center">
                                                 {range.imageUrl && (
                                                     <Image 
                                                         src={range.imageUrl} 
@@ -233,7 +233,7 @@ function QuoteInitializationDialog({
                             {modelsLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-4 gap-6">
+                                <div className="grid grid-cols-5 gap-6">
                                     {models?.map(model => (
                                         <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
                                             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
@@ -292,7 +292,7 @@ export default function ModuleDetailsPage() {
 
     const currentMemberOrg = useMemo(() => 
         userProfile?.organisationId ? allOrganisations?.find((o: any) => o.id === userProfile.organisationId) : null,
-    [userProfile?.organisationId, allOrganisations]);
+  [userProfile?.organisationId, allOrganisations]);
 
     const userPermissions = useMemo(() => {
         const roleId = userProfile?.organisationRole;
@@ -513,10 +513,10 @@ export default function ModuleDetailsPage() {
                                 </div>
                                 <div>
                                     <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">Catalog Explorer</h2>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mt-1.5 flex items-center gap-2">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-primary mt-1.5 flex items-center gap-2">
                                         {mainVendor?.name || 'Highfield'} Master Inventory
                                         <Badge variant="outline" className="h-4 font-black uppercase text-[8px] bg-slate-100 border-slate-300">{(mainVendor?.currency || 'USD')} BASE</Badge>
-                                    </p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -625,7 +625,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-4 gap-6 py-4 px-1">
+                <div className="grid grid-cols-5 gap-6 py-4 px-1">
                     {ranges?.map(range => (
                         <SortableRangeCard 
                             key={range.id} 
@@ -660,7 +660,7 @@ function ModelsGrid({
     if (modelsLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-4 gap-6 py-4 px-1">
+        <div className="grid grid-cols-5 gap-6 py-4 px-1">
             {models?.map(model => (
                 <ModelCard 
                     key={model.id} 

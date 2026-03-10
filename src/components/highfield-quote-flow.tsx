@@ -355,7 +355,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
 
-                    {/* Tactical Info Section */}
+                    {/* Tactical Info Section - Relocated underneath pricing */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
                         <Button 
                             variant="ghost" 
@@ -397,7 +397,7 @@ export function HighfieldQuoteFlow({
                             {currentStep === 1 && (
                                 <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left">
                                     <div className="space-y-6">
-                                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary">
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">
                                             1. Tube Material
                                         </h3>
                                         <div className="grid grid-cols-2 gap-6">
@@ -577,7 +577,7 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
-            {/* Standard Features Dialog */}
+            {/* Standard Features Dialog - Unified Table Layout */}
             <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5">
@@ -585,13 +585,21 @@ export function HighfieldQuoteFlow({
                         <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Included Factory Equipment</DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="max-h-[60vh]">
-                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {model.standardFeatures?.map((f: string, i: number) => (
-                                <div key={i} className="flex items-start gap-3 p-3 rounded-xl border bg-slate-50">
-                                    <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                                    <span className="text-xs font-bold text-slate-700 uppercase">{f}</span>
-                                </div>
-                            ))}
+                        <div className="p-0">
+                            <Table>
+                                <TableBody>
+                                    {model.standardFeatures?.map((f: string, i: number) => (
+                                        <TableRow key={i} className="hover:bg-primary/5">
+                                            <TableCell className="w-10 pl-8">
+                                                <Check className="h-4 w-4 text-emerald-500" />
+                                            </TableCell>
+                                            <TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4 leading-relaxed">
+                                                {f}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
                     </ScrollArea>
                 </DialogContent>
@@ -610,8 +618,8 @@ export function HighfieldQuoteFlow({
                                 <TableBody>
                                     {model.specifications?.otherSpecs?.map((s: any, i: number) => (
                                         <TableRow key={i} className="hover:bg-primary/5">
-                                            <TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-8">{s.label}</TableCell>
-                                            <TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8">{s.value}</TableCell>
+                                            <TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-8 py-4">{s.label}</TableCell>
+                                            <TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4">{s.value}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
