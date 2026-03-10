@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -29,7 +30,8 @@ import {
     Info,
     Anchor,
     CircleDashed,
-    ExternalLink
+    ExternalLink,
+    ChevronDown
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -104,6 +106,7 @@ export function HighfieldQuoteFlow({
     const [currentStep, setCurrentStep] = useState(1);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const colorSectionRef = useRef<HTMLDivElement>(null);
+    const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
     // Selection State
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
@@ -254,10 +257,14 @@ export function HighfieldQuoteFlow({
                 if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
                 if (a === 'Seats') return -1; if (b === 'Seats') return 1;
                 return a.localeCompare(b);
-            });
+            }) as [string, any][];
     }, [relevantFeatures, selectedOptionIds]);
 
     const toggleOption = (id: string) => {
+        const feature = relevantFeatures.find((f: any) => f.id === id);
+        const currentCat = feature?.category || 'General Options';
+        const isCurrentlySelected = selectedOptionIds.includes(id);
+
         setSelectedOptionIds(prev => {
             const isSelected = prev.includes(id);
             if (isSelected) return prev.filter(i => i !== id);
@@ -268,6 +275,17 @@ export function HighfieldQuoteFlow({
             }
             return next;
         });
+
+        // Auto-scroll logic for Factory Options (Step 2)
+        if (currentStep === 2 && !isCurrentlySelected) {
+            const catIndex = groupedOptions.findIndex(([name]) => name === currentCat);
+            if (catIndex !== -1 && catIndex < groupedOptions.length - 1) {
+                const nextCatName = groupedOptions[catIndex + 1][0];
+                setTimeout(() => {
+                    categoryRefs.current[nextCatName]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 150);
+            }
+        }
     };
 
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
@@ -466,7 +484,11 @@ export function HighfieldQuoteFlow({
                             {currentStep === 2 && (
                                 <div className="space-y-16 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
-                                        <div key={cat} className="space-y-8">
+                                        <div 
+                                            key={cat} 
+                                            ref={el => { categoryRefs.current[cat] = el; }}
+                                            className="space-y-8 scroll-mt-10"
+                                        >
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
@@ -498,7 +520,7 @@ export function HighfieldQuoteFlow({
                                                             <p className={cn(
                                                                 "text-[10px] font-black",
                                                                 selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
-                                                            )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            )} text-sm>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
                                                     </button>
                                                 ))}
