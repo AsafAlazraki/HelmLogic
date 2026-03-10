@@ -30,7 +30,9 @@ import {
     Anchor,
     CircleDashed,
     ExternalLink,
-    ChevronDown
+    ChevronDown,
+    Activity,
+    CreditCard
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -52,7 +54,7 @@ import {
     DialogTitle,
     DialogDescription,
     DialogClose
-} from "@/components/ui/dialog";
+} from "@/dialog";
 import {
     Table,
     TableBody,
@@ -60,7 +62,7 @@ import {
     TableRow,
     TableHead,
     TableHeader
-} from "@/components/ui/table";
+} from "@/table";
 
 interface Variant {
     id: string;
@@ -207,11 +209,6 @@ export function HighfieldQuoteFlow({
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
     }, [selectedOptionIds, model.optionalFeatures]);
 
-    const motorAccessories = useMemo(() => {
-        if (!selectedMotor?.masterAccessories) return [];
-        return selectedMotor.masterAccessories;
-    }, [selectedMotor]);
-
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
         selectedOptionIds.forEach(id => {
@@ -235,27 +232,18 @@ export function HighfieldQuoteFlow({
     const groupedOptions = useMemo(() => {
         const features = [...relevantFeatures];
         
-        // Inject motor accessories if step 2
-        if (selectedMotor?.masterAccessories) {
-            selectedMotor.masterAccessories.forEach((acc: any) => {
-                if (!features.some(f => f.name === acc.name)) {
-                    features.push({ ...acc, isFromMotor: true });
-                }
-            });
-        }
-
-        const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
-        const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
-        const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
-        const constraintConsole = selectedConsole || (availableConsoles.length === 1 ? availableConsoles[0] : null);
-
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
-            // Seat visibility rule
+            // Seat visibility rule: Only show if linked console is selected
             if (cat === 'Seats') {
-                if (constraintConsole) {
-                    if (!constraintConsole.associatedSeatId || opt.id !== constraintConsole.associatedSeatId) return acc;
+                const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
+                const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
+                const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
+                if (selectedConsole && selectedConsole.associatedSeatId) {
+                    if (opt.id !== selectedConsole.associatedSeatId) return acc;
+                } else if (!hasConsoleSelected) {
+                    return acc;
                 }
             }
 
@@ -275,7 +263,7 @@ export function HighfieldQuoteFlow({
                 if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
                 return a.localeCompare(b);
             }) as [string, any][];
-    }, [relevantFeatures, selectedOptionIds, selectedMotor, hasConsoleSelected]);
+    }, [relevantFeatures, selectedOptionIds, hasConsoleSelected]);
 
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
@@ -317,28 +305,25 @@ export function HighfieldQuoteFlow({
     const displayedModelName = isOpenClassification ? `${model.name} (OPEN)` : model.name;
 
     const buildPreviewSlide = useMemo(() => {
-        if (selectedOptionsData.length === 0) return null;
+        const imagedOptions = selectedOptionsData.filter(f => f.imageUrl);
+        if (imagedOptions.length === 0) return null;
 
-        const consoleOpt = selectedOptionsData.find((f: any) => f.category === 'Consoles');
-        const seatOpt = selectedOptionsData.find((f: any) => f.category === 'Seats');
-        const otherOpts = selectedOptionsData.filter((f: any) => f.category !== 'Consoles' && f.category !== 'Seats');
+        const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
+        const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
+        const otherOpts = imagedOptions.filter((f: any) => f.category !== 'Consoles' && f.category !== 'Seats');
 
-        if (selectedOptionsData.length <= 2 && (consoleOpt || seatOpt) && otherOpts.length === 0) {
+        if (imagedOptions.length <= 2 && (consoleOpt || seatOpt) && otherOpts.length === 0) {
             return (
                 <div className="h-full w-full flex items-center bg-white">
                     {consoleOpt && (
                         <div className="flex-1 h-full relative">
-                            {consoleOpt.imageUrl && (
-                                <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
-                            )}
+                            <Image src={consoleOpt.imageUrl!} alt="Console" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
                             <div className="absolute bottom-6 left-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Console</div>
                         </div>
                     )}
                     {seatOpt && (
                         <div className={cn("flex-1 h-full relative", consoleOpt && "border-l-2 border-slate-100")}>
-                            {seatOpt.imageUrl && (
-                                <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
-                            )}
+                            <Image src={seatOpt.imageUrl!} alt="Seat" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
                             <div className="absolute bottom-6 right-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Paired Seating</div>
                         </div>
                     )}
@@ -346,10 +331,7 @@ export function HighfieldQuoteFlow({
             );
         }
 
-        const gridItems = [];
-        if (consoleOpt) gridItems.push(consoleOpt);
-        if (seatOpt) gridItems.push(seatOpt);
-        gridItems.push(...otherOpts);
+        const gridItems = imagedOptions;
 
         return (
             <div className="h-full w-full grid grid-cols-2 grid-rows-2 bg-white">
@@ -361,9 +343,7 @@ export function HighfieldQuoteFlow({
                         i === 2 && "border-r",
                         "hover:bg-slate-50"
                     )}>
-                        {item.imageUrl && (
-                            <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-6 mix-blend-multiply" unoptimized />
-                        )}
+                        <Image src={item.imageUrl!} alt={item.name} fill className="object-contain p-6 mix-blend-multiply" unoptimized />
                         <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/5 rounded-md text-[7px] font-black uppercase tracking-tighter text-slate-400">
                             {item.name}
                         </div>
@@ -386,11 +366,19 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide]);
 
+    // Automated Gallery Inspection (Auto-Slide to build summary)
     useEffect(() => {
-        if (!api || selectedOptionIds.length === 0) return;
-        const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
-        if (buildSlideIndex !== -1) api.scrollTo(buildSlideIndex);
-    }, [selectedOptionIds.length, api, carouselSlides]);
+        if (!api || !buildPreviewSlide) return;
+        
+        const timer = setTimeout(() => {
+            const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
+            if (buildSlideIndex !== -1) {
+                api.scrollTo(buildSlideIndex);
+            }
+        }, 150);
+        
+        return () => clearTimeout(timer);
+    }, [api, buildPreviewSlide, carouselSlides]);
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
@@ -481,7 +469,7 @@ export function HighfieldQuoteFlow({
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-12 pb-12 space-y-8">
                             {currentStep === 1 && (
-                                <div className="space-y-10 animate-in fade-in duration-700 ease-in-out text-left">
+                                <div className="space-y-10 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     <div className="space-y-6">
                                         <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
@@ -489,7 +477,7 @@ export function HighfieldQuoteFlow({
                                         </div>
                                         <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
-                                                <button key={mat} onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} className={cn("group flex flex-col items-center justify-center p-12 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent h-48", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
+                                                <button key={mat} onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} className={cn("group flex flex-col items-center justify-center p-12 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent h-40", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                     <span className={cn("text-sm font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat}</span>
                                                 </button>
                                             ))}
@@ -515,7 +503,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-16 animate-in fade-in duration-700 ease-in-out text-left">
+                                <div className="space-y-16 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-8 scroll-mt-10">
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
@@ -526,7 +514,10 @@ export function HighfieldQuoteFlow({
                                                 {opts.map((opt: any) => (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply p-4 transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
-                                                        <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50"><p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p><p className={cn("text-[10px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>
+                                                        <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
+                                                            <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                            <p className={cn("text-[10px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        </div>
                                                     </button>
                                                 ))}
                                             </div>
@@ -536,10 +527,10 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out text-left">
+                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full mb-8">
                                         <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Outboard Performance Configuration</h3>
+                                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Outboard Performance Selection</h3>
                                     </div>
                                     {motorsLoading ? <div className="flex flex-col items-center py-20 gap-4"><Loader2 className="animate-spin h-12 w-12 text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
                                         <div className="grid grid-cols-2 gap-6">
@@ -548,7 +539,12 @@ export function HighfieldQuoteFlow({
                                                 return (
                                                     <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">{motorImgUrl ? <Image src={motorImgUrl} alt="Motor" fill className="object-contain mix-blend-multiply p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>}</div>
-                                                        <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50"><p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>{m.vendorName || 'YAMAHA'} - {m['Model Name']}</p><p className={cn("text-[9px] font-black uppercase tracking-widest", selectedMotor?.id === m.id ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}</p></div>
+                                                        <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
+                                                            <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>
+                                                                {m.vendorName || 'YAMAHA'} - {m['Model Name']}
+                                                            </p>
+                                                            <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedMotor?.id === m.id ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        </div>
                                                     </button>
                                                 );
                                             })}
@@ -556,12 +552,92 @@ export function HighfieldQuoteFlow({
                                     )}
                                 </div>
                             )}
+
+                            {currentStep === 6 && (
+                                <div className="space-y-10 animate-in fade-in duration-700 text-left mt-4">
+                                    <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
+                                        <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3>
+                                    </div>
+                                    
+                                    <div className="space-y-6">
+                                        <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
+                                            <CardHeader className="bg-muted/30 border-b p-6">
+                                                <div className="flex items-center gap-3">
+                                                    <Ship className="h-5 w-5 text-primary" />
+                                                    <CardTitle className="text-sm font-black uppercase tracking-widest">Base Vessel</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-6 space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="space-y-1">
+                                                        <p className="font-black text-lg uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
+                                                    </div>
+                                                    <p className="font-black text-primary italic text-lg">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+
+                                        {selectedOptionsData.length > 0 && (
+                                            <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <Package className="h-5 w-5 text-primary" />
+                                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Selected Factory Options</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y">
+                                                        {selectedOptionsData.map((opt: any) => (
+                                                            <div key={opt.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                                                                        <Check className="h-4 w-4 text-emerald-500" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs font-black uppercase tracking-tight">{opt.name}</p>
+                                                                        <Badge variant="outline" className="text-[8px] font-black h-4 px-1">{opt.category || 'Standard'}</Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-xs font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {selectedMotor && (
+                                            <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <Activity className="h-5 w-5 text-primary" />
+                                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Powertrain Identity</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-6">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="space-y-1">
+                                                            <p className="font-black text-lg uppercase tracking-tight text-slate-900">{selectedMotor.vendorName || 'YAMAHA'} - {selectedMotor['Model Name']}</p>
+                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance Series</p>
+                                                        </div>
+                                                        <p className="font-black text-primary italic text-lg">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </ScrollArea>
 
                     <div className="p-12 pt-6 bg-slate-50/80 backdrop-blur-xl border-t shrink-0 flex gap-4">
                         {currentStep > 1 && <Button variant="outline" className="h-16 w-24 rounded-2xl border-2 border-slate-200 hover:bg-slate-100 transition-colors shadow-sm" onClick={prevStep}><ChevronLeft className="h-6 w-6" /></Button>}
-                        <Button size="lg" className="flex-1 h-16 rounded-2xl font-black uppercase text-sm shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary text-white" onClick={nextStep}>{currentStep === STEPS.length ? 'Finalize Quote' : `Next: ${STEPS[currentStep].label}`}</Button>
+                        <Button size="lg" className="flex-1 h-16 rounded-2xl font-black uppercase text-sm shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary text-white" onClick={nextStep}>
+                            {currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}
+                        </Button>
                     </div>
                 </div>
             </div>
