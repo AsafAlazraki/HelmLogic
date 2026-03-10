@@ -29,7 +29,8 @@ import {
     Maximize2,
     Info,
     Anchor,
-    CircleDashed
+    CircleDashed,
+    ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -48,13 +49,15 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
+    DialogClose
 } from "@/components/ui/dialog";
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
+    Table,
+    TableBody,
+    TableCell,
+    TableRow,
+} from "@/components/ui/table";
 
 interface Variant {
     id: string;
@@ -108,6 +111,11 @@ export function HighfieldQuoteFlow({
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
+    // Modal State
+    const [showFeatures, setShowFeatures] = useState(false);
+    const [showSpecs, setShowSpecs] = useState(false);
+    const [showDocs, setShowDocs] = useState(false);
+
     const variantsQuery = useMemoFirebase(() => 
         query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
     [firestore, vendor.id, rangeId, model.id]);
@@ -147,7 +155,6 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model]);
 
-    // Scroll to Top on Step Change
     useEffect(() => {
         if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -155,7 +162,6 @@ export function HighfieldQuoteFlow({
         }
     }, [currentStep]);
 
-    // Scroll to Section 2 when Material selected
     useEffect(() => {
         if (selectedMaterial && colorSectionRef.current) {
             setTimeout(() => {
@@ -221,31 +227,18 @@ export function HighfieldQuoteFlow({
 
     const groupedOptions = useMemo(() => {
         const features = relevantFeatures;
-
-        // Identify consoles available for this variant
         const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
-
-        // Identify if any console is currently selected
         const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
         const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
-
-        // Determine the filtering constraint for seats
-        // If a console is selected, use it.
-        // If not selected but exactly one appears in the list, use that one to filter seats.
         const constraintConsole = selectedConsole || (availableConsoles.length === 1 ? availableConsoles[0] : null);
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
-            
-            // STRICT SEAT FILTERING: 
-            // We should only be showing the one seat that is tied to the console that appears.
             if (cat === 'Seats') {
                 if (constraintConsole) {
-                    // Only show the specific seat tied to the relevant console
                     if (!constraintConsole.associatedSeatId || opt.id !== constraintConsole.associatedSeatId) return acc;
                 }
             }
-            
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;
@@ -316,7 +309,7 @@ export function HighfieldQuoteFlow({
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
                 {/* Left Side: Visual Preview Area */}
                 <div className="w-full lg:w-7/12 relative flex flex-col p-12 bg-slate-50/50 overflow-hidden">
-                    <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
+                    <div className="relative flex-1 w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden group border-none">
                         <Carousel className="w-full h-full" opts={{ loop: true }}>
                             <CarouselContent className="h-full">
                                 {carouselImages.map((url, idx) => (
@@ -338,30 +331,46 @@ export function HighfieldQuoteFlow({
                         </Carousel>
                     </div>
 
+                    {/* Tactical Info Section */}
+                    <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all"
+                            onClick={() => setShowFeatures(true)}
+                        >
+                            <ListChecks className="h-4 w-4 mr-2" /> Standard Features
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all"
+                            onClick={() => setShowSpecs(true)}
+                        >
+                            <ClipboardList className="h-4 w-4 mr-2" /> General Specifications
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all"
+                            onClick={() => setShowDocs(true)}
+                        >
+                            <FileText className="h-4 w-4 mr-2" /> Documents
+                        </Button>
+                    </div>
+
                     {/* Build Summary Overlay Card */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
                         <div className="flex items-end justify-between px-1">
-                            {/* Left Side: Model Name with Range Badge */}
-                            <div className="flex flex-col gap-4 min-w-0 mr-12">
-                                <div className="flex items-center gap-4">
-                                    <Badge className="h-14 px-6 text-xl font-black uppercase tracking-widest bg-primary text-white border-none shrink-0 rounded-2xl shadow-xl">
-                                        {range?.name?.toUpperCase() || 'HIGHFIELD'}
-                                    </Badge>
-                                    <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate">
-                                        {displayedModelName}
-                                    </h2>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl border-2 border-transparent hover:border-primary/10 transition-all">
-                                        <ListChecks className="h-3.5 w-3.5 mr-2" /> Standard Features
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl border-2 border-transparent hover:border-primary/10 transition-all">
-                                        <ClipboardList className="h-3.5 w-3.5 mr-2" /> General Specifications
-                                    </Button>
-                                </div>
+                            <div className="flex items-center gap-4 truncate mr-12 pb-1">
+                                <Badge className="h-14 px-6 text-xl font-black uppercase tracking-widest bg-primary text-white border-none shrink-0 rounded-2xl shadow-xl">
+                                    {range?.name?.toUpperCase() || 'HIGHFIELD'}
+                                </Badge>
+                                <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate">
+                                    {displayedModelName}
+                                </h2>
                             </div>
 
-                            {/* Right Side: Price */}
                             <div className="flex flex-col items-end shrink-0">
                                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
                                     Package Pricing (Excl. GST)
@@ -377,7 +386,6 @@ export function HighfieldQuoteFlow({
 
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full border-l border-slate-100 flex flex-col overflow-hidden bg-slate-50/20">
-                    {/* Persistent Workspace Header - Shrunk and Left Aligned */}
                     <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b shrink-0 text-left">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label}
@@ -388,7 +396,6 @@ export function HighfieldQuoteFlow({
                         <div className="p-12 space-y-10">
                             {currentStep === 1 && (
                                 <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left">
-                                    {/* Sub-Section 1: Tube Material */}
                                     <div className="space-y-6">
                                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary">
                                             1. Tube Material
@@ -399,7 +406,7 @@ export function HighfieldQuoteFlow({
                                                     key={mat} 
                                                     onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} 
                                                     className={cn(
-                                                        "group flex flex-col items-start p-8 border-2 rounded-[2rem] transition-all bg-white", 
+                                                        "group flex flex-col items-start justify-start p-10 border-2 rounded-[2rem] transition-all bg-white", 
                                                         selectedMaterial === mat 
                                                             ? "border-primary shadow-lg ring-1 ring-primary/20" 
                                                             : "border-slate-100 hover:border-slate-200 hover:shadow-md"
@@ -419,7 +426,6 @@ export function HighfieldQuoteFlow({
                                         </div>
                                     </div>
 
-                                    {/* Sub-Section 2: Color Logic */}
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
@@ -567,6 +573,82 @@ export function HighfieldQuoteFlow({
                 <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12">
                     <div className="relative w-full h-full flex items-center justify-center">
                         {lightboxUrl && <Image src={lightboxUrl} alt="Inspection" fill className="object-contain p-12" unoptimized />}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Standard Features Dialog */}
+            <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
+                <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 border-b bg-muted/5">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Standard Features</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Included Factory Equipment</DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {model.standardFeatures?.map((f: string, i: number) => (
+                                <div key={i} className="flex items-start gap-3 p-3 rounded-xl border bg-slate-50">
+                                    <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                    <span className="text-xs font-bold text-slate-700 uppercase">{f}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
+
+            {/* General Specs Dialog */}
+            <Dialog open={showSpecs} onOpenChange={setShowSpecs}>
+                <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 border-b bg-muted/5">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">General Specifications</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Engineering & Technical Data</DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                        <div className="p-0">
+                            <Table>
+                                <TableBody>
+                                    {model.specifications?.otherSpecs?.map((s: any, i: number) => (
+                                        <TableRow key={i} className="hover:bg-primary/5">
+                                            <TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-8">{s.label}</TableCell>
+                                            <TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8">{s.value}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
+
+            {/* Documents Dialog */}
+            <Dialog open={showDocs} onOpenChange={setShowDocs}>
+                <DialogContent className="sm:max-w-md rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 border-b bg-muted/5">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Technical Assets</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Factory Manuals & Schematics</DialogDescription>
+                    </DialogHeader>
+                    <div className="p-8 space-y-3">
+                        {model.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
+                            <a 
+                                key={i} 
+                                href={doc.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between p-4 rounded-2xl border-2 hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <FileText className="h-5 w-5 text-primary/40 group-hover:text-primary transition-colors" />
+                                    <span className="text-xs font-black uppercase tracking-tight">{doc.name}</span>
+                                </div>
+                                <ExternalLink className="h-4 w-4 opacity-20 group-hover:opacity-100 transition-opacity" />
+                            </a>
+                        )) : (
+                            <div className="py-12 text-center opacity-20 flex flex-col items-center gap-3">
+                                <FileText className="h-12 w-12" />
+                                <p className="text-[10px] font-black uppercase tracking-widest">No Documents Linked</p>
+                            </div>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
