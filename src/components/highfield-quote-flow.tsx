@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -276,7 +275,6 @@ export function HighfieldQuoteFlow({
             return next;
         });
 
-        // Auto-scroll logic for Factory Options (Step 2)
         if (currentStep === 2 && !isCurrentlySelected) {
             const catIndex = groupedOptions.findIndex(([name]) => name === currentCat);
             if (catIndex !== -1 && catIndex < groupedOptions.length - 1) {
@@ -519,8 +517,9 @@ export function HighfieldQuoteFlow({
                                                             )}>{opt.name}</p>
                                                             <p className={cn(
                                                                 "text-[10px] font-black",
-                                                                selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
-                                                            )} text-sm>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400",
+                                                                "text-sm"
+                                                            )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
                                                     </button>
                                                 ))}
