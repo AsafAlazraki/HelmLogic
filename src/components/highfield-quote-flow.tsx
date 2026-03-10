@@ -230,12 +230,15 @@ export function HighfieldQuoteFlow({
         const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
 
         // Determine the filtering constraint for seats
+        // If a console is selected, use it.
+        // If not selected but exactly one appears in the list, use that one to filter seats.
         const constraintConsole = selectedConsole || (availableConsoles.length === 1 ? availableConsoles[0] : null);
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
             // STRICT SEAT FILTERING: 
+            // We should only be showing the one seat that is tied to the console that appears.
             if (cat === 'Seats') {
                 if (constraintConsole) {
                     // Only show the specific seat tied to the relevant console
@@ -374,7 +377,7 @@ export function HighfieldQuoteFlow({
 
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full border-l border-slate-100 flex flex-col overflow-hidden bg-slate-50/20">
-                    {/* Persistent Workspace Header */}
+                    {/* Persistent Workspace Header - Shrunk and Left Aligned */}
                     <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b shrink-0 text-left">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label}
@@ -422,9 +425,12 @@ export function HighfieldQuoteFlow({
                                             ref={colorSectionRef}
                                             className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-40"
                                         >
-                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary">
-                                                2. Select Hull & Tube Color
-                                            </h3>
+                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
+                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
+                                                    2. Select Hull & Tube Color
+                                                </h3>
+                                            </div>
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button 
@@ -469,7 +475,7 @@ export function HighfieldQuoteFlow({
                                                         onClick={() => toggleOption(opt.id)} 
                                                         className={cn(
                                                             "flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all", 
-                                                            selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-slate-100 hover:border-primary/20"
+                                                            selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-none hover:bg-primary/5"
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-4">
@@ -503,7 +509,7 @@ export function HighfieldQuoteFlow({
                                                 onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} 
                                                 className={cn(
                                                     "flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all", 
-                                                    selectedMotor?.id === m.id ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/20"
+                                                    selectedMotor?.id === m.id ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-none hover:bg-primary/5"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-6">
