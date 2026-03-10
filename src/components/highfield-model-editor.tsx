@@ -9,7 +9,7 @@ import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, getDocs, writeBatch, doc, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -180,7 +180,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-10 h-12 font-bold bg-background border-2 rounded-xl"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -481,7 +481,7 @@ function OptionalFeatureItem({
     );
 }
 
-function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
+export function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
     const firestore = useFirestore();
     const variantsQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')), [firestore, vendorId, rangeId, model.id]);
     const { data: variants, isLoading: variantsLoading } = useCollection<any>(variantsQuery);
@@ -527,7 +527,7 @@ function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: s
     );
 }
 
-function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
+export function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
     const { control, watch, setValue } = useFormContext<ModelFormData>();
     const storage = useStorage();
     const [isCoverUploading, setIsCoverUploading] = useState(false);
@@ -601,7 +601,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
     );
 }
 
-function DocumentsSection() {
+export function DocumentsSection() {
     const { control } = useFormContext<ModelFormData>();
     const { fields, append, remove } = useFieldArray({ control, name: "documents" });
     const storage = useStorage();
@@ -913,7 +913,7 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
                         </div>
                     ))}
                 </CardContent>
-            </CollapsibleContent>
+            </Collapsible>
         </Collapsible>
     );
 }
@@ -933,7 +933,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
         const features = optionalFeatureFields.map((field, idx) => ({ field, idx, data: watchedOptionalFeatures[idx] }));
         const groups: Record<string, typeof features> = {};
         features.forEach(item => { 
-            const cat = item.data?.category || 'Other Options'; 
+            const cat = item.data?.category || 'General Options'; 
             if (!groups[cat]) groups[cat] = []; 
             groups[cat].push(item); 
         });
@@ -941,7 +941,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
         return Object.entries(groups).sort(([a], [b]) => {
             if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
             if (a === 'Seats') return -1; if (b === 'Seats') return 1;
-            if (a === 'Other Options') return 1; if (b === 'Other Options') return -1;
+            if (a === 'General Options') return 1; if (b === 'General Options') return -1;
             return a.localeCompare(b);
         });
     }, [optionalFeatureFields, watchedOptionalFeatures]);
@@ -957,35 +957,35 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                 <div className="lg:col-span-3 space-y-12 min-w-0">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     
-                    {/* Integrated Factory Configurator Card */}
-                    <Card className="rounded-[2.5rem] border-2 bg-card shadow-sm overflow-hidden flex flex-col">
-                        <CardHeader className="p-8 border-b bg-muted/5">
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-2 text-primary">
-                                        <PlusCircle className="h-4 w-4" />
-                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">New Factory Category</h3>
-                                    </div>
-                                </div>
-                                <div className="p-2 bg-white rounded-full border-2 shadow-inner flex items-center gap-3">
-                                    <div className="relative flex-1">
-                                        <FolderPlus className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                                        <Input 
-                                            placeholder="e.g. Navigation Packs..." 
-                                            value={newCategoryName} 
-                                            onChange={e => setNewCategoryName(e.target.value)}
-                                            className="h-12 pl-12 font-bold text-sm border-none shadow-none focus-visible:ring-0 bg-transparent" 
-                                        />
-                                    </div>
+                    {/* Unified Factory Configurator Card with Double Collapsibility */}
+                    <Collapsible className="group/config rounded-[2.5rem] border-2 bg-card shadow-sm overflow-hidden flex flex-col" defaultOpen>
+                        <div className="flex items-center justify-between py-4 px-8 border-b bg-muted/5 select-none">
+                            <div className="flex items-center gap-4">
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border shadow-sm hover:bg-primary/10 hover:text-primary transition-all group-data-[state=open]/config:bg-muted">
+                                        <ChevronDown className="h-5 w-5 transition-transform duration-300 group-data-[state=open]/config:rotate-180" />
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Factory Configurator</CardTitle>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="p-1.5 bg-white rounded-full border-2 shadow-inner flex items-center gap-2 max-w-[240px]">
+                                    <Input 
+                                        placeholder="New Category..." 
+                                        value={newCategoryName} 
+                                        onChange={e => setNewCategoryName(e.target.value)}
+                                        className="h-8 pl-4 font-bold text-[10px] border-none shadow-none focus-visible:ring-0 bg-transparent uppercase tracking-wider" 
+                                    />
                                     <Button 
                                         type="button" 
-                                        className="h-10 px-8 rounded-full font-black uppercase text-[10px] shadow-lg bg-primary text-white hover:scale-105 transition-transform"
+                                        size="sm"
+                                        className="h-8 px-4 rounded-full font-black uppercase text-[8px] tracking-widest bg-primary text-white"
                                         disabled={!newCategoryName.trim()}
                                         onClick={() => {
                                             if(newCategoryName.trim()) {
                                                 appendOptionalFeature({ 
                                                     id: `feat-${Date.now()}`, 
-                                                    name: 'New Option', 
+                                                    name: '', 
                                                     category: newCategoryName, 
                                                     imageUrl: null, 
                                                     code: '', 
@@ -1002,33 +1002,31 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                     </Button>
                                 </div>
                             </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
+                        </div>
+                        <CollapsibleContent>
                             <ScrollArea className="h-[800px] w-full">
-                                <div className="p-8 space-y-12">
+                                <div className="p-8 space-y-8">
                                     {categorizedFeatures.map(([cat, items]) => (
-                                        <Collapsible key={cat} defaultOpen className="space-y-6">
-                                            <div className="flex items-center justify-between border-b-4 border-primary/10 pb-4 px-2 group/cat">
-                                                <div className="flex items-center gap-4">
+                                        <Collapsible key={cat} defaultOpen className="space-y-4">
+                                            <div className="flex items-center justify-between border-b-2 border-primary/10 pb-3 px-2">
+                                                <div className="flex items-center gap-3">
                                                     <CollapsibleTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border shadow-sm hover:bg-primary/10 hover:text-primary transition-all group-data-[state=open]:bg-muted">
-                                                            <ChevronDown className="h-5 w-5 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-primary/5 transition-all group-data-[state=open]:bg-muted">
+                                                            <ChevronDown className="h-4 w-4 transition-transform duration-300 group-data-[state=open]:rotate-180" />
                                                         </Button>
                                                     </CollapsibleTrigger>
-                                                    <div className="flex items-center gap-3">
-                                                        <Badge className="bg-primary text-white border-none font-black text-[10px] tracking-tighter h-6 px-3">{items.length} ITEMS</Badge>
-                                                        <h3 className="font-black text-2xl uppercase italic tracking-tighter text-slate-900">{cat}</h3>
-                                                    </div>
+                                                    <span className="font-black text-[10px] uppercase tracking-[0.15em] text-slate-900 italic">{cat}</span>
+                                                    <Badge className="bg-primary/10 text-primary border-none font-black text-[8px] tracking-tighter h-4 px-1.5">{items.length}</Badge>
                                                 </div>
                                                 <Button 
                                                     type="button" 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-10 w-10 rounded-full bg-primary/10 text-primary shadow-sm hover:scale-110 transition-transform" 
+                                                    className="h-7 w-7 rounded-full bg-primary/5 text-primary shadow-sm" 
                                                     onClick={() => appendOptionalFeature({ 
                                                         id: `feat-${Date.now()}`, 
                                                         name: '', 
-                                                        category: cat === 'Other Options' ? null : cat, 
+                                                        category: cat === 'General Options' ? null : cat, 
                                                         imageUrl: null, 
                                                         code: '', 
                                                         color: '', 
@@ -1037,17 +1035,17 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                         isStandard: false 
                                                     })}
                                                 >
-                                                    <Plus className="h-5 w-5" />
+                                                    <Plus className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                             <CollapsibleContent>
-                                                <div className="grid gap-4 animate-in slide-in-from-top-2 duration-300">
+                                                <div className="grid gap-3 animate-in slide-in-from-top-1 duration-200">
                                                     {items.map(item => (
                                                         <OptionalFeatureItem 
                                                             key={item.field.id} 
                                                             index={item.idx} 
                                                             remove={removeOptionalFeature} 
-                                                            categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'Other Options')} 
+                                                            categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options')} 
                                                             variants={variants} 
                                                             allFeatures={watchedOptionalFeatures} 
                                                         />
@@ -1056,16 +1054,10 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                             </CollapsibleContent>
                                         </Collapsible>
                                     ))}
-                                    {categorizedFeatures.length === 0 && (
-                                        <div className="py-20 text-center flex flex-col items-center gap-4 opacity-20">
-                                            <Layout className="h-12 w-12" />
-                                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">No factory options defined.</p>
-                                        </div>
-                                    )}
                                 </div>
                             </ScrollArea>
-                        </CardContent>
-                    </Card>
+                        </CollapsibleContent>
+                    </Collapsible>
 
                     <DocumentsSection />
                     <RulesSection model={model} modelCode={modelCode} />

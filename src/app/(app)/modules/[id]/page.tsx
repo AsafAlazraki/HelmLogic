@@ -56,7 +56,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, createSlug } from '@/lib/utils';
-import { StockList } from '@/components/stock-list';
+import { StockList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
 import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
@@ -150,21 +150,21 @@ function getEffectiveModel(master: any, override: any) {
 
     const merged = { ...master, ...override };
     
-    // Arrays require special merge logic to avoid clobbering new master items
+    // ID-based merge for optional features to prevent data masking
     if (master.optionalFeatures && Array.isArray(master.optionalFeatures)) {
         const masterFeatures = master.optionalFeatures;
         const overrideFeatures = override.optionalFeatures || [];
         
         const overrideMap = new Map(overrideFeatures.map((f: any) => [f.id, f]));
         
-        // Preserve all Master features, but apply overrides where they exist
+        // Preserve all Master features, applying overrides where they match IDs
         const mergedFeatures = masterFeatures.map((mf: any) => {
             const of = overrideMap.get(mf.id);
             if (of) return { ...mf, ...of };
             return mf;
         });
 
-        // Add any features that exist ONLY in the override (custom org options)
+        // Append features that exist ONLY in the override (custom additions)
         const masterIds = new Set(masterFeatures.map((f: any) => f.id));
         overrideFeatures.forEach((of: any) => {
             if (!masterIds.has(of.id)) {
@@ -692,7 +692,7 @@ export default function ModuleDetailsPage() {
         return [...rawTemplates].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     }, [rawTemplates]);
 
-    // Live Data for Editor
+    // Live Data for Editor with ID-based Merge
     const masterModelRef = useMemoFirebase(() => 
         mainVendor?.id && selectedRangeId && selectedModelId 
             ? doc(firestore, `data-warehouse/${mainVendor.id}/ranges/${selectedRangeId}/models`, selectedModelId) 
@@ -718,6 +718,7 @@ export default function ModuleDetailsPage() {
     const handleModelSelect = (model: Model) => { 
         setSelectedModelId(model.id); 
         setIsTransitioning(true);
+        // Seamless hand-off to Editor
         setTimeout(() => {
             setView('bmt');
             setIsTransitioning(false);
@@ -729,6 +730,7 @@ export default function ModuleDetailsPage() {
         setSelectedRangeId(range.id);
         setIsQuoteInitializationOpen(false);
         setIsTransitioning(true);
+        // Persist loading state until route navigation completes
         router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
     };
 

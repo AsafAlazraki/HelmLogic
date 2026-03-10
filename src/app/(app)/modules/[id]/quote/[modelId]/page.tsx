@@ -22,21 +22,21 @@ function getEffectiveModel(master: any, override: any) {
 
     const merged = { ...master, ...override };
     
-    // Arrays require special merge logic to avoid clobbering new master items
+    // ID-based merge for optional features to prevent data masking
     if (master.optionalFeatures && Array.isArray(master.optionalFeatures)) {
         const masterFeatures = master.optionalFeatures;
         const overrideFeatures = override.optionalFeatures || [];
         
         const overrideMap = new Map(overrideFeatures.map((f: any) => [f.id, f]));
         
-        // Preserve all Master features, but apply overrides where they exist
+        // Preserve all Master features, applying overrides where they match IDs
         const mergedFeatures = masterFeatures.map((mf: any) => {
             const of = overrideMap.get(mf.id);
             if (of) return { ...mf, ...of };
             return mf;
         });
 
-        // Add any features that exist ONLY in the override (custom org options)
+        // Append features that exist ONLY in the override (custom additions)
         const masterIds = new Set(masterFeatures.map((f: any) => f.id));
         overrideFeatures.forEach((of: any) => {
             if (!masterIds.has(of.id)) {
@@ -94,7 +94,7 @@ export default function QuoteFlowPage() {
     [firestore, orgId, modelId]);
     const { data: modelOverride, isLoading: overrideLoading } = useDoc<any>(modelOverrideRef);
 
-    // 5. Merge Data
+    // 5. Merge Data with ID Reconciliation
     const effectiveModel = useMemo(() => {
         return getEffectiveModel(masterModel, modelOverride);
     }, [masterModel, modelOverride]);
