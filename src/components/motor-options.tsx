@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
+import { useCollection, useMemoFirebase, useFirestore, useUser, useDoc } from '@/firebase';
 import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor } from 'lucide-react';
@@ -16,6 +16,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 interface Vendor {
     id: string;
@@ -342,7 +343,11 @@ function MotorCard({
 export function MotorOptions({ model, module }: { model: any, module: any }) {
     const { watch, setValue } = useFormContext();
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
+
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile } = useDoc<any>(userProfileRef);
     
     const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
@@ -405,14 +410,20 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     };
 
     const handleSeedTestData = async () => {
-        if (!motorDataSet || !motorVendor || !targetDataSet) {
-            toast({ variant: 'destructive', title: "Context Error", description: "Datasets not yet synchronized." });
+        const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
+        if (!isAdmin) {
+            toast({ variant: 'destructive', title: "Access Denied", description: "Only HelmLogic Administrators can inject master data." });
+            return;
+        }
+
+        if (!motorDataSet || !motorVendor || !targetDataSet || !model.id) {
+            toast({ variant: 'destructive', title: "Context Error", description: "Datasets or Model identity not yet synchronized." });
             return;
         }
         
         setIsSeeding(true);
         try {
-            // 1. Inject Motor Accessories
+            // 1. Inject Motor Accessories into the specific outboard row
             const targetMotor = motorDataSet.find(m => String(m['Model Name']).includes('F25SMHC')) || motorDataSet[0];
             if (targetMotor) {
                 const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, targetMotor.id);
@@ -423,8 +434,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 await updateDoc(motorRef, { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] });
             }
 
-            // 2. Inject Factory Options
-            const modelRef = doc(firestore, `data-warehouse/${module.mainVendorId}/ranges/${model.rangeId}/models/${model.id}`);
+            // 2. Inject Factory Options into the Model (using form state)
             const currentOptions = watch('optionalFeatures') || model.optionalFeatures || [];
             const testOptions = [
                 { id: 'test-factory-1', name: 'Motor Ram Support', category: 'General Options', sellPriceExclGst: 150, isStandard: false, applicableVariantIds: [] },
@@ -438,8 +448,9 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
 
             setValue('optionalFeatures', mergedOptions, { shouldDirty: true });
             toast({ title: "Tactical Data Injected", description: "Hardcoded motor accessories and factory options are now staged." });
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Generator Failed" });
+        } catch (e: any) {
+            console.error("Generator failed:", e);
+            toast({ variant: 'destructive', title: "Generator Failed", description: e.message || "An unexpected error occurred." });
         } finally {
             setIsSeeding(false);
         }

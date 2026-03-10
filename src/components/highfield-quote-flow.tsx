@@ -176,7 +176,7 @@ export function HighfieldQuoteFlow({
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             const matchesHp = hp >= minHp && hp <= maxHp;
-                            const matchesSteering = r.steeringType === requiredSteering || !r.steeringType; // Show untagged as fallback
+                            const matchesSteering = r.steeringType === requiredSteering; // Strict Filtering
                             return matchesHp && matchesSteering;
                         }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
@@ -302,9 +302,15 @@ export function HighfieldQuoteFlow({
                 : groupedOptions[groupedOptions.findIndex(([n]) => n === currentCat) + 1]?.[0];
 
             if (targetCat) {
-                setTimeout(() => {
-                    categoryRefs.current[targetCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 150);
+                const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+                if (viewport && categoryRefs.current[targetCat]) {
+                    setTimeout(() => {
+                        const targetElement = categoryRefs.current[targetCat!];
+                        if (targetElement) {
+                            viewport.scrollTo({ top: targetElement.offsetTop, behavior: 'smooth' });
+                        }
+                    }, 150);
+                }
             }
         }
     };
@@ -433,7 +439,7 @@ export function HighfieldQuoteFlow({
                                     <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                         {slide.type === 'build' ? slide.content : (
                                             <>
-                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-cover" unoptimized />}
+                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-contain p-6" unoptimized />}
                                                 <Button 
                                                     variant="ghost" size="icon" 
                                                     className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
