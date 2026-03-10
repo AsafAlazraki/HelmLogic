@@ -302,13 +302,17 @@ export function HighfieldQuoteFlow({
                 <div className="h-full w-full flex items-center bg-white">
                     {consoleOpt && (
                         <div className="flex-1 h-full relative">
-                            <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
+                            {consoleOpt.imageUrl && (
+                                <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
+                            )}
                             <div className="absolute bottom-6 left-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Console</div>
                         </div>
                     )}
                     {seatOpt && (
                         <div className={cn("flex-1 h-full relative", consoleOpt && "border-l-2 border-slate-100")}>
-                            <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
+                            {seatOpt.imageUrl && (
+                                <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
+                            )}
                             <div className="absolute bottom-6 right-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Paired Seating</div>
                         </div>
                     )}
@@ -345,7 +349,8 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides = [];
-        slides.push({ type: 'boat', url: activeVariant?.imageUrl || model.coverImageUrl });
+        const mainUrl = activeVariant?.imageUrl || model.coverImageUrl;
+        if (mainUrl) slides.push({ type: 'boat', url: mainUrl });
         if (buildPreviewSlide) {
             slides.push({ type: 'build', content: buildPreviewSlide });
         }
@@ -400,12 +405,12 @@ export function HighfieldQuoteFlow({
                                             slide.content
                                         ) : (
                                             <>
-                                                <Image src={slide.url!} alt="Build Preview" fill className="object-cover" unoptimized />
+                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-cover" unoptimized />}
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
-                                                    onClick={() => setLightboxUrl(slide.url!)}
+                                                    onClick={() => setLightboxUrl(slide.url || null)}
                                                 >
                                                     <Maximize2 className="h-6 w-6" />
                                                 </Button>
@@ -420,7 +425,7 @@ export function HighfieldQuoteFlow({
                     </div>
 
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
-                        <div className="flex flex-col items-start px-1">
+                        <div className="flex flex-col items-start px-1 text-left">
                             <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
                                 Package Pricing (Excl. GST)
                             </span>
@@ -525,7 +530,9 @@ export function HighfieldQuoteFlow({
                                                         )}
                                                     >
                                                         <div className="relative aspect-video w-full p-6 bg-white">
-                                                            <Image src={color.imageUrl || ''} alt="Color" fill className="object-contain mix-blend-multiply p-4" unoptimized />
+                                                            {color.imageUrl && (
+                                                                <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-4" unoptimized />
+                                                            )}
                                                         </div>
                                                         <div className={cn(
                                                             "p-5 text-center border-t transition-colors", 
@@ -609,42 +616,45 @@ export function HighfieldQuoteFlow({
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-2 gap-6">
-                                            {motors.map(m => (
-                                                <button 
-                                                    key={m.id} 
-                                                    onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} 
-                                                    className={cn(
-                                                        "flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", 
-                                                        selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20"
-                                                    )}
-                                                >
-                                                    <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">
-                                                        {m.SummaryImage ? (
-                                                            <Image 
-                                                                src={`https://www.yamaha-motor.com.au${m.SummaryImage.startsWith('/') ? '' : '/'}${m.SummaryImage}`} 
-                                                                alt="Motor" 
-                                                                fill 
-                                                                className="object-contain mix-blend-multiply p-4" 
-                                                                unoptimized 
-                                                            />
-                                                        ) : (
-                                                            <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>
+                                            {motors.map(m => {
+                                                const motorImgUrl = m.SummaryImage ? `https://www.yamaha-motor.com.au${m.SummaryImage.startsWith('/') ? '' : '/'}${m.SummaryImage}` : null;
+                                                return (
+                                                    <button 
+                                                        key={m.id} 
+                                                        onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} 
+                                                        className={cn(
+                                                            "flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", 
+                                                            selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20"
                                                         )}
-                                                    </div>
-                                                    <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
-                                                        <p className={cn(
-                                                            "text-xs font-black uppercase tracking-tight leading-tight",
-                                                            selectedMotor?.id === m.id ? "text-primary" : "text-slate-900"
-                                                        )}>{m['Model Name']}</p>
-                                                        <p className={cn(
-                                                            "text-[9px] font-black uppercase tracking-widest",
-                                                            selectedMotor?.id === m.id ? "text-primary/70" : "text-primary"
-                                                        )}>
-                                                            {m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}
-                                                        </p>
-                                                    </div>
-                                                </button>
-                                            ))}
+                                                    >
+                                                        <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">
+                                                            {motorImgUrl ? (
+                                                                <Image 
+                                                                    src={motorImgUrl} 
+                                                                    alt="Motor" 
+                                                                    fill 
+                                                                    className="object-contain mix-blend-multiply p-4" 
+                                                                    unoptimized 
+                                                                />
+                                                            ) : (
+                                                                <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
+                                                            <p className={cn(
+                                                                "text-xs font-black uppercase tracking-tight leading-tight",
+                                                                selectedMotor?.id === m.id ? "text-primary" : "text-slate-900"
+                                                            )}>{m['Model Name']}</p>
+                                                            <p className={cn(
+                                                                "text-[9px] font-black uppercase tracking-widest",
+                                                                selectedMotor?.id === m.id ? "text-primary/70" : "text-primary"
+                                                            )}>
+                                                                {m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}
+                                                            </p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
