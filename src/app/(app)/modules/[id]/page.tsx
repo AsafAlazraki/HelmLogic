@@ -85,8 +85,9 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  rectSortingStrategy,
+  verticalListSortingStrategy,
   useSortable,
+  rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -142,7 +143,7 @@ interface Template {
 
 /**
  * Smart merge function for model configuration.
- * Merges the optionalFeatures array by ID to ensure Master additions are visible in Overrides.
+ * Merges the optional features array by ID to ensure Master additions are visible in Overrides.
  */
 function getEffectiveModel(master: any, override: any) {
     if (!master) return null;

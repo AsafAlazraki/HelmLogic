@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useFieldArray, useWatch, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, serverTimestamp, orderBy, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ import {
     Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, 
     AlertTriangle, DollarSign, Ship, RefreshCw, 
     PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert, Settings2, 
-    Search, ListChecks, Star, ChevronDown, FileText, ExternalLink, ChevronRight 
+    Search, ListChecks, Star, ChevronDown, FileText, ExternalLink, ChevronRight, Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -40,7 +40,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import Link from 'next/link';
 
 const specSchema = z.object({
     id: z.string(),
@@ -274,7 +274,6 @@ function OptionalFeatureItem({
     const [isCompDialogOpen, setIsCompDialogOpen] = useState(false);
 
     const isConsole = category === 'Consoles';
-    const isSeat = category === 'Seats';
     const currentFeatureId = useMemo(() => allFeatures?.[index]?.id, [allFeatures, index]);
     const seatOptions = useMemo(() => allFeatures.filter((f: any) => f.category === 'Seats' && f.id !== currentFeatureId), [allFeatures, currentFeatureId]);
 
@@ -484,7 +483,6 @@ function OptionalFeatureItem({
 
 function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
     const firestore = useFirestore();
-    const { toast } = useToast();
     const variantsQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')), [firestore, vendorId, rangeId, model.id]);
     const { data: variants, isLoading: variantsLoading } = useCollection<any>(variantsQuery);
 
@@ -647,7 +645,7 @@ function DocumentsSection() {
                                     />
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 text-primary" asChild title="Open Link">
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link">
                                         <a href={(field as any).url} target="_blank" rel="noopener noreferrer">
                                             <ExternalLink className="h-4 w-4" />
                                         </a>
@@ -856,34 +854,59 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
                         <div key={field.id} className="p-6 rounded-[1.5rem] border-2 bg-slate-50 relative group/rule">
                             <div className="grid grid-cols-3 gap-6 pr-12">
                                 <FormField control={control} name={`rules.${idx}.sourceOptionId`} render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Condition</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11 font-bold border-2 rounded-xl bg-white"><SelectValue placeholder="If..." /></SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                            {featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2.5 uppercase text-[9px]">{opt.label}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select></FormItem>
+                                    <FormItem>
+                                        <FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Condition</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-11 font-bold border-2 rounded-xl bg-white"><SelectValue placeholder="If..." /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                                {featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2.5 uppercase text-[9px]">{opt.label}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
                                 )} />
                                 <FormField control={control} name={`rules.${idx}.type`} render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Action</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11 font-black uppercase text-[10px] border-2 rounded-xl bg-white"><SelectValue /></SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                            <SelectItem value="include" className="font-black py-2.5 uppercase text-[9px]">MUST INCLUDE</SelectItem>
-                                            <SelectItem value="exclude" className="font-black py-2.5 uppercase text-[9px]">EXCLUDES</SelectItem>
-                                        </SelectContent>
-                                    </Select></FormItem>
+                                    <FormItem>
+                                        <FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Action</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-11 font-black uppercase text-[10px] border-2 rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                                <SelectItem value="include" className="font-black py-2.5 uppercase text-[9px]">MUST INCLUDE</SelectItem>
+                                                <SelectItem value="exclude" className="font-black py-2.5 uppercase text-[9px]">EXCLUDES</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
                                 )} />
                                 <FormField control={control} name={`rules.${idx}.targetOptionIds`} render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Effect On</FormLabel>
-                                    <Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-11 justify-between px-4 font-bold border-2 rounded-xl bg-white"><span>{field.value?.length > 0 ? `${field.value.length} SELECTIONS` : 'Targets...'}</span><ChevronRight className="h-4 w-4 opacity-40" /></Button></PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0 rounded-2xl border-4 shadow-2xl"><Command><CommandInput placeholder="Search..." /><CommandList><CommandGroup>{featureOptions.map(opt => (
-                                        <CommandItem key={opt.id} onSelect={() => { const next = field.value?.includes(opt.id) ? field.value.filter((i:any)=>i!==opt.id) : [...(field.value||[]), opt.id]; field.onChange(next); }} className="font-bold uppercase text-[9px] tracking-tight py-3 flex items-center justify-between">
-                                        <span>{opt.label}</span>{field.value?.includes(opt.id) && <Check className="h-4 w-4 text-primary" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover></FormItem>
+                                    <FormItem>
+                                        <FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Effect On</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" className="w-full h-11 justify-between px-4 font-bold border-2 rounded-xl bg-white">
+                                                    <span>{field.value?.length > 0 ? `${field.value.length} SELECTIONS` : 'Targets...'}</span>
+                                                    <ChevronRight className="h-4 w-4 opacity-40" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0 rounded-2xl border-4 shadow-2xl">
+                                                <Command>
+                                                    <CommandInput placeholder="Search..." />
+                                                    <CommandList>
+                                                        <CommandGroup>
+                                                            {featureOptions.map(opt => (
+                                                                <CommandItem key={opt.id} onSelect={() => { const next = field.value?.includes(opt.id) ? field.value.filter((i:any)=>i!==opt.id) : [...(field.value||[]), opt.id]; field.onChange(next); }} className="font-bold uppercase text-[9px] tracking-tight py-3 flex items-center justify-between">
+                                                                    <span>{opt.label}</span>
+                                                                    {field.value?.includes(opt.id) && <Check className="h-4 w-4 text-primary" />}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </FormItem>
                                 )} />
                             </div>
                             <Button type="button" variant="ghost" size="icon" className="absolute top-4 right-4 h-8 w-8 text-destructive opacity-0 group-hover/rule:opacity-100 transition-opacity" onClick={() => remove(idx)}><Trash2 className="h-4 w-4" /></Button>
@@ -895,7 +918,7 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
     );
 }
 
-export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean, gstPercentage: number }) {
+export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean }) {
     const { control, watch } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
