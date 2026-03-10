@@ -574,6 +574,9 @@ export function HighfieldQuoteFlow({
             {/* Tactical Lightbox Overlay */}
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
                 <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Image Inspection</DialogTitle>
+                    </DialogHeader>
                     <div className="relative w-full h-full flex items-center justify-center">
                         {lightboxUrl && <Image src={lightboxUrl} alt="Inspection" fill className="object-contain p-12" unoptimized />}
                     </div>
