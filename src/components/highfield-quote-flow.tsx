@@ -386,7 +386,7 @@ export function HighfieldQuoteFlow({
 
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b shrink-0 text-left">
+                    <div className="pt-16 px-12 pb-8 bg-transparent shrink-0 text-left">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label}
                         </h2>
@@ -409,18 +409,18 @@ export function HighfieldQuoteFlow({
                                                     key={mat} 
                                                     onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} 
                                                     className={cn(
-                                                        "group flex flex-col items-center justify-center p-12 border-2 rounded-[2rem] transition-all bg-white", 
+                                                        "group flex flex-col items-center justify-center p-12 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2", 
                                                         selectedMaterial === mat 
-                                                            ? "border-primary shadow-lg ring-1 ring-primary/20" 
-                                                            : "border-slate-100 hover:border-slate-200 hover:shadow-md"
+                                                            ? "border-primary ring-2 ring-primary/20 scale-[1.02]" 
+                                                            : "border-transparent hover:border-primary/20"
                                                     )}
                                                 >
-                                                    <span className="text-6xl font-black text-slate-900 tracking-tight mb-6 uppercase">
+                                                    <span className="text-7xl font-black text-slate-900 tracking-tighter mb-6 uppercase">
                                                         {mat}
                                                     </span>
                                                     <div className="flex items-center gap-3">
-                                                        <Check className={cn("h-5 w-5 stroke-[3]", selectedMaterial === mat ? "text-emerald-500" : "text-emerald-500/50")} />
-                                                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest text-left leading-tight">
+                                                        <Check className="h-5 w-5 stroke-[3] text-emerald-500" />
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-left leading-tight">
                                                             {mat === 'PVC' ? '5yr' : '10yr'} Tube<br/>Warranty
                                                         </span>
                                                     </div>
@@ -446,10 +446,10 @@ export function HighfieldQuoteFlow({
                                                         key={color.id} 
                                                         onClick={() => setSelectedColor(color.id)} 
                                                         className={cn(
-                                                            "flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white", 
+                                                            "flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl", 
                                                             selectedColor === color.id 
-                                                                ? "border-primary shadow-lg ring-1 ring-primary/20" 
-                                                                : "border-slate-100 hover:border-slate-200 hover:shadow-md"
+                                                                ? "border-primary ring-2 ring-primary/20 scale-[1.02]" 
+                                                                : "border-transparent hover:border-primary/20"
                                                         )}
                                                     >
                                                         <div className="relative aspect-video w-full p-6 bg-slate-50/50">
@@ -457,7 +457,7 @@ export function HighfieldQuoteFlow({
                                                         </div>
                                                         <div className={cn(
                                                             "p-5 text-center border-t transition-colors", 
-                                                            selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-100"
+                                                            selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50"
                                                         )}>
                                                             <p className={cn(
                                                                 "text-xs font-bold uppercase tracking-widest",
@@ -484,7 +484,7 @@ export function HighfieldQuoteFlow({
                                                         onClick={() => toggleOption(opt.id)} 
                                                         className={cn(
                                                             "flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all", 
-                                                            selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-none hover:bg-primary/5"
+                                                            selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-transparent hover:bg-primary/5"
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-4">
@@ -518,7 +518,7 @@ export function HighfieldQuoteFlow({
                                                 onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} 
                                                 className={cn(
                                                     "flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all", 
-                                                    selectedMotor?.id === m.id ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-none hover:bg-primary/5"
+                                                    selectedMotor?.id === m.id ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-transparent hover:bg-primary/5"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-6">
