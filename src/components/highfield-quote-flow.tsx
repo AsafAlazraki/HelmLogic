@@ -184,29 +184,9 @@ export function HighfieldQuoteFlow({
         return !selectedOptionIds.some(id => consoleOptions.some((f: any) => f.id === id));
     }, [model.optionalFeatures, selectedOptionIds]);
 
-    const carouselImages = useMemo(() => {
-        const images = [];
-        if (activeVariant?.imageUrl) images.push(activeVariant.imageUrl);
-        else if (model.coverImageUrl) images.push(model.coverImageUrl);
-        if (model.galleryImageUrls) images.push(...model.galleryImageUrls);
-        return images;
-    }, [activeVariant, model]);
-
-    const availableMaterials = useMemo(() => {
-        if (!variants) return [];
-        return [...new Set(variants.map(v => v.material))].filter(Boolean) as string[];
-    }, [variants]);
-
-    const availableColors = useMemo(() => {
-        if (!variants || !selectedMaterial) return [];
-        return variants.filter(v => v.material === selectedMaterial).map(v => ({
-            id: v.id,
-            name: v.colorName || 'Default Color',
-            code: v.colorCode,
-            imageUrl: v.imageUrl,
-            sku: v.sku
-        }));
-    }, [variants, selectedMaterial]);
+    const selectedOptionsData = useMemo(() => {
+        return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
+    }, [selectedOptionIds, model.optionalFeatures]);
 
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
@@ -300,6 +280,79 @@ export function HighfieldQuoteFlow({
         6: 'SUMMARY'
     };
 
+    // --- Dynamic Carousel Slide Logic ---
+    const buildPreviewSlide = useMemo(() => {
+        if (selectedOptionsData.length === 0) return null;
+
+        const consoleOpt = selectedOptionsData.find((f: any) => f.category === 'Consoles');
+        const seatOpt = selectedOptionsData.find((f: any) => f.category === 'Seats');
+        const otherOpts = selectedOptionsData.filter((f: any) => f.category !== 'Consoles' && f.category !== 'Seats');
+
+        // Split Layout: Only Console and Seat
+        if (selectedOptionsData.length <= 2 && (consoleOpt || seatOpt) && otherOpts.length === 0) {
+            return (
+                <div className="h-full w-full flex items-center bg-white">
+                    {consoleOpt && (
+                        <div className="flex-1 h-full relative">
+                            <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
+                            <div className="absolute bottom-6 left-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Console</div>
+                        </div>
+                    )}
+                    {seatOpt && (
+                        <div className={cn("flex-1 h-full relative", consoleOpt && "border-l-2 border-slate-100")}>
+                            <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
+                            <div className="absolute bottom-6 right-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Paired Seating</div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Grid Layout: Priority items on top row
+        const gridItems = [];
+        if (consoleOpt) gridItems.push(consoleOpt);
+        if (seatOpt) gridItems.push(seatOpt);
+        gridItems.push(...otherOpts);
+
+        return (
+            <div className="h-full w-full grid grid-cols-2 grid-rows-2 bg-white">
+                {gridItems.slice(0, 4).map((item, i) => (
+                    <div key={item.id} className={cn(
+                        "relative flex items-center justify-center p-8 transition-colors",
+                        i === 0 && "border-r border-b",
+                        i === 1 && "border-b",
+                        i === 2 && "border-r",
+                        "hover:bg-slate-50"
+                    )}>
+                        {item.imageUrl && (
+                            <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-6 mix-blend-multiply" unoptimized />
+                        )}
+                        <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/5 rounded-md text-[7px] font-black uppercase tracking-tighter text-slate-400">
+                            {item.name}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }, [selectedOptionsData]);
+
+    const carouselSlides = useMemo(() => {
+        const slides = [];
+        // 1. Primary Boat Slide
+        slides.push({ type: 'boat', url: activeVariant?.imageUrl || model.coverImageUrl });
+        
+        // 2. Tactical Build Slide
+        if (buildPreviewSlide) {
+            slides.push({ type: 'build', content: buildPreviewSlide });
+        }
+
+        // 3. Gallery Images
+        if (model.galleryImageUrls) {
+            model.galleryImageUrls.forEach((url: string) => slides.push({ type: 'gallery', url }));
+        }
+        return slides;
+    }, [activeVariant, model, buildPreviewSlide]);
+
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
             {/* Top Navigation Step Bar */}
@@ -341,22 +394,28 @@ export function HighfieldQuoteFlow({
                     <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
                         <Carousel className="w-full h-full" opts={{ loop: true }}>
                             <CarouselContent className="h-full">
-                                {carouselImages.map((url, idx) => (
-                                    <CarouselItem key={idx} className="h-full w-full relative group/img">
-                                        <Image src={url} alt="Boat" fill className="object-cover" unoptimized />
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none"
-                                            onClick={() => setLightboxUrl(url)}
-                                        >
-                                            <Maximize2 className="h-6 w-6" />
-                                        </Button>
+                                {carouselSlides.map((slide, idx) => (
+                                    <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
+                                        {slide.type === 'build' ? (
+                                            slide.content
+                                        ) : (
+                                            <>
+                                                <Image src={slide.url!} alt="Build Preview" fill className="object-cover" unoptimized />
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
+                                                    onClick={() => setLightboxUrl(slide.url!)}
+                                                >
+                                                    <Maximize2 className="h-6 w-6" />
+                                                </Button>
+                                            </>
+                                        )}
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
-                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/80 border-none shadow-xl hover:bg-white" />
-                            <CarouselNext className="right-6 h-12 w-12 bg-white/80 border-none shadow-xl hover:bg-white" />
+                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-none shadow-2xl hover:bg-white transition-all disabled:opacity-0 z-[100]" />
+                            <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-none shadow-2xl hover:bg-white transition-all disabled:opacity-0 z-[100]" />
                         </Carousel>
                     </div>
 
@@ -374,7 +433,7 @@ export function HighfieldQuoteFlow({
                     </div>
 
                     {/* Tactical Info Section */}
-                    <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
+                    <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0 relative z-10">
                         <Button 
                             variant="ghost" 
                             size="sm" 
