@@ -38,6 +38,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
 import {
+    type CarouselApi,
     Carousel,
     CarouselContent,
     CarouselItem,
@@ -107,6 +108,9 @@ export function HighfieldQuoteFlow({
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
+    // Carousel State
+    const [api, setApi] = useState<CarouselApi>();
+
     // Selection State
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
@@ -360,6 +364,16 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide]);
 
+    // Tactical Auto-Slide: Move gallery to build preview when options are selected
+    useEffect(() => {
+        if (!api || selectedOptionIds.length === 0) return;
+        
+        const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
+        if (buildSlideIndex !== -1) {
+            api.scrollTo(buildSlideIndex);
+        }
+    }, [selectedOptionIds.length, api, carouselSlides]);
+
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
             <div className="sticky top-0 z-[100] px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center">
@@ -397,7 +411,7 @@ export function HighfieldQuoteFlow({
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
                 <div className="w-full lg:w-7/12 relative flex flex-col p-12 bg-slate-50/50 overflow-hidden">
                     <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
-                        <Carousel className="w-full h-full" opts={{ loop: true }}>
+                        <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                             <CarouselContent className="h-full">
                                 {carouselSlides.map((slide, idx) => (
                                     <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
@@ -465,7 +479,7 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-10 px-12 pb-4 bg-transparent shrink-0">
+                    <div className="pt-6 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {stepLabels[currentStep]}
                             <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
@@ -475,7 +489,7 @@ export function HighfieldQuoteFlow({
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-12 pb-12 space-y-8">
                             {currentStep === 1 && (
-                                <div className="space-y-10 animate-in fade-in duration-700 ease-in-out text-left mt-4">
+                                <div className="space-y-10 animate-in fade-in duration-700 ease-in-out text-left">
                                     <div className="space-y-6">
                                         <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
@@ -552,7 +566,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-16 animate-in fade-in duration-700 ease-in-out text-left mt-4">
+                                <div className="space-y-16 animate-in fade-in duration-700 ease-in-out text-left">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div 
                                             key={cat} 
@@ -588,7 +602,7 @@ export function HighfieldQuoteFlow({
                                                                 selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700"
                                                             )}>{opt.name}</p>
                                                             <p className={cn(
-                                                                "text-sm font-black",
+                                                                "text-[10px] font-black text-sm",
                                                                 selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
                                                             )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
@@ -601,7 +615,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out text-left mt-4">
+                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out text-left">
                                     <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full mb-8">
                                         <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
