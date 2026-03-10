@@ -170,7 +170,7 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                         <span>Initializing Precision Build</span>
                     </div>
                     <h2 className="text-6xl font-black italic uppercase tracking-tighter">
-                        {model?.name}
+                        {model?.name || 'Loading'}
                     </h2>
                 </div>
 
@@ -247,7 +247,7 @@ function QuoteInitializationDialog({
                             ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                     {ranges?.map(range => (
-                                        <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm" onClick={() => setSelectedRange(range)}>
+                                        <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm h-full" onClick={() => setSelectedRange(range)}>
                                             <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6">
                                                 {range.imageUrl && (
                                                     <Image 
@@ -275,7 +275,7 @@ function QuoteInitializationDialog({
                             ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                     {models?.map(model => (
-                                        <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm" onClick={() => onModelSelect(model, selectedRange)}>
+                                        <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm h-full" onClick={() => onModelSelect(model, selectedRange)}>
                                             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
                                                 {model.coverImageUrl && <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover group-hover:scale-105 transition-transform" unoptimized />}
                                             </div>

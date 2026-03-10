@@ -183,7 +183,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-9 h-10 font-bold bg-background"
                                     value={search}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -1113,13 +1113,32 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     [firestore, vendorId, rangeId, model.id]);
     const { data: variants = [] } = useCollection<any>(variantsQuery);
 
-    const categories = useMemo(() => {
-        const defaults = ['Consoles', 'Seats'];
-        const existing = watchedOptionalFeatures
-            .map((f: any) => f.category)
-            .filter((c: any) => c && !defaults.includes(c));
-        return [...new Set([...defaults, ...existing])].sort();
-    }, [watchedOptionalFeatures]);
+    const categorizedFeatures = useMemo(() => {
+        const features = optionalFeatureFields.map((field, idx) => ({ 
+            field, 
+            idx,
+            data: watchedOptionalFeatures[idx] 
+        }));
+        
+        const groups: Record<string, typeof features> = {};
+        
+        features.forEach(item => {
+            const cat = item.data?.category || 'Other Options';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(item);
+        });
+        
+        // Logical Order: Consoles -> Seats -> General (Other)
+        return Object.entries(groups).sort(([a], [b]) => {
+            if (a === 'Consoles') return -1;
+            if (b === 'Consoles') return 1;
+            if (a === 'Seats') return -1;
+            if (b === 'Seats') return 1;
+            if (a === 'Other Options') return 1;
+            if (b === 'Other Options') return -1;
+            return a.localeCompare(b);
+        });
+    }, [optionalFeatureFields, watchedOptionalFeatures]);
 
     const handleAddCategory = () => {
         if (!newCategoryName.trim()) return;
@@ -1175,75 +1194,46 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                             <CardContent className="pt-6">
                                 <ScrollArea className="h-[700px] pr-4">
                                     <div className="space-y-8 pb-40">
-                                        {categories.map(cat => {
-                                            const catItems = optionalFeatureFields.map((field, idx) => ({ field, idx })).filter(item => watchedOptionalFeatures[item.idx]?.category === cat);
-
-                                            return (
-                                                <Collapsible key={cat} className="space-y-4" defaultOpen>
-                                                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border-l-4 border-primary">
-                                                        <div className="flex items-center gap-2">
-                                                            <CollapsibleTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent hover:text-accent-foreground">
-                                                                    <ChevronDown className="h-4 w-4" />
-                                                                </Button>
-                                                            </CollapsibleTrigger>
-                                                            <h3 className="font-black text-[11px] uppercase tracking-widest text-primary">{cat}</h3>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter bg-background px-2 py-0.5 rounded-full border shadow-sm">{catItems.length} items</span>
-                                                            <Button 
-                                                                type="button" 
-                                                                variant="ghost" 
-                                                                size="icon" 
-                                                                className="h-4 w-4 hover:bg-primary/10 text-primary"
-                                                                onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}
-                                                            >
-                                                                <PlusCircle className="h-4 w-4" />
+                                        {categorizedFeatures.map(([cat, items]) => (
+                                            <Collapsible key={cat} className="space-y-4" defaultOpen>
+                                                <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg border-l-4 border-primary">
+                                                    <div className="flex items-center gap-2">
+                                                        <CollapsibleTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent hover:text-accent-foreground">
+                                                                <ChevronDown className="h-4 w-4" />
                                                             </Button>
-                                                        </div>
+                                                        </CollapsibleTrigger>
+                                                        <h3 className="font-black text-[11px] uppercase tracking-widest text-primary">{cat}</h3>
                                                     </div>
-                                                    <CollapsibleContent className="space-y-4 pt-2 ml-2 border-l-2 border-dashed border-muted pl-4">
-                                                        {catItems.length > 0 ? (
-                                                            <div className="grid grid-cols-1 gap-4">
-                                                                {catItems.map((item) => (
-                                                                    <OptionalFeatureItem 
-                                                                        key={item.field.id} 
-                                                                        index={item.idx} 
-                                                                        remove={removeOptionalFeature} 
-                                                                        categories={categories}
-                                                                        variants={variants}
-                                                                        allFeatures={watchedOptionalFeatures}
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="py-6 border-2 border-dashed rounded-xl bg-muted/10 flex flex-col items-center justify-center text-center">
-                                                                <Layers className="h-6 w-6 text-muted-foreground opacity-20 mb-2" />
-                                                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Empty Category</p>
-                                                            </div>
-                                                        )}
-                                                    </CollapsibleContent>
-                                                </Collapsible>
-                                            );
-                                        })}
-
-                                        {/* Uncategorized Items */}
-                                        <div className="grid grid-cols-1 gap-4">
-                                            {optionalFeatureFields.map((field, index) => {
-                                                const feat = watchedOptionalFeatures[index];
-                                                if (feat?.category) return null;
-                                                return (
-                                                    <OptionalFeatureItem 
-                                                        key={field.id} 
-                                                        index={index} 
-                                                        remove={removeOptionalFeature} 
-                                                        categories={categories}
-                                                        variants={variants}
-                                                        allFeatures={watchedOptionalFeatures}
-                                                    />
-                                                );
-                                            })}
-                                        </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter bg-background px-2 py-0.5 rounded-full border shadow-sm">{items.length} items</span>
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-4 w-4 hover:bg-primary/10 text-primary"
+                                                            onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'Other Options' ? null : cat, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}
+                                                        >
+                                                            <PlusCircle className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <CollapsibleContent className="space-y-4 pt-2 ml-2 border-l-2 border-dashed border-muted pl-4">
+                                                    <div className="grid grid-cols-1 gap-4">
+                                                        {items.map((item) => (
+                                                            <OptionalFeatureItem 
+                                                                key={item.field.id} 
+                                                                index={item.idx} 
+                                                                remove={removeOptionalFeature} 
+                                                                categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'Other Options')}
+                                                                variants={variants}
+                                                                allFeatures={watchedOptionalFeatures}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        ))}
                                     </div>
                                 </ScrollArea>
                             </CardContent>

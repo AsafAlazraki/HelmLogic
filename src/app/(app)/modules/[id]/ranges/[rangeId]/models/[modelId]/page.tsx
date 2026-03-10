@@ -33,6 +33,44 @@ interface Vendor {
     slug?: string;
 }
 
+/**
+ * Smart merge function for model configuration.
+ * Merges the optionalFeatures array by ID to ensure Master additions are visible in Overrides.
+ */
+function getEffectiveModel(master: any, override: any) {
+    if (!master) return null;
+    if (!override) return master;
+
+    const merged = { ...master, ...override };
+    
+    // Arrays require special merge logic to avoid clobbering new master items
+    if (master.optionalFeatures && Array.isArray(master.optionalFeatures)) {
+        const masterFeatures = master.optionalFeatures;
+        const overrideFeatures = override.optionalFeatures || [];
+        
+        const overrideMap = new Map(overrideFeatures.map((f: any) => [f.id, f]));
+        
+        // Preserve all Master features, but apply overrides where they exist
+        const mergedFeatures = masterFeatures.map((mf: any) => {
+            const of = overrideMap.get(mf.id);
+            if (of) return { ...mf, ...of };
+            return mf;
+        });
+
+        // Add any features that exist ONLY in the override (custom org options)
+        const masterIds = new Set(masterFeatures.map((f: any) => f.id));
+        overrideFeatures.forEach((of: any) => {
+            if (!masterIds.has(of.id)) {
+                mergedFeatures.push(of);
+            }
+        });
+
+        merged.optionalFeatures = mergedFeatures;
+    }
+
+    return merged;
+}
+
 export default function DirectModelDetailsPage() {
   const params = useParams();
   const firestore = useFirestore();
@@ -95,10 +133,7 @@ export default function DirectModelDetailsPage() {
 
   // 7. Effective Data Merge
   const effectiveModel = useMemo(() => {
-    if (!masterModel) return null;
-    if (!overrideData) return masterModel;
-    // Merge Master + Override (Organisation changes take precedence)
-    return { ...masterModel, ...overrideData };
+    return getEffectiveModel(masterModel, overrideData);
   }, [masterModel, overrideData]);
 
   const loading = !vendor || !range || masterLoading || overrideLoading || profileLoading;
