@@ -79,7 +79,7 @@ interface Step {
 const STEPS: Step[] = [
     { id: 1, label: 'Boat Base' },
     { id: 2, label: 'Factory Options' },
-    { id: 3, label: 'Engine & Rigging' },
+    { id: 3, label: 'Motor' },
     { id: 4, label: 'Trailer' },
     { id: 5, label: 'Dealer Fit' },
     { id: 6, label: 'Summary' },
@@ -231,15 +231,11 @@ export function HighfieldQuoteFlow({
         const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
         const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
         
-        // STRICT SEAT LOGIC: 
-        // Identify the relevant console. If one is selected, use it. 
-        // If not selected but only one is possible for this boat series, use that to restrict seats.
         const constraintConsole = selectedConsole || (availableConsoles.length === 1 ? availableConsoles[0] : null);
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
-            // Apply Seat Restriction
             if (cat === 'Seats') {
                 if (constraintConsole) {
                     if (!constraintConsole.associatedSeatId || opt.id !== constraintConsole.associatedSeatId) return acc;
@@ -393,19 +389,20 @@ export function HighfieldQuoteFlow({
 
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    {/* Dynamic Integrated Step Header */}
-                    <div className="pt-16 px-12 pb-8 bg-transparent shrink-0 text-left">
+                    {/* Tactical Integrated Step Header */}
+                    <div className="pt-16 px-12 pb-4 bg-transparent shrink-0 text-left">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
-                            {STEPS.find(s => s.id === currentStep)?.label}
-                            <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName}</span>
+                            {STEPS.find(s => s.id === currentStep)?.label.toUpperCase()}
+                            <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
                         </h2>
                     </div>
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
-                        <div className="p-12 space-y-10">
+                        <div className="px-12 pb-12 space-y-10">
                             {currentStep === 1 && (
-                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     <div className="space-y-6">
+                                        {/* Sub-Section 1: Tube Material Blue Pill */}
                                         <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
                                             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                             <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
@@ -443,6 +440,7 @@ export function HighfieldQuoteFlow({
                                             ref={colorSectionRef}
                                             className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-10"
                                         >
+                                            {/* Sub-Section 2: Color Logic Blue Pill */}
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
@@ -482,7 +480,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div key={cat} className="space-y-4">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest border-l-4 border-primary pl-3">{cat}</h3>
@@ -514,7 +512,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out text-left">
+                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     <div className="grid gap-4">
                                         {motorsLoading ? (
                                             <div className="flex flex-col items-center py-20 gap-4">
@@ -582,9 +580,9 @@ export function HighfieldQuoteFlow({
 
             {/* Tactical Lightbox Overlay */}
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
-                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0 [&>button]:hover:bg-transparent">
+                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent">
                     <DialogHeader className="sr-only">
-                        <DialogTitle>Image Inspection</DialogTitle>
+                        <DialogTitle>Immersive Inspection</DialogTitle>
                     </DialogHeader>
                     <div className="relative w-full h-full flex items-center justify-center">
                         {lightboxUrl && <Image src={lightboxUrl} alt="Inspection" fill className="object-contain p-12" unoptimized />}
@@ -604,7 +602,7 @@ export function HighfieldQuoteFlow({
                             <Table>
                                 <TableBody>
                                     {model.standardFeatures?.map((f: string, i: number) => (
-                                        <TableRow key={i} className="hover:bg-primary/5">
+                                        <TableRow key={i} className="hover:bg-primary/5 border-b">
                                             <TableCell className="w-10 pl-8">
                                                 <Check className="h-4 w-4 text-emerald-500" />
                                             </TableCell>
@@ -632,7 +630,7 @@ export function HighfieldQuoteFlow({
                             <Table>
                                 <TableBody>
                                     {model.specifications?.otherSpecs?.map((s: any, i: number) => (
-                                        <TableRow key={i} className="hover:bg-primary/5">
+                                        <TableRow key={i} className="hover:bg-primary/5 border-b">
                                             <TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-8 py-4">{s.label}</TableCell>
                                             <TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4">{s.value}</TableCell>
                                         </TableRow>
