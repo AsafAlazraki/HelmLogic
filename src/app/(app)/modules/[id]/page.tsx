@@ -44,7 +44,8 @@ import {
     ImageIcon,
     Upload,
     Save,
-    Building
+    Building,
+    Layout
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -502,29 +503,38 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-6 md:p-12 flex flex-col gap-8 pb-32">
-                                <div className="shrink-0 px-1 mb-0">
-                                    {view === 'ranges' ? (
-                                        <div className="relative inline-flex items-center h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] overflow-hidden group">
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full group-hover:animate-[shimmer_3s_infinite] transition-transform" />
-                                            <Ship className="mr-3 h-5 w-5 text-primary relative z-10" />
-                                            <span className="relative z-10">{mainVendor?.name || 'Highfield'} Catalog</span>
-                                        </div>
-                                    ) : (
-                                        <Button 
-                                            variant="outline" 
-                                            onClick={handleBackToCatalog} 
-                                            className="relative h-10 sm:h-12 px-8 font-black uppercase text-[11px] tracking-[0.3em] text-primary border-primary/30 border-2 bg-white hover:bg-primary hover:text-white transition-all rounded-2xl shadow-[0_10px_30px_-10px_rgba(var(--primary),0.3)] group overflow-hidden"
-                                        >
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_3s_infinite] transition-transform" />
-                                            <ChevronLeft className="mr-3 h-5 w-5 transition-transform group-hover:-translate-x-1.5 relative z-10" /> 
-                                            <span className="relative z-10">Return to Catalog Explorer</span>
-                                        </Button>
-                                    )}
+                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                        {/* Tactical Workspace Header */}
+                        <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
+                                    <Layout className="h-5 w-5" />
                                 </div>
+                                <div>
+                                    <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">Catalog Explorer</h2>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mt-1.5 flex items-center gap-2">
+                                        {mainVendor?.name || 'Highfield'} Master Inventory
+                                        <Badge variant="outline" className="h-4 font-black uppercase text-[8px] bg-slate-100 border-slate-300">{(mainVendor?.currency || 'USD')} BASE</Badge>
+                                    </p>
+                                </div>
+                            </div>
 
+                            <div className="flex items-center gap-6">
+                                {view !== 'ranges' && (
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={handleBackToCatalog} 
+                                        className="h-10 px-6 font-black uppercase text-[10px] tracking-widest border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition-all group"
+                                    >
+                                        <ChevronLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                                        Return to Catalog
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        <ScrollArea className="flex-1">
+                            <div className="p-6 md:p-12 flex flex-col gap-8 pb-32">
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
                                     {view === 'ranges' && (
                                         <RangesGrid 
@@ -811,7 +821,7 @@ function EditItemDialog({ isOpen, onOpenChange, item, onSave }: any) {
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Primary Render</Label>
                         <div className="relative aspect-video rounded-xl border-2 border-dashed bg-muted/20 overflow-hidden group">
                             {preview ? (
-                                <Image src={preview} alt="Preview" fill className="object-contain p-4" unoptimized />
+                                Image && <Image src={preview} alt="Preview" fill className="object-contain p-4" unoptimized />
                             ) : (
                                 <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground">
                                     <ImageIcon className="h-8 w-8 mb-2 opacity-20" />

@@ -326,12 +326,12 @@ export function HighfieldQuoteFlow({
                     {/* Build Summary Overlay Card */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
                         <div className="flex items-end justify-between px-1">
-                            {/* Left Side: Model Name */}
-                            <div className="flex items-baseline gap-4 truncate mr-12 pb-1">
-                                <span className="text-primary text-3xl font-black uppercase tracking-tighter shrink-0">
+                            {/* Left Side: Model Name with Range Badge */}
+                            <div className="flex items-center gap-4 truncate mr-12 pb-1">
+                                <Badge className="h-14 px-6 text-xl font-black uppercase tracking-widest bg-primary text-white border-none shrink-0 rounded-2xl shadow-xl">
                                     {range?.name?.toUpperCase() || 'HIGHFIELD'}
-                                </span>
-                                <h2 className="text-5xl font-black uppercase tracking-tighter text-slate-950 truncate">
+                                </Badge>
+                                <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate">
                                     {displayedModelName}
                                 </h2>
                             </div>
@@ -352,9 +352,9 @@ export function HighfieldQuoteFlow({
 
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full border-l border-slate-100 flex flex-col overflow-hidden bg-slate-50/20">
-                    {/* Persistent Workspace Header */}
-                    <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b shrink-0">
-                        <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
+                    {/* Persistent Workspace Header - Shrunk and Left Aligned */}
+                    <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b shrink-0 text-left">
+                        <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label}
                         </h2>
                     </div>
@@ -362,10 +362,10 @@ export function HighfieldQuoteFlow({
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="p-12 space-y-10">
                             {currentStep === 1 && (
-                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left">
                                     {/* Sub-Section 1: Tube Material */}
                                     <div className="space-y-6">
-                                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
+                                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary">
                                             1. Tube Material
                                         </h3>
                                         <div className="grid grid-cols-2 gap-6">
@@ -398,11 +398,14 @@ export function HighfieldQuoteFlow({
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
-                                            className="mt-12 space-y-8 animate-in fade-in duration-700 ease-in-out"
+                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-32"
                                         >
-                                            <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
-                                                2. Select Hull & Tube Color
-                                            </h3>
+                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
+                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
+                                                    2. Select Hull & Tube Color
+                                                </h3>
+                                            </div>
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button 
@@ -436,7 +439,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div key={cat} className="space-y-4">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest border-l-4 border-primary pl-3">{cat}</h3>
@@ -468,7 +471,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out">
+                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out text-left">
                                     <div className="grid gap-4">
                                         {motorsLoading ? (
                                             <div className="flex flex-col items-center py-20 gap-4">
