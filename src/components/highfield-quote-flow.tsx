@@ -54,7 +54,7 @@ import {
     DialogTitle,
     DialogDescription,
     DialogClose
-} from "@/dialog";
+} from "@/components/ui/dialog";
 import {
     Table,
     TableBody,
@@ -62,7 +62,7 @@ import {
     TableRow,
     TableHead,
     TableHeader
-} from "@/table";
+} from "@/components/ui/table";
 
 interface Variant {
     id: string;
@@ -317,13 +317,13 @@ export function HighfieldQuoteFlow({
                 <div className="h-full w-full flex items-center bg-white">
                     {consoleOpt && (
                         <div className="flex-1 h-full relative">
-                            <Image src={consoleOpt.imageUrl!} alt="Console" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
+                            {consoleOpt.imageUrl && <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-12 mix-blend-multiply" unoptimized />}
                             <div className="absolute bottom-6 left-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Console</div>
                         </div>
                     )}
                     {seatOpt && (
                         <div className={cn("flex-1 h-full relative", consoleOpt && "border-l-2 border-slate-100")}>
-                            <Image src={seatOpt.imageUrl!} alt="Seat" fill className="object-contain p-12 mix-blend-multiply" unoptimized />
+                            {seatOpt.imageUrl && <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-12 mix-blend-multiply" unoptimized />}
                             <div className="absolute bottom-6 right-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Paired Seating</div>
                         </div>
                     )}
@@ -343,7 +343,7 @@ export function HighfieldQuoteFlow({
                         i === 2 && "border-r",
                         "hover:bg-slate-50"
                     )}>
-                        <Image src={item.imageUrl!} alt={item.name} fill className="object-contain p-6 mix-blend-multiply" unoptimized />
+                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-6 mix-blend-multiply" unoptimized />}
                         <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/5 rounded-md text-[7px] font-black uppercase tracking-tighter text-slate-400">
                             {item.name}
                         </div>
@@ -516,7 +516,10 @@ export function HighfieldQuoteFlow({
                                                         <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply p-4 transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                            <p className={cn("text-[10px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            <p className={cn(
+                                                                "text-[10px] font-black text-sm",
+                                                                selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
+                                                            )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
                                                     </button>
                                                 ))}
@@ -666,7 +669,20 @@ export function HighfieldQuoteFlow({
             <Dialog open={showDocs} onOpenChange={setShowDocs}>
                 <DialogContent className="sm:max-w-md rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Technical Assets</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Factory Manuals & Schematics</DialogDescription></DialogHeader>
-                    <div className="p-8 space-y-3">{model.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (<a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-2xl border-2 hover:border-primary/40 hover:bg-primary/5 transition-all group"><div className="flex items-center gap-4"><FileText className="h-5 w-5 text-primary/40 group-hover:text-primary transition-colors" /><span className="text-xs font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-4 w-4 opacity-20 group-hover:opacity-100 transition-opacity" /></a>)) : (<div className="py-12 text-center opacity-20 flex flex-col items-center gap-3"><FileText className="h-12 w-12" /><p className="text-[10px] font-black uppercase tracking-widest">No Documents Linked</p></div>)}</div>
+                    <div className="p-8 space-y-3">{model.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
+                        <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-2xl border-2 hover:border-primary/40 hover:bg-primary/5 transition-all group">
+                            <div className="flex items-center gap-4">
+                                <FileText className="h-5 w-5 text-primary/40 group-hover:text-primary transition-colors" />
+                                <span className="text-xs font-black uppercase tracking-tight">{doc.name}</span>
+                            </div>
+                            <ExternalLink className="h-4 w-4 opacity-20 group-hover:opacity-100 transition-opacity" />
+                        </a>
+                    )) : (
+                        <div className="py-12 text-center opacity-20 flex flex-col items-center gap-3">
+                            <FileText className="h-12 w-12" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">No Documents Linked</p>
+                        </div>
+                    )}</div>
                 </DialogContent>
             </Dialog>
         </div>
