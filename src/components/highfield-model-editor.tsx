@@ -14,11 +14,11 @@ import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-    Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, 
-    AlertTriangle, DollarSign, Ship, RefreshCw, 
-    PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert, Settings2, 
+    Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, Layers, PlusCircle, ShieldCheck, CheckCircle2, 
+    DollarSign, Ship, RefreshCw, 
+    Pencil, ArrowUp, ArrowDown, Check, Settings2, 
     Search, ListChecks, Star, ChevronDown, FileText, ExternalLink, ChevronRight, Zap,
-    Waves, Layout
+    Waves
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';

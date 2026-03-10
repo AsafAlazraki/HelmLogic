@@ -251,26 +251,26 @@ function QuoteInitializationDialog({
                 <div className="p-12 min-h-[600px]">
                     {!selectedRange ? (
                         <div className="space-y-10">
-                            <h3 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">1. Select Product Range</h3>
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">1. Select Product Range</h3>
                             {rangesLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-10">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                                     {ranges?.map(range => (
-                                        <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2.5rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => setSelectedRange(range)}>
-                                            <div className="aspect-square bg-muted/30 relative border-b overflow-hidden p-10 flex items-center justify-center">
+                                        <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => setSelectedRange(range)}>
+                                            <div className="aspect-square bg-muted/30 relative border-b overflow-hidden p-6 flex items-center justify-center">
                                                 {range.imageUrl && (
                                                     <Image 
                                                         src={range.imageUrl} 
                                                         alt={range.name} 
                                                         fill 
-                                                        className="object-contain p-8 group-hover:scale-105 transition-transform" 
+                                                        className="object-contain p-4 group-hover:scale-105 transition-transform" 
                                                         unoptimized 
                                                     />
                                                 )}
                                             </div>
-                                            <div className="p-8 bg-white text-center flex-1 flex items-center justify-center">
-                                                <span className="font-black uppercase text-sm tracking-[0.1em]">{range.name}</span>
+                                            <div className="p-4 bg-white text-center flex-1 flex items-center justify-center">
+                                                <span className="font-black uppercase text-[11px] tracking-[0.1em]">{range.name}</span>
                                             </div>
                                         </Card>
                                     ))}
@@ -279,19 +279,19 @@ function QuoteInitializationDialog({
                         </div>
                     ) : (
                         <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                            <h3 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">2. Choose Boat Series: {selectedRange.name}</h3>
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">2. Choose Boat Series: {selectedRange.name}</h3>
                             {modelsLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                     {models?.map(model => (
-                                        <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2.5rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
+                                        <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
                                             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
                                                 {model.coverImageUrl && <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover group-hover:scale-105 transition-transform" unoptimized />}
                                             </div>
-                                            <div className="p-8 bg-white text-center flex flex-col gap-2 flex-1 justify-center">
-                                                <span className="font-black uppercase text-sm tracking-tight text-primary">{model.name}</span>
-                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{model.modelCode}</span>
+                                            <div className="p-4 bg-white text-center flex flex-col gap-1.5 flex-1 justify-center">
+                                                <span className="font-black uppercase text-[11px] tracking-tight text-primary">{model.name}</span>
+                                                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{model.modelCode}</span>
                                             </div>
                                         </Card>
                                     ))}
