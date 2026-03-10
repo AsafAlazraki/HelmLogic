@@ -58,19 +58,8 @@ import { Label } from '@/components/ui/label';
 import { cn, createSlug } from '@/lib/utils';
 import { StockList } from '@/components/inventory-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
-import { ModulePricingDashboard } from '@/components/module-pricing-dashboard';
-import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableHead, 
-    TableHeader, 
-    TableRow 
-} from '@/components/ui/table';
 
 import {
   DndContext,
