@@ -355,7 +355,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
 
-                    {/* Tactical Info Section - Relocated underneath pricing */}
+                    {/* Tactical Info Section */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
                         <Button 
                             variant="ghost" 
@@ -397,9 +397,12 @@ export function HighfieldQuoteFlow({
                             {currentStep === 1 && (
                                 <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left">
                                     <div className="space-y-6">
-                                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-                                            1. Tube Material
-                                        </h3>
+                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
+                                            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
+                                                1. Tube Material
+                                            </h3>
+                                        </div>
                                         <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
                                                 <button 
@@ -577,7 +580,7 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
-            {/* Standard Features Dialog - Unified Table Layout */}
+            {/* Standard Features Dialog */}
             <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5">
