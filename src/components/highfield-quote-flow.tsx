@@ -309,7 +309,7 @@ export function HighfieldQuoteFlow({
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
                 {/* Left Side: Visual Preview Area */}
                 <div className="w-full lg:w-7/12 relative flex flex-col p-12 bg-slate-50/50 overflow-hidden">
-                    <div className="relative flex-1 w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden group border-none">
+                    <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
                         <Carousel className="w-full h-full" opts={{ loop: true }}>
                             <CarouselContent className="h-full">
                                 {carouselImages.map((url, idx) => (
@@ -331,7 +331,31 @@ export function HighfieldQuoteFlow({
                         </Carousel>
                     </div>
 
-                    {/* Dedicated Tactical Info Section */}
+                    {/* Build Summary Overlay Card */}
+                    <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
+                        <div className="flex items-end justify-between px-1">
+                            <div className="flex items-center gap-4 truncate mr-12 pb-1">
+                                <Badge className="h-14 px-6 text-xl font-black uppercase tracking-widest bg-primary text-white border-none shrink-0 rounded-2xl shadow-xl">
+                                    {range?.name?.toUpperCase() || 'HIGHFIELD'}
+                                </Badge>
+                                <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate">
+                                    {displayedModelName}
+                                </h2>
+                            </div>
+
+                            <div className="flex flex-col items-end shrink-0">
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
+                                    Package Pricing (Excl. GST)
+                                </span>
+                                <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-start">
+                                    <span className="text-primary text-3xl mr-1 mt-1">$</span>
+                                    <span>{totalPrice.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Moved Tactical Info Section - Underneath Pricing Container */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
                         <Button 
                             variant="ghost" 
@@ -357,30 +381,6 @@ export function HighfieldQuoteFlow({
                         >
                             <FileText className="h-4 w-4 mr-2" /> Documents
                         </Button>
-                    </div>
-
-                    {/* Build Summary Overlay Card */}
-                    <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
-                        <div className="flex items-end justify-between px-1">
-                            <div className="flex items-center gap-4 truncate mr-12 pb-1">
-                                <Badge className="h-14 px-6 text-xl font-black uppercase tracking-widest bg-primary text-white border-none shrink-0 rounded-2xl shadow-xl">
-                                    {range?.name?.toUpperCase() || 'HIGHFIELD'}
-                                </Badge>
-                                <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate">
-                                    {displayedModelName}
-                                </h2>
-                            </div>
-
-                            <div className="flex flex-col items-end shrink-0">
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
-                                    Package Pricing (Excl. GST)
-                                </span>
-                                <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-start">
-                                    <span className="text-primary text-3xl mr-1 mt-1">$</span>
-                                    <span>{totalPrice.toLocaleString()}</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -429,7 +429,7 @@ export function HighfieldQuoteFlow({
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
-                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-24"
+                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-16"
                                         >
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
