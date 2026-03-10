@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2, Beaker, Zap, Wrench } from 'lucide-react';
+import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor } from 'lucide-react';
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import Image from 'next/image';
@@ -15,8 +15,7 @@ import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Vendor {
     id: string;
@@ -31,6 +30,7 @@ interface Motor {
     SummaryImage?: string;
     'HP Rating'?: string;
     masterAccessories?: any[];
+    steeringType?: 'Tiller' | 'Forward Control';
     [key: string]: any;
 }
 
@@ -150,18 +150,24 @@ function AccessoryCategory({
 
 function MotorCard({ 
     motor, 
+    vendorId,
+    dataSetId,
     onAddOption,
     onRemoveOption,
     onToggleStandard,
     onHide
 }: { 
     motor: Motor, 
+    vendorId: string,
+    dataSetId: string,
     onAddOption: (cat: string) => void,
     onRemoveOption: (index: number) => void,
     onToggleStandard: (index: number) => void,
     onHide: () => void
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const firestore = useFirestore();
+    const { toast } = useToast();
 
     let itemImageUrl: string | null = null;
     if (motor.SummaryImage && typeof motor.SummaryImage === 'string') {
@@ -189,6 +195,16 @@ function MotorCard({
         Propeller: masterAccessories.filter(o => o.category === 'Propeller'),
         Rigging: masterAccessories.filter(o => o.category === 'Rigging'),
         Other: masterAccessories.filter(o => !o.category || o.category === 'Other')
+    };
+
+    const handleSteeringTypeChange = async (type: string) => {
+        const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
+        try {
+            await updateDoc(motorRef, { steeringType: type });
+            toast({ title: "Motor Tagged", description: `Assigned ${type} steering.` });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Update Failed" });
+        }
     };
 
     return (
@@ -232,9 +248,17 @@ function MotorCard({
                 </div>
                 
                 <div className="p-4 bg-background flex items-center justify-between gap-3 border-b min-h-[56px]">
-                    <p className="text-[10px] font-black uppercase leading-tight text-foreground tracking-tight truncate flex-1 italic">
-                        {motor.vendorName || 'YAMAHA'} - {String(modelName)}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-black uppercase leading-tight text-foreground tracking-tight truncate italic">
+                            {motor.vendorName || 'YAMAHA'} - {String(modelName)}
+                        </p>
+                        {motor.steeringType && (
+                            <div className="flex items-center gap-1 mt-1">
+                                <Anchor className="h-2 w-2 text-primary" />
+                                <span className="text-[7px] font-black uppercase tracking-widest text-primary">{motor.steeringType}</span>
+                            </div>
+                        )}
+                    </div>
                     <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", isExpanded && "rotate-180")} />
                 </div>
             </div>
@@ -242,7 +266,7 @@ function MotorCard({
             {/* Expandable Content Area */}
             {isExpanded && (
                 <CardContent className="p-4 space-y-5 min-w-0 animate-in slide-in-from-top-2 duration-200">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             {hpRating && (
                                 <Badge variant="default" className="font-black text-[10px] bg-primary shadow-sm uppercase tracking-tighter shrink-0 px-2 py-0.5">
@@ -253,12 +277,19 @@ function MotorCard({
                                 {motor.id.slice(-6).toUpperCase()}
                             </Badge>
                         </div>
-                        {motor['Part Number'] && (
-                            <div className="flex items-center gap-1.5 opacity-60">
-                                <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Part No:</span>
-                                <span className="text-[9px] font-mono font-bold text-primary uppercase">{motor['Part Number']}</span>
-                            </div>
-                        )}
+                        
+                        <div className="space-y-1.5">
+                            <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Building Profile (Steering)</Label>
+                            <Select value={motor.steeringType || ''} onValueChange={handleSteeringTypeChange}>
+                                <SelectTrigger className="h-8 text-[9px] font-black uppercase tracking-widest border-2 rounded-lg bg-slate-50">
+                                    <SelectValue placeholder="SET PROFILE..." />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-2">
+                                    <SelectItem value="Tiller" className="text-[10px] font-bold uppercase py-2">Tiller Control</SelectItem>
+                                    <SelectItem value="Forward Control" className="text-[10px] font-bold uppercase py-2">Forward Control</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     <div className="space-y-5 pt-4 border-t border-dashed">
@@ -602,6 +633,8 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                                             <MotorCard 
                                                                 key={`${motor.id}-${motorIdx}`} 
                                                                 motor={motor} 
+                                                                vendorId={motorVendor!.id}
+                                                                dataSetId={targetDataSet!.id}
                                                                 onAddOption={(cat) => handleAddOptionToMotor(motor.id, cat)}
                                                                 onToggleStandard={(idx) => handleToggleStandard(motor.id, idx)}
                                                                 onRemoveOption={(idx) => handleRemoveOption(motor.id, idx)}

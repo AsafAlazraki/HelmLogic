@@ -143,6 +143,12 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
+    // Filter motors based on steering type requirement
+    const hasConsoleSelected = useMemo(() => {
+        const consoleOptions = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles') || [];
+        return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
+    }, [selectedOptionIds, model.optionalFeatures]);
+
     useEffect(() => {
         const fetchMotors = async () => {
             if (currentStep !== 3) return;
@@ -163,16 +169,22 @@ export function HighfieldQuoteFlow({
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                         const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
                         const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
+                        
+                        // Tactical Filter: Console -> Forward Control, No Console -> Tiller
+                        const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
+
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
-                            return hp >= minHp && hp <= maxHp;
+                            const matchesHp = hp >= minHp && hp <= maxHp;
+                            const matchesSteering = r.steeringType === requiredSteering || !r.steeringType; // Show untagged as fallback
+                            return matchesHp && matchesSteering;
                         }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
                 }
             } catch (e) { console.error(e); } finally { setMotorsLoading(false); }
         };
         fetchMotors();
-    }, [currentStep, firestore, module, model]);
+    }, [currentStep, firestore, module, model, hasConsoleSelected]);
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -199,11 +211,6 @@ export function HighfieldQuoteFlow({
         const consoleOptions = model.optionalFeatures.filter((f: any) => f.category === 'Consoles');
         return !selectedOptionIds.some(id => consoleOptions.some((f: any) => f.id === id));
     }, [model.optionalFeatures, selectedOptionIds]);
-
-    const hasConsoleSelected = useMemo(() => {
-        const consoleOptions = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles') || [];
-        return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
-    }, [selectedOptionIds, model.optionalFeatures]);
 
     const selectedOptionsData = useMemo(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
@@ -288,12 +295,15 @@ export function HighfieldQuoteFlow({
             return next;
         });
 
+        // Precision Auto-Scroll: Glide to Seats if Console picked, otherwise next section
         if (currentStep === 2 && !isCurrentlySelected) {
-            const catIndex = groupedOptions.findIndex(([name]) => name === currentCat);
-            if (catIndex !== -1 && catIndex < groupedOptions.length - 1) {
-                const nextCatName = groupedOptions[catIndex + 1][0];
+            const targetCat = (currentCat === 'Consoles' && groupedOptions.some(([n]) => n === 'Seats')) 
+                ? 'Seats' 
+                : groupedOptions[groupedOptions.findIndex(([n]) => n === currentCat) + 1]?.[0];
+
+            if (targetCat) {
                 setTimeout(() => {
-                    categoryRefs.current[nextCatName]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    categoryRefs.current[targetCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 150);
             }
         }
@@ -461,7 +471,7 @@ export function HighfieldQuoteFlow({
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
                     <div className="pt-6 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
-                            {currentStep === 3 ? 'MOTOR' : STEPS[currentStep - 1].label.toUpperCase()}
+                            {STEPS[currentStep - 1].label.toUpperCase()}
                             <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
                         </h2>
                     </div>
@@ -517,7 +527,7 @@ export function HighfieldQuoteFlow({
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                             <p className={cn(
-                                                                "text-[10px] font-black text-sm",
+                                                                "text-[10px] font-black",
                                                                 selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
                                                             )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
