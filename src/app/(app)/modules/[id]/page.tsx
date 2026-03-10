@@ -120,10 +120,6 @@ interface Model {
   rangeId: string;
 }
 
-/**
- * ID-based smart merge for model configuration.
- * Ensures Master catalog items (like new FCT consoles) are always visible.
- */
 function getEffectiveModel(master: any, override: any) {
     if (!master) return null;
     if (!override) return master;
@@ -135,14 +131,12 @@ function getEffectiveModel(master: any, override: any) {
         const overrideFeatures = override.optionalFeatures || [];
         const overrideMap = new Map(overrideFeatures.map((f: any) => [f.id, f]));
         
-        // Preserve all Master items, overlaying with overrides where IDs match
         const mergedFeatures = masterFeatures.map((mf: any) => {
             const of = overrideMap.get(mf.id);
             if (of) return { ...mf, ...of };
             return mf;
         });
 
-        // Append any items that exist ONLY in overrides (custom dealer options)
         const masterIds = new Set(masterFeatures.map((f: any) => f.id));
         overrideFeatures.forEach((of: any) => {
             if (!masterIds.has(of.id)) {
@@ -356,7 +350,6 @@ export default function ModuleDetailsPage() {
         return currentMemberOrg.permissions[roleId];
     }, [userProfile, currentMemberOrg]);
 
-    // Live Data for Editor with ID-based Merge
     const masterModelRef = useMemoFirebase(() => 
         mainVendor?.id && selectedRangeId && selectedModelId 
             ? doc(firestore, `data-warehouse/${mainVendor.id}/ranges/${selectedRangeId}/models`, selectedModelId) 

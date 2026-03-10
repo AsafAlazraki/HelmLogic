@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useFieldArray, useWatch, useFormContext } from 'react-hook-form';
+import { useFieldArray, useWatch, useFormContext, useController } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, orderBy, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -171,7 +171,7 @@ function SkuCompatibilityDialog({
                     <div className="w-full md:w-[320px] shrink-0 bg-muted/5 flex flex-col">
                         <div className="p-6 border-b bg-background flex items-center justify-between"><h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Staged</h4><Badge className="font-black h-5 text-[9px] bg-primary">{value.length}</Badge></div>
                         <ScrollArea className="flex-1">
-                            <div className="p-6 space-y-2">{variants.filter(v => value.includes(v.id)).map(v => (<div key={v.id} className="relative bg-white border-2 p-3 rounded-xl shadow-sm"><p className="text-[11px] font-black uppercase truncate pr-6">{v.name}</p><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => handleToggle(v.id)}><X className="h-3 w-3" /></Button></div>))}</div>
+                            <div className="p-6 space-y-2">{variants.filter(v => value.includes(v.id)).map(v => (<div key={v.id} className="relative bg-white border-2 p-3 rounded-xl shadow-sm"><p className="text-11px font-black uppercase truncate pr-6">{v.name}</p><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => handleToggle(v.id)}><X className="h-3 w-3" /></Button></div>))}</div>
                         </ScrollArea>
                     </div>
                 </div>
@@ -356,17 +356,30 @@ export function DocumentsSection() {
     const { fields, append, remove } = useFieldArray({ control, name: "documents" });
     const storage = useStorage();
     const [isUploading, setIsUploading] = useState(false);
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [isNamingOpen, setIsNamingOpen] = useState(false);
+    const [docName, setDocName] = useState('');
     const { toast } = useToast();
 
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !storage) return;
+        if (!file) return;
+        setPendingFile(file);
+        setDocName(file.name.replace(/\.[^/.]+$/, "")); // Default to filename without extension
+        setIsNamingOpen(true);
+    };
+
+    const handleUploadConfirm = async () => {
+        if (!pendingFile || !storage || !docName.trim()) return;
         setIsUploading(true);
+        setIsNamingOpen(false);
         try {
-            const path = `documents/${Date.now()}-${file.name}`;
-            const url = await uploadFileToStorage(storage, file, path);
-            append({ id: `doc-${Date.now()}`, name: file.name, url });
-            toast({ title: "Document Uploaded" });
+            const path = `documents/${Date.now()}-${pendingFile.name}`;
+            const url = await uploadFileToStorage(storage, pendingFile, path);
+            append({ id: `doc-${Date.now()}`, name: docName.trim(), url });
+            toast({ title: "Document Synchronized", description: `${docName} is now live.` });
+            setPendingFile(null);
+            setDocName('');
         } catch (error: any) {
             toast({ variant: 'destructive', title: "Upload Failed", description: error.message });
         } finally {
@@ -375,33 +388,63 @@ export function DocumentsSection() {
     };
 
     return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader title="Technical Docs" count={fields.length} />
-            <CollapsibleContent>
-                <CardContent className="pt-6 space-y-4">
-                    <div className="grid gap-2">
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc">
-                                <FileText className="h-5 w-5 text-primary/40 shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <FormField control={control} name={`documents.${index}.name`} render={({ field }) => (
-                                        <FormControl><Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" /></FormControl>
-                                    )} />
+        <>
+            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                <CollapsibleCardHeader title="Technical Docs" count={fields.length} />
+                <CollapsibleContent>
+                    <CardContent className="pt-6 space-y-4">
+                        <div className="grid gap-2">
+                            {fields.map((field, index) => (
+                                <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc">
+                                    <FileText className="h-5 w-5 text-primary/40 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <FormField control={control} name={`documents.${index}.name`} render={({ field }) => (
+                                            <FormControl><Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" /></FormControl>
+                                        )} />
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link"><a href={(field as any).url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link"><a href={(field as any).url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a></Button>
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
+                        <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-all group/upload border-muted-foreground/20">
+                            {isUploading ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : (<><Upload className="h-6 w-6 text-muted-foreground/40 group-hover/upload:text-primary transition-colors mb-2" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload & Name Document</p></>)}
+                            <Input type="file" className="hidden" onChange={handleFileSelect} disabled={isUploading} />
+                        </label>
+                    </CardContent>
+                </CollapsibleContent>
+            </Collapsible>
+
+            <Dialog open={isNamingOpen} onOpenChange={setIsNamingOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-8 border-b bg-muted/5">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight italic">Asset Identity</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Assign a tactical label to this document</DialogDescription>
+                    </DialogHeader>
+                    <div className="p-8 space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Document Name</Label>
+                            <Input 
+                                autoFocus
+                                value={docName} 
+                                onChange={e => setDocName(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleUploadConfirm()}
+                                className="h-12 font-bold border-2 rounded-xl"
+                                placeholder="e.g. FCT Console Wiring Diagram"
+                            />
+                        </div>
                     </div>
-                    <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-all group/upload border-muted-foreground/20">
-                        {isUploading ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : (<><Upload className="h-6 w-6 text-muted-foreground/40 group-hover/upload:text-primary transition-colors mb-2" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload Manual</p></>)}
-                        <Input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
-                    </label>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
+                    <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                        <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
+                        <Button onClick={handleUploadConfirm} disabled={!docName.trim()} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
+                            Initialize Upload
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 
@@ -510,7 +553,7 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
             <CollapsibleContent>
                 <CardContent className="p-6 space-y-3">
                     {fields.map((field, idx) => (
-                        <div key={field.id} className="p-4 rounded-xl border-2 bg-slate-50 relative group/rule"><div className="grid grid-cols-3 gap-4 pr-8"><FormField control={control} name={`rules.${idx}.sourceOptionId`} render={({ field }) => (<FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-bold text-[10px] border-2 bg-white"><SelectValue placeholder="If..." /></SelectTrigger></FormControl><SelectContent>{featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select></FormItem>)} /><FormField control={control} name={`rules.${idx}.type`} render={({ field }) => (<FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-black text-[10px] border-2 bg-white"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="include" className="font-black py-2 uppercase text-[9px]">MUST INCLUDE</SelectItem><SelectItem value="exclude" className="font-black py-2 uppercase text-[9px]">EXCLUDES</SelectItem></SelectContent></Select></FormItem>)} /><FormField control={control} name={`rules.${idx}.targetOptionIds`} render={({ field }) => ( <FormItem><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-9 justify-between px-3 font-bold border-2 bg-white text-[10px]"><span>{field.value?.length > 0 ? `${field.value.length} TARGETS` : 'Targets...'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button></PopoverTrigger><PopoverContent className="w-[280px] p-0 rounded-xl border-4 shadow-2xl"><Command><CommandInput placeholder="Search..." className="h-9" /><CommandList><CommandGroup>{featureOptions.map(opt => (<CommandItem key={opt.id} onSelect={() => { const next = field.value?.includes(opt.id) ? field.value.filter((i:any)=>i!==opt.id) : [...(field.value||[]), opt.id]; field.onChange(next); }} className="font-bold uppercase text-[9px] py-2.5 flex items-center justify-between"><span>{opt.label}</span>{field.value?.includes(opt.id) && <Check className="h-3 w-3 text-primary" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover></FormItem>)} /></div><Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive opacity-0 group-hover/rule:opacity-100 transition-opacity" onClick={() => remove(idx)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
+                        <div key={field.id} className="p-4 rounded-xl border-2 bg-slate-50 relative group/rule"><div className="grid grid-cols-3 gap-4 pr-8"><FormField control={control} name={`rules.${idx}.sourceOptionId`} render={({ field }) => (<FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-bold text-[10px] border-2 bg-white"><SelectValue placeholder="If..." /></SelectTrigger></FormControl><SelectContent>{featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select></FormItem>)} /><FormField control={control} name={`rules.${idx}.type`} render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-black text-[10px] border-2 bg-white"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="include" className="font-black py-2 uppercase text-[9px]">MUST INCLUDE</SelectItem><SelectItem value="exclude" className="font-black py-2 uppercase text-[9px]">EXCLUDES</SelectItem></SelectContent></Select></FormItem> )} /><FormField control={control} name={`rules.${idx}.targetOptionIds`} render={({ field }) => ( <FormItem><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-9 justify-between px-3 font-bold border-2 bg-white text-[10px]"><span>{field.value?.length > 0 ? `${field.value.length} TARGETS` : 'Targets...'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button></PopoverTrigger><PopoverContent className="w-[280px] p-0 rounded-xl border-4 shadow-2xl"><Command><CommandInput placeholder="Search..." className="h-9" /><CommandList><CommandGroup>{featureOptions.map(opt => (<CommandItem key={opt.id} onSelect={() => { const next = field.value?.includes(opt.id) ? field.value.filter((i:any)=>i!==opt.id) : [...(field.value||[]), opt.id]; field.onChange(next); }} className="font-bold uppercase text-[9px] py-2.5 flex items-center justify-between"><span>{opt.label}</span>{field.value?.includes(opt.id) && <Check className="h-3 w-3 text-primary" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover></FormItem>)} /></div><Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive opacity-0 group-hover/rule:opacity-100 transition-opacity" onClick={() => remove(idx)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
                     ))}
                 </CardContent>
             </CollapsibleContent>
@@ -556,12 +599,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     
                     <Collapsible className="group/config overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                        <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
-                            <div className="flex items-center gap-3">
-                                <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent transition-all group-data-[state=open]/config:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/config:rotate-180" /></Button></CollapsibleTrigger>
-                                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Factory Configurator</CardTitle>
-                            </div>
-                        </div>
+                        <CollapsibleCardHeader title="Factory Configurator" />
                         <CollapsibleContent>
                             <div className="p-6 space-y-8">
                                 <div className="inline-flex items-center p-1.5 bg-white rounded-full border-2 shadow-sm focus-within:border-primary/40 transition-colors w-full">
