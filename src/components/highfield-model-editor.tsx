@@ -18,7 +18,7 @@ import {
     DollarSign, Ship, RefreshCw, 
     Pencil, ArrowUp, ArrowDown, Check, Settings2, 
     Search, ListChecks, Star, ChevronDown, FileText, ExternalLink, ChevronRight, Zap,
-    Waves
+    Waves, Layout, FolderPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -154,7 +154,7 @@ function SkuCompatibilityDialog({
                         <div className="p-6 border-b bg-muted/5">
                             <div className="relative">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Search variants..." className="pl-10 h-12 font-bold" value={search} onChange={(e) => setSearchTerm(e.target.value)} />
+                                <Input placeholder="Search variants..." className="pl-10 h-12 font-bold" value={search} onChange={(e) => setSearch(e.target.value)} />
                             </div>
                         </div>
                         <ScrollArea className="flex-1">
@@ -171,7 +171,7 @@ function SkuCompatibilityDialog({
                     <div className="w-full md:w-[320px] shrink-0 bg-muted/5 flex flex-col">
                         <div className="p-6 border-b bg-background flex items-center justify-between"><h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Staged</h4><Badge className="font-black h-5 text-[9px] bg-primary">{value.length}</Badge></div>
                         <ScrollArea className="flex-1">
-                            <div className="p-6 space-y-2">{variants.filter(v => value.includes(v.id)).map(v => (<div key={v.id} className="relative bg-white border-2 p-3 rounded-xl shadow-sm"><p className="text-11px font-black uppercase truncate pr-6">{v.name}</p><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => handleToggle(v.id)}><X className="h-3 w-3" /></Button></div>))}</div>
+                            <div className="p-6 space-y-2">{variants.filter(v => value.includes(v.id)).map(v => (<div key={v.id} className="relative bg-white border-2 p-3 rounded-xl shadow-sm"><p className="text-[11px] font-black uppercase truncate pr-6">{v.name}</p><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => handleToggle(v.id)}><X className="h-3 w-3" /></Button></div>))}</div>
                         </ScrollArea>
                     </div>
                 </div>
@@ -502,7 +502,7 @@ function MotorConfigurationsSection() {
     return (
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
-                <div className="flex items-center gap-3"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><div><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Motor Setup</CardTitle><span className="text-[8px] font-bold text-muted-foreground uppercase">{fields.length} SCENARIOS</span></div></div>
+                <div className="flex items-center gap-3"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent group-data-[state=open]:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><div><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Motor Setup</CardTitle><span className="text-[8px] font-bold text-muted-foreground uppercase">{fields.length} SCENARIOS</span></div></div>
                 <Select onValueChange={(type) => { const opt = configOptions.find(o => o.id === type); if (opt) append({ type, engines: Array.from({ length: opt.engineCount }, (_, i) => ({ label: opt.engineLabels[i], minHp: 0, maxHp: 0, recommendedHp: 0 })) }); }}><SelectTrigger className="h-8 w-[160px] font-black text-[9px] uppercase tracking-widest border-2 rounded-lg"><Plus className="h-3 w-3 mr-1.5 text-primary" /><SelectValue placeholder="Add Scenario" /></SelectTrigger><SelectContent className="rounded-xl border-2">{configOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select>
             </div>
             <CollapsibleContent>
@@ -549,7 +549,7 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
 
     return (
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none"><div className="flex items-center gap-3"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent"><ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Guardrails</CardTitle></div><div className="flex items-center gap-2"><Button type="button" variant="secondary" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg" onClick={handleSyncRules} disabled={isSyncing}>{isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />} Sync Series</Button><Button type="button" variant="outline" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg border-2" onClick={() => append({ id: `rule-${Date.now()}`, sourceType: 'option', sourceOptionId: '', type: 'include', targetOptionIds: [] })}><Plus className="h-3 w-3 mr-1.5" /> New Constraint</Button></div></div>
+            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none"><div className="flex items-center gap-3"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent group-data-[state=open]:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Guardrails</CardTitle></div><div className="flex items-center gap-2"><Button type="button" variant="secondary" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg" onClick={handleSyncRules} disabled={isSyncing}>{isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />} Sync Series</Button><Button type="button" variant="outline" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg border-2" onClick={() => append({ id: `rule-${Date.now()}`, sourceType: 'option', sourceOptionId: '', type: 'include', targetOptionIds: [] })}><Plus className="h-3 w-3 mr-1.5" /> New Constraint</Button></div></div>
             <CollapsibleContent>
                 <CardContent className="p-6 space-y-3">
                     {fields.map((field, idx) => (
