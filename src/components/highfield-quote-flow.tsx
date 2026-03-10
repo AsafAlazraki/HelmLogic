@@ -291,6 +291,15 @@ export function HighfieldQuoteFlow({
 
     const displayedModelName = isOpenClassification ? `${model.name} (OPEN)` : model.name;
 
+    const stepLabels: Record<number, string> = {
+        1: 'BOAT BASE',
+        2: 'FACTORY OPTIONS',
+        3: 'MOTOR',
+        4: 'TRAILER',
+        5: 'DEALER FIT',
+        6: 'SUMMARY'
+    };
+
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
             {/* Top Navigation Step Bar */}
@@ -397,7 +406,7 @@ export function HighfieldQuoteFlow({
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
                     <div className="pt-10 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
-                            {STEPS.find(s => s.id === currentStep)?.label.toUpperCase()}
+                            {stepLabels[currentStep]}
                             <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
                         </h2>
                     </div>
@@ -459,8 +468,8 @@ export function HighfieldQuoteFlow({
                                                                 : "hover:border-primary/20"
                                                         )}
                                                     >
-                                                        <div className="relative aspect-video w-full p-6 bg-slate-50/50">
-                                                            <Image src={color.imageUrl || ''} alt="Color" fill className="object-contain" unoptimized />
+                                                        <div className="relative aspect-video w-full p-6 bg-white">
+                                                            <Image src={color.imageUrl || ''} alt="Color" fill className="object-contain mix-blend-multiply p-4" unoptimized />
                                                         </div>
                                                         <div className={cn(
                                                             "p-5 text-center border-t transition-colors", 
@@ -503,9 +512,9 @@ export function HighfieldQuoteFlow({
                                                             selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20"
                                                         )}
                                                     >
-                                                        <div className="relative aspect-video w-full p-6 bg-slate-50/50 overflow-hidden shrink-0">
+                                                        <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">
                                                             {opt.imageUrl ? (
-                                                                <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain p-4 transition-transform group-hover:scale-105" unoptimized />
+                                                                <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply p-4 transition-transform group-hover:scale-105" unoptimized />
                                                             ) : (
                                                                 <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>
                                                             )}
@@ -551,16 +560,16 @@ export function HighfieldQuoteFlow({
                                                     onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} 
                                                     className={cn(
                                                         "flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", 
-                                                        selectedMotor?.id === m.id ? "bg-primary border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20"
+                                                        selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20"
                                                     )}
                                                 >
-                                                    <div className="relative aspect-video w-full p-6 bg-slate-50/50 overflow-hidden shrink-0">
+                                                    <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">
                                                         {m.SummaryImage ? (
                                                             <Image 
                                                                 src={`https://www.yamaha-motor.com.au${m.SummaryImage.startsWith('/') ? '' : '/'}${m.SummaryImage}`} 
                                                                 alt="Motor" 
                                                                 fill 
-                                                                className="object-contain p-4" 
+                                                                className="object-contain mix-blend-multiply p-4" 
                                                                 unoptimized 
                                                             />
                                                         ) : (
@@ -570,11 +579,11 @@ export function HighfieldQuoteFlow({
                                                     <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                         <p className={cn(
                                                             "text-xs font-black uppercase tracking-tight leading-tight",
-                                                            selectedMotor?.id === m.id ? "text-white" : "text-slate-900"
+                                                            selectedMotor?.id === m.id ? "text-primary" : "text-slate-900"
                                                         )}>{m['Model Name']}</p>
                                                         <p className={cn(
                                                             "text-[9px] font-black uppercase tracking-widest",
-                                                            selectedMotor?.id === m.id ? "text-white/70" : "text-primary"
+                                                            selectedMotor?.id === m.id ? "text-primary/70" : "text-primary"
                                                         )}>
                                                             {m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}
                                                         </p>
