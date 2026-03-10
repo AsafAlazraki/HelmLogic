@@ -154,7 +154,7 @@ function SkuCompatibilityDialog({
                         <div className="p-6 border-b bg-muted/5">
                             <div className="relative">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Search variants..." className="pl-10 h-12 font-bold" value={search} onChange={(e) => setSearch(e.target.value)} />
+                                <Input placeholder="Search variants..." className="pl-10 h-12 font-bold" value={search} onChange={(e) => setSearchTerm(e.target.value)} />
                             </div>
                         </div>
                         <ScrollArea className="flex-1">
