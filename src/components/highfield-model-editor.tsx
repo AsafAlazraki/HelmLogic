@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useFieldArray, useWatch, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
-import { useStorage, useFirestore } from '@/firebase/provider';
+import { useStorage, useFirestore, useMemoFirebase } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,8 @@ import {
     Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, 
     AlertTriangle, DollarSign, Ship, RefreshCw, 
     PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert, Settings2, 
-    Search, ListChecks, Star, ChevronDown, FileText, ExternalLink, ChevronRight, Zap
+    Search, ListChecks, Star, ChevronDown, FileText, ExternalLink, ChevronRight, Zap,
+    Waves, Layout
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -28,7 +29,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from './ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useMemoFirebase } from '@/firebase/provider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import {
     DropdownMenu,
@@ -180,7 +180,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-10 h-12 font-bold bg-background border-2 rounded-xl"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -932,7 +932,12 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     const categorizedFeatures = useMemo(() => {
         const features = optionalFeatureFields.map((field, idx) => ({ field, idx, data: watchedOptionalFeatures[idx] }));
         const groups: Record<string, typeof features> = {};
-        features.forEach(item => { const cat = item.data?.category || 'Other Options'; if (!groups[cat]) groups[cat] = []; groups[cat].push(item); });
+        features.forEach(item => { 
+            const cat = item.data?.category || 'Other Options'; 
+            if (!groups[cat]) groups[cat] = []; 
+            groups[cat].push(item); 
+        });
+        
         return Object.entries(groups).sort(([a], [b]) => {
             if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
             if (a === 'Seats') return -1; if (b === 'Seats') return 1;
@@ -951,49 +956,117 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                 </div>
                 <div className="lg:col-span-3 space-y-12 min-w-0">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between px-2">
-                            <div className="flex items-center gap-2 text-primary">
-                                <PlusCircle className="h-5 w-5" />
-                                <h3 className="font-black uppercase tracking-widest text-xs">New Factory Category</h3>
-                            </div>
-                        </div>
-                        <div className="p-2 bg-white rounded-3xl border-4 shadow-xl flex items-center gap-3">
-                            <div className="relative flex-1">
-                                <FolderPlus className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                                <Input 
-                                    placeholder="e.g. Navigation Packs..." 
-                                    value={newCategoryName} 
-                                    onChange={e => setNewCategoryName(e.target.value)}
-                                    className="h-14 pl-12 font-bold text-sm border-none shadow-none focus-visible:ring-0" 
-                                />
-                            </div>
-                            <Button type="button" className="h-12 px-8 rounded-2xl font-black uppercase text-[10px] shadow-lg" onClick={() => { if(newCategoryName.trim()) setNewCategoryName(''); }}>Register</Button>
-                        </div>
-
-                        <ScrollArea className="h-[1200px] w-full rounded-[3rem] border-4 shadow-2xl bg-white">
-                            <div className="p-8 space-y-12">
-                                {categorizedFeatures.map(([cat, items]) => (
-                                    <div key={cat} className="space-y-6">
-                                        <div className="flex items-center justify-between border-b-4 border-primary/10 pb-4 px-2">
-                                            <div className="flex items-center gap-4">
-                                                <Badge className="bg-primary text-white border-none font-black text-[10px] tracking-tighter h-6 px-3">{items.length} ITEMS</Badge>
-                                                <h3 className="font-black text-xl uppercase italic tracking-tighter text-slate-900">{cat}</h3>
-                                            </div>
-                                            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-primary/10 text-primary shadow-sm hover:scale-110 transition-transform" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'Other Options' ? null : cat, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}>
-                                                <Plus className="h-5 w-5" />
-                                            </Button>
-                                        </div>
-                                        <div className="grid gap-4">
-                                            {items.map(item => (
-                                                <OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'Other Options')} variants={variants} allFeatures={watchedOptionalFeatures} />
-                                            ))}
-                                        </div>
+                    
+                    {/* Integrated Factory Configurator Card */}
+                    <Card className="rounded-[2.5rem] border-2 bg-card shadow-sm overflow-hidden flex flex-col">
+                        <CardHeader className="p-8 border-b bg-muted/5">
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-2 text-primary">
+                                        <PlusCircle className="h-4 w-4" />
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">New Factory Category</h3>
                                     </div>
-                                ))}
+                                </div>
+                                <div className="p-2 bg-white rounded-full border-2 shadow-inner flex items-center gap-3">
+                                    <div className="relative flex-1">
+                                        <FolderPlus className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                        <Input 
+                                            placeholder="e.g. Navigation Packs..." 
+                                            value={newCategoryName} 
+                                            onChange={e => setNewCategoryName(e.target.value)}
+                                            className="h-12 pl-12 font-bold text-sm border-none shadow-none focus-visible:ring-0 bg-transparent" 
+                                        />
+                                    </div>
+                                    <Button 
+                                        type="button" 
+                                        className="h-10 px-8 rounded-full font-black uppercase text-[10px] shadow-lg bg-primary text-white hover:scale-105 transition-transform"
+                                        disabled={!newCategoryName.trim()}
+                                        onClick={() => {
+                                            if(newCategoryName.trim()) {
+                                                appendOptionalFeature({ 
+                                                    id: `feat-${Date.now()}`, 
+                                                    name: 'New Option', 
+                                                    category: newCategoryName, 
+                                                    imageUrl: null, 
+                                                    code: '', 
+                                                    color: '', 
+                                                    applicableVariantIds: [], 
+                                                    associatedSeatId: null, 
+                                                    isStandard: false 
+                                                });
+                                                setNewCategoryName('');
+                                            }
+                                        }}
+                                    >
+                                        Register
+                                    </Button>
+                                </div>
                             </div>
-                        </ScrollArea>
-                    </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <ScrollArea className="h-[800px] w-full">
+                                <div className="p-8 space-y-12">
+                                    {categorizedFeatures.map(([cat, items]) => (
+                                        <Collapsible key={cat} defaultOpen className="space-y-6">
+                                            <div className="flex items-center justify-between border-b-4 border-primary/10 pb-4 px-2 group/cat">
+                                                <div className="flex items-center gap-4">
+                                                    <CollapsibleTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border shadow-sm hover:bg-primary/10 hover:text-primary transition-all group-data-[state=open]:bg-muted">
+                                                            <ChevronDown className="h-5 w-5 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                                                        </Button>
+                                                    </CollapsibleTrigger>
+                                                    <div className="flex items-center gap-3">
+                                                        <Badge className="bg-primary text-white border-none font-black text-[10px] tracking-tighter h-6 px-3">{items.length} ITEMS</Badge>
+                                                        <h3 className="font-black text-2xl uppercase italic tracking-tighter text-slate-900">{cat}</h3>
+                                                    </div>
+                                                </div>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-10 w-10 rounded-full bg-primary/10 text-primary shadow-sm hover:scale-110 transition-transform" 
+                                                    onClick={() => appendOptionalFeature({ 
+                                                        id: `feat-${Date.now()}`, 
+                                                        name: '', 
+                                                        category: cat === 'Other Options' ? null : cat, 
+                                                        imageUrl: null, 
+                                                        code: '', 
+                                                        color: '', 
+                                                        applicableVariantIds: [], 
+                                                        associatedSeatId: null, 
+                                                        isStandard: false 
+                                                    })}
+                                                >
+                                                    <Plus className="h-5 w-5" />
+                                                </Button>
+                                            </div>
+                                            <CollapsibleContent>
+                                                <div className="grid gap-4 animate-in slide-in-from-top-2 duration-300">
+                                                    {items.map(item => (
+                                                        <OptionalFeatureItem 
+                                                            key={item.field.id} 
+                                                            index={item.idx} 
+                                                            remove={removeOptionalFeature} 
+                                                            categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'Other Options')} 
+                                                            variants={variants} 
+                                                            allFeatures={watchedOptionalFeatures} 
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    ))}
+                                    {categorizedFeatures.length === 0 && (
+                                        <div className="py-20 text-center flex flex-col items-center gap-4 opacity-20">
+                                            <Layout className="h-12 w-12" />
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">No factory options defined.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+
                     <DocumentsSection />
                     <RulesSection model={model} modelCode={modelCode} />
                 </div>
