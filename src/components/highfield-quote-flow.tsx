@@ -392,8 +392,8 @@ export function HighfieldQuoteFlow({
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-12 pb-12 space-y-10">
                             {currentStep === 1 && (
-                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4">
-                                    <div className="space-y-6">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4 w-full">
+                                    <div className="space-y-6 w-full">
                                         {/* Sub-Section 1: Tube Material Blue Pill */}
                                         <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-fit">
                                             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
@@ -401,7 +401,7 @@ export function HighfieldQuoteFlow({
                                                 1. Tube Material
                                             </h3>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-2 gap-6 w-full">
                                             {availableMaterials.map((mat) => (
                                                 <button 
                                                     key={mat} 
@@ -413,7 +413,10 @@ export function HighfieldQuoteFlow({
                                                             : "hover:border-primary/20"
                                                     )}
                                                 >
-                                                    <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                                                    <span className={cn(
+                                                        "text-sm font-black uppercase tracking-widest transition-colors",
+                                                        selectedMaterial === mat ? "text-primary" : "text-slate-600"
+                                                    )}>
                                                         {mat}
                                                     </span>
                                                 </button>
@@ -424,16 +427,16 @@ export function HighfieldQuoteFlow({
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
-                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-10"
+                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-10 w-full"
                                         >
-                                            {/* Sub-Section 2: Color Logic Blue Pill */}
+                                            {/* Sub-Section 2: Color Selection Blue Pill */}
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-fit">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
                                                     2. Select Hull & Tube Color
                                                 </h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-2 gap-6 w-full">
                                                 {availableColors.map((color) => (
                                                     <button 
                                                         key={color.id} 
@@ -466,7 +469,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4 w-full">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div key={cat} className="space-y-4">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest border-l-4 border-primary pl-3">{cat}</h3>
