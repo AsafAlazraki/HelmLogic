@@ -355,7 +355,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
 
-                    {/* Tactical Info Section */}
+                    {/* Tactical Info Section - Repositioned Under Pricing */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
                         <Button 
                             variant="ghost" 
@@ -573,7 +573,7 @@ export function HighfieldQuoteFlow({
 
             {/* Tactical Lightbox Overlay */}
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
-                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12">
+                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:focus:ring-0 [&>button]:focus:ring-offset-0 [&>button]:hover:bg-transparent">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Image Inspection</DialogTitle>
                     </DialogHeader>

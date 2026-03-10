@@ -205,7 +205,7 @@ function QuoteInitializationDialog({
                             {rangesLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-4 gap-6">
+                                <div className="grid grid-cols-5 gap-6">
                                     {ranges?.map(range => (
                                         <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => setSelectedRange(range)}>
                                             <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6 flex items-center justify-center">
@@ -233,7 +233,7 @@ function QuoteInitializationDialog({
                             {modelsLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-4 gap-6">
+                                <div className="grid grid-cols-5 gap-6">
                                     {models?.map(model => (
                                         <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
                                             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
@@ -505,7 +505,7 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
-                        {/* Tactical Workspace Header - Fixed Nested DIV in P Error */}
+                        {/* Tactical Workspace Header - Replaced P with DIV to fix DOM Nesting Error */}
                         <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
@@ -625,7 +625,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-4 gap-6 py-4 px-1">
+                <div className="grid grid-cols-5 gap-6 py-4 px-1">
                     {ranges?.map(range => (
                         <SortableRangeCard 
                             key={range.id} 
@@ -660,7 +660,7 @@ function ModelsGrid({
     if (modelsLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-4 gap-6 py-4 px-1">
+        <div className="grid grid-cols-5 gap-6 py-4 px-1">
             {models?.map(model => (
                 <ModelCard 
                     key={model.id} 
@@ -843,7 +843,7 @@ function EditItemDialog({ isOpen, onOpenChange, item, onSave }: any) {
                     </div>
                 </div>
                 <DialogFooter className="gap-3">
-                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px]">Cancel</Button></DialogClose>
                     <Button onClick={handleSave} disabled={isSaving} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl">
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="mr-2 h-4 w-4 mr-2" />}
                         Persist Changes
