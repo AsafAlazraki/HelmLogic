@@ -276,7 +276,7 @@ export function HighfieldQuoteFlow({
     const displayedModelName = isOpenClassification ? `${model.name} (OPEN)` : model.name;
 
     return (
-        <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
             {/* Top Navigation Step Bar */}
             <div className="sticky top-0 z-30 px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center">
                 <div className="w-full flex items-center justify-between">
@@ -322,7 +322,7 @@ export function HighfieldQuoteFlow({
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
-                                            className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none"
+                                            className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none"
                                             onClick={() => setLightboxUrl(url)}
                                         >
                                             <Maximize2 className="h-6 w-6" />
@@ -337,15 +337,13 @@ export function HighfieldQuoteFlow({
 
                     {/* Build Summary Pricing Area */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
-                        <div className="flex items-start justify-start px-1">
-                            <div className="flex flex-col items-start shrink-0">
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
-                                    Package Pricing (Excl. GST)
-                                </span>
-                                <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline">
-                                    <span className="text-primary text-3xl mr-1">$</span>
-                                    <span>{totalPrice.toLocaleString()}</span>
-                                </div>
+                        <div className="flex flex-col items-start px-1">
+                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
+                                Package Pricing (Excl. GST)
+                            </span>
+                            <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline">
+                                <span className="text-primary text-3xl mr-1 self-baseline">$</span>
+                                <span>{totalPrice.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
@@ -381,8 +379,7 @@ export function HighfieldQuoteFlow({
 
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    {/* Tactical Integrated Step Header */}
-                    <div className="pt-10 px-12 pb-4 bg-transparent shrink-0 text-left">
+                    <div className="pt-10 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label.toUpperCase()}
                             <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
@@ -390,24 +387,23 @@ export function HighfieldQuoteFlow({
                     </div>
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
-                        <div className="px-12 pb-12 space-y-10">
+                        <div className="px-12 pb-12 space-y-8">
                             {currentStep === 1 && (
-                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4 w-full">
-                                    <div className="space-y-6 w-full">
-                                        {/* Sub-Section 1: Tube Material Blue Pill */}
-                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-fit">
+                                <div className="space-y-10 animate-in fade-in duration-700 ease-in-out text-left mt-4">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                             <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
                                                 1. Tube Material
                                             </h3>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-6 w-full">
+                                        <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
                                                 <button 
                                                     key={mat} 
                                                     onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} 
                                                     className={cn(
-                                                        "group flex flex-col items-center justify-center p-12 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent", 
+                                                        "group flex flex-col items-center justify-center p-12 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent h-48", 
                                                         selectedMaterial === mat 
                                                             ? "border-primary ring-2 ring-primary/20 scale-[1.02]" 
                                                             : "hover:border-primary/20"
@@ -427,16 +423,15 @@ export function HighfieldQuoteFlow({
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
-                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-10 w-full"
+                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-10"
                                         >
-                                            {/* Sub-Section 2: Color Selection Blue Pill */}
-                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-fit">
+                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
                                                     2. Select Hull & Tube Color
                                                 </h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-6 w-full">
+                                            <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button 
                                                         key={color.id} 
@@ -469,7 +464,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4 w-full">
+                                <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div key={cat} className="space-y-4">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest border-l-4 border-primary pl-3">{cat}</h3>
@@ -545,7 +540,6 @@ export function HighfieldQuoteFlow({
                         </div>
                     </ScrollArea>
 
-                    {/* Bottom Global Build Navigation */}
                     <div className="p-12 pt-6 bg-slate-50/80 backdrop-blur-xl border-t shrink-0 flex gap-4">
                         {currentStep > 1 && (
                             <Button 
@@ -567,7 +561,6 @@ export function HighfieldQuoteFlow({
                 </div>
             </div>
 
-            {/* Tactical Lightbox Overlay */}
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
                 <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none [&>button]:shadow-none [&>button]:right-6 [&>button]:top-6">
                     <DialogHeader className="sr-only">
@@ -579,7 +572,6 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
-            {/* Standard Features Dialog */}
             <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5">
@@ -607,7 +599,6 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
-            {/* General Specs Dialog */}
             <Dialog open={showSpecs} onOpenChange={setShowSpecs}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5">
@@ -631,7 +622,6 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
-            {/* Documents Dialog */}
             <Dialog open={showDocs} onOpenChange={setShowDocs}>
                 <DialogContent className="sm:max-w-md rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5">

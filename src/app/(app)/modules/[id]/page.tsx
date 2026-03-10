@@ -518,9 +518,9 @@ export default function ModuleDetailsPage() {
                                 <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
                                     <Layout className="h-5 w-5" />
                                 </div>
-                                <div>
+                                <div className="space-y-1">
                                     <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">Catalog Explorer</h2>
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-primary mt-1.5 flex items-center gap-2">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                         {mainVendor?.name || 'Highfield'} Master Inventory
                                         <Badge variant="outline" className="h-4 font-black uppercase text-[8px] bg-slate-100 border-slate-300">{(mainVendor?.currency || 'USD')} BASE</Badge>
                                     </div>
