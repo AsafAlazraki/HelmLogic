@@ -222,9 +222,11 @@ export function HighfieldQuoteFlow({
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
+            // Logic: if a console is selected, ONLY show the associated seat if it has one.
             if (cat === 'Seats' && selectedConsole) {
                 if (!selectedConsole.associatedSeatId || opt.id !== selectedConsole.associatedSeatId) return acc;
             }
+            // If no console is selected, show ALL seats (standalone mode)
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;

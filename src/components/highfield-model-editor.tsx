@@ -622,39 +622,43 @@ export function DocumentsSection() {
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
             <CollapsibleCardHeader title="Technical Docs" count={fields.length} />
             <CollapsibleContent>
-                <CardContent className="p-6 space-y-3">
-                    <div className="grid gap-1.5">
+                <CardContent className="pt-6 space-y-4">
+                    <div className="grid gap-2">
                         {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 p-2.5 rounded-lg border-2 bg-slate-50 group/doc">
-                                <FileText className="h-4 w-4 text-primary/40 shrink-0" />
+                            <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc">
+                                <FileText className="h-5 w-5 text-primary/40 shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <FormField 
                                         control={control} 
                                         name={`documents.${index}.name`} 
                                         render={({ field }) => (
                                             <FormControl>
-                                                <Input {...field} className="h-6 text-[10px] font-black uppercase border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Doc Name" />
+                                                <Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" />
                                             </FormControl>
                                         )} 
                                     />
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
-                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary hover:bg-primary/10" asChild>
-                                        <a href={(field as any).url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3" /></a>
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link">
+                                        <a href={(field as any).url} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
                                     </Button>
-                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3 w-3" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                 </div>
                             </div>
                         ))}
                     </div>
                     
-                    <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-all group/upload">
+                    <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-all group/upload border-muted-foreground/20">
                         {isUploading ? (
-                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         ) : (
                             <>
-                                <Upload className="h-5 w-5 text-slate-300 group-hover/upload:text-primary transition-colors mb-2" />
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Upload Manual</p>
+                                <Upload className="h-6 w-6 text-muted-foreground/40 group-hover/upload:text-primary transition-colors mb-2" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload Manual</p>
                             </>
                         )}
                         <Input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
@@ -701,7 +705,7 @@ function SpecsSection() {
                                 <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Param" className="h-8 text-[10px] font-bold border-none bg-transparent shadow-none" {...field} /></FormControl></FormItem> )} />
                                 <div className="h-4 w-px bg-slate-200" />
                                 <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-8 text-[10px] font-black text-primary border-none bg-transparent shadow-none" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/field:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3 w-3" /></Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/field:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
                             </div>
                         ))}
                     </div>

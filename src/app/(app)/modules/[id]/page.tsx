@@ -131,15 +131,6 @@ interface Model {
   rangeId: string;
 }
 
-interface Template {
-    id: string;
-    name: string;
-    type: 'Quote' | 'Invoice' | 'Contract';
-    moduleId: string;
-    createdByUserId: string;
-    createdAt: any;
-}
-
 /**
  * ID-based smart merge for model configuration.
  * Ensures Master catalog items (like new FCT consoles) are always visible.
@@ -634,8 +625,6 @@ export default function ModuleDetailsPage() {
                             </div>
                         </ScrollArea>
                     </TabsContent>
-
-                    {/* Additional Tabs Content Omitted for Brevity */}
                 </Tabs>
             </main>
 
