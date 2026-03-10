@@ -230,15 +230,22 @@ export function HighfieldQuoteFlow({
         const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
         const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
         const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
+        
+        // STRICT SEAT LOGIC: 
+        // Identify the relevant console. If one is selected, use it. 
+        // If not selected but only one is possible for this boat series, use that to restrict seats.
         const constraintConsole = selectedConsole || (availableConsoles.length === 1 ? availableConsoles[0] : null);
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
+            
+            // Apply Seat Restriction
             if (cat === 'Seats') {
                 if (constraintConsole) {
                     if (!constraintConsole.associatedSeatId || opt.id !== constraintConsole.associatedSeatId) return acc;
                 }
             }
+            
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;
@@ -355,7 +362,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
 
-                    {/* Tactical Info Section - Repositioned Under Pricing */}
+                    {/* Tactical Info Section */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
                         <Button 
                             variant="ghost" 
@@ -386,9 +393,11 @@ export function HighfieldQuoteFlow({
 
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
+                    {/* Dynamic Integrated Step Header */}
                     <div className="pt-16 px-12 pb-8 bg-transparent shrink-0 text-left">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label}
+                            <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName}</span>
                         </h2>
                     </div>
 
