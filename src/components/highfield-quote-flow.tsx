@@ -321,7 +321,7 @@ export function HighfieldQuoteFlow({
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
-                                            className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white"
+                                            className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none"
                                             onClick={() => setLightboxUrl(url)}
                                         >
                                             <Maximize2 className="h-6 w-6" />
@@ -421,15 +421,9 @@ export function HighfieldQuoteFlow({
                                                             : "border-transparent hover:border-primary/20"
                                                     )}
                                                 >
-                                                    <span className="text-5xl font-black text-slate-900 tracking-tighter mb-6 uppercase">
+                                                    <span className="text-5xl font-black text-slate-900 tracking-tighter uppercase">
                                                         {mat}
                                                     </span>
-                                                    <div className="flex items-center gap-3">
-                                                        <Check className="h-5 w-5 stroke-[3] text-emerald-500" />
-                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-left leading-tight">
-                                                            {mat === 'PVC' ? '5yr' : '10yr'} Tube<br/>Warranty
-                                                        </span>
-                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
@@ -580,7 +574,7 @@ export function HighfieldQuoteFlow({
 
             {/* Tactical Lightbox Overlay */}
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
-                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent">
+                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Immersive Inspection</DialogTitle>
                     </DialogHeader>
