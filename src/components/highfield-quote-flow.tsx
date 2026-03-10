@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -334,7 +333,7 @@ export function HighfieldQuoteFlow({
                         </Carousel>
                     </div>
 
-                    {/* Build Summary Overlay Card */}
+                    {/* Build Summary Identity Area */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
                         <div className="flex items-end justify-between px-1">
                             <div className="flex items-center gap-4 truncate mr-12 pb-1">
@@ -421,7 +420,7 @@ export function HighfieldQuoteFlow({
                                                             : "border-transparent hover:border-primary/20"
                                                     )}
                                                 >
-                                                    <span className="text-5xl font-black text-slate-900 tracking-tighter uppercase">
+                                                    <span className="text-xs font-bold uppercase tracking-widest text-primary">
                                                         {mat}
                                                     </span>
                                                 </button>
@@ -574,7 +573,7 @@ export function HighfieldQuoteFlow({
 
             {/* Tactical Lightbox Overlay */}
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
-                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none">
+                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none [&>button]:shadow-none">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Immersive Inspection</DialogTitle>
                     </DialogHeader>
