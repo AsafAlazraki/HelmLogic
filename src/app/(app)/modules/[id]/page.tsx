@@ -255,7 +255,7 @@ function QuoteInitializationDialog({
                             {rangesLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-5 gap-6">
+                                <div className="grid grid-cols-4 gap-6">
                                     {ranges?.map(range => (
                                         <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => setSelectedRange(range)}>
                                             <div className="aspect-square bg-muted/30 relative border-b overflow-hidden p-6 flex items-center justify-center">
@@ -283,7 +283,7 @@ function QuoteInitializationDialog({
                             {modelsLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-5 gap-6">
+                                <div className="grid grid-cols-4 gap-6">
                                     {models?.map(model => (
                                         <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
                                             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
