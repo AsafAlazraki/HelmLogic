@@ -140,7 +140,41 @@ interface Template {
     createdAt: any;
 }
 
-function BuildTransitionOverlay({ organisation, model }: { organisation?: Organisation | null, model: Model | null }) {
+/**
+ * Smart merge function for model configuration.
+ * Merges the optionalFeatures array by ID to ensure Master additions are visible in Overrides.
+ */
+function getEffectiveModel(master: any, override: any) {
+    if (!master) return null;
+    if (!override) return master;
+
+    const merged = { ...master, ...override };
+    
+    if (master.optionalFeatures && Array.isArray(master.optionalFeatures)) {
+        const masterFeatures = master.optionalFeatures;
+        const overrideFeatures = override.optionalFeatures || [];
+        const overrideMap = new Map(overrideFeatures.map((f: any) => [f.id, f]));
+        
+        const mergedFeatures = masterFeatures.map((mf: any) => {
+            const of = overrideMap.get(mf.id);
+            if (of) return { ...mf, ...of };
+            return mf;
+        });
+
+        const masterIds = new Set(masterFeatures.map((f: any) => f.id));
+        overrideFeatures.forEach((of: any) => {
+            if (!masterIds.has(of.id)) {
+                mergedFeatures.push(of);
+            }
+        });
+
+        merged.optionalFeatures = mergedFeatures;
+    }
+
+    return merged;
+}
+
+function BuildTransitionOverlay({ organisation, modelName }: { organisation?: Organisation | null, modelName: string }) {
     return (
         <div className="fixed inset-0 z-[100] bg-primary flex flex-col items-center justify-center text-white overflow-hidden animate-in fade-in duration-500">
             <div className="absolute inset-0 z-0">
@@ -170,7 +204,7 @@ function BuildTransitionOverlay({ organisation, model }: { organisation?: Organi
                         <span>Initializing Precision Build</span>
                     </div>
                     <h2 className="text-6xl font-black italic uppercase tracking-tighter">
-                        {model?.name || 'Loading'}
+                        {modelName || 'Loading'}
                     </h2>
                 </div>
 
@@ -598,8 +632,8 @@ export default function ModuleDetailsPage() {
 
     const [activeTab, setActiveTab] = useState('dashboard');
     const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
-    const [selectedRange, setSelectedRange] = useState<Range | null>(null);
-    const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+    const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);
+    const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isCreateTemplateOpen, setIsCreateTemplateOpen] = useState(false);
     const [isQuoteInitializationOpen, setIsQuoteInitializationOpen] = useState(false);
@@ -628,7 +662,7 @@ export default function ModuleDetailsPage() {
     const { data: allModules, isLoading: modulesLoading } = useCollection<any>(allModulesQuery);
     
     const currentMemberOrg = useMemo(() => 
-        userProfile?.organisationId ? allOrganisations?.find(o => o.id === userProfile.organisationId) : null,
+        userProfile?.organisationId ? allOrganisations?.find((o: any) => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
     const subDealersQuery = useMemoFirebase(() => {
@@ -647,33 +681,39 @@ export default function ModuleDetailsPage() {
         if (!currentMemberOrg?.id || !moduleData) return null;
         return query(collection(firestore, `organisations/${currentMemberOrg.id}/templates`), where('moduleId', '==', moduleData.id));
     }, [firestore, currentMemberOrg?.id, moduleData]);
-    
     const { data: rawTemplates } = useCollection<Template>(templatesQuery);
 
     const templates = useMemo(() => {
         if (!rawTemplates) return null;
-        return [...rawTemplates].sort((a, b) => {
-            const dateA = a.createdAt?.seconds || 0;
-            const dateB = b.createdAt?.seconds || 0;
-            return dateB - dateA;
-        });
+        return [...rawTemplates].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     }, [rawTemplates]);
+
+    // Live Data for Editor
+    const masterModelRef = useMemoFirebase(() => 
+        mainVendor?.id && selectedRangeId && selectedModelId 
+            ? doc(firestore, `data-warehouse/${mainVendor.id}/ranges/${selectedRangeId}/models`, selectedModelId) 
+            : null, 
+    [firestore, mainVendor?.id, selectedRangeId, selectedModelId]);
+    const { data: masterModel, isLoading: masterModelLoading } = useDoc<any>(masterModelRef);
+
+    const overrideRef = useMemoFirebase(() => 
+        currentMemberOrg?.id && selectedModelId 
+            ? doc(firestore, `organisations/${currentMemberOrg.id}/modelOverrides`, selectedModelId) 
+            : null, 
+    [firestore, currentMemberOrg?.id, selectedModelId]);
+    const { data: overrideData, isLoading: overrideLoading } = useDoc<any>(overrideRef);
+
+    const effectiveModel = useMemo(() => {
+        return getEffectiveModel(masterModel, overrideData);
+    }, [masterModel, overrideData]);
 
     const canEdit = isAdmin || !!userPermissions.can_edit_boat_data;
 
-    const canAccessPricing = useMemo(() => {
-        if (isAdmin) return true;
-        const roleId = userProfile?.organisationRole;
-        const isMD = currentMemberOrg?.roles?.find((r: any) => r.id === roleId)?.name === 'Managing Director';
-        return !!userPermissions.can_access_pricing_manager || isMD;
-    }, [isAdmin, userPermissions, userProfile, currentMemberOrg]);
-
-    const handleRangeSelect = (range: Range) => { setSelectedRange(range); setView('models'); };
+    const handleRangeSelect = (range: Range) => { setSelectedRangeId(range.id); setView('models'); };
     
     const handleModelSelect = (model: Model) => { 
-        setSelectedModel(model); 
+        setSelectedModelId(model.id); 
         setIsTransitioning(true);
-        // Tactical architectural hand-off to immersive editor
         setTimeout(() => {
             setView('bmt');
             setIsTransitioning(false);
@@ -681,8 +721,8 @@ export default function ModuleDetailsPage() {
     };
 
     const handleQuoteInitialization = (model: Model, range: Range) => {
-        setSelectedModel(model);
-        setSelectedRange(range);
+        setSelectedModelId(model.id);
+        setSelectedRangeId(range.id);
         setIsQuoteInitializationOpen(false);
         setIsTransitioning(true);
         router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
@@ -691,10 +731,10 @@ export default function ModuleDetailsPage() {
     const handleBackToCatalog = () => {
         if (view === 'bmt') {
             setView('models');
-            setSelectedModel(null);
+            setSelectedModelId(null);
         } else if (view === 'models') {
             setView('ranges');
-            setSelectedRange(null);
+            setSelectedRangeId(null);
         }
     };
 
@@ -728,13 +768,13 @@ export default function ModuleDetailsPage() {
         { id: 'dashboard', label: 'Dashboard' },
         { id: 'bmt', label: 'Catalog' },
         { id: 'stock', label: 'Stock Management' },
-        { id: 'pricing', label: 'Pricing', visible: canAccessPricing },
+        { id: 'pricing', label: 'Pricing', visible: (isAdmin || !!userPermissions.can_access_pricing_manager) },
         { id: 'settings', label: 'Settings' }
     ].filter(t => t.visible !== false);
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {isTransitioning && <BuildTransitionOverlay organisation={currentMemberOrg as any} model={selectedModel} />}
+            {(isTransitioning || masterModelLoading || overrideLoading) && <BuildTransitionOverlay organisation={currentMemberOrg as any} modelName={masterModel?.name || ''} />}
 
             <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
                 <div className="absolute inset-0 z-0 bg-primary/95">
@@ -877,22 +917,22 @@ export default function ModuleDetailsPage() {
                                             vendor={mainVendor as any} 
                                             onRangeSelect={handleRangeSelect} 
                                             canEdit={canEdit} 
-                                            selectedRangeId={selectedRange?.id} 
+                                            selectedRangeId={selectedRangeId} 
                                             onEdit={(item: any) => { setEditingItem(item); setIsEditOpen(true); }}
                                         />
                                     )}
-                                    {view === 'models' && selectedRange && (
+                                    {view === 'models' && selectedRangeId && (
                                         <ModelsGrid 
-                                            range={selectedRange} 
+                                            rangeId={selectedRangeId} 
                                             vendor={mainVendor as any} 
                                             onModelSelect={handleModelSelect} 
-                                            selectedModelId={selectedModel?.id} 
+                                            selectedModelId={selectedModelId} 
                                         />
                                     )}
-                                    {view === 'bmt' && selectedModel && selectedRange && (
+                                    {view === 'bmt' && effectiveModel && (
                                         <ModelConfigurationEditor 
-                                            model={selectedModel}
-                                            docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRange.id}/models/${selectedModel!.id}`}
+                                            model={effectiveModel}
+                                            docPath={`data-warehouse/${mainVendor!.id}/ranges/${selectedRangeId}/models/${selectedModelId}`}
                                             vendor={mainVendor}
                                             module={moduleData}
                                             user={user as any}
@@ -1065,7 +1105,7 @@ export default function ModuleDetailsPage() {
     );
 }
 
-function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }: { vendor: Vendor; onRangeSelect: (range: Range) => void, canEdit: boolean, selectedRangeId?: string, onEdit: (item: any) => void }) {
+function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }: { vendor: Vendor; onRangeSelect: (range: Range) => void, canEdit: boolean, selectedRangeId?: string | null, onEdit: (item: any) => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
@@ -1115,18 +1155,18 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
 }
 
 function ModelsGrid({ 
-    range, 
+    rangeId, 
     vendor, 
     onModelSelect, 
     selectedModelId
 }: { 
-    range: Range; 
+    rangeId: string; 
     vendor: Vendor; 
     onModelSelect: (model: Model) => void; 
-    selectedModelId?: string
+    selectedModelId?: string | null
 }) {
     const firestore = useFirestore();
-    const modelsQuery = useMemoFirebase(() => vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null, [firestore, vendor?.id, range?.id]);
+    const modelsQuery = useMemoFirebase(() => vendor?.id && rangeId ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models`), orderBy('order')) : null, [firestore, vendor?.id, rangeId]);
     const { data: models, isLoading: modelsLoading } = useCollection<Model>(modelsQuery);
 
     if (modelsLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;

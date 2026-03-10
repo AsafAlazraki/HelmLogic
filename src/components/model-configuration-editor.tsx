@@ -3,10 +3,10 @@
 import { useForm, FormProvider, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import type { User } from 'firebase/auth';
@@ -127,6 +127,8 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
                 ...f,
                 code: f.code ?? '',
                 color: f.color ?? '',
+                cost: f.cost ?? null,
+                sellPriceExclGst: f.sellPriceExclGst ?? null,
             })),
             rules: data.rules ?? [],
         };
@@ -210,7 +212,6 @@ export function ModelConfigurationEditor({
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Anti-clobber guard
     const isRecentlySaved = useRef(false);
     const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -266,16 +267,6 @@ export function ModelConfigurationEditor({
                 });
 
                 toast({ title: "Organisation Configuration Updated" });
-            } else {
-                if (!user) throw new Error("Missing auth context");
-                const quotesColRef = collection(firestore, `users/${user.uid}/quotes`);
-                await addDoc(quotesColRef, {
-                    modelId: model.id,
-                    configuration: sanitizedValues,
-                    createdAt: serverTimestamp(),
-                    status: 'Draft'
-                });
-                toast({ title: "Quote Draft Saved" });
             }
             
             reset(values);
