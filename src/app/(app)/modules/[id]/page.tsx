@@ -235,8 +235,8 @@ function QuoteInitializationDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-5xl rounded-[3rem] border-4 shadow-2xl p-0 overflow-hidden">
-                <DialogHeader className="p-10 border-b bg-muted/5 flex flex-row items-center justify-between">
+            <DialogContent className="sm:max-w-6xl rounded-[3rem] border-4 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-12 border-b bg-muted/5 flex flex-row items-center justify-between">
                     <div>
                         <DialogTitle className="text-3xl font-black uppercase tracking-tight italic text-primary">Initialize Quotation</DialogTitle>
                         <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">Select a series to begin precision build</DialogDescription>
@@ -248,29 +248,29 @@ function QuoteInitializationDialog({
                     )}
                 </DialogHeader>
                 
-                <div className="p-10 min-h-[500px]">
+                <div className="p-12 min-h-[600px]">
                     {!selectedRange ? (
-                        <div className="space-y-8">
+                        <div className="space-y-10">
                             <h3 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">1. Select Product Range</h3>
                             {rangesLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-10">
                                     {ranges?.map(range => (
-                                        <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm h-full" onClick={() => setSelectedRange(range)}>
-                                            <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6">
+                                        <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2.5rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => setSelectedRange(range)}>
+                                            <div className="aspect-square bg-muted/30 relative border-b overflow-hidden p-10 flex items-center justify-center">
                                                 {range.imageUrl && (
                                                     <Image 
                                                         src={range.imageUrl} 
                                                         alt={range.name} 
                                                         fill 
-                                                        className="object-contain p-6 group-hover:scale-105 transition-transform" 
+                                                        className="object-contain p-8 group-hover:scale-105 transition-transform" 
                                                         unoptimized 
                                                     />
                                                 )}
                                             </div>
-                                            <div className="p-4 bg-white text-center">
-                                                <span className="font-black uppercase text-[11px] tracking-tight">{range.name}</span>
+                                            <div className="p-8 bg-white text-center flex-1 flex items-center justify-center">
+                                                <span className="font-black uppercase text-sm tracking-[0.1em]">{range.name}</span>
                                             </div>
                                         </Card>
                                     ))}
@@ -278,20 +278,20 @@ function QuoteInitializationDialog({
                             )}
                         </div>
                     ) : (
-                        <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+                        <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                             <h3 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">2. Choose Boat Series: {selectedRange.name}</h3>
                             {modelsLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
                                     {models?.map(model => (
-                                        <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[1.5rem] overflow-hidden border-2 shadow-sm h-full" onClick={() => onModelSelect(model, selectedRange)}>
+                                        <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2.5rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
                                             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
                                                 {model.coverImageUrl && <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover group-hover:scale-105 transition-transform" unoptimized />}
                                             </div>
-                                            <div className="p-4 bg-white text-center flex flex-col gap-1">
-                                                <span className="font-black uppercase text-[11px] tracking-tight text-primary">{model.name}</span>
-                                                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{model.modelCode}</span>
+                                            <div className="p-8 bg-white text-center flex flex-col gap-2 flex-1 justify-center">
+                                                <span className="font-black uppercase text-sm tracking-tight text-primary">{model.name}</span>
+                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{model.modelCode}</span>
                                             </div>
                                         </Card>
                                     ))}
@@ -456,10 +456,10 @@ export default function ModuleDetailsPage() {
                         </div>
                         <Button 
                             variant="ghost" 
-                            className="h-8 sm:h-10 px-4 sm:px-6 font-black uppercase tracking-widest text-[9px] sm:text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center"
+                            className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center"
                             onClick={() => router.push('/dashboard')}
                         >
-                            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 transition-transform group-hover:rotate-90" />
+                            <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
                             <span>Back to Hub</span>
                         </Button>
                     </div>
