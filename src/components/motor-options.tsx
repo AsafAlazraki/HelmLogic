@@ -2,9 +2,9 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { collection, query, doc, getDocs, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2, Beaker, Zap, Wrench } from 'lucide-react';
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import Image from 'next/image';
@@ -79,12 +79,14 @@ function AccessoryCategory({
     label, 
     items = [], 
     onAdd, 
-    onRemove 
+    onRemove,
+    onToggleStandard
 }: { 
     label: string, 
     items: any[], 
     onAdd: () => void, 
-    onRemove: (idx: number) => void 
+    onRemove: (idx: number) => void,
+    onToggleStandard: (idx: number) => void
 }) {
     return (
         <div className="space-y-2">
@@ -108,16 +110,33 @@ function AccessoryCategory({
                 {items.length > 0 ? items.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-background border shadow-sm group/opt animate-in fade-in slide-in-from-left-1">
                         <Package className="h-3 w-3 text-primary/40 shrink-0" />
-                        <span className="text-[10px] font-bold truncate flex-1 leading-tight">{opt.name}</span>
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-5 w-5 text-destructive hover:bg-destructive/10 opacity-0 group-hover/opt:opacity-100 transition-opacity"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(i); }}
-                        >
-                            <X className="h-3 w-3" />
-                        </Button>
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                            <span className="text-[10px] font-bold truncate leading-tight">{opt.name}</span>
+                            {opt.isStandard && (
+                                <Badge className="bg-emerald-500 text-white border-none text-[7px] font-black h-3.5 px-1 tracking-tighter shrink-0">STANDARD</Badge>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover/opt:opacity-100 transition-opacity">
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                className={cn("h-5 w-5 rounded-md", opt.isStandard ? "text-emerald-600 bg-emerald-50" : "text-slate-300")}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStandard(i); }}
+                                title="Toggle Standard"
+                            >
+                                <Star className={cn("h-3 w-3", opt.isStandard && "fill-current")} />
+                            </Button>
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-5 w-5 text-destructive hover:bg-destructive/10"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(i); }}
+                            >
+                                <X className="h-3 w-3" />
+                            </Button>
+                        </div>
                     </div>
                 )) : (
                     <div className="py-3 border border-dashed rounded-lg flex items-center justify-center text-[8px] text-muted-foreground/30 uppercase font-black tracking-widest bg-muted/5">
@@ -133,11 +152,13 @@ function MotorCard({
     motor, 
     onAddOption,
     onRemoveOption,
+    onToggleStandard,
     onHide
 }: { 
     motor: Motor, 
     onAddOption: (cat: string) => void,
     onRemoveOption: (index: number) => void,
+    onToggleStandard: (index: number) => void,
     onHide: () => void
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -211,8 +232,8 @@ function MotorCard({
                 </div>
                 
                 <div className="p-4 bg-background flex items-center justify-between gap-3 border-b min-h-[56px]">
-                    <p className="text-xs font-black uppercase leading-tight text-foreground tracking-tight truncate flex-1">
-                        {String(modelName)}
+                    <p className="text-[10px] font-black uppercase leading-tight text-foreground tracking-tight truncate flex-1 italic">
+                        {motor.vendorName || 'YAMAHA'} - {String(modelName)}
                     </p>
                     <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", isExpanded && "rotate-180")} />
                 </div>
@@ -245,6 +266,10 @@ function MotorCard({
                             label="Propeller" 
                             items={categorized.Propeller} 
                             onAdd={() => onAddOption('Propeller')}
+                            onToggleStandard={(idx) => {
+                                const actualIdx = masterAccessories.findIndex(o => o === categorized.Propeller[idx]);
+                                onToggleStandard(actualIdx);
+                            }}
                             onRemove={(idx) => {
                                 const actualIdx = masterAccessories.findIndex(o => o === categorized.Propeller[idx]);
                                 onRemoveOption(actualIdx);
@@ -254,6 +279,10 @@ function MotorCard({
                             label="Rigging" 
                             items={categorized.Rigging} 
                             onAdd={() => onAddOption('Rigging')}
+                            onToggleStandard={(idx) => {
+                                const actualIdx = masterAccessories.findIndex(o => o === categorized.Rigging[idx]);
+                                onToggleStandard(actualIdx);
+                            }}
                             onRemove={(idx) => {
                                 const actualIdx = masterAccessories.findIndex(o => o === categorized.Rigging[idx]);
                                 onRemoveOption(actualIdx);
@@ -263,6 +292,10 @@ function MotorCard({
                             label="Other Parts" 
                             items={categorized.Other} 
                             onAdd={() => onAddOption('Other')}
+                            onToggleStandard={(idx) => {
+                                const actualIdx = masterAccessories.findIndex(o => o === categorized.Other[idx]);
+                                onToggleStandard(actualIdx);
+                            }}
                             onRemove={(idx) => {
                                 const actualIdx = masterAccessories.findIndex(o => o === categorized.Other[idx]);
                                 onRemoveOption(actualIdx);
@@ -298,13 +331,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             if (!motorVendor) return;
             try {
                 const dsRef = collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets');
-                const dsSnap = await getDocs(dsRef).catch(e => {
-                    errorEmitter.emit('permission-error', new FirestorePermissionError({
-                        path: dsRef.path,
-                        operation: 'list'
-                    }));
-                    throw e;
-                });
+                const dsSnap = await getDocs(dsRef);
                 const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 
                 const preferred = datasets.find((s: any) => 
@@ -315,9 +342,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 ) || datasets[0];
                 
                 setTargetDataSet(preferred);
-            } catch (e) {
-                // error handled by emitter
-            }
+            } catch (e) { console.error(e); }
         };
         findDataSet();
     }, [motorVendor, firestore]);
@@ -337,6 +362,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const [activeCategory, setActiveCategory] = useState('Other');
     const [isEngineManagerOpen, setIsEngineManagerOpen] = useState(false);
     const [activeConfigType, setActiveConfigType] = useState<string | null>(null);
+    const [isSeeding, setIsSeeding] = useState(false);
 
     const dummyOrg: Organisation = {
         id: 'config-context',
@@ -345,6 +371,47 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             ...(module.associatedVendorIds || []),
             module.mainVendorId
         ]
+    };
+
+    const handleSeedTestData = async () => {
+        if (!motorDataSet || !motorVendor || !targetDataSet) {
+            toast({ variant: 'destructive', title: "Context Error", description: "Datasets not yet synchronized." });
+            return;
+        }
+        
+        setIsSeeding(true);
+        try {
+            // 1. Inject Motor Accessories
+            const targetMotor = motorDataSet.find(m => String(m['Model Name']).includes('F25SMHC')) || motorDataSet[0];
+            if (targetMotor) {
+                const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, targetMotor.id);
+                const testAccs = [
+                    { id: 'test-prop-1', name: 'Aluminum Propeller 11 1/8 x 13-G', category: 'Propeller', isStandard: true, items: [] },
+                    { id: 'test-rig-1', name: 'Mech Rigging Kit - 703 Remote Control', category: 'Rigging', isStandard: false, items: [] }
+                ];
+                await updateDoc(motorRef, { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] });
+            }
+
+            // 2. Inject Factory Options
+            const modelRef = doc(firestore, `data-warehouse/${module.mainVendorId}/ranges/${model.rangeId}/models/${model.id}`);
+            const currentOptions = watch('optionalFeatures') || model.optionalFeatures || [];
+            const testOptions = [
+                { id: 'test-factory-1', name: 'Motor Ram Support', category: 'General Options', sellPriceExclGst: 150, isStandard: false, applicableVariantIds: [] },
+                { id: 'test-factory-2', name: 'Fuel Filter', category: 'General Options', sellPriceExclGst: 85, isStandard: false, applicableVariantIds: [] }
+            ];
+            
+            const mergedOptions = [...currentOptions];
+            testOptions.forEach(opt => {
+                if (!mergedOptions.some(o => o.name === opt.name)) mergedOptions.push(opt);
+            });
+
+            setValue('optionalFeatures', mergedOptions, { shouldDirty: true });
+            toast({ title: "Tactical Data Injected", description: "Hardcoded motor accessories and factory options are now staged." });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Generator Failed" });
+        } finally {
+            setIsSeeding(false);
+        }
     };
 
     const motorCombinations = useMemo(() => {
@@ -385,7 +452,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             }
 
             const manualMotors = motorDataSet.filter(m => overrides.manualIds.includes(m.id));
-            const allPossible = [...new Map([...baseMotors, ...manualMotors].map(m => [m.id, m])).values()];
+            const allPossible = [...new Map([...baseMotors, ...manualMotors].map(m => [m.id, { ...m, vendorName: motorVendor.name }])).values()];
             const visibleMotors = allPossible.filter(m => !overrides.hiddenIds.includes(m.id));
             
             return { configType: config.type, combinations: visibleMotors.map(m => [m]) };
@@ -399,6 +466,23 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         setIsBrowserOpen(true);
     };
 
+    const handleToggleStandard = async (motorId: string, optionIndex: number) => {
+        if (!motorVendor || !targetDataSet) return;
+        const motorDoc = motorDataSet?.find(m => m.id === motorId);
+        if (!motorDoc) return;
+
+        try {
+            const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, motorId);
+            const currentAccessories = [...(motorDoc.masterAccessories || [])];
+            const item = { ...currentAccessories[optionIndex] };
+            item.isStandard = !item.isStandard;
+            currentAccessories[optionIndex] = item;
+            
+            await updateDoc(motorRef, { masterAccessories: currentAccessories });
+            toast({ title: "Component Status Updated" });
+        } catch (e) { toast({ variant: 'destructive', title: "Update Failed" }); }
+    };
+
     const handleRemoveOption = async (motorId: string, optionIndex: number) => {
         if (!motorVendor || !targetDataSet) return;
         const motorDoc = motorDataSet?.find(m => m.id === motorId);
@@ -408,20 +492,9 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, motorId);
             const currentAccessories = motorDoc.masterAccessories || [];
             const newAccessories = currentAccessories.filter((_: any, i: number) => i !== optionIndex);
-            
-            await updateDoc(motorRef, { masterAccessories: newAccessories })
-                .catch(e => {
-                    errorEmitter.emit('permission-error', new FirestorePermissionError({
-                        path: motorRef.path,
-                        operation: 'update',
-                        requestResourceData: { masterAccessories: newAccessories }
-                    }));
-                    throw e;
-                });
+            await updateDoc(motorRef, { masterAccessories: newAccessories });
             toast({ title: "Master Accessory Removed" });
-        } catch (e) {
-            // error handled by emitter
-        }
+        } catch (e) { toast({ variant: 'destructive', title: "Removal Failed" }); }
     };
 
     const handleHideMotor = (configType: string, motorId: string) => {
@@ -436,12 +509,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         const current = motorOverrides[activeConfigType] || { hiddenIds: [], manualIds: [] };
         const newManualIds = [...new Set([...current.manualIds, ...selection.items.map((i: any) => i.rowId)])];
         const newHidden = current.hiddenIds.filter(id => !newManualIds.includes(id));
-        
-        setValue('motorOverrides', { 
-            ...motorOverrides, 
-            [activeConfigType]: { hiddenIds: newHidden, manualIds: newManualIds } 
-        }, { shouldDirty: true });
-        
+        setValue('motorOverrides', { ...motorOverrides, [activeConfigType]: { hiddenIds: newHidden, manualIds: newManualIds } }, { shouldDirty: true });
         setIsEngineManagerOpen(false);
         setActiveConfigType(null);
         toast({ title: "Engine Added" });
@@ -455,31 +523,12 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         try {
             const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, activeMotorId);
             const currentAccessories = motorDoc.masterAccessories || [];
-            
-            const newEntry = { 
-                id: `acc-${Date.now()}`,
-                name: selection.name, 
-                category: activeCategory, 
-                items: selection.items 
-            };
-            
-            await updateDoc(motorRef, {
-                masterAccessories: [...currentAccessories, newEntry]
-            }).catch(e => {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: motorRef.path,
-                    operation: 'update',
-                    requestResourceData: { masterAccessories: [...currentAccessories, newEntry] }
-                }));
-                throw e;
-            });
-            
+            const newEntry = { id: `acc-${Date.now()}`, name: selection.name, category: activeCategory, items: selection.items, isStandard: false };
+            await updateDoc(motorRef, { masterAccessories: [...currentAccessories, newEntry] });
             toast({ title: "Master Accessory Linked" });
             setIsBrowserOpen(false);
             setActiveMotorId(null);
-        } catch (e) {
-            // error handled by emitter
-        }
+        } catch (e) { toast({ variant: 'destructive', title: "Linking Failed" }); }
     };
 
     const loading = vendorsLoading || motorsLoading;
@@ -489,24 +538,36 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const currentStagedEngines = (configType: string) => {
         const overrides = motorOverrides[configType] || { manualIds: [] };
         if (!motorDataSet) return [];
-        return motorDataSet
-            .filter(m => overrides.manualIds.includes(m.id))
-            .map(m => ({ vendorId: motorVendor?.id || '', vendorName: motorVendor?.name || '', row: m }));
+        return motorDataSet.filter(m => overrides.manualIds.includes(m.id)).map(m => ({ vendorId: motorVendor?.id || '', vendorName: motorVendor?.name || '', row: m }));
     };
 
     return (
         <div className="space-y-6">
+            <Card className="border-primary/20 bg-primary/5 shadow-inner rounded-xl overflow-hidden">
+                <CardHeader className="py-4 border-b bg-white/50 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Beaker className="h-5 w-5" /></div>
+                        <div>
+                            <CardTitle className="text-sm font-black uppercase italic tracking-tight">Tactical Data Injector</CardTitle>
+                            <CardDescription className="text-[9px] font-black uppercase tracking-widest text-primary/60">Prototype Environment Accelerator</CardDescription>
+                        </div>
+                    </div>
+                    <Button type="button" onClick={handleSeedTestData} disabled={isSeeding} className="h-9 px-6 font-black uppercase text-[10px] tracking-widest bg-primary shadow-xl">
+                        {isSeeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+                        Inject Build Data
+                    </Button>
+                </CardHeader>
+            </Card>
+
             <Card className="rounded-xl border shadow-sm overflow-hidden bg-background">
                 <CardHeader className="bg-muted/10 border-b">
                     <div className="flex items-center justify-between">
                         <div>
                             <CardTitle className="text-xl font-bold">Compatible Motor Configurations</CardTitle>
-                            <CardDescription className="text-[10px] uppercase font-black tracking-widest opacity-60">
-                                Configurations matching the boat's horsepower and quantity ratings.
-                            </CardDescription>
+                            <CardDescription className="text-[10px] uppercase font-black tracking-widest opacity-60">Configurations matching the boat's horsepower and quantity ratings.</CardDescription>
                         </div>
                         {motorVendor?.logoUrl && (
-                            <div className="bg-background border rounded-lg p-2 shadow-sm">
+                            <div className="bg-white border rounded-lg p-2 shadow-sm">
                                 <Image src={motorVendor.logoUrl} alt={motorVendor.name} width={100} height={32} className="object-contain" unoptimized />
                             </div>
                         )}
@@ -530,21 +591,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                                 <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                             </AccordionPrimitive.Trigger>
                                         </AccordionPrimitive.Header>
-                                        <Button 
-                                            type="button"
-                                            variant="outline" 
-                                            size="sm" 
-                                            className="h-8 text-[10px] font-black uppercase tracking-widest transition-opacity"
-                                            onClick={(e) => { 
-                                                e.preventDefault(); 
-                                                e.stopPropagation(); 
-                                                setActiveConfigType(configGroup.configType); 
-                                                setIsEngineManagerOpen(true); 
-                                            }}
-                                        >
-                                            <Settings2 className="h-3 w-3 mr-1.5" />
-                                            Manage Engines
-                                        </Button>
+                                        <Button type="button" variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveConfigType(configGroup.configType); setIsEngineManagerOpen(true); }}><Settings2 className="h-3 w-3 mr-1.5" />Manage Engines</Button>
                                     </div>
                                     <AccordionContent className="p-0">
                                         <ScrollArea className="h-[600px] w-full">
@@ -556,6 +603,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                                                 key={`${motor.id}-${motorIdx}`} 
                                                                 motor={motor} 
                                                                 onAddOption={(cat) => handleAddOptionToMotor(motor.id, cat)}
+                                                                onToggleStandard={(idx) => handleToggleStandard(motor.id, idx)}
                                                                 onRemoveOption={(idx) => handleRemoveOption(motor.id, idx)}
                                                                 onHide={() => handleHideMotor(configGroup.configType, motor.id)}
                                                             />
