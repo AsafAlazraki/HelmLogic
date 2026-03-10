@@ -331,7 +331,7 @@ export function HighfieldQuoteFlow({
                         </Carousel>
                     </div>
 
-                    {/* Tactical Info Section */}
+                    {/* Dedicated Tactical Info Section */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
                         <Button 
                             variant="ghost" 
@@ -406,13 +406,13 @@ export function HighfieldQuoteFlow({
                                                     key={mat} 
                                                     onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} 
                                                     className={cn(
-                                                        "group flex flex-col items-start justify-start p-10 border-2 rounded-[2rem] transition-all bg-white", 
+                                                        "group flex flex-col items-center justify-center p-12 border-2 rounded-[2rem] transition-all bg-white", 
                                                         selectedMaterial === mat 
                                                             ? "border-primary shadow-lg ring-1 ring-primary/20" 
                                                             : "border-slate-100 hover:border-slate-200 hover:shadow-md"
                                                     )}
                                                 >
-                                                    <span className="text-4xl font-black text-slate-900 tracking-tight mb-4 uppercase">
+                                                    <span className="text-6xl font-black text-slate-900 tracking-tight mb-6 uppercase">
                                                         {mat}
                                                     </span>
                                                     <div className="flex items-center gap-3">
@@ -429,7 +429,7 @@ export function HighfieldQuoteFlow({
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
-                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-40"
+                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-24"
                                         >
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
