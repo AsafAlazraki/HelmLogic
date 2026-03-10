@@ -56,6 +56,8 @@ import {
     TableBody,
     TableCell,
     TableRow,
+    TableHead,
+    TableHeader
 } from "@/components/ui/table";
 
 interface Variant {
@@ -333,24 +335,15 @@ export function HighfieldQuoteFlow({
                         </Carousel>
                     </div>
 
-                    {/* Build Summary Identity Area */}
+                    {/* Build Summary Pricing Area */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
-                        <div className="flex items-end justify-between px-1">
-                            <div className="flex items-center gap-4 truncate mr-12 pb-1">
-                                <Badge className="h-14 px-6 text-xl font-black uppercase tracking-widest bg-primary text-white border-none shrink-0 rounded-2xl shadow-xl">
-                                    {range?.name?.toUpperCase() || 'HIGHFIELD'}
-                                </Badge>
-                                <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate">
-                                    {displayedModelName}
-                                </h2>
-                            </div>
-
-                            <div className="flex flex-col items-end shrink-0">
+                        <div className="flex items-start justify-start px-1">
+                            <div className="flex flex-col items-start shrink-0">
                                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
                                     Package Pricing (Excl. GST)
                                 </span>
-                                <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-start">
-                                    <span className="text-primary text-3xl mr-1 mt-1">$</span>
+                                <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline">
+                                    <span className="text-primary text-3xl mr-1">$</span>
                                     <span>{totalPrice.toLocaleString()}</span>
                                 </div>
                             </div>
@@ -402,7 +395,7 @@ export function HighfieldQuoteFlow({
                                 <div className="space-y-12 animate-in fade-in duration-700 ease-in-out text-left mt-4">
                                     <div className="space-y-6">
                                         {/* Sub-Section 1: Tube Material Blue Pill */}
-                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
+                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-fit">
                                             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                             <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
                                                 1. Tube Material
@@ -414,10 +407,10 @@ export function HighfieldQuoteFlow({
                                                     key={mat} 
                                                     onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} 
                                                     className={cn(
-                                                        "group flex flex-col items-center justify-center p-12 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2", 
+                                                        "group flex flex-col items-center justify-center p-12 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent", 
                                                         selectedMaterial === mat 
                                                             ? "border-primary ring-2 ring-primary/20 scale-[1.02]" 
-                                                            : "border-transparent hover:border-primary/20"
+                                                            : "hover:border-primary/20"
                                                     )}
                                                 >
                                                     <span className="text-xs font-bold uppercase tracking-widest text-primary">
@@ -434,7 +427,7 @@ export function HighfieldQuoteFlow({
                                             className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-10"
                                         >
                                             {/* Sub-Section 2: Color Logic Blue Pill */}
-                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
+                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-fit">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
                                                     2. Select Hull & Tube Color
@@ -446,10 +439,10 @@ export function HighfieldQuoteFlow({
                                                         key={color.id} 
                                                         onClick={() => setSelectedColor(color.id)} 
                                                         className={cn(
-                                                            "flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl", 
+                                                            "flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent", 
                                                             selectedColor === color.id 
                                                                 ? "border-primary ring-2 ring-primary/20 scale-[1.02]" 
-                                                                : "border-transparent hover:border-primary/20"
+                                                                : "hover:border-primary/20"
                                                         )}
                                                     >
                                                         <div className="relative aspect-video w-full p-6 bg-slate-50/50">
@@ -483,8 +476,8 @@ export function HighfieldQuoteFlow({
                                                         key={opt.id} 
                                                         onClick={() => toggleOption(opt.id)} 
                                                         className={cn(
-                                                            "flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all", 
-                                                            selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-transparent hover:bg-primary/5"
+                                                            "flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all border-transparent", 
+                                                            selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg" : "bg-white hover:bg-primary/5"
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-4">
@@ -517,8 +510,8 @@ export function HighfieldQuoteFlow({
                                                 key={m.id} 
                                                 onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} 
                                                 className={cn(
-                                                    "flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all", 
-                                                    selectedMotor?.id === m.id ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-transparent hover:bg-primary/5"
+                                                    "flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all border-transparent", 
+                                                    selectedMotor?.id === m.id ? "bg-primary border-primary text-white shadow-2xl" : "bg-white hover:bg-primary/5"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-6">
@@ -573,7 +566,7 @@ export function HighfieldQuoteFlow({
 
             {/* Tactical Lightbox Overlay */}
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
-                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none [&>button]:shadow-none">
+                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none [&>button]:shadow-none [&>button]:right-6 [&>button]:top-6">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Immersive Inspection</DialogTitle>
                     </DialogHeader>
