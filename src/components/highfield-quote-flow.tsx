@@ -390,7 +390,7 @@ export function HighfieldQuoteFlow({
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
                     {/* Tactical Integrated Step Header */}
-                    <div className="pt-16 px-12 pb-4 bg-transparent shrink-0 text-left">
+                    <div className="pt-10 px-12 pb-4 bg-transparent shrink-0 text-left">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label.toUpperCase()}
                             <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
@@ -421,7 +421,7 @@ export function HighfieldQuoteFlow({
                                                             : "border-transparent hover:border-primary/20"
                                                     )}
                                                 >
-                                                    <span className="text-7xl font-black text-slate-900 tracking-tighter mb-6 uppercase">
+                                                    <span className="text-5xl font-black text-slate-900 tracking-tighter mb-6 uppercase">
                                                         {mat}
                                                     </span>
                                                     <div className="flex items-center gap-3">

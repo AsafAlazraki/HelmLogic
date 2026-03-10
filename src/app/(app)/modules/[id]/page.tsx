@@ -513,7 +513,7 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
-                        {/* Tactical Workspace Header - Replaced <p> with <div> to resolve DOM nesting error */}
+                        {/* Tactical Workspace Header */}
                         <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
