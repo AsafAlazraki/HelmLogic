@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,8 +54,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface Variant {
     id: string;
@@ -100,12 +98,14 @@ export function HighfieldQuoteFlow({
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const colorSectionRef = useRef<HTMLDivElement>(null);
     
     // Selection State
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
     const variantsQuery = useMemoFirebase(() => 
         query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
@@ -146,13 +146,22 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model]);
 
-    // Reset scroll on step change
+    // Scroll to Top on Step Change
     useEffect(() => {
         if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTo({ top: 0, behavior: 'auto' });
+            if (viewport) viewport.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }, [currentStep]);
+
+    // Scroll to Section 2 when Material selected
+    useEffect(() => {
+        if (selectedMaterial && colorSectionRef.current) {
+            setTimeout(() => {
+                colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+    }, [selectedMaterial]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
@@ -216,9 +225,12 @@ export function HighfieldQuoteFlow({
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
+            
+            // STRICT SEAT FILTERING: If a console is selected, only show its explicitly linked seat
             if (cat === 'Seats' && selectedConsole) {
                 if (!selectedConsole.associatedSeatId || opt.id !== selectedConsole.associatedSeatId) return acc;
             }
+            
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;
@@ -253,44 +265,84 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden">
+            {/* Top Navigation Step Bar */}
             <div className="sticky top-0 z-30 px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center">
                 <div className="w-full flex items-center justify-between">
                     <div className="flex-1 flex items-center justify-between mr-24">
                         {STEPS.map((step) => (
                             <div key={step.id} className="flex items-center gap-3">
-                                <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-lg" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}</div>
-                                <span className={cn("text-[9px] font-black uppercase tracking-[0.2em] hidden sm:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
+                                <div className={cn(
+                                    "h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2",
+                                    currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-lg" : 
+                                    currentStep > step.id ? "bg-green-500 border-green-500 text-white" : 
+                                    "bg-muted border-transparent text-muted-foreground"
+                                )}>
+                                    {currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}
+                                </div>
+                                <span className={cn(
+                                    "text-[9px] font-black uppercase tracking-[0.2em] hidden sm:block whitespace-nowrap",
+                                    currentStep === step.id ? "text-foreground" : "text-muted-foreground"
+                                )}>
+                                    {step.label}
+                                </span>
                             </div>
                         ))}
                     </div>
-                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[10px] hover:opacity-70 transition-opacity" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
+                    <button 
+                        type="button" 
+                        className="font-black text-destructive uppercase tracking-widest text-[10px] hover:opacity-70 transition-opacity"
+                        onClick={() => router.push(`/modules/${module.slug || module.id}`)}
+                    >
+                        Exit Build
+                    </button>
                 </div>
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* Left Side: Visual Preview Area */}
                 <div className="w-full lg:w-7/12 relative flex flex-col p-12 bg-slate-50/50 overflow-hidden">
                     <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
                         <Carousel className="w-full h-full" opts={{ loop: true }}>
                             <CarouselContent className="h-full">
                                 {carouselImages.map((url, idx) => (
-                                    <CarouselItem key={idx} className="h-full w-full relative">
+                                    <CarouselItem key={idx} className="h-full w-full relative group/img">
                                         <Image src={url} alt="Boat" fill className="object-cover" unoptimized />
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white"
+                                            onClick={() => setLightboxUrl(url)}
+                                        >
+                                            <Maximize2 className="h-6 w-6" />
+                                        </Button>
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
-                            <CarouselPrevious className="left-6" /><CarouselNext className="right-6" />
+                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/80 border-none shadow-xl hover:bg-white" />
+                            <CarouselNext className="right-6 h-12 w-12 bg-white/80 border-none shadow-xl hover:bg-white" />
                         </Carousel>
                     </div>
+
+                    {/* Build Summary Overlay Card */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
                         <div className="flex items-center justify-between px-1 mb-4">
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase text-primary tracking-[0.3em] mb-1">{range?.name || 'Highfield'} Range</span>
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Baseline</span>
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Active Build Identity</span>
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Baseline Pricing (Excl. GST)</span>
                             </div>
-                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] self-end">Excl. GST</span>
+                            <Badge className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest px-3 h-6">
+                                Professional Quote
+                            </Badge>
                         </div>
                         <div className="flex items-center justify-between px-1">
-                            <h2 className="text-3xl font-black uppercase tracking-tight text-slate-950 truncate mr-12 leading-none">{displayedModelName}</h2>
+                            <div className="flex items-center gap-4 truncate mr-12">
+                                <Badge className="bg-primary text-white border-none font-black text-[12px] uppercase h-10 px-5 rounded-xl shadow-lg shrink-0">
+                                    {range?.name?.toUpperCase() || 'HIGHFIELD'}
+                                </Badge>
+                                <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate leading-none">
+                                    {displayedModelName}
+                                </h2>
+                            </div>
                             <div className="text-6xl font-black text-slate-950 tracking-tighter shrink-0 leading-none">
                                 <span className="text-primary text-2xl mr-1">$</span>{totalPrice.toLocaleString()}
                             </div>
@@ -298,41 +350,50 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
+                {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full border-l border-slate-100 flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b">
-                        <h2 className="text-5xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
+                    {/* Persistent Workspace Header */}
+                    <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b shrink-0">
+                        <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label}
                         </h2>
                     </div>
+
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="p-12 space-y-10">
                             {currentStep === 1 && (
-                                <div className="space-y-10">
+                                <div className="space-y-12 animate-in fade-in duration-500">
+                                    {/* Sub-Section 1: Tube Material */}
                                     <div className="space-y-6">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">1. Tube Material</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">1. Tube Material</span>
                                         <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
                                                 <button 
                                                     key={mat} 
                                                     onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} 
                                                     className={cn(
-                                                        "group flex flex-col items-start p-10 border-2 rounded-[2.5rem] transition-all min-h-[240px] text-left", 
+                                                        "group flex flex-col items-center justify-center p-10 border-2 rounded-[2.5rem] transition-all min-h-[220px] text-center", 
                                                         selectedMaterial === mat 
                                                             ? "bg-primary border-primary text-white shadow-2xl scale-[1.02]" 
                                                             : "bg-white border-slate-100 hover:border-primary/40 hover:-translate-y-1"
                                                     )}
                                                 >
-                                                    <span className="text-5xl font-black uppercase mb-4">{mat}</span>
-                                                    <div className="mt-auto flex items-center gap-2">
+                                                    <span className="text-5xl font-black uppercase mb-6 tracking-tighter">{mat}</span>
+                                                    <div className="flex items-center gap-2 mt-2">
                                                         <Check className={cn("h-4 w-4", selectedMaterial === mat ? "text-white" : "text-green-500")} />
-                                                        <span className="text-[10px] font-black uppercase tracking-widest">{mat === 'PVC' ? '5yr' : '10yr'} Tube Warranty</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{mat === 'PVC' ? '5yr' : '10yr'} Tube Warranty</span>
                                                     </div>
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
+
+                                    {/* Sub-Section 2: Color Logic */}
                                     {selectedMaterial && (
-                                        <div className="mt-12 space-y-8 animate-in slide-in-from-bottom-4 duration-700">
+                                        <div 
+                                            ref={colorSectionRef}
+                                            className="mt-12 space-y-8 animate-in slide-in-from-bottom-4 duration-700"
+                                        >
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-2xl shadow-xl shadow-primary/20">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                                 <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white">2. Select Hull & Tube Color</span>
@@ -347,10 +408,13 @@ export function HighfieldQuoteFlow({
                                                             selectedColor === color.id ? "border-primary shadow-2xl scale-[1.02]" : "border-slate-100 hover:border-primary/20 hover:-translate-y-1"
                                                         )}
                                                     >
-                                                        <div className="relative aspect-video w-full p-6">
+                                                        <div className="relative aspect-video w-full p-6 bg-slate-50/50">
                                                             <Image src={color.imageUrl || ''} alt="Color" fill className="object-contain" unoptimized />
                                                         </div>
-                                                        <div className={cn("p-6 text-center border-t", selectedColor === color.id ? "bg-primary text-white border-primary" : "bg-slate-50 border-slate-100")}>
+                                                        <div className={cn(
+                                                            "p-6 text-center border-t", 
+                                                            selectedColor === color.id ? "bg-primary text-white border-primary" : "bg-white border-slate-100"
+                                                        )}>
                                                             <p className="text-[11px] font-black uppercase tracking-widest">{color.name}</p>
                                                         </div>
                                                     </button>
@@ -360,19 +424,31 @@ export function HighfieldQuoteFlow({
                                     )}
                                 </div>
                             )}
+
                             {currentStep === 2 && (
-                                <div className="space-y-12">
+                                <div className="space-y-12 animate-in slide-in-from-right-4 duration-500">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div key={cat} className="space-y-4">
                                             <h3 className="text-[11px] font-black uppercase tracking-widest border-l-4 border-primary pl-3">{cat}</h3>
                                             <div className="grid gap-3">
                                                 {opts.map((opt: any) => (
-                                                    <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-slate-100 hover:border-primary/20")}>
+                                                    <button 
+                                                        key={opt.id} 
+                                                        onClick={() => toggleOption(opt.id)} 
+                                                        className={cn(
+                                                            "flex items-center justify-between p-5 border-2 rounded-[1.5rem] transition-all", 
+                                                            selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-slate-100 hover:border-primary/20"
+                                                        )}
+                                                    >
                                                         <div className="flex items-center gap-4">
-                                                            <div className="h-14 w-14 relative bg-slate-50 border rounded-xl overflow-hidden shadow-inner">{opt.imageUrl && <Image src={opt.imageUrl} alt="Opt" fill className="object-cover" unoptimized />}</div>
+                                                            <div className="h-14 w-14 relative bg-slate-50 border rounded-xl overflow-hidden shadow-inner">
+                                                                {opt.imageUrl && <Image src={opt.imageUrl} alt="Opt" fill className="object-cover" unoptimized />}
+                                                            </div>
                                                             <p className="text-sm font-black uppercase tracking-tight">{opt.name}</p>
                                                         </div>
-                                                        <p className={cn("text-sm font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-foreground")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        <p className={cn("text-sm font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-foreground")}>
+                                                            +${(opt.sellPriceExclGst || 0).toLocaleString()}
+                                                        </p>
                                                     </button>
                                                 ))}
                                             </div>
@@ -380,30 +456,82 @@ export function HighfieldQuoteFlow({
                                     ))}
                                 </div>
                             )}
+
                             {currentStep === 3 && (
-                                <div className="grid gap-4">
-                                    {motorsLoading ? <Loader2 className="animate-spin h-12 w-12 mx-auto" /> : motors.map(m => (
-                                        <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all", selectedMotor?.id === m.id ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/20")}>
-                                            <div className="flex items-center gap-6">
-                                                <div className="h-20 w-20 relative bg-white rounded-2xl border-2 overflow-hidden shrink-0">{m.SummaryImage && <Image src={`https://www.yamaha-motor.com.au${m.SummaryImage.startsWith('/') ? '' : '/'}${m.SummaryImage}`} alt="Motor" fill className="object-contain p-2" unoptimized />}</div>
-                                                <div>
-                                                    <p className="text-base font-black uppercase tracking-tight">{m['Model Name']}</p>
-                                                    <p className="text-[10px] font-bold opacity-60 uppercase">{m['HP Rating']} HP</p>
-                                                </div>
+                                <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+                                    <div className="grid gap-4">
+                                        {motorsLoading ? (
+                                            <div className="flex flex-col items-center py-20 gap-4">
+                                                <Loader2 className="animate-spin h-12 w-12 text-primary" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p>
                                             </div>
-                                            <p className="text-base font-black">${(m.sellPriceExclGst || 0).toLocaleString()}</p>
-                                        </button>
-                                    ))}
+                                        ) : motors.map(m => (
+                                            <button 
+                                                key={m.id} 
+                                                onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} 
+                                                className={cn(
+                                                    "flex items-center justify-between p-6 border-2 rounded-[2rem] transition-all", 
+                                                    selectedMotor?.id === m.id ? "bg-primary border-primary text-white shadow-2xl" : "bg-white border-slate-100 hover:border-primary/20"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-6">
+                                                    <div className="h-20 w-20 relative bg-white rounded-2xl border-2 overflow-hidden shrink-0">
+                                                        {m.SummaryImage && (
+                                                            <Image 
+                                                                src={`https://www.yamaha-motor.com.au${m.SummaryImage.startsWith('/') ? '' : '/'}${m.SummaryImage}`} 
+                                                                alt="Motor" 
+                                                                fill 
+                                                                className="object-contain p-2" 
+                                                                unoptimized 
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className="text-base font-black uppercase tracking-tight leading-tight">{m['Model Name']}</p>
+                                                        <p className={cn("text-[10px] font-bold uppercase mt-1", selectedMotor?.id === m.id ? "opacity-70" : "text-primary")}>
+                                                            {m['HP Rating']} HP PERFORMANCE
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <p className="text-base font-black">${(m.sellPriceExclGst || 0).toLocaleString()}</p>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
                     </ScrollArea>
-                    <div className="p-12 pt-4 bg-white/50 backdrop-blur-md border-t flex gap-4">
-                        {currentStep > 1 && <Button variant="outline" className="h-16 w-24 rounded-2xl border-2 hover:bg-slate-100 transition-colors" onClick={prevStep}><ChevronLeft className="h-6 w-6" /></Button>}
-                        <Button size="lg" className="flex-1 h-16 rounded-2xl font-black uppercase text-sm shadow-2xl transition-all hover:scale-[1.02] active:scale-95" onClick={nextStep}>{currentStep === STEPS.length ? 'Finalize Quote' : `Next: ${STEPS[currentStep].label}`}</Button>
+
+                    {/* Bottom Global Build Navigation */}
+                    <div className="p-12 pt-6 bg-slate-50/80 backdrop-blur-xl border-t shrink-0 flex gap-4">
+                        {currentStep > 1 && (
+                            <Button 
+                                variant="outline" 
+                                className="h-16 w-24 rounded-2xl border-2 border-slate-200 hover:bg-slate-100 transition-colors shadow-sm" 
+                                onClick={prevStep}
+                            >
+                                <ChevronLeft className="h-6 w-6" />
+                            </Button>
+                        )}
+                        <Button 
+                            size="lg" 
+                            className="flex-1 h-16 rounded-2xl font-black uppercase text-sm shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary text-white" 
+                            onClick={nextStep}
+                        >
+                            {currentStep === STEPS.length ? 'Finalize Quote' : `Next: ${STEPS[currentStep].label}`}
+                        </Button>
                     </div>
                 </div>
             </div>
+
+            {/* Tactical Lightbox Overlay */}
+            <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
+                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12">
+                    <div className="relative w-full h-full flex items-center justify-center">
+                        {lightboxUrl && <Image src={lightboxUrl} alt="Inspection" fill className="object-contain p-12" unoptimized />}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
