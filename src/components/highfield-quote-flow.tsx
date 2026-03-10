@@ -355,7 +355,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
 
-                    {/* Moved Tactical Info Section - Underneath Pricing Container */}
+                    {/* Tactical Info Section */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
                         <Button 
                             variant="ghost" 
@@ -385,7 +385,7 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 {/* Right Side: Interactive Step Content Area */}
-                <div className="w-full lg:w-5/12 h-full border-l border-slate-100 flex flex-col overflow-hidden bg-slate-50/20">
+                <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
                     <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b shrink-0 text-left">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label}
@@ -429,7 +429,7 @@ export function HighfieldQuoteFlow({
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
-                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-16"
+                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-10"
                                         >
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
