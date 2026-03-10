@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -220,15 +221,26 @@ export function HighfieldQuoteFlow({
 
     const groupedOptions = useMemo(() => {
         const features = relevantFeatures;
-        const selectedConsoleId = selectedOptionIds.find(id => features.find(f => f.id === id && f.category === 'Consoles'));
-        const selectedConsole = features.find(f => f.id === selectedConsoleId);
+
+        // Identify consoles available for this variant
+        const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
+
+        // Identify if any console is currently selected
+        const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
+        const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
+
+        // Determine the filtering constraint for seats
+        const constraintConsole = selectedConsole || (availableConsoles.length === 1 ? availableConsoles[0] : null);
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
-            // STRICT SEAT FILTERING: If a console is selected, only show its explicitly linked seat
-            if (cat === 'Seats' && selectedConsole) {
-                if (!selectedConsole.associatedSeatId || opt.id !== selectedConsole.associatedSeatId) return acc;
+            // STRICT SEAT FILTERING: 
+            if (cat === 'Seats') {
+                if (constraintConsole) {
+                    // Only show the specific seat tied to the relevant console
+                    if (!constraintConsole.associatedSeatId || opt.id !== constraintConsole.associatedSeatId) return acc;
+                }
             }
             
             if (!acc[cat]) acc[cat] = [];
@@ -327,13 +339,23 @@ export function HighfieldQuoteFlow({
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
                         <div className="flex items-end justify-between px-1">
                             {/* Left Side: Model Name with Range Badge */}
-                            <div className="flex items-center gap-4 truncate mr-12 pb-1">
-                                <Badge className="h-14 px-6 text-xl font-black uppercase tracking-widest bg-primary text-white border-none shrink-0 rounded-2xl shadow-xl">
-                                    {range?.name?.toUpperCase() || 'HIGHFIELD'}
-                                </Badge>
-                                <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate">
-                                    {displayedModelName}
-                                </h2>
+                            <div className="flex flex-col gap-4 min-w-0 mr-12">
+                                <div className="flex items-center gap-4">
+                                    <Badge className="h-14 px-6 text-xl font-black uppercase tracking-widest bg-primary text-white border-none shrink-0 rounded-2xl shadow-xl">
+                                        {range?.name?.toUpperCase() || 'HIGHFIELD'}
+                                    </Badge>
+                                    <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-950 truncate">
+                                        {displayedModelName}
+                                    </h2>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl border-2 border-transparent hover:border-primary/10 transition-all">
+                                        <ListChecks className="h-3.5 w-3.5 mr-2" /> Standard Features
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl border-2 border-transparent hover:border-primary/10 transition-all">
+                                        <ClipboardList className="h-3.5 w-3.5 mr-2" /> General Specifications
+                                    </Button>
+                                </div>
                             </div>
 
                             {/* Right Side: Price */}
@@ -352,7 +374,7 @@ export function HighfieldQuoteFlow({
 
                 {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full border-l border-slate-100 flex flex-col overflow-hidden bg-slate-50/20">
-                    {/* Persistent Workspace Header - Shrunk and Left Aligned */}
+                    {/* Persistent Workspace Header */}
                     <div className="pt-16 px-12 pb-8 bg-slate-50/50 backdrop-blur-md border-b shrink-0 text-left">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS.find(s => s.id === currentStep)?.label}
@@ -374,13 +396,13 @@ export function HighfieldQuoteFlow({
                                                     key={mat} 
                                                     onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} 
                                                     className={cn(
-                                                        "group flex flex-col items-center justify-center p-12 border-2 rounded-[2rem] transition-all bg-white", 
+                                                        "group flex flex-col items-start p-8 border-2 rounded-[2rem] transition-all bg-white", 
                                                         selectedMaterial === mat 
                                                             ? "border-primary shadow-lg ring-1 ring-primary/20" 
                                                             : "border-slate-100 hover:border-slate-200 hover:shadow-md"
                                                     )}
                                                 >
-                                                    <span className="text-6xl font-black text-slate-900 tracking-tight mb-6">
+                                                    <span className="text-4xl font-black text-slate-900 tracking-tight mb-4 uppercase">
                                                         {mat}
                                                     </span>
                                                     <div className="flex items-center gap-3">
@@ -398,14 +420,11 @@ export function HighfieldQuoteFlow({
                                     {selectedMaterial && (
                                         <div 
                                             ref={colorSectionRef}
-                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-32"
+                                            className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-40"
                                         >
-                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl">
-                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">
-                                                    2. Select Hull & Tube Color
-                                                </h3>
-                                            </div>
+                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary">
+                                                2. Select Hull & Tube Color
+                                            </h3>
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button 

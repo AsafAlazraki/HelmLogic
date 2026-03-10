@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -624,7 +625,7 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-5 gap-6 py-4 px-1">
+                <div className="grid grid-cols-4 gap-6 py-4 px-1">
                     {ranges?.map(range => (
                         <SortableRangeCard 
                             key={range.id} 
@@ -659,7 +660,7 @@ function ModelsGrid({
     if (modelsLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
-        <div className="grid grid-cols-5 gap-6 py-4 px-1">
+        <div className="grid grid-cols-4 gap-6 py-4 px-1">
             {models?.map(model => (
                 <ModelCard 
                     key={model.id} 
@@ -821,7 +822,7 @@ function EditItemDialog({ isOpen, onOpenChange, item, onSave }: any) {
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Primary Render</Label>
                         <div className="relative aspect-video rounded-xl border-2 border-dashed bg-muted/20 overflow-hidden group">
                             {preview ? (
-                                Image && <Image src={preview} alt="Preview" fill className="object-contain p-4" unoptimized />
+                                <Image src={preview} alt="Preview" fill className="object-contain p-4" unoptimized />
                             ) : (
                                 <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground">
                                     <ImageIcon className="h-8 w-8 mb-2 opacity-20" />
