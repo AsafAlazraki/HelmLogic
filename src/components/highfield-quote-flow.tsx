@@ -124,6 +124,16 @@ export function HighfieldQuoteFlow({
     [firestore, vendor.id, rangeId, model.id]);
     const { data: variants, isLoading: variantsLoading } = useCollection<Variant>(variantsQuery);
 
+    const availableMaterials = useMemo(() => {
+        if (!variants) return [];
+        return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
+    }, [variants]);
+
+    const availableColors = useMemo(() => {
+        if (!variants || !selectedMaterial) return [];
+        return variants.filter(v => v.material === selectedMaterial);
+    }, [variants, selectedMaterial]);
+
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
@@ -280,7 +290,6 @@ export function HighfieldQuoteFlow({
         6: 'SUMMARY'
     };
 
-    // --- Dynamic Carousel Slide Logic ---
     const buildPreviewSlide = useMemo(() => {
         if (selectedOptionsData.length === 0) return null;
 
@@ -288,7 +297,6 @@ export function HighfieldQuoteFlow({
         const seatOpt = selectedOptionsData.find((f: any) => f.category === 'Seats');
         const otherOpts = selectedOptionsData.filter((f: any) => f.category !== 'Consoles' && f.category !== 'Seats');
 
-        // Split Layout: Only Console and Seat
         if (selectedOptionsData.length <= 2 && (consoleOpt || seatOpt) && otherOpts.length === 0) {
             return (
                 <div className="h-full w-full flex items-center bg-white">
@@ -308,7 +316,6 @@ export function HighfieldQuoteFlow({
             );
         }
 
-        // Grid Layout: Priority items on top row
         const gridItems = [];
         if (consoleOpt) gridItems.push(consoleOpt);
         if (seatOpt) gridItems.push(seatOpt);
@@ -338,15 +345,10 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides = [];
-        // 1. Primary Boat Slide
         slides.push({ type: 'boat', url: activeVariant?.imageUrl || model.coverImageUrl });
-        
-        // 2. Tactical Build Slide
         if (buildPreviewSlide) {
             slides.push({ type: 'build', content: buildPreviewSlide });
         }
-
-        // 3. Gallery Images
         if (model.galleryImageUrls) {
             model.galleryImageUrls.forEach((url: string) => slides.push({ type: 'gallery', url }));
         }
@@ -355,8 +357,7 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            {/* Top Navigation Step Bar */}
-            <div className="sticky top-0 z-30 px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center">
+            <div className="sticky top-0 z-[100] px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center">
                 <div className="w-full flex items-center justify-between">
                     <div className="flex-1 flex items-center justify-between mr-24">
                         {STEPS.map((step) => (
@@ -389,7 +390,6 @@ export function HighfieldQuoteFlow({
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Left Side: Visual Preview Area */}
                 <div className="w-full lg:w-7/12 relative flex flex-col p-12 bg-slate-50/50 overflow-hidden">
                     <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
                         <Carousel className="w-full h-full" opts={{ loop: true }}>
@@ -414,25 +414,23 @@ export function HighfieldQuoteFlow({
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
-                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-none shadow-2xl hover:bg-white transition-all disabled:opacity-0 z-[100]" />
-                            <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-none shadow-2xl hover:bg-white transition-all disabled:opacity-0 z-[100]" />
+                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-none shadow-2xl hover:bg-white transition-all disabled:opacity-0 z-[110]" />
+                            <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-none shadow-2xl hover:bg-white transition-all disabled:opacity-0 z-[110]" />
                         </Carousel>
                     </div>
 
-                    {/* Build Summary Pricing Area */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
                         <div className="flex flex-col items-start px-1">
                             <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">
                                 Package Pricing (Excl. GST)
                             </span>
                             <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline">
-                                <span className="text-primary text-3xl mr-1 self-baseline">$</span>
+                                <span className="text-primary text-3xl mr-1">$</span>
                                 <span>{totalPrice.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Tactical Info Section */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0 relative z-10">
                         <Button 
                             variant="ghost" 
@@ -461,7 +459,6 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
-                {/* Right Side: Interactive Step Content Area */}
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
                     <div className="pt-10 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
@@ -584,9 +581,8 @@ export function HighfieldQuoteFlow({
                                                                 selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700"
                                                             )}>{opt.name}</p>
                                                             <p className={cn(
-                                                                "text-[10px] font-black",
-                                                                selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400",
-                                                                "text-sm"
+                                                                "text-sm font-black",
+                                                                selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
                                                             )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
                                                     </button>
