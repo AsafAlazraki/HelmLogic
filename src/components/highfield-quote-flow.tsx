@@ -414,9 +414,9 @@ export function HighfieldQuoteFlow({
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Build Total (Excl. GST)</span>
                                 </div>
                                 <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-3 text-xl sm:text-2xl tracking-tight min-0 truncate">
-                                        {rangePart && <span className="text-primary font-normal whitespace-nowrap">{rangePart}</span>}
-                                        <span className="text-slate-950 font-black whitespace-nowrap">{displayedModelName}</span>
+                                    <div className="flex items-center gap-3 tracking-tight min-0 truncate">
+                                        {rangePart && <span className="text-primary font-normal text-xl sm:text-2xl whitespace-nowrap">{rangePart}</span>}
+                                        <span className="text-slate-950 font-black text-xl sm:text-2xl whitespace-nowrap">{displayedModelName}</span>
                                     </div>
                                     <div className="text-5xl font-black flex items-center justify-end gap-1.5 text-slate-950 tracking-tighter shrink-0">
                                         <span className="text-primary text-2xl">$</span>

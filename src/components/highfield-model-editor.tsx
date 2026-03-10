@@ -6,7 +6,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, serverTimestamp, orderBy, deleteDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import {
     Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, Layers, FolderPlus, PlusCircle, ShieldCheck, CheckCircle2, 
     AlertTriangle, DollarSign, Ship, RefreshCw, 
     PackagePlus, Pencil, ArrowUp, ArrowDown, Check, ShieldAlert, Settings2, 
-    Search, ListChecks, Star, ChevronDown, FileText, ExternalLink 
+    Search, ListChecks, Star, ChevronDown, FileText, ExternalLink, ChevronRight 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -180,7 +180,7 @@ function SkuCompatibilityDialog({
                                     placeholder="Search boat variants..." 
                                     className="pl-10 h-12 font-bold bg-background border-2 rounded-xl"
                                     value={search}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -482,6 +482,201 @@ function OptionalFeatureItem({
     );
 }
 
+function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const variantsQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')), [firestore, vendorId, rangeId, model.id]);
+    const { data: variants, isLoading: variantsLoading } = useCollection<any>(variantsQuery);
+
+    if (variantsLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-[2rem] border-2 bg-white shadow-sm" defaultOpen>
+            <CollapsibleCardHeader title="Boat Variants & SKUs" count={variants?.length || 0} />
+            <CollapsibleContent>
+                <CardContent className="p-8 space-y-4">
+                    {variants && variants.length > 0 ? (
+                        <div className="grid gap-4">
+                            {variants.map((v) => (
+                                <div key={v.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-slate-50 hover:border-primary/20 transition-all group/v">
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <div className="h-12 w-12 relative rounded-xl bg-white border shadow-inner flex items-center justify-center overflow-hidden">
+                                            {v.imageUrl ? <Image src={v.imageUrl} alt={v.name} fill className="object-contain p-1" unoptimized /> : <Ship className="h-6 w-6 text-slate-200" />}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-black text-xs uppercase tracking-tight truncate">{v.name}</p>
+                                            <p className="text-[10px] font-mono font-bold text-primary uppercase mt-0.5">{v.sku || 'NO SKU'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <Badge variant="outline" className="font-black text-[8px] uppercase tracking-widest">{v.material}</Badge>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover/v:opacity-100" asChild>
+                                            <Link href={`/data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}`}><ChevronRight className="h-4 w-4" /></Link>
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="py-12 text-center flex flex-col items-center gap-3 opacity-20 border-2 border-dashed rounded-3xl bg-muted/5">
+                            <Ship className="h-10 w-10" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">No variants defined for this series.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
+    const { control, watch, setValue } = useFormContext<ModelFormData>();
+    const storage = useStorage();
+    const [isCoverUploading, setIsCoverUploading] = useState(false);
+    const [isGalleryUploading, setIsGalleryUploading] = useState(false);
+    
+    const coverImageUrl = watch("coverImageUrl");
+    const galleryUrls = watch("galleryImageUrls") || [];
+    const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-[2.5rem] border-2 bg-card shadow-sm" defaultOpen>
+            <CollapsibleCardHeader title={isModuleView ? "Visual Config & Renders" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
+            <CollapsibleContent>
+                <div className="space-y-0">
+                    <div className="relative aspect-[16/10] w-full bg-slate-50 group">
+                        {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
+                        {coverImageUrl ? (
+                            <div className="h-full w-full flex items-center justify-center relative">
+                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-8" unoptimized />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Button type="button" variant="destructive" size="sm" className="font-black uppercase text-[10px]" onClick={() => setValue('coverImageUrl', null)}>Remove Primary Render</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-slate-100 transition-all">
+                                <ImageIcon className="w-12 h-12 mb-3 text-slate-300" />
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isModuleView ? "Upload Build Render" : "Set Primary Brand Image"}</span>
+                                <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file && storage) {
+                                        setIsCoverUploading(true);
+                                        try {
+                                            const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`);
+                                            setValue('coverImageUrl', url);
+                                        } finally { setIsCoverUploading(false); }
+                                    }
+                                }} /></FormControl>
+                            </label>
+                        )}
+                    </div>
+                    
+                    <div className="p-8 space-y-4 bg-white border-t-2">
+                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Component Gallery</Label>
+                        <div className="grid grid-cols-3 gap-4">
+                            {galleryUrls.map((url, index) => (
+                                <div key={index} className="relative aspect-square group rounded-2xl overflow-hidden border-2 bg-slate-50">
+                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" unoptimized />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                </div>
+                            ))}
+                            <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed rounded-2xl cursor-pointer hover:bg-slate-50 transition-all group/add">
+                                <Input type="file" multiple className="hidden" accept="image/*" onChange={async (e) => {
+                                    const files = Array.from(e.target.files || []);
+                                    setIsGalleryUploading(true);
+                                    try {
+                                        for (const file of files) {
+                                            const url = await uploadFileToStorage(storage!, file, `models/${model.id}/gallery/${Date.now()}-${file.name}`);
+                                            appendGalleryImage(url);
+                                        }
+                                    } finally { setIsGalleryUploading(false); }
+                                }}/>
+                                {isGalleryUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Plus className="h-6 w-6 text-muted-foreground group-hover/add:scale-110 transition-transform" />}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+function DocumentsSection() {
+    const { control } = useFormContext<ModelFormData>();
+    const { fields, append, remove } = useFieldArray({ control, name: "documents" });
+    const storage = useStorage();
+    const [isUploading, setIsUploading] = useState(false);
+    const { toast } = useToast();
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !storage) return;
+        setIsUploading(true);
+        try {
+            const path = `documents/${Date.now()}-${file.name}`;
+            const url = await uploadFileToStorage(storage, file, path);
+            append({ id: `doc-${Date.now()}`, name: file.name, url });
+            toast({ title: "Document Uploaded" });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Upload Failed", description: error.message });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    return (
+        <Collapsible className="group overflow-hidden rounded-[2rem] border-2 bg-white shadow-sm" defaultOpen>
+            <CollapsibleCardHeader title="Technical Documents" count={fields.length} />
+            <CollapsibleContent>
+                <CardContent className="p-8 space-y-4">
+                    <div className="grid gap-2">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-3 p-4 rounded-2xl border-2 bg-slate-50 group/doc">
+                                <FileText className="h-5 w-5 text-primary/40 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <FormField 
+                                        control={control} 
+                                        name={`documents.${index}.name`} 
+                                        render={({ field }) => (
+                                            <FormControl>
+                                                <Input {...field} className="h-7 text-[11px] font-black uppercase border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" />
+                                            </FormControl>
+                                        )} 
+                                    />
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 text-primary" asChild title="Open Link">
+                                        <a href={(field as any).url} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="h-4 w-4" />
+                                        </a>
+                                    </Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <label className="flex flex-col items-center justify-center w-full py-10 border-2 border-dashed rounded-[2rem] cursor-pointer bg-slate-50 hover:bg-slate-100 transition-all group/upload">
+                        {isUploading ? (
+                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        ) : (
+                            <>
+                                <Upload className="h-8 w-8 text-slate-300 group-hover/upload:text-primary transition-colors mb-3" />
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Upload Factory Manual / Spec Sheet</p>
+                            </>
+                        )}
+                        <Input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
+                    </label>
+                </CardContent>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
 function SpecsSection() {
     const { control } = useFormContext<ModelFormData>();
     const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
@@ -662,13 +857,26 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
                             <div className="grid grid-cols-3 gap-6 pr-12">
                                 <FormField control={control} name={`rules.${idx}.sourceOptionId`} render={({ field }) => (
                                     <FormItem><FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Condition</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 font-bold border-2 rounded-xl bg-white"><SelectValue placeholder="If..." /></SelectTrigger></FormControl>
-                                    <SelectContent className="rounded-xl border-2 shadow-2xl">{featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2.5 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select></FormItem>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 font-bold border-2 rounded-xl bg-white"><SelectValue placeholder="If..." /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                            {featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2.5 uppercase text-[9px]">{opt.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select></FormItem>
                                 )} />
                                 <FormField control={control} name={`rules.${idx}.type`} render={({ field }) => (
                                     <FormItem><FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Action</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 font-black uppercase text-[10px] border-2 rounded-xl bg-white"><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent className="rounded-xl border-2 shadow-2xl"><SelectItem value="include" className="font-black py-2.5 uppercase text-[9px]">MUST INCLUDE</SelectItem><SelectItem value="exclude" className="font-black py-2.5 uppercase text-[9px]">EXCLUDES</SelectItem></SelectContent></Select></FormItem>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 font-black uppercase text-[10px] border-2 rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                            <SelectItem value="include" className="font-black py-2.5 uppercase text-[9px]">MUST INCLUDE</SelectItem>
+                                            <SelectItem value="exclude" className="font-black py-2.5 uppercase text-[9px]">EXCLUDES</SelectItem>
+                                        </SelectContent>
+                                    </Select></FormItem>
                                 )} />
                                 <FormField control={control} name={`rules.${idx}.targetOptionIds`} render={({ field }) => (
                                     <FormItem><FormLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Effect On</FormLabel>
@@ -749,7 +957,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                 <Badge className="bg-primary text-white border-none font-black text-[10px] tracking-tighter h-6 px-3">{items.length} ITEMS</Badge>
                                                 <h3 className="font-black text-xl uppercase italic tracking-tighter text-slate-900">{cat}</h3>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-primary/10 text-primary shadow-sm hover:scale-110 transition-transform" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'Other Options' ? null : cat, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}>
+                                            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-primary/10 text-primary shadow-sm hover:scale-110 transition-transform" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'Other Options' ? null : cat, imageUrl: null, code: '', color: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}>
                                                 <Plus className="h-5 w-5" />
                                             </Button>
                                         </div>
