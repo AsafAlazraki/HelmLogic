@@ -4,12 +4,12 @@ import { useState, useMemo } from 'react';
 import { useFieldArray, useWatch, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
-import { useStorage, useFirestore, useMemoFirebase } from '@/firebase';
+import { useStorage, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, getDocs, writeBatch, doc, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -151,7 +151,7 @@ function SkuCompatibilityDialog({
                 </DialogHeader>
                 <div className="flex-1 min-h-0 flex flex-col md:flex-row">
                     <div className="flex-1 flex flex-col min-w-0 border-r">
-                        <div className="p-6 border-b bg-muted/5"><div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search variants..." className="pl-10 h-12 font-bold" value={search} onChange={(e) => setSearch(e.target.value)} /></div></div>
+                        <div className="p-6 border-b bg-muted/5"><div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search variants..." className="pl-10 h-12 font-bold" value={search} onChange={(e) => setSearchTerm(e.target.value)} /></div></div>
                         <ScrollArea className="flex-1">
                             <div className="p-6 space-y-2">
                                 {filteredVariants.map(v => (
@@ -549,6 +549,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                 </div>
                 <div className="lg:col-span-3 space-y-8 min-w-0">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                    
                     <Collapsible className="group/config overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
                         <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
                             <div className="flex items-center gap-3">
@@ -558,14 +559,30 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                         </div>
                         <CollapsibleContent>
                             <div className="p-6 space-y-8">
-                                <div className="flex justify-end">
-                                    <div className="inline-flex items-center p-1.5 bg-white rounded-full border-2 shadow-sm focus-within:border-primary/40 transition-colors w-full max-w-[320px]">
-                                        <Input placeholder="CREATE CATEGORY..." value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="h-8 flex-1 border-none bg-transparent shadow-none font-black text-[10px] uppercase tracking-[0.2em] focus-visible:ring-0 pl-4" />
-                                        <Button type="button" size="sm" className="h-8 px-5 rounded-full font-black uppercase text-[9px] tracking-widest bg-primary text-white hover:scale-105 transition-transform shrink-0" disabled={!newCategoryName.trim()} onClick={() => {
-                                            if(newCategoryName.trim()) { appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: newCategoryName, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false }); setNewCategoryName(''); }
-                                        }}>CREATE</Button>
-                                    </div>
+                                {/* Create Category Bar - Moved into content area at top */}
+                                <div className="inline-flex items-center p-1.5 bg-white rounded-full border-2 shadow-sm focus-within:border-primary/40 transition-colors w-full">
+                                    <Input 
+                                        placeholder="CREATE CATEGORY..." 
+                                        value={newCategoryName} 
+                                        onChange={e => setNewCategoryName(e.target.value)} 
+                                        className="h-8 flex-1 border-none bg-transparent shadow-none font-black text-[10px] uppercase tracking-[0.2em] focus-visible:ring-0 pl-4" 
+                                    />
+                                    <Button 
+                                        type="button" 
+                                        size="sm" 
+                                        className="h-8 px-5 rounded-full font-black uppercase text-[9px] tracking-widest bg-primary text-white hover:scale-105 transition-transform shrink-0" 
+                                        disabled={!newCategoryName.trim()} 
+                                        onClick={() => {
+                                            if(newCategoryName.trim()) { 
+                                                appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: newCategoryName, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false }); 
+                                                setNewCategoryName(''); 
+                                            }
+                                        }}
+                                    >
+                                        CREATE
+                                    </Button>
                                 </div>
+
                                 <div className="space-y-10">
                                     {categorizedFeatures.map(([cat, items]) => (
                                         <Collapsible key={cat} defaultOpen className="space-y-4">
@@ -577,13 +594,14 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                 </div>
                                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
                                             </div>
-                                            <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options')} variants={variants} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
+                                            <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
                                         </Collapsible>
                                     ))}
                                 </div>
                             </div>
                         </CollapsibleContent>
                     </Collapsible>
+
                     <DocumentsSection />
                     <RulesSection model={model} modelCode={model.modelCode} />
                 </div>
