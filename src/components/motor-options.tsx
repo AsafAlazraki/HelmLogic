@@ -414,7 +414,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     };
 
     const handleSeedTestData = async () => {
-        // TEMPORARY: Removing Admin check for prototyping phase
         if (!motorDataSet || !motorVendor || !targetDataSet || !model?.id) {
             toast({ variant: 'destructive', title: "Context Error", description: "Datasets or Model identity not yet synchronized." });
             return;
@@ -632,47 +631,45 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     {motorCombinations.length > 0 ? (
                         <Accordion type="multiple" className="w-full space-y-4" defaultValue={['config-0']}>
                             {motorCombinations.map((configGroup, index) => (
-                                AccordionItem && (
-                                    <AccordionItem value={`config-${index}`} key={configGroup.configType} className="border rounded-xl overflow-hidden shadow-sm bg-background">
-                                        <div className="flex border-b bg-muted/20 hover:bg-muted/30 transition-colors group/trigger items-center justify-between pr-6">
-                                            <AccordionPrimitive.Header className="flex flex-1">
-                                                <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-6 py-4 font-medium transition-all hover:no-underline [&[data-state=open]>svg]:rotate-180 text-left">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Star className="h-4 w-4" /></div>
-                                                        <div>
-                                                            <p className="font-black text-xs uppercase tracking-widest">{formatConfigType(configGroup.configType)} Layout</p>
-                                                            <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">{configGroup.combinations.length} Variations Available</p>
-                                                        </div>
+                                <AccordionItem value={`config-${index}`} key={configGroup.configType} className="border rounded-xl overflow-hidden shadow-sm bg-background">
+                                    <div className="flex border-b bg-muted/20 hover:bg-muted/30 transition-colors group/trigger items-center justify-between pr-6">
+                                        <AccordionPrimitive.Header className="flex flex-1">
+                                            <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-6 py-4 font-medium transition-all hover:no-underline [&[data-state=open]>svg]:rotate-180 text-left">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Star className="h-4 w-4" /></div>
+                                                    <div>
+                                                        <p className="font-black text-xs uppercase tracking-widest">{formatConfigType(configGroup.configType)} Layout</p>
+                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">{configGroup.combinations.length} Variations Available</p>
                                                     </div>
-                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                                </AccordionPrimitive.Trigger>
-                                            </AccordionPrimitive.Header>
-                                            <Button type="button" variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveConfigType(configGroup.configType); setIsEngineManagerOpen(true); }}><Settings2 className="h-3 w-3 mr-1.5" />Manage Engines</Button>
-                                        </div>
-                                        <AccordionContent className="p-0">
-                                            <ScrollArea className="h-[600px] w-full">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
-                                                    {configGroup.combinations.map((combo, comboIdx) => (
-                                                        <div key={comboIdx} className="relative group/combo h-full">
-                                                            {combo.map((motor, motorIdx) => (
-                                                                <MotorCard 
-                                                                    key={`${motor.id}-${motorIdx}`} 
-                                                                    motor={motor} 
-                                                                    vendorId={motorVendor!.id}
-                                                                    dataSetId={targetDataSet!.id}
-                                                                    onAddOption={(cat) => handleAddOptionToMotor(motor.id, cat)}
-                                                                    onToggleStandard={(idx) => handleToggleStandard(motor.id, idx)}
-                                                                    onRemoveOption={(idx) => handleRemoveOption(motor.id, idx)}
-                                                                    onHide={() => handleHideMotor(configGroup.configType, motor.id)}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    ))}
                                                 </div>
-                                            </ScrollArea>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                )
+                                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                            </AccordionPrimitive.Trigger>
+                                        </AccordionPrimitive.Header>
+                                        <Button type="button" variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveConfigType(configGroup.configType); setIsEngineManagerOpen(true); }}><Settings2 className="h-3 w-3 mr-1.5" />Manage Engines</Button>
+                                    </div>
+                                    <AccordionContent className="p-0">
+                                        <ScrollArea className="h-[600px] w-full">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
+                                                {configGroup.combinations.map((combo, comboIdx) => (
+                                                    <div key={comboIdx} className="relative group/combo h-full">
+                                                        {combo.map((motor, motorIdx) => (
+                                                            <MotorCard 
+                                                                key={`${motor.id}-${motorIdx}`} 
+                                                                motor={motor} 
+                                                                vendorId={motorVendor!.id}
+                                                                dataSetId={targetDataSet!.id}
+                                                                onAddOption={(cat) => handleAddOptionToMotor(motor.id, cat)}
+                                                                onToggleStandard={(idx) => handleToggleStandard(motor.id, idx)}
+                                                                onRemoveOption={(idx) => handleRemoveOption(motor.id, idx)}
+                                                                onHide={() => handleHideMotor(configGroup.configType, motor.id)}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </ScrollArea>
+                                    </AccordionContent>
+                                </AccordionItem>
                             ))}
                         </Accordion>
                     ) : (

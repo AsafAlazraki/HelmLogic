@@ -109,6 +109,7 @@ export function HighfieldQuoteFlow({
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
+    // Core Identity
     const displayedModelName = model?.name || 'Boat';
 
     // Carousel State
@@ -150,7 +151,7 @@ export function HighfieldQuoteFlow({
         return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
     }, [selectedOptionIds, model.optionalFeatures]);
 
-    // Step 1 Scroll: Material to Color (Stabilized Pacing)
+    // Step 1 Scroll: Material to Color (Premium deliberate delay)
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) {
             const timer = setTimeout(() => {
@@ -186,6 +187,7 @@ export function HighfieldQuoteFlow({
                         
                         const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
 
+                        // STYLISTIC RULE: Strictly filter based on steering profile
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             const matchesHp = hp >= minHp && hp <= maxHp;
@@ -255,8 +257,8 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides = [];
-        // Primary Anchor: Main boat render (index 0) - Always preserve!
-        if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
+        // Primary Anchor: Main boat render (index 0)
+        slides.push({ type: 'boat', url: model.coverImageUrl || '' });
         
         // Variant: Color-specific render
         if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
@@ -270,7 +272,11 @@ export function HighfieldQuoteFlow({
 
         // Gallery
         if (model.galleryImageUrls) {
-            model.galleryImageUrls.forEach((url: string) => slides.push({ type: 'gallery', url }));
+            model.galleryImageUrls.forEach((url: string) => {
+                if (url !== model.coverImageUrl) {
+                    slides.push({ type: 'gallery', url });
+                }
+            });
         }
         return slides;
     }, [activeVariant, model, buildPreviewSlide]);
@@ -619,7 +625,7 @@ export function HighfieldQuoteFlow({
                                             <CardContent className="p-6 space-y-4">
                                                 <div className="flex items-center justify-between">
                                                     <div className="space-y-1">
-                                                        <p className="font-black text-lg uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
+                                                        <p className="font-black text-lg uppercase tracking-tight text-slate-900">{range?.name} {displayedModelName}</p>
                                                         <p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
                                                     </div>
                                                     <p className="font-black text-primary italic text-lg">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p>
