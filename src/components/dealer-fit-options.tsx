@@ -2,15 +2,16 @@
 
 import { useMemo, useState } from 'react';
 import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, PlusCircle, Settings2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
-import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { cn } from '@/lib/utils';
 
 interface DealerFitCategory {
   id: string;
@@ -45,7 +46,6 @@ export function DealerFitOptions({
     organisationId?: string; 
     isAdmin?: boolean 
 }) {
-  const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -65,6 +65,7 @@ export function DealerFitOptions({
 
   const [isBrowserOpen, setIsBrowserOpen] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState<string | null>(null);
 
   const assignedCategories = useMemo(() => {
     if (!allCategories) return [];
@@ -79,8 +80,6 @@ export function DealerFitOptions({
 
   const allowedVendorIds = useMemo(() => {
     if (!module) return [];
-    // Admins always see all associated vendors for module setup
-    // Org members see either module vendors or restricted access if configured
     return (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
   }, [module]);
 
@@ -99,22 +98,73 @@ export function DealerFitOptions({
     setActiveCategoryId(categoryId);
     setIsBrowserOpen(true);
   };
+
+  const handleClearCategory = async (categoryId: string) => {
+    if (!organisationId) return;
+    const q = query(
+        collection(firestore, `organisations/${organisationId}/dealerFitSelections`),
+        where('categoryId', '==', categoryId)
+    );
+    try {
+        const snap = await getDocs(q);
+        const batch = writeBatch(firestore);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        toast({ title: "Category Purged", description: "All local selections have been removed." });
+    } catch (e) {
+        toast({ variant: 'destructive', title: "Clear Failed" });
+    }
+  };
+
+  const handleSeedCategory = async (category: DealerFitCategory) => {
+    if (!organisationId) return;
+    setIsSeeding(category.id);
+    const colRef = collection(firestore, `organisations/${organisationId}/dealerFitSelections`);
+    
+    let demoItems: any[] = [];
+    const name = category.name.toLowerCase();
+
+    if (name.includes('safety')) {
+        demoItems = [
+            { name: 'Lifejacket (PFD Level 100)', type: 'item', items: [{ data: { Description: 'Lifejacket PFD Level 100 Adult', sellPriceExclGst: 85 }}] },
+            { name: 'Sand Anchor Kit', type: 'item', items: [{ data: { Description: 'Sand Anchor, Chain & Rope Kit', sellPriceExclGst: 145 }}] },
+            { name: 'Flare Kit (Inshore)', type: 'item', items: [{ data: { Description: 'Inshore Flare Kit - Red & Orange Hand', sellPriceExclGst: 65 }}] }
+        ];
+    } else if (name.includes('sounder')) {
+        demoItems = [
+            { name: 'Garmin EchoMAP 95sv', type: 'item', items: [{ data: { Description: 'Garmin EchoMAP 95sv with Transducer', sellPriceExclGst: 1850 }}] }
+        ];
+    } else if (name.includes('audio')) {
+        demoItems = [
+            { name: 'Fusion MS-RA210 System', type: 'item', items: [{ data: { Description: 'Fusion RA210 Marine Stereo & Speakers', sellPriceExclGst: 650 }}] }
+        ];
+    }
+
+    try {
+        for (const item of demoItems) {
+            await addDoc(colRef, {
+                ...item,
+                categoryId: category.id,
+                category: category.name,
+                createdAt: serverTimestamp()
+            });
+        }
+        toast({ title: "Demo Data Injected", description: `${category.name} has been populated.` });
+    } catch (e) {
+        toast({ variant: 'destructive', title: "Sync Failed" });
+    } finally {
+        setIsSeeding(null);
+    }
+  };
   
   const handleSaveSelection = async (selectionData: Omit<DealerFitSelection, 'id'>) => {
-    if (!organisationId) {
-        toast({ variant: 'destructive', title: 'Action Prohibited', description: 'Master data categories cannot store organisation-specific selections.' });
-        return;
-    }
-    
+    if (!organisationId) return;
     const colRef = collection(firestore, `organisations/${organisationId}/dealerFitSelections`);
-    const dataToSave = {
-        ...selectionData,
-        createdAt: serverTimestamp(),
-    };
+    const dataToSave = { ...selectionData, createdAt: serverTimestamp() };
 
     addDoc(colRef, dataToSave)
         .then(() => {
-            toast({ title: 'Selection Added', description: `${selectionData.name} has been added to your local workspace.`});
+            toast({ title: 'Selection Added' });
             setIsBrowserOpen(false);
         })
         .catch(async (serverError) => {
@@ -127,11 +177,11 @@ export function DealerFitOptions({
         });
   };
 
-  const loading = userLoading || orgLoading || categoriesLoading || selectionsLoading;
+  const loading = orgLoading || categoriesLoading || selectionsLoading;
 
   if (loading) {
     return (
-      <Card>
+      <Card className="rounded-xl border-2 shadow-sm">
         <CardContent className="flex h-64 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </CardContent>
@@ -139,69 +189,84 @@ export function DealerFitOptions({
     );
   }
 
-  if (assignedCategories.length === 0) {
-    return (
-      <Card>
-        <CardContent className="flex h-64 flex-col items-center justify-center text-center">
-          <AlertCircle className="h-10 w-10 text-muted-foreground" />
-          <p className="mt-4 font-semibold">No Dealer Fit Categories Available</p>
-          <p className="text-sm text-muted-foreground">
-            {isAdmin 
-                ? "Create master categories in the Admin panel to see them here."
-                : "Your organisation has not been assigned any dealer fit categories yet."
-            }
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-6 text-left">
         {assignedCategories.map(category => {
           const categorySelections = selectionsByCategory.get(category.id) || [];
+          const nameLower = category.name.toLowerCase();
+          const hasSeeder = nameLower.includes('safety') || nameLower.includes('sounder') || nameLower.includes('audio');
+
           return (
-            <Card key={category.id}>
-              <CardHeader className="flex flex-row items-center justify-between py-4">
-                <CardTitle className="text-lg">{category.name}</CardTitle>
-                <Button type="button" variant="outline" size="sm" onClick={() => handleOpenBrowser(category.id)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Selection
-                </Button>
+            <Card key={category.id} className="rounded-xl border-2 shadow-sm overflow-hidden text-left">
+              <CardHeader className="flex flex-row items-center justify-between py-4 px-6 bg-muted/10 border-b text-left shrink-0">
+                <div className="text-left">
+                    <CardTitle className="text-lg font-black uppercase italic tracking-tight">{category.name}</CardTitle>
+                    <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{categorySelections.length} Active Proposals</CardDescription>
+                </div>
+                <div className="flex items-center gap-2 text-left">
+                    {hasSeeder && (
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="h-8 px-4 font-black uppercase text-[9px] tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all border-none"
+                            onClick={() => handleSeedCategory(category)}
+                            disabled={!!isSeeding}
+                        >
+                            {isSeeding === category.id ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Zap className="h-3 w-3 mr-1.5 fill-current" />}
+                            Sync Demo Data
+                        </Button>
+                    )}
+                    {categorySelections.length > 0 && (
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-destructive hover:bg-destructive/10"
+                            onClick={() => handleClearCategory(category.id)}
+                        >
+                            <Trash2 className="h-3 w-3 mr-1.5" />
+                            Clear All
+                        </Button>
+                    )}
+                    <Button type="button" variant="outline" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest border-2" onClick={() => handleOpenBrowser(category.id)}>
+                        <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+                        Add Selection
+                    </Button>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6 text-left">
                 {categorySelections.length > 0 ? (
-                  <Accordion type="multiple" className="w-full space-y-2">
+                  <div className="grid gap-3 text-left">
                     {categorySelections.map(selection => (
-                       <AccordionItem value={selection.id} key={selection.id} className="border-b-0">
-                          <Card className="bg-muted/50 border-none shadow-none">
-                            <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-primary">•</span>
-                                    {selection.name} {selection.type === 'package' && `(${selection.items.length} items)`}
+                        <Card key={selection.id} className="bg-slate-50 border-2 hover:border-primary/20 transition-all shadow-sm group/sel rounded-xl overflow-hidden text-left">
+                            <div className="p-4 flex items-center justify-between text-left">
+                                <div className="flex items-center gap-3 text-left">
+                                    <div className="h-8 w-8 bg-white border-2 rounded-lg flex items-center justify-center text-primary/40 shadow-inner group-hover/sel:text-primary group-hover/sel:border-primary/20 transition-all">
+                                        {selection.type === 'package' ? <Layers className="h-4 w-4" /> : <Box className="h-4 w-4" />}
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="font-black text-xs uppercase tracking-tight text-slate-900">{selection.name}</p>
+                                        <p className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">{selection.items.length} Components Staged</p>
+                                    </div>
                                 </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="px-4 pb-4">
-                                <div className="space-y-2 ml-4 border-l pl-4">
-                                    {selection.items.map((item, index) => (
-                                        <div key={index} className="p-3 border rounded-md bg-background text-xs">
-                                            <p className="font-bold">{item.data.Description || item.data.name || item.data['Model Name'] || item.data['INSTALL TYPE'] || 'Unnamed Item'}</p>
-                                            <p className="text-muted-foreground mt-1 text-[10px] font-mono">CODE: {item.data.Code || item.data.SKU || item.data.Part_Number || item.data.CODE || 'N/A'}</p>
-                                        </div>
-                                    ))}
+                                <div className="flex items-center gap-4 text-left">
+                                    <div className="text-right text-left">
+                                        <p className="text-[10px] font-black text-primary">AUD BASE</p>
+                                        <p className="font-black text-xs">${selection.items.reduce((acc, i) => acc + (i.data.sellPriceExclGst || 0), 0).toLocaleString()}</p>
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 text-slate-300" />
                                 </div>
-                            </AccordionContent>
-                          </Card>
-                       </AccordionItem>
+                            </div>
+                        </Card>
                     ))}
-                  </Accordion>
+                  </div>
                 ) : (
-                  <div className="py-10 text-center text-xs text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
-                    {allowedVendorIds.length > 0 
-                        ? `Click 'Add Selection' to browse parts for ${category.name}.` 
-                        : "No associated vendors have been assigned to this module configuration."
-                    }
+                  <div className="py-16 text-center flex flex-col items-center gap-4 border-2 border-dashed rounded-2xl bg-muted/5 opacity-40 text-left">
+                    <Box className="h-10 w-10 text-muted-foreground" />
+                    <div className="text-left">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Strategic Selection Matrix Empty</p>
+                        <p className="text-[8px] font-bold uppercase text-muted-foreground/60 mt-1">Browse master data to link items to this category</p>
+                    </div>
                   </div>
                 )}
               </CardContent>
