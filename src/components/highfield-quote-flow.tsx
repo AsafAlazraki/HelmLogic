@@ -144,7 +144,13 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
-    // Step 1 Scroll Fix - Material to Color
+    // Filter motors based on steering requirement
+    const hasConsoleSelected = useMemo(() => {
+        const consoleOptions = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles') || [];
+        return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
+    }, [selectedOptionIds, model.optionalFeatures]);
+
+    // Step 1 Scroll: Material to Color (Stabilized Pacing)
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) {
             const timer = setTimeout(() => {
@@ -156,12 +162,6 @@ export function HighfieldQuoteFlow({
             return () => clearTimeout(timer);
         }
     }, [selectedMaterial, currentStep]);
-
-    // Filter motors based on steering type requirement
-    const hasConsoleSelected = useMemo(() => {
-        const consoleOptions = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles') || [];
-        return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
-    }, [selectedOptionIds, model.optionalFeatures]);
 
     useEffect(() => {
         const fetchMotors = async () => {
@@ -255,7 +255,7 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides = [];
-        // Primary Anchor: Main boat render (index 0)
+        // Primary Anchor: Main boat render (index 0) - Always preserve!
         if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
         
         // Variant: Color-specific render
@@ -275,11 +275,13 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide]);
 
+    // GALLERY INTELLIGENCE: Robust Auto-Slide
     useEffect(() => {
         if (!api) return;
+        
+        // Re-init to ensure new composite builds are recognized by Embla
         api.reInit();
 
-        // Auto-Slide Logic
         const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
         if (buildIdx !== -1 && selectedOptionIds.length > 0) {
             setTimeout(() => api.scrollTo(buildIdx), 500);
@@ -317,11 +319,13 @@ export function HighfieldQuoteFlow({
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
+            // SMART SEAT FILTERING: Hide category if console has no paired seating
             if (cat === 'Seats') {
-                if (selectedConsole && !selectedConsole.associatedSeatId) return acc;
-                if (selectedConsole && selectedConsole.associatedSeatId && opt.id !== selectedConsole.associatedSeatId) return acc;
+                if (!selectedConsole || !selectedConsole.associatedSeatId) return acc;
+                if (opt.id !== selectedConsole.associatedSeatId) return acc;
             }
 
+            // RIGGING RULE: Hide unless console present
             if (cat === 'Rigging' && !hasConsoleSelected) return acc;
             
             if (!acc[cat]) acc[cat] = [];
@@ -350,6 +354,7 @@ export function HighfieldQuoteFlow({
 
         if (isCurrentlySelected) {
             nextSelectedIds = nextSelectedIds.filter(i => i !== id);
+            // DESELECT RULE: Deselect console -> wipe seats/rigging
             if (currentCat === 'Consoles') {
                 const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
                 if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => i !== riggingItem.id);
@@ -357,15 +362,17 @@ export function HighfieldQuoteFlow({
                 nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
             }
         } else {
-            // EXCLUSIVE CONSOLE RULE
+            // MUTUALLY EXCLUSIVE CONSOLE RULE
             if (currentCat === 'Consoles') {
                 const consoleIds = relevantFeatures.filter((f: any) => f.category === 'Consoles').map((f: any) => f.id);
                 const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
+                // Purge other consoles AND all existing seats to maintain integrity
                 nextSelectedIds = nextSelectedIds.filter(i => !consoleIds.includes(i) && !seatIds.includes(i));
             }
 
             nextSelectedIds.push(id);
 
+            // AUTO-TICK RULES
             if (currentCat === 'Consoles') {
                 if (feature.associatedSeatId && !nextSelectedIds.includes(feature.associatedSeatId)) {
                     nextSelectedIds.push(feature.associatedSeatId);
@@ -379,15 +386,16 @@ export function HighfieldQuoteFlow({
 
         setSelectedOptionIds(nextSelectedIds);
 
-        // Auto-Scroll Logic
+        // AUTO-SCROLL ENGINE: Precision Skip Logic
         if (currentStep === 2 && !isCurrentlySelected) {
             const newConsoleId = nextSelectedIds.find(id => relevantFeatures.filter(f => f.category === 'Consoles').some(f => f.id === id));
             const newConsole = relevantFeatures.find(f => f.id === newConsoleId);
             
+            // Predict what will be visible after re-render
             const predictedVisibleCats = [...new Set(relevantFeatures.map(f => f.category || 'General Options'))].filter(cat => {
                 if (cat === 'Seats') {
                     if (newConsole && !newConsole.associatedSeatId) return false;
-                    return true;
+                    return !!newConsoleId;
                 }
                 if (cat === 'Rigging') return !!newConsoleId;
                 return true;
@@ -408,7 +416,7 @@ export function HighfieldQuoteFlow({
                     if (viewport && targetElement) {
                         viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
                     }
-                }, 1000);
+                }, 1000); // Premium deliberate pace
             }
         }
     };
@@ -513,7 +521,7 @@ export function HighfieldQuoteFlow({
                                         </div>
                                         <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
-                                                <button key={mat} onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} className={cn("group flex flex-col items-center justify-center p-12 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent h-40", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
+                                                <button key={mat} onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} className={cn("group flex flex-col items-center justify-center p-1 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent h-40", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                     <span className={cn("text-sm font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat}</span>
                                                 </button>
                                             ))}
@@ -527,8 +535,8 @@ export function HighfieldQuoteFlow({
                                             </div>
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
-                                                    <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white p-1">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
+                                                    <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
+                                                        <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
                                                         <div className={cn("p-5 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[10px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
@@ -548,8 +556,8 @@ export function HighfieldQuoteFlow({
                                             </div>
                                             <div className="grid grid-cols-2 gap-6">
                                                 {opts.map((opt: any) => (
-                                                    <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-1">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
+                                                    <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                             <p className={cn(
@@ -577,8 +585,8 @@ export function HighfieldQuoteFlow({
                                                 const motorImgPath = m.SummaryImage || m.imageUrl;
                                                 const motorImgUrl = motorImgPath ? (motorImgPath.startsWith('http') ? motorImgPath : `https://www.yamaha-motor.com.au${motorImgPath.startsWith('/') ? '' : '/'}${motorImgPath}`) : null;
                                                 return (
-                                                    <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-1">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
+                                                    <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>
                                                                 {m.vendorName || 'YAMAHA'} - {m['Model Name']}

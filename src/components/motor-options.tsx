@@ -414,12 +414,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     };
 
     const handleSeedTestData = async () => {
-        const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
-        if (!isAdmin) {
-            toast({ variant: 'destructive', title: "Access Denied", description: "Only HelmLogic Administrators can inject master data." });
-            return;
-        }
-
+        // TEMPORARY: Removing Admin check for prototyping phase
         if (!motorDataSet || !motorVendor || !targetDataSet || !model?.id) {
             toast({ variant: 'destructive', title: "Context Error", description: "Datasets or Model identity not yet synchronized." });
             return;
