@@ -243,7 +243,7 @@ export function HighfieldQuoteFlow({
             )}>
                 {itemsToShow.map((item: any, i) => (
                     <div key={item.id} className={cn(
-                        "relative flex items-center justify-center transition-colors p-12",
+                        "relative flex items-center justify-center transition-colors",
                         i === 0 && itemsToShow.length === 2 && "border-r",
                         "hover:bg-slate-50"
                     )}>
@@ -252,7 +252,7 @@ export function HighfieldQuoteFlow({
                                 src={item.imageUrl} 
                                 alt={item.name} 
                                 fill 
-                                className="object-contain p-16 mix-blend-multiply" 
+                                className="object-contain p-8 mix-blend-multiply" 
                                 unoptimized 
                             />
                         )}
@@ -482,7 +482,7 @@ export function HighfieldQuoteFlow({
                                     <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                         {slide.type === 'build' ? slide.content : (
                                             <>
-                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-contain p-16 mix-blend-multiply" unoptimized />}
+                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-cover transition-all" unoptimized />}
                                                 <Button 
                                                     variant="ghost" size="icon" 
                                                     className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
