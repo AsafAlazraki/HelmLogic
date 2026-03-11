@@ -120,6 +120,7 @@ export function HighfieldQuoteFlow({
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
+    const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>([]);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
     // Modal State
@@ -199,6 +200,27 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model, hasConsoleSelected]);
 
+    // Auto-select standard motor accessories when motor changes
+    useEffect(() => {
+        if (selectedMotor) {
+            const standardIds = (selectedMotor.masterAccessories || [])
+                .filter((a: any) => a.isStandard)
+                .map((a: any) => a.id);
+            setSelectedMotorAccessoryIds(standardIds);
+            
+            // Auto-scroll to accessories
+            if (currentStep === 3) {
+                setTimeout(() => {
+                    const firstCat = (selectedMotor.masterAccessories || [])[0]?.category || 'Propeller';
+                    const target = categoryRefs.current[firstCat];
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 1000);
+            }
+        } else {
+            setSelectedMotorAccessoryIds([]);
+        }
+    }, [selectedMotor, currentStep]);
+
     useEffect(() => {
         if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -215,15 +237,25 @@ export function HighfieldQuoteFlow({
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
     }, [selectedOptionIds, model.optionalFeatures]);
 
+    const selectedMotorAccessories = useMemo(() => {
+        if (!selectedMotor) return [];
+        return (selectedMotor.masterAccessories || []).filter((a: any) => selectedMotorAccessoryIds.includes(a.id));
+    }, [selectedMotor, selectedMotorAccessoryIds]);
+
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
         selectedOptionIds.forEach(id => {
             const opt = model.optionalFeatures?.find((f: any) => f.id === id);
             if (opt) total += (opt.sellPriceExclGst || 0);
         });
-        if (selectedMotor) total += (selectedMotor.sellPriceExclGst || 0);
+        if (selectedMotor) {
+            total += (selectedMotor.sellPriceExclGst || 0);
+            selectedMotorAccessories.forEach((a: any) => {
+                total += (a.sellPriceExclGst || 0);
+            });
+        }
         return total;
-    }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor]);
+    }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor, selectedMotorAccessories]);
 
     const buildPreviewSlide = useMemo(() => {
         const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
@@ -232,7 +264,6 @@ export function HighfieldQuoteFlow({
         const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
         const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
         
-        // Side-by-side horizontal split for Console & Seat
         const itemsToShow = [consoleOpt, seatOpt].filter(Boolean);
         if (itemsToShow.length === 0) return null;
 
@@ -265,55 +296,76 @@ export function HighfieldQuoteFlow({
         );
     }, [selectedOptionsData]);
 
+    const getMotorImgUrl = (m: any) => {
+        const imgPath = m.SummaryImage || m.imageUrl;
+        if (!imgPath) return null;
+        if (imgPath.startsWith('http')) return imgPath;
+        const prefix = imgPath.startsWith('/') ? '' : '/';
+        return `https://www.yamaha-motor.com.au${prefix}${imgPath}`;
+    };
+
     const carouselSlides = useMemo(() => {
         const slides = [];
-        // Primary Anchor: Main boat render (index 0)
+        // 0: Primary Anchor
         slides.push({ type: 'boat', url: model.coverImageUrl || '' });
         
-        // Variant: Color-specific render
-        if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
-            slides.push({ type: 'variant', url: activeVariant.imageUrl });
+        // Variant
+        if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
+
+        // Build (Console/Seat)
+        if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
+
+        // Motor
+        if (selectedMotor) {
+            const mUrl = getMotorImgUrl(selectedMotor);
+            if (mUrl) slides.push({ type: 'motor', url: mUrl });
         }
 
-        // Build: Composite option render
-        if (buildPreviewSlide) {
-            slides.push({ type: 'build', content: buildPreviewSlide });
-        }
+        // Accessories
+        selectedMotorAccessories.forEach((acc: any) => {
+            if (acc.imageUrl) slides.push({ type: 'accessory', url: acc.imageUrl });
+        });
 
         // Gallery
         if (model.galleryImageUrls) {
             model.galleryImageUrls.forEach((url: string) => {
-                if (url !== model.coverImageUrl) {
-                    slides.push({ type: 'gallery', url });
-                }
+                if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
             });
         }
         return slides;
-    }, [activeVariant, model, buildPreviewSlide]);
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedMotorAccessories]);
 
-    // GALLERY INTELLIGENCE: Robust Auto-Slide
+    // GALLERY INTELLIGENCE
     useEffect(() => {
         if (!api) return;
-        
-        // Re-init to ensure new composite builds are recognized by Embla
         api.reInit();
+
+        // High-priority: Auto-slide to hardware
+        if (selectedMotor) {
+            const mUrl = getMotorImgUrl(selectedMotor);
+            const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
+            if (idx !== -1) {
+                setTimeout(() => api.scrollTo(idx), 800);
+                return;
+            }
+        }
 
         const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
         if (buildIdx !== -1 && selectedOptionIds.length > 0) {
-            setTimeout(() => api.scrollTo(buildIdx), 1000);
+            setTimeout(() => api.scrollTo(buildIdx), 800);
             return;
         }
 
         if (activeVariant?.imageUrl) {
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
             if (variantIdx !== -1) {
-                setTimeout(() => api.scrollTo(variantIdx), 1000);
+                setTimeout(() => api.scrollTo(variantIdx), 800);
                 return;
             }
         }
 
         api.scrollTo(0);
-    }, [selectedColor, selectedOptionIds, api, carouselSlides, activeVariant, model.coverImageUrl]);
+    }, [selectedColor, selectedOptionIds, selectedMotor, api, carouselSlides, activeVariant]);
 
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
@@ -335,13 +387,11 @@ export function HighfieldQuoteFlow({
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
-            // SMART SEAT FILTERING: Hide category if console has no paired seating
             if (cat === 'Seats') {
                 if (!selectedConsole || !selectedConsole.associatedSeatId) return acc;
                 if (opt.id !== selectedConsole.associatedSeatId) return acc;
             }
 
-            // RIGGING RULE: Hide unless console present
             if (cat === 'Rigging' && !hasConsoleSelected) return acc;
             
             if (!acc[cat]) acc[cat] = [];
@@ -359,6 +409,23 @@ export function HighfieldQuoteFlow({
             }) as [string, any][];
     }, [relevantFeatures, selectedOptionIds, hasConsoleSelected]);
 
+    const groupedMotorAccessories = useMemo(() => {
+        if (!selectedMotor) return [];
+        const accessories = selectedMotor.masterAccessories || [];
+        const groups = accessories.reduce((acc: any, opt: any) => {
+            const cat = opt.category || 'Other Hardware';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(opt);
+            return acc;
+        }, {});
+
+        return Object.entries(groups).sort(([a], [b]) => {
+            if (a === 'Propeller') return -1; if (b === 'Propeller') return 1;
+            if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
+            return a.localeCompare(b);
+        }) as [string, any][];
+    }, [selectedMotor]);
+
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
         if (!feature) return;
@@ -370,7 +437,6 @@ export function HighfieldQuoteFlow({
 
         if (isCurrentlySelected) {
             nextSelectedIds = nextSelectedIds.filter(i => i !== id);
-            // DESELECT RULE: Deselect console -> wipe seats/rigging
             if (currentCat === 'Consoles') {
                 const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
                 if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => i !== riggingItem.id);
@@ -378,17 +444,14 @@ export function HighfieldQuoteFlow({
                 nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
             }
         } else {
-            // MUTUALLY EXCLUSIVE CONSOLE RULE
             if (currentCat === 'Consoles') {
                 const consoleIds = relevantFeatures.filter((f: any) => f.category === 'Consoles').map((f: any) => f.id);
                 const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
-                // Purge other consoles AND all existing seats to maintain integrity
                 nextSelectedIds = nextSelectedIds.filter(i => !consoleIds.includes(i) && !seatIds.includes(i));
             }
 
             nextSelectedIds.push(id);
 
-            // AUTO-TICK RULES
             if (currentCat === 'Consoles') {
                 if (feature.associatedSeatId && !nextSelectedIds.includes(feature.associatedSeatId)) {
                     nextSelectedIds.push(feature.associatedSeatId);
@@ -402,12 +465,11 @@ export function HighfieldQuoteFlow({
 
         setSelectedOptionIds(nextSelectedIds);
 
-        // AUTO-SCROLL ENGINE: Precision Skip Logic
+        // AUTO-SCROLL
         if (currentStep === 2 && !isCurrentlySelected) {
             const newConsoleId = nextSelectedIds.find(id => relevantFeatures.filter(f => f.category === 'Consoles').some(f => f.id === id));
             const newConsole = relevantFeatures.find(f => f.id === newConsoleId);
             
-            // Predict what will be visible after re-render
             const predictedVisibleCats = [...new Set(relevantFeatures.map(f => f.category || 'General Options'))].filter(cat => {
                 if (cat === 'Seats') {
                     if (newConsole && !newConsole.associatedSeatId) return false;
@@ -428,16 +490,45 @@ export function HighfieldQuoteFlow({
             if (targetCat) {
                 setTimeout(() => {
                     const targetElement = categoryRefs.current[targetCat];
-                    if (targetElement) {
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
+                    if (targetElement) targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 1200); 
+            }
+        }
+    };
+
+    const toggleMotorAccessory = (id: string) => {
+        const isSelected = selectedMotorAccessoryIds.includes(id);
+        const accessory = selectedMotor?.masterAccessories?.find((a: any) => a.id === id);
+        if (!accessory) return;
+
+        const cat = accessory.category || 'Other Hardware';
+        let next = isSelected 
+            ? selectedMotorAccessoryIds.filter(i => i !== id)
+            : [...selectedMotorAccessoryIds, id];
+
+        setSelectedMotorAccessoryIds(next);
+
+        // Slide logic
+        if (!isSelected) {
+            const cats = groupedMotorAccessories.map(([name]) => name);
+            const currentIdx = cats.indexOf(cat);
+            const targetCat = cats[currentIdx + 1];
+            if (targetCat) {
+                setTimeout(() => {
+                    const target = categoryRefs.current[targetCat];
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 1200);
             }
         }
     };
 
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+
+    const getMotorDisplayName = (m: any) => {
+        const name = m['Model Name'] || m.name || m.Description || 'Unnamed Motor';
+        return `${m.vendorName || 'YAMAHA'} - ${name}`;
+    };
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
@@ -589,30 +680,68 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-8 animate-in fade-in duration-1000 ease-in-out text-left mt-4">
-                                    <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full mb-8">
-                                        <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Motor</h3>
-                                    </div>
-                                    {motorsLoading ? <div className="flex flex-col items-center py-20 gap-4"><Loader2 className="animate-spin h-12 w-12 text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
-                                        <div className="grid grid-cols-2 gap-6">
-                                            {motors.map(m => {
-                                                const motorImgPath = m.SummaryImage || m.imageUrl;
-                                                const motorImgUrl = motorImgPath ? (motorImgPath.startsWith('http') ? motorImgPath : `https://www.yamaha-motor.com.au${motorImgPath.startsWith('/') ? '' : '/'}${motorImgPath}`) : null;
-                                                return (
-                                                    <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
-                                                        <div className="p-2 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
-                                                            <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>
-                                                                {m.vendorName || 'YAMAHA'} - {m['Model Name']}
-                                                            </p>
-                                                            <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedMotor?.id === m.id ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })}
+                                <div className="space-y-16 animate-in fade-in duration-1000 ease-in-out text-left mt-4">
+                                    <div className="space-y-8">
+                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full mb-8">
+                                            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Motor Selection</h3>
                                         </div>
-                                    )}
+                                        {motorsLoading ? <div className="flex flex-col items-center py-20 gap-4"><Loader2 className="animate-spin h-12 w-12 text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
+                                            <div className="grid grid-cols-2 gap-6">
+                                                {motors.map(m => {
+                                                    const mUrl = getMotorImgUrl(m);
+                                                    const displayName = getMotorDisplayName(m);
+                                                    const isSelected = selectedMotor?.id === m.id;
+                                                    return (
+                                                        <button key={m.id} onClick={() => setSelectedMotor(isSelected ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                            <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
+                                                            <div className="p-2 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                                <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>
+                                                                    {displayName}
+                                                                </p>
+                                                                <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {selectedMotor && groupedMotorAccessories.map(([cat, opts]) => (
+                                        <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-8 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
+                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                {opts.map((opt: any) => {
+                                                    const isSelected = selectedMotorAccessoryIds.includes(opt.id);
+                                                    return (
+                                                        <button key={opt.id} onClick={() => toggleMotorAccessory(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1 group", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                            <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">
+                                                                {opt.imageUrl ? (
+                                                                    <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />
+                                                                ) : (
+                                                                    <div className="flex h-full w-full items-center justify-center opacity-10"><Wrench className="h-12 w-12" /></div>
+                                                                )}
+                                                                {opt.isStandard && (
+                                                                    <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="p-2 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                                <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                                <p className={cn(
+                                                                    "text-[10px] font-black",
+                                                                    isSelected ? "text-primary" : "text-slate-400"
+                                                                )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 
@@ -679,14 +808,32 @@ export function HighfieldQuoteFlow({
                                                         <CardTitle className="text-sm font-black uppercase tracking-widest">Powertrain Identity</CardTitle>
                                                     </div>
                                                 </CardHeader>
-                                                <CardContent className="p-6">
-                                                    <div className="flex items-center justify-between">
+                                                <CardContent className="p-0">
+                                                    <div className="p-6 border-b flex items-center justify-between">
                                                         <div className="space-y-1">
-                                                            <p className="font-black text-lg uppercase tracking-tight text-slate-900">{selectedMotor.vendorName || 'YAMAHA'} - {selectedMotor['Model Name']}</p>
+                                                            <p className="font-black text-lg uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p>
                                                             <p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance Series</p>
                                                         </div>
                                                         <p className="font-black text-primary italic text-lg">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
+                                                    {selectedMotorAccessories.length > 0 && (
+                                                        <div className="divide-y bg-slate-50/50">
+                                                            {selectedMotorAccessories.map((acc: any) => (
+                                                                <div key={acc.id} className="p-6 flex items-center justify-between">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center">
+                                                                            <Wrench className="h-4 w-4 text-primary/40" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-xs font-black uppercase tracking-tight">{acc.name}</p>
+                                                                            <Badge variant="outline" className="text-[8px] font-black h-4 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge>
+                                                                        </div>
+                                                                    </div>
+                                                                    <p className="text-xs font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </CardContent>
                                             </Card>
                                         )}
