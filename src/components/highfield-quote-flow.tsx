@@ -298,13 +298,13 @@ export function HighfieldQuoteFlow({
 
             if (targetCat) {
                 const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-                if (viewport && categoryRefs.current[targetCat]) {
+                if (viewport) {
                     setTimeout(() => {
                         const targetElement = categoryRefs.current[targetCat!];
                         if (targetElement) {
                             viewport.scrollTo({ top: targetElement.offsetTop, behavior: 'smooth' });
                         }
-                    }, 150);
+                    }, 200);
                 }
             }
         }
@@ -316,7 +316,7 @@ export function HighfieldQuoteFlow({
     const displayedModelName = isOpenClassification ? `${model.name} (OPEN)` : model.name;
 
     const buildPreviewSlide = useMemo(() => {
-        const imagedOptions = selectedOptionsData.filter(f => f.imageUrl);
+        const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
         if (imagedOptions.length === 0) return null;
 
         const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
@@ -328,13 +328,13 @@ export function HighfieldQuoteFlow({
                 <div className="h-full w-full flex items-center bg-white">
                     {consoleOpt && (
                         <div className="flex-1 h-full relative">
-                            {consoleOpt.imageUrl && <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-12 mix-blend-multiply" unoptimized />}
+                            {consoleOpt.imageUrl && <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-6 mix-blend-multiply" unoptimized />}
                             <div className="absolute bottom-6 left-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Console</div>
                         </div>
                     )}
                     {seatOpt && (
                         <div className={cn("flex-1 h-full relative", consoleOpt && "border-l-2 border-slate-100")}>
-                            {seatOpt.imageUrl && <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-12 mix-blend-multiply" unoptimized />}
+                            {seatOpt.imageUrl && <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-6 mix-blend-multiply" unoptimized />}
                             <div className="absolute bottom-6 right-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Paired Seating</div>
                         </div>
                     )}
@@ -348,13 +348,13 @@ export function HighfieldQuoteFlow({
             <div className="h-full w-full grid grid-cols-2 grid-rows-2 bg-white">
                 {gridItems.slice(0, 4).map((item, i) => (
                     <div key={item.id} className={cn(
-                        "relative flex items-center justify-center p-8 transition-colors",
+                        "relative flex items-center justify-center p-4 transition-colors",
                         i === 0 && "border-r border-b",
                         i === 1 && "border-b",
                         i === 2 && "border-r",
                         "hover:bg-slate-50"
                     )}>
-                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-6 mix-blend-multiply" unoptimized />}
+                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-2 mix-blend-multiply" unoptimized />}
                         <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/5 rounded-md text-[7px] font-black uppercase tracking-tighter text-slate-400">
                             {item.name}
                         </div>
@@ -433,7 +433,7 @@ export function HighfieldQuoteFlow({
                                     <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                         {slide.type === 'build' ? slide.content : (
                                             <>
-                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-contain p-6" unoptimized />}
+                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-cover" unoptimized />}
                                                 <Button 
                                                     variant="ghost" size="icon" 
                                                     className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
@@ -502,7 +502,7 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full p-6 bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
+                                                        <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-cover mix-blend-multiply" unoptimized />}</div>
                                                         <div className={cn("p-5 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-xs font-bold uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
@@ -523,11 +523,11 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-6">
                                                 {opts.map((opt: any) => (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply p-4 transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                             <p className={cn(
-                                                                "text-[10px] font-black",
+                                                                "text-[10px] font-black text-sm",
                                                                 selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
                                                             )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
@@ -552,7 +552,7 @@ export function HighfieldQuoteFlow({
                                                 const motorImgUrl = motorImgPath ? (motorImgPath.startsWith('http') ? motorImgPath : `https://www.yamaha-motor.com.au${motorImgPath.startsWith('/') ? '' : '/'}${motorImgPath}`) : null;
                                                 return (
                                                     <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">{motorImgUrl ? <Image src={motorImgUrl} alt="Motor" fill className="object-contain mix-blend-multiply p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>}</div>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{motorImgUrl ? <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-2 mix-blend-multiply" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>
                                                                 {m.vendorName || 'YAMAHA'} - {m['Model Name']}

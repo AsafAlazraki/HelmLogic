@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore, useUser, useDoc } from '@/firebase';
 import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor, Save } from 'lucide-react';
+import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronDown, ChevronRight, Settings2, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor, Save } from 'lucide-react';
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import Image from 'next/image';
@@ -203,10 +203,8 @@ function MotorCard({
     const handleSteeringTypeChange = (type: string) => {
         const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
         const updateData = { steeringType: type };
+        
         updateDoc(motorRef, updateData)
-            .then(() => {
-                toast({ title: "Motor Tagged", description: `Assigned ${type} steering.` });
-            })
             .catch(async (serverError) => {
                 const permissionError = new FirestorePermissionError({
                     path: motorRef.path,
