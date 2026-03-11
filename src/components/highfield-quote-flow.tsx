@@ -234,12 +234,26 @@ export function HighfieldQuoteFlow({
     }, [currentStep, firestore, module, model, hasConsoleSelected]);
 
     // Auto-select standard motor accessories when motor changes
+    // Refined to only pick one standard Prop and one standard Rigging
     useEffect(() => {
         if (selectedMotor) {
-            const standardIds = (selectedMotor.masterAccessories || [])
-                .filter((a: any) => a.isStandard)
-                .map((a: any) => a.id);
-            setSelectedMotorAccessoryIds(standardIds);
+            const allStandard = (selectedMotor.masterAccessories || []).filter((a: any) => a.isStandard);
+            const finalStandardIds: string[] = [];
+            const processedCats = new Set<string>();
+
+            allStandard.forEach((a: any) => {
+                const cat = a.category || 'Other';
+                if (cat === 'Propeller' || cat === 'Rigging') {
+                    if (!processedCats.has(cat)) {
+                        finalStandardIds.push(a.id);
+                        processedCats.add(cat);
+                    }
+                } else {
+                    finalStandardIds.push(a.id);
+                }
+            });
+
+            setSelectedMotorAccessoryIds(finalStandardIds);
             
             // Auto-scroll to accessories
             if (currentStep === 3) {
@@ -454,14 +468,12 @@ export function HighfieldQuoteFlow({
                 return false;
             }
 
-            // 2. Intelligent Material Filtering (Safety net for un-tagged data)
-            // If the option name mentions a material that doesn't match our current selection, hide it.
+            // 2. Intelligent Material Filtering
             const name = String(f.name).toUpperCase();
             if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
             if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
 
             // 3. Prevent Hardware Leakage
-            // If it's a motor ram support or fuel filter, hide it from boat factory options
             if (name.includes('FUEL FILTER') || name.includes('RAM SUPPORT')) return false;
 
             return true;
@@ -604,7 +616,23 @@ export function HighfieldQuoteFlow({
         if (!accessory) return;
 
         const cat = accessory.category || 'Other Hardware';
-        let next = isSelected ? selectedMotorAccessoryIds.filter(i => i !== id) : [...selectedMotorAccessoryIds, id];
+        const isSingleSelectCat = cat === 'Propeller' || cat === 'Rigging';
+
+        let next = [...selectedMotorAccessoryIds];
+
+        if (isSelected) {
+            next = next.filter(i => i !== id);
+        } else {
+            if (isSingleSelectCat) {
+                // Remove existing items from the same category
+                const sameCatIds = (selectedMotor.masterAccessories || [])
+                    .filter((a: any) => a.category === cat)
+                    .map((a: any) => a.id);
+                next = next.filter(i => !sameCatIds.includes(i));
+            }
+            next.push(id);
+        }
+
         setSelectedMotorAccessoryIds(next);
 
         if (!isSelected) {
