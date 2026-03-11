@@ -85,40 +85,9 @@ service cloud.firestore {
       }
     }
 
-    match /data-warehouse/{vendorId} {
-      allow read: if isSignedIn();
-      // Temporarily allow write for prototyping
-      allow write: if isSignedIn();
-
-      match /ranges/{rangeId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
-
-        match /models/{modelId} {
-          allow read: if isSignedIn();
-          allow write: if isSignedIn();
-
-          match /variants/{variantId} {
-            allow read: if isSignedIn();
-            allow write: if isSignedIn();
-          }
-        }
-      }
-
-      match /masterDataSet/{docId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
-      }
-
-      match /dataSets/{setId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
-
-        match /rows/{rowId} {
-          allow read: if isSignedIn();
-          allow write: if isSignedIn();
-        }
-      }
+    // Temporarily allow write for prototyping across the entire data-warehouse
+    match /data-warehouse/{allPaths=**} {
+      allow read, write: if isSignedIn();
     }
 
     match /dealerFitCategories/{catId} {

@@ -428,7 +428,15 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     { id: 'test-prop-1', name: 'Aluminum Propeller 11 1/8 x 13-G', category: 'Propeller', isStandard: true, items: [] },
                     { id: 'test-rig-1', name: 'Mech Rigging Kit - 703 Remote Control', category: 'Rigging', isStandard: false, items: [] }
                 ];
-                await updateDoc(motorRef, { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] });
+                
+                updateDoc(motorRef, { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] })
+                    .catch(async (serverError) => {
+                        errorEmitter.emit('permission-error', new FirestorePermissionError({
+                            path: motorRef.path,
+                            operation: 'update',
+                            requestResourceData: { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] },
+                        } satisfies SecurityRuleContext));
+                    });
             }
 
             const currentOptions = watch('optionalFeatures') || model?.optionalFeatures || [];

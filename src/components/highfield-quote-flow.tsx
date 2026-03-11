@@ -134,7 +134,7 @@ export function HighfieldQuoteFlow({
 
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
-        return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
+        return Array.from(new Set(variants.map(v => v.material).filter(Boolean) as string[]));
     }, [variants]);
 
     const availableColors = useMemo(() => {
@@ -155,9 +155,8 @@ export function HighfieldQuoteFlow({
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) {
             const timer = setTimeout(() => {
-                const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-                if (viewport && colorSectionRef.current) {
-                    viewport.scrollTo({ top: colorSectionRef.current.offsetTop - 20, behavior: 'smooth' });
+                if (colorSectionRef.current) {
+                    colorSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             }, 800); 
             return () => clearTimeout(timer);
@@ -187,7 +186,6 @@ export function HighfieldQuoteFlow({
                         
                         const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
 
-                        // STYLISTIC RULE: Strictly filter based on steering profile
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             const matchesHp = hp >= minHp && hp <= maxHp;
@@ -290,14 +288,14 @@ export function HighfieldQuoteFlow({
 
         const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
         if (buildIdx !== -1 && selectedOptionIds.length > 0) {
-            setTimeout(() => api.scrollTo(buildIdx), 500);
+            setTimeout(() => api.scrollTo(buildIdx), 1000);
             return;
         }
 
         if (activeVariant?.imageUrl) {
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
             if (variantIdx !== -1) {
-                setTimeout(() => api.scrollTo(variantIdx), 500);
+                setTimeout(() => api.scrollTo(variantIdx), 1000);
                 return;
             }
         }
@@ -417,12 +415,11 @@ export function HighfieldQuoteFlow({
 
             if (targetCat) {
                 setTimeout(() => {
-                    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
                     const targetElement = categoryRefs.current[targetCat];
-                    if (viewport && targetElement) {
-                        viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
-                }, 1000); // Premium deliberate pace
+                }, 1200); // Slow deliberate pace
             }
         }
     };
