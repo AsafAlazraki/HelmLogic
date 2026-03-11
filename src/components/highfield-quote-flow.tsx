@@ -35,7 +35,9 @@ import {
     Truck,
     Box,
     Monitor,
-    Speaker
+    Speaker,
+    Trash2,
+    Zap
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -255,22 +257,6 @@ export function HighfieldQuoteFlow({
         }
     }, [selectedMotor, currentStep]);
 
-    // Handle trailer selection logic
-    const handleTrailerSelection = () => {
-        const isCurrentlySelected = selectedTrailerId === 'primary-trailer';
-        if (isCurrentlySelected) {
-            setSelectedTrailerId(null);
-            setSelectedTrailerOptionIds([]);
-        } else {
-            setSelectedTrailerId('primary-trailer');
-            // Auto-select standard options
-            const standardIds = (model.trailerConfig?.options || [])
-                .filter((o: any) => o.isStandard)
-                .map((o: any) => o.id);
-            setSelectedTrailerOptionIds(standardIds);
-        }
-    };
-
     useEffect(() => {
         if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -302,9 +288,8 @@ export function HighfieldQuoteFlow({
 
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
-        selectedOptionIds.forEach(id => {
-            const opt = model.optionalFeatures?.find((f: any) => f.id === id);
-            if (opt) total += (opt.sellPriceExclGst || 0);
+        selectedOptionsData.forEach(opt => {
+            total += (opt.sellPriceExclGst || 0);
         });
         if (selectedMotor) {
             total += (selectedMotor.sellPriceExclGst || 0);
@@ -324,7 +309,7 @@ export function HighfieldQuoteFlow({
             });
         });
         return total;
-    }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData]);
+    }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData]);
 
     const buildPreviewSlide = useMemo(() => {
         const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
@@ -639,6 +624,20 @@ export function HighfieldQuoteFlow({
     const getMotorDisplayName = (m: any) => {
         const name = m['Model Name'] || m.name || m.Description || 'Unnamed Motor';
         return `${m.vendorName || 'YAMAHA'} - ${name}`;
+    };
+
+    const handleTrailerSelection = () => {
+        const isCurrentlySelected = selectedTrailerId === 'primary-trailer';
+        if (isCurrentlySelected) {
+            setSelectedTrailerId(null);
+            setSelectedTrailerOptionIds([]);
+        } else {
+            setSelectedTrailerId('primary-trailer');
+            const standardIds = (model.trailerConfig?.options || [])
+                .filter((o: any) => o.isStandard)
+                .map((o: any) => o.id);
+            setSelectedTrailerOptionIds(standardIds);
+        }
     };
 
     return (
@@ -1077,7 +1076,7 @@ export function HighfieldQuoteFlow({
             </div>
 
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
-                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none [&>button]:shadow-none [&>button]:right-6 [&>button]:top-6">
+                <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none [&>button]:shadow-none [&>button]:focus:ring-0 [&>button]:focus:outline-none [&>button]:right-6 [&>button]:top-6">
                     <DialogHeader className="sr-only"><DialogTitle>Immersive Inspection</DialogTitle></DialogHeader>
                     <div className="relative w-full h-full flex items-center justify-center">{lightboxUrl && <Image src={lightboxUrl} alt="Inspection" fill className="object-contain p-4" unoptimized />}</div>
                 </DialogContent>
