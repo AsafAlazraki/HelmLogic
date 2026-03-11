@@ -192,26 +192,21 @@ export function HighfieldQuoteFlow({
         }
     }, [currentStep]);
 
-    // Auto-slide logic when build preview slide appears
+    // Auto-slide to build preview when options are changed
     useEffect(() => {
         if (api && selectedOptionIds.length > 0) {
             const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
             if (buildSlideIndex !== -1) {
-                api.scrollTo(buildSlideIndex);
+                // Wait for render cycle to complete build slide update
+                setTimeout(() => api.scrollTo(buildSlideIndex), 100);
             }
         }
-    }, [selectedOptionIds.length, api]);
+    }, [selectedOptionIds, api]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
         return variants.find(v => v.id === selectedColor);
     }, [selectedColor, variants]);
-
-    const isOpenClassification = useMemo(() => {
-        if (!model.optionalFeatures) return true;
-        const consoleOptions = model.optionalFeatures.filter((f: any) => f.category === 'Consoles');
-        return !selectedOptionIds.some(id => consoleOptions.some((f: any) => f.id === id));
-    }, [model.optionalFeatures, selectedOptionIds]);
 
     const selectedOptionsData = useMemo(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
@@ -284,23 +279,27 @@ export function HighfieldQuoteFlow({
 
             if (isSelected) {
                 next = next.filter(i => i !== id);
-                // If console deselected, also deselect rigging
                 if (currentCat === 'Consoles') {
                     const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
                     if (riggingItem) next = next.filter(i => i !== riggingItem.id);
+                    // Also purge associated seats
+                    const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
+                    next = next.filter(i => !seatIds.includes(i));
                 }
             } else {
-                // RULE: One console only
                 if (currentCat === 'Consoles') {
                     const consoleIds = relevantFeatures
                         .filter((f: any) => f.category === 'Consoles')
                         .map((f: any) => f.id);
+                    // One console only rule
                     next = next.filter(i => !consoleIds.includes(i));
+                    // Purge all old seats before applying new console rules
+                    const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
+                    next = next.filter(i => !seatIds.includes(i));
                 }
 
                 next.push(id);
 
-                // Auto-tick logic
                 if (currentCat === 'Consoles') {
                     if (feature.associatedSeatId && !next.includes(feature.associatedSeatId)) {
                         next.push(feature.associatedSeatId);
@@ -316,22 +315,20 @@ export function HighfieldQuoteFlow({
             return next;
         });
 
-        // Auto-scroll logic
+        // Auto-scroll precision
         if (currentStep === 2 && !isCurrentlySelected) {
             const targetCat = (currentCat === 'Consoles' && groupedOptions.some(([n]) => n === 'Seats')) 
                 ? 'Seats' 
                 : groupedOptions[groupedOptions.findIndex(([n]) => n === currentCat) + 1]?.[0];
 
             if (targetCat) {
-                const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-                if (viewport) {
-                    setTimeout(() => {
-                        const targetElement = categoryRefs.current[targetCat!];
-                        if (targetElement) {
-                            viewport.scrollTo({ top: targetElement.offsetTop, behavior: 'smooth' });
-                        }
-                    }, 200);
-                }
+                setTimeout(() => {
+                    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+                    const targetElement = categoryRefs.current[targetCat!];
+                    if (viewport && targetElement) {
+                        viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
+                    }
+                }, 100);
             }
         }
     };
@@ -481,7 +478,7 @@ export function HighfieldQuoteFlow({
                     <div className="pt-6 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS[currentStep - 1].label.toUpperCase()}
-                            <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
+                            <span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span>
                         </h2>
                     </div>
 
